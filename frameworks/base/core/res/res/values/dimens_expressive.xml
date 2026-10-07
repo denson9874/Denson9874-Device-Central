@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ExpressiveOS: Design tokens and corner geometry definitions
+    Implements Material 3 Expressive fluid geometry across all system surfaces.
+-->
+<resources>
+    <!-- Dynamic Corner Radii Tokens -->
+    <dimen name="config_buttonCornerRadius">24dp</dimen>
+    <dimen name="config_dialogCornerRadius">28dp</dimen>
+    <dimen name="config_bottomSheetCornerRadius">32dp</dimen>
+    
+    <!-- Expressive Specific Shapes -->
+    <dimen name="expressive_corner_radius_pill">28dp</dimen>
+    <dimen name="expressive_corner_radius_squircle">16dp</dimen>
+    <dimen name="expressive_folder_widget_corner_radius_default">24dp</dimen>
+    
+    <!-- Status Bar & Insets -->
+    <dimen name="expressive_status_bar_scrim_height">36dp</dimen>
+</resources>

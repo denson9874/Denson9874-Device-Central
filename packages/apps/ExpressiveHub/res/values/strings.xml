@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="expressive_hub_title">Expressive Hub</string>
+    <string name="expressive_hub_summary">Customize Material 3 Expressive UI, Quick Settings, lock screen typography, and gestures</string>
+
+    <string name="category_quick_settings">Quick Settings &amp; Status Bar</string>
+    <string name="pref_qs_tile_style">Quick Settings Tile Geometry</string>
+    <string name="pref_qs_tile_style_summary">Choose the shape and curvature of Quick Settings tiles</string>
+    <string name="pref_blur_scrim">Backdrop Blur Intensity</string>
+    <string name="pref_blur_scrim_summary">Adjust real-time wallpaper blur scrim in notification shade and recents</string>
+    <string name="pref_status_bar_solid">Solid Status Bar Scrim</string>
+    <string name="pref_status_bar_solid_summary">Display an opaque high-contrast dark scrim behind status bar icons</string>
+
+    <string name="category_lock_screen">Lock Screen &amp; Smartspace</string>
+    <string name="pref_clock_typography">Lock Screen Clock Typography</string>
+    <string name="pref_clock_typography_summary">Select the typeface style for the Ambient and Lock Screen clock</string>
+    <string name="pref_hybrid_glance">Hybrid At a Glance Messages</string>
+    <string name="pref_hybrid_glance_summary">Synchronize daily quotes, holidays, and Pixel smart cards across Home and Lock Screen</string>
+
+    <string name="category_launcher">Expressive Launcher &amp; Desktop</string>
+    <string name="pref_drawer_presentation">App Drawer Presentation</string>
+    <string name="pref_drawer_presentation_summary">Switch between modern full-screen edge-to-edge and classic Pixel bottom sheet</string>
+
+    <!-- Preference Arrays -->
+    <string-array name="qs_tile_style_entries">
+        <item>Expressive Pill (28dp)</item>
+        <item>Modern Squircle (16dp)</item>
+        <item>Classic Oval (12dp)</item>
+    </string-array>
+    <string-array name="qs_tile_style_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+
+    <string-array name="clock_typography_entries">
+        <item>Google Sans Flex (Variable)</item>
+        <item>Expressive Ink Display</item>
+        <item>Retro Monospace</item>
+    </string-array>
+    <string-array name="clock_typography_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+
+    <string-array name="drawer_presentation_entries">
+        <item>Edge-to-Edge Full Screen</item>
+        <item>Pixel Floating Bottom Sheet</item>
+    </string-array>
+    <string-array name="drawer_presentation_values">
+        <item>0</item>
+        <item>1</item>
+    </string-array>
+</resources>

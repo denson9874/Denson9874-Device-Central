@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Quick Settings & SystemUI -->
+    <PreferenceCategory
+        android:title="@string/category_quick_settings"
+        app:iconSpaceReserved="false">
+
+        <ListPreference
+            android:key="expressive_qs_tile_style"
+            android:title="@string/pref_qs_tile_style"
+            android:summary="@string/pref_qs_tile_style_summary"
+            android:entries="@array/qs_tile_style_entries"
+            android:entryValues="@array/qs_tile_style_values"
+            android:defaultValue="0"
+            app:useSimpleSummaryProvider="true" />
+
+        <SeekBarPreference
+            android:key="expressive_blur_scrim_intensity"
+            android:title="@string/pref_blur_scrim"
+            android:summary="@string/pref_blur_scrim_summary"
+            android:defaultValue="80"
+            android:max="100"
+            app:min="0"
+            app:showSeekBarValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="expressive_status_bar_solid_scrim"
+            android:title="@string/pref_status_bar_solid"
+            android:summary="@string/pref_status_bar_solid_summary"
+            android:defaultValue="false" />
+    </PreferenceCategory>
+
+    <!-- Lock Screen & Smartspace -->
+    <PreferenceCategory
+        android:title="@string/category_lock_screen"
+        app:iconSpaceReserved="false">
+
+        <ListPreference
+            android:key="expressive_lock_clock_typography"
+            android:title="@string/pref_clock_typography"
+            android:summary="@string/pref_clock_typography_summary"
+            android:entries="@array/clock_typography_entries"
+            android:entryValues="@array/clock_typography_values"
+            android:defaultValue="0"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            android:key="expressive_hybrid_glance_messages"
+            android:title="@string/pref_hybrid_glance"
+            android:summary="@string/pref_hybrid_glance_summary"
+            android:defaultValue="true" />
+    </PreferenceCategory>
+
+    <!-- Expressive Launcher & Folder Widgets -->
+    <PreferenceCategory
+        android:title="@string/category_launcher"
+        app:iconSpaceReserved="false">
+
+        <ListPreference
+            android:key="expressive_drawer_presentation_mode"
+            android:title="@string/pref_drawer_presentation"
+            android:summary="@string/pref_drawer_presentation_summary"
+            android:entries="@array/drawer_presentation_entries"
+            android:entryValues="@array/drawer_presentation_values"
+            android:defaultValue="0"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

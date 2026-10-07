@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <!-- Pixel 11 Pro / XL Device Trees, Kernel, and Vendor Components -->
+  <remote name="pixel-vendor"
+          fetch="https://github.com/denson9874" />
+
+  <!-- Device Trees -->
+  <project path="device/google/pixel11" name="ExpressiveOS-device_google_pixel11" remote="pixel-vendor" revision="android-17" />
+  <project path="device/google/pixel11-kernel" name="ExpressiveOS-device_google_pixel11-kernel" remote="pixel-vendor" revision="android-17" />
+
+  <!-- Tensor Hardware HALs & Drivers -->
+  <project path="hardware/google/pixel" name="platform/hardware/google/pixel" remote="aosp" revision="android-17.0.0_r1" />
+  <project path="hardware/google/graphics/common" name="platform/hardware/google/graphics/common" remote="aosp" revision="android-17.0.0_r1" />
+  <project path="hardware/google/camera" name="platform/hardware/google/camera" remote="aosp" revision="android-17.0.0_r1" />
+
+  <!-- Proprietary Blobs: Tensor Drivers, Modem, Pixel Camera Engine, GMS & Sound/Wallpaper Packages -->
+  <project path="vendor/google/pixel11" name="ExpressiveOS-vendor_google_pixel11" remote="pixel-vendor" revision="android-17" />
+  <project path="vendor/google/pixel-priv" name="ExpressiveOS-vendor_google_pixel-priv" remote="pixel-vendor" revision="android-17" />
+  <project path="vendor/expressive" name="ExpressiveOS-vendor_expressive" remote="pixel-vendor" revision="android-17" />
+</manifest>

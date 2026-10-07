@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExpressiveOS Web Flasher — Pixel 11 Pro / XL</title>
+    <style>
+        :root {
+            --bg-color: #0c101c;
+            --card-bg: #151c2e;
+            --primary: #4B69FE;
+            --accent: #9CB2F4;
+            --text: #f0f3fa;
+            --text-secondary: #9aa5be;
+            --radius: 24px;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Google Sans Flex", "Segoe UI", Roboto, sans-serif;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .container {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 40px;
+            max-width: 640px;
+            width: 100%;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+        }
+        .logo {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 24px rgba(75, 105, 254, 0.35);
+        }
+        .logo svg {
+            width: 44px;
+            height: 44px;
+            fill: #ffffff;
+        }
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 15px;
+            margin-bottom: 28px;
+            line-height: 1.5;
+        }
+        .steps {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: left;
+            margin-bottom: 28px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .steps ol {
+            padding-left: 20px;
+            line-height: 1.8;
+        }
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 28px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        button:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+        }
+        button.secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text);
+        }
+        .status-box {
+            margin-top: 24px;
+            font-size: 13px;
+            color: var(--accent);
+            min-height: 20px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg viewBox="0 0 24 24"><path d="M12,2C6.49,2 2,6.49 2,12s4.49,10 10,10 10,-4.49 10,-10S17.51,2 12,2zM12,20c-4.41,0 -8,-3.59 -8,-8s3.59,-8 8,-8 8,3.59 8,8 -3.59,8 -8,8z"/></svg>
+        </div>
+        <h1>ExpressiveOS Web Flasher</h1>
+        <p class="subtitle">Install ExpressiveOS (Android 17) directly to your Google Pixel 11 Pro / XL via WebUSB Fastboot in Google Chrome.</p>
+
+        <div class="steps">
+            <ol>
+                <li>Reboot Pixel 11 Pro / XL into Bootloader mode (Hold Power + Volume Down).</li>
+                <li>Connect device via high-speed USB-C cable to your computer.</li>
+                <li>Click <strong>Connect Device</strong> and select your Pixel device in the prompt.</li>
+                <li>Click <strong>Flash ExpressiveOS</strong> to start the automated installation.</li>
+            </ol>
+        </div>
+
+        <div class="btn-group">
+            <button id="btnConnect" onclick="connectDevice()">Connect Device</button>
+            <button id="btnFlash" class="secondary" onclick="startFlashing()" disabled>Flash ExpressiveOS</button>
+        </div>
+
+        <div class="status-box" id="statusLog">Ready. Connect device to begin.</div>
+    </div>
+
+    <script>
+        let selectedDevice = null;
+
+        async function connectDevice() {
+            const status = document.getElementById("statusLog");
+            try {
+                status.innerText = "Requesting WebUSB connection...";
+                // Google Pixel USB Vendor ID is 0x18d1
+                selectedDevice = await navigator.usb.requestDevice({
+                    filters: [{ vendorId: 0x18d1 }]
+                });
+                await selectedDevice.open();
+                status.innerText = `Connected: ${selectedDevice.productName || "Pixel 11 Pro/XL (Fastboot)"}`;
+                document.getElementById("btnFlash").disabled = false;
+                document.getElementById("btnFlash").classList.remove("secondary");
+            } catch (err) {
+                status.innerText = `Connection failed: ${err.message}`;
+            }
+        }
+
+        async function startFlashing() {
+            const status = document.getElementById("statusLog");
+            status.innerText = "Initializing fastboot update protocol... Flashing factory image.";
+            // Fastboot flashing logic
+        }
+    </script>
+</body>
+</html>

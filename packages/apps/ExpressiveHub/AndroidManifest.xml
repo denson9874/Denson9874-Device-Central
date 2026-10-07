@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.expressive.hub">
+
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
+
+    <application
+        android:label="@string/expressive_hub_title"
+        android:icon="@drawable/ic_expressive_hub"
+        android:theme="@style/Theme.ExpressiveHub">
+
+        <activity
+            android:name=".ExpressiveHubActivity"
+            android:exported="true"
+            android:label="@string/expressive_hub_title">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Hook into Android Settings "Personalize" Category -->
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.personalize" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:value="@string/expressive_hub_summary" />
+            <meta-data
+                android:name="com.android.settings.order"
+                android:value="-100" />
+        </activity>
+    </application>
+</manifest>

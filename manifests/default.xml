@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <!-- Remote Repositories -->
+  <remote name="aosp"
+          fetch="https://android.googlesource.com"
+          review="android-review.googlesource.com" />
+  <remote name="expressive"
+          fetch="https://github.com/denson9874" />
+
+  <default revision="android-17.0.0_r1"
+           remote="aosp"
+           sync-j="4" />
+
+  <!-- Core Platform & Framework -->
+  <project path="build/make" name="platform/build" groups="pdk" >
+    <copyfile src="core/root.mk" dest="Makefile" />
+    <linkfile src="CleanSpec.mk" dest="build/CleanSpec.mk" />
+    <linkfile src="buildspec.mk.default" dest="build/buildspec.mk.default" />
+    <linkfile src="core" dest="build/core" />
+    <linkfile src="envsetup.sh" dest="build/envsetup.sh" />
+    <linkfile src="target" dest="build/target" />
+    <linkfile src="tools" dest="build/tools" />
+  </project>
+  <project path="build/soong" name="platform/build/soong" groups="pdk,pdk-cw-fs,pdk-fs" >
+    <linkfile src="root.bp" dest="Android.bp" />
+    <linkfile src="bootstrap.bash" dest="bootstrap.bash" />
+  </project>
+
+  <!-- ExpressiveOS Core Overlays & Customizations -->
+  <project path="frameworks/base" name="ExpressiveOS-frameworks_base" remote="expressive" revision="android-17" />
+  <project path="packages/apps/Settings" name="ExpressiveOS-packages_apps_Settings" remote="expressive" revision="android-17" />
+  <project path="packages/apps/ExpressiveLauncher" name="ExpressiveLauncher" remote="expressive" revision="main" />
+  <project path="packages/apps/ExpressiveHub" name="ExpressiveOS-ExpressiveHub" remote="expressive" revision="main" />
+  <project path="packages/apps/ExpressiveUpdater" name="ExpressiveOS-Updater" remote="expressive" revision="main" />
+
+  <!-- Pixel 11 Pro / XL Specific Device Manifest Inclusion -->
+  <include name="pixel11.xml" />
+</manifest>

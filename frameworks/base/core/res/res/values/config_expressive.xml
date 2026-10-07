@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ExpressiveOS: Core Platform Framework Configurations
+-->
+<resources>
+    <!-- Component name for the privileged Quickstep / Recents provider -->
+    <string name="config_recentsComponentName" translatable="false">dev.launcher.expressive.l3/com.android.quickstep.TouchInteractionService</string>
+
+    <!-- Enable cross-window live blur support by default -->
+    <bool name="config_backgroundBlurSupported">true</bool>
+
+    <!-- Configure modern gesture navigation defaults -->
+    <integer name="config_navBarInteractionMode">2</integer> <!-- 2 = Gestural navigation -->
+
+    <!-- Default status bar & navigation bar animations -->
+    <bool name="config_enableRemoteKeyguardAnimation">true</bool>
+    <bool name="config_unfoldTransitionEnabled">false</bool>
+</resources>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ExpressiveOS: System Configuration for Expressive Launcher
+-->
+<config>
+    <!-- Allow Expressive Launcher to run uninterrupted and coordinate transitions -->
+    <allow-in-power-save package="dev.launcher.expressive.l3" />
+    <allow-in-data-usage-save package="dev.launcher.expressive.l3" />
+    
+    <!-- System-level component whitelisting -->
+    <system-user-whitelisted-app package="dev.launcher.expressive.l3" />
+    <allow-implicit-broadcast action="android.intent.action.WALLPAPER_CHANGED" />
+</config>

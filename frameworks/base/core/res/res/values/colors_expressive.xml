@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ExpressiveOS: Signature Ink-Indigo Dynamic Color System Tokens
+-->
+<resources>
+    <!-- Core Brand & System Accent 1 (Ink-Indigo / Electric Blue) -->
+    <color name="expressive_system_accent1_0">#FFFFFF</color>
+    <color name="expressive_system_accent1_10">#F6F7FB</color>
+    <color name="expressive_system_accent1_50">#E4E8FB</color>
+    <color name="expressive_system_accent1_100">#C9D3F8</color>
+    <color name="expressive_system_accent1_200">#9CB2F4</color>
+    <color name="expressive_system_accent1_300">#6F90EF</color>
+    <color name="expressive_system_accent1_400">#4E75EA</color>
+    <color name="expressive_system_accent1_500">#365DE1</color>
+    <color name="expressive_system_accent1_600">#2E4CBD</color>
+    <color name="expressive_system_accent1_700">#283F9C</color>
+    <color name="expressive_system_accent1_800">#23347C</color>
+    <color name="expressive_system_accent1_900">#182354</color>
+    <color name="expressive_system_accent1_1000">#000000</color>
+
+    <!-- High-Contrast Status Bar Scrim -->
+    <color name="expressive_status_bar_scrim_solid">#E60A0D14</color>
+</resources>
