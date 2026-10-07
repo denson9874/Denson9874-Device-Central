@@ -26,12 +26,36 @@ Rather than running as a third-party application with restricted privileges, **E
 
 ---
 
-## Hardware Verification: Pixel 8 Pro (husky)
+## Hardware Verification: Pixel 8 Pro (husky) — v1.1.0 Customization & OTA Suite
 
-*Live captures taken directly from a physical Google Pixel 8 Pro (`husky`) running the flashed ExpressiveOS ROM based on Android 17 (Build `ZP11.260821.010`):*
+*Live captures taken directly from a physical Google Pixel 8 Pro (`husky`) running ExpressiveOS v1.1.0 (Android 17, Build `ZP11.260821.010`):*
 
 <div align="center">
   <table>
+    <tr>
+      <td width="50%" align="center">
+        <h4>Expressive Lab Hub</h4>
+        <img src="docs/assets/screenshots/pixel8pro-expressive-lab.png" alt="Expressive Lab Settings" width="320" /><br />
+        <em>System customization suite: Quick Settings blur toggles, status bar battery styles, gestures, and pure AMOLED mode.</em>
+      </td>
+      <td width="50%" align="center">
+        <h4>Seamless OTA Updater Flow</h4>
+        <img src="docs/assets/screenshots/pixel8pro-expressive-ota.png" alt="ExpressiveOS OTA Check" width="320" /><br />
+        <em>Integrated OTA update engine with live changelog and non-wipe in-place A/B partition flashing.</em>
+      </td>
+    </tr>
+    <tr>
+      <td width="50%" align="center">
+        <h4>Real-Time Frosted Glass QS Blur</h4>
+        <img src="docs/assets/screenshots/pixel8pro-expressive-qs-blur.png" alt="Quick Settings Blur" width="320" /><br />
+        <em>Compositor-level real-time frosted glass backdrop blur behind Quick Settings pill tiles and pure AMOLED background.</em>
+      </td>
+      <td width="50%" align="center">
+        <h4>App Drawer & Expressive Lab</h4>
+        <img src="docs/assets/screenshots/pixel8pro-expressive-drawer-lab.png" alt="Pixel 8 Pro App Drawer" width="320" /><br />
+        <em>Floating Material 3 app drawer featuring Expressive Lab alongside core system and Google applications.</em>
+      </td>
+    </tr>
     <tr>
       <td width="50%" align="center">
         <h4>Physical Home Screen</h4>
@@ -39,21 +63,9 @@ Rather than running as a third-party application with restricted privileges, **E
         <em>Expressive Launcher running as primary system home with emerald wallpaper, dock search bar, and app layout.</em>
       </td>
       <td width="50%" align="center">
-        <h4>App Drawer & Blur</h4>
-        <img src="docs/assets/screenshots/pixel8pro-expressive-drawer.png" alt="Pixel 8 Pro Drawer" width="320" /><br />
-        <em>Floating app drawer with search pill, top predictions, and live frosted glass wallpaper blur.</em>
-      </td>
-    </tr>
-    <tr>
-      <td width="50%" align="center">
         <h4>Home Settings Hub</h4>
         <img src="docs/assets/screenshots/pixel8pro-expressive-settings.png" alt="Pixel 8 Pro Settings" width="320" /><br />
         <em>Native system settings menu for Expressive Pro, icons, widgets, and gestures.</em>
-      </td>
-      <td width="50%" align="center">
-        <h4>Home Screen Options</h4>
-        <img src="docs/assets/screenshots/pixel8pro-expressive-icons.png" alt="Pixel 8 Pro Home Options" width="320" /><br />
-        <em>Controls for gestures, dock suggestions, Google search integration, and layout actions.</em>
       </td>
     </tr>
   </table>

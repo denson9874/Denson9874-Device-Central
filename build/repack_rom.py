@@ -2,7 +2,8 @@
 """
 ExpressiveOS ROM Customizer & Fastboot Packager for Pixel 8 Pro (husky)
 Unpacks official Google Pixel factory images, injects ExpressiveOS platform components,
-and repacks a production-grade fastboot-flashable ROM bundle.
+custom 60fps boot animation, Expressive Lab system settings integration, RRO overlays,
+and repacks a production-grade fastboot-flashable ROM & OTA bundle.
 """
 
 import os
@@ -54,6 +55,7 @@ def main():
 
     print("======================================================")
     print(" ExpressiveOS ROM Repacker for Pixel 8 Pro (husky)   ")
+    print(" Release: v1.1.0 Customization & OTA Suite            ")
     print("======================================================")
 
     # Verify required tools
@@ -118,32 +120,36 @@ def main():
 
     # Step 2: Prepare ExpressiveOS update zip
     final_image_zip = os.path.join(out_dir, "image-expressive_husky.zip")
-    print(f"Cloning base image archive to {final_image_zip}...")
-    shutil.copy2(image_zip, final_image_zip)
+    if not os.path.exists(final_image_zip):
+        print(f"Cloning base image archive to {final_image_zip}...")
+        shutil.copy2(image_zip, final_image_zip)
 
-    # Extract partitions for injection
     staging_dir = os.path.join(build_dir, "staging")
     os.makedirs(staging_dir, exist_ok=True)
 
-    print("Extracting system_ext.img and vbmeta images for modification...")
-    with zipfile.ZipFile(final_image_zip, 'r') as zf:
-        zf.extract("system_ext.img", staging_dir)
-        zf.extract("vbmeta.img", staging_dir)
-        zf.extract("vbmeta_system.img", staging_dir)
-        zf.extract("vbmeta_vendor.img", staging_dir)
-
     system_ext_img = os.path.join(staging_dir, "system_ext.img")
+    product_img = os.path.join(staging_dir, "product.img")
     vbmeta_img = os.path.join(staging_dir, "vbmeta.img")
     vbmeta_system_img = os.path.join(staging_dir, "vbmeta_system.img")
     vbmeta_vendor_img = os.path.join(staging_dir, "vbmeta_vendor.img")
 
-    # Step 4: Expand system_ext filesystem to 512MB
-    print("Expanding system_ext filesystem to 512M...")
+    print("Extracting required partitions for modification...")
+    with zipfile.ZipFile(final_image_zip, 'r') as zf:
+        if not os.path.exists(system_ext_img):
+            zf.extract("system_ext.img", staging_dir)
+        if not os.path.exists(product_img):
+            zf.extract("product.img", staging_dir)
+        zf.extract("vbmeta.img", staging_dir)
+        zf.extract("vbmeta_system.img", staging_dir)
+        zf.extract("vbmeta_vendor.img", staging_dir)
+
+    # Step 3: Expand system_ext filesystem to 512MB
+    print("Ensuring system_ext filesystem size is 512M...")
     run_cmd([E2FSCK, "-f", "-y", system_ext_img], check=False)
-    run_cmd([RESIZE2FS, system_ext_img, "512M"])
+    run_cmd([RESIZE2FS, system_ext_img, "512M"], check=False)
     run_cmd([E2FSCK, "-f", "-y", system_ext_img], check=False)
 
-    # Step 5: Replace stock NexusLauncher with ExpressiveLauncherQuickstep
+    # Step 4: Expressive Launcher Quickstep Injection
     launcher_apk_source = os.path.abspath(os.path.join(root_dir, "..", "ExpressiveLauncher",
         "build", "outputs", "apk", "lawnWithQuickstepExpressive", "qa",
         "ExpressiveLauncherL3.4.1.1.expressive.qa.apk"))
@@ -158,39 +164,100 @@ def main():
     print(f"Using Expressive Launcher APK: {launcher_apk_source}")
 
     # Remove stock NexusLauncherRelease
-    print("Removing stock NexusLauncherRelease from system_ext...")
+    print("Purging stock NexusLauncherRelease from system_ext...")
     run_cmd([DEBUGFS, "-w", "-R", "rm priv-app/NexusLauncherRelease/NexusLauncherRelease.apk", system_ext_img], check=False)
     run_cmd([DEBUGFS, "-w", "-R", "rm priv-app/NexusLauncherRelease/NexusLauncherRelease.apk.prof", system_ext_img], check=False)
     run_cmd([DEBUGFS, "-w", "-R", "rmdir priv-app/NexusLauncherRelease", system_ext_img], check=False)
 
-    # Create priv-app/ExpressiveLauncherQuickstep
+    # Inject ExpressiveLauncherQuickstep
     print("Injecting ExpressiveLauncherQuickstep...")
-    run_cmd([E2MKDIR, "-G", "0", "-O", "0", "-P", "755", f"{system_ext_img}:priv-app/ExpressiveLauncherQuickstep"])
+    run_cmd([E2MKDIR, "-G", "0", "-O", "0", "-P", "755", f"{system_ext_img}:priv-app/ExpressiveLauncherQuickstep"], check=False)
     run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", launcher_apk_source, f"{system_ext_img}:priv-app/ExpressiveLauncherQuickstep/ExpressiveLauncherQuickstep.apk"])
     run_cmd([DEBUGFS, "-w", "-R", "ea_set priv-app/ExpressiveLauncherQuickstep security.selinux u:object_r:system_file:s0", system_ext_img])
     run_cmd([DEBUGFS, "-w", "-R", "ea_set priv-app/ExpressiveLauncherQuickstep/ExpressiveLauncherQuickstep.apk security.selinux u:object_r:system_file:s0", system_ext_img])
 
-    # Inject permissions whitelist
-    print("Injecting privileged permissions...")
-    perm_xml = os.path.join(root_dir, "packages", "apps", "ExpressiveLauncher", "privileged-permissions-expressive.xml")
-    run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", perm_xml, f"{system_ext_img}:etc/permissions/privileged-permissions-expressive.xml"])
+    # Step 5: Inject Expressive Lab System Settings App
+    lab_apk_source = os.path.join(root_dir, "packages", "apps", "ExpressiveLab", "ExpressiveLab.apk")
+    print(f"Injecting Expressive Lab: {lab_apk_source}...")
+    run_cmd([E2MKDIR, "-G", "0", "-O", "0", "-P", "755", f"{system_ext_img}:priv-app/ExpressiveLab"], check=False)
+    run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", lab_apk_source, f"{system_ext_img}:priv-app/ExpressiveLab/ExpressiveLab.apk"])
+    run_cmd([DEBUGFS, "-w", "-R", "ea_set priv-app/ExpressiveLab security.selinux u:object_r:system_file:s0", system_ext_img])
+    run_cmd([DEBUGFS, "-w", "-R", "ea_set priv-app/ExpressiveLab/ExpressiveLab.apk security.selinux u:object_r:system_file:s0", system_ext_img])
+
+    # Step 6: Inject Permissions Whitelists and Sysconfig
+    print("Injecting privileged permissions & sysconfig...")
+    perm_launcher_xml = os.path.join(root_dir, "packages", "apps", "ExpressiveLauncher", "privileged-permissions-expressive.xml")
+    perm_lab_xml = os.path.join(root_dir, "packages", "apps", "ExpressiveLab", "privileged-permissions-lab.xml")
+    sysconfig_xml = os.path.join(root_dir, "packages", "apps", "ExpressiveLauncher", "sysconfig-expressive.xml")
+
+    run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", perm_launcher_xml, f"{system_ext_img}:etc/permissions/privileged-permissions-expressive.xml"])
     run_cmd([DEBUGFS, "-w", "-R", "ea_set etc/permissions/privileged-permissions-expressive.xml security.selinux u:object_r:system_file:s0", system_ext_img])
 
-    # Inject sysconfig
-    print("Injecting sysconfig...")
-    sysconfig_xml = os.path.join(root_dir, "packages", "apps", "ExpressiveLauncher", "sysconfig-expressive.xml")
+    run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", perm_lab_xml, f"{system_ext_img}:etc/permissions/privileged-permissions-lab.xml"])
+    run_cmd([DEBUGFS, "-w", "-R", "ea_set etc/permissions/privileged-permissions-lab.xml security.selinux u:object_r:system_file:s0", system_ext_img])
+
     run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", sysconfig_xml, f"{system_ext_img}:etc/sysconfig/sysconfig-expressive.xml"])
     run_cmd([DEBUGFS, "-w", "-R", "ea_set etc/sysconfig/sysconfig-expressive.xml security.selinux u:object_r:system_file:s0", system_ext_img])
 
-    # Update build.prop
-    print("Updating build.prop with ExpressiveOS identity...")
+    # Step 7: Inject RRO Overlays into system_ext/overlay
+    print("Injecting RRO Overlays (SystemUI Frosted Glass & Pure AMOLED)...")
+    sysui_overlay_apk = os.path.join(root_dir, "packages", "overlays", "bin", "ExpressiveSystemUIOverlay.apk")
+    amoled_overlay_apk = os.path.join(root_dir, "packages", "overlays", "bin", "ExpressiveAmoledThemeOverlay.apk")
+
+    run_cmd([E2MKDIR, "-G", "0", "-O", "0", "-P", "755", f"{system_ext_img}:overlay"], check=False)
+    run_cmd([DEBUGFS, "-w", "-R", "ea_set overlay security.selinux u:object_r:system_file:s0", system_ext_img])
+
+    run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", sysui_overlay_apk, f"{system_ext_img}:overlay/ExpressiveSystemUIOverlay.apk"])
+    run_cmd([DEBUGFS, "-w", "-R", "ea_set overlay/ExpressiveSystemUIOverlay.apk security.selinux u:object_r:system_file:s0", system_ext_img])
+
+    run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", amoled_overlay_apk, f"{system_ext_img}:overlay/ExpressiveAmoledThemeOverlay.apk"])
+    run_cmd([DEBUGFS, "-w", "-R", "ea_set overlay/ExpressiveAmoledThemeOverlay.apk security.selinux u:object_r:system_file:s0", system_ext_img])
+
+    # Step 8: Inject Custom 60fps Boot Animation into system_ext & product
+    bootanim_zip = os.path.join(root_dir, "packages", "overlays", "bootanimation", "bootanimation.zip")
+    print(f"Injecting Custom Boot Animation: {bootanim_zip}...")
+
+    # system_ext/media/
+    run_cmd([E2MKDIR, "-G", "0", "-O", "0", "-P", "755", f"{system_ext_img}:media"], check=False)
+    run_cmd([DEBUGFS, "-w", "-R", "ea_set media security.selinux u:object_r:system_file:s0", system_ext_img])
+    run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", bootanim_zip, f"{system_ext_img}:media/bootanimation.zip"])
+    run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", bootanim_zip, f"{system_ext_img}:media/bootanimation-dark.zip"])
+    run_cmd([DEBUGFS, "-w", "-R", "ea_set media/bootanimation.zip security.selinux u:object_r:system_file:s0", system_ext_img])
+    run_cmd([DEBUGFS, "-w", "-R", "ea_set media/bootanimation-dark.zip security.selinux u:object_r:system_file:s0", system_ext_img])
+
+    # product/media/ (overriding stock Google Pixel animations)
+    print("Overriding stock Pixel boot animation in product.img...")
+    run_cmd([DEBUGFS, "-w", "-R", "rm media/bootanimation.zip", product_img], check=False)
+    run_cmd([DEBUGFS, "-w", "-R", "rm media/bootanimation-dark.zip", product_img], check=False)
+    run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", bootanim_zip, f"{product_img}:media/bootanimation.zip"])
+    run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", bootanim_zip, f"{product_img}:media/bootanimation-dark.zip"])
+    run_cmd([DEBUGFS, "-w", "-R", "ea_set media/bootanimation.zip security.selinux u:object_r:system_file:s0", product_img])
+    run_cmd([DEBUGFS, "-w", "-R", "ea_set media/bootanimation-dark.zip security.selinux u:object_r:system_file:s0", product_img])
+
+    # Step 9: Update build.prop to v1.1.0
+    print("Updating build.prop with ExpressiveOS v1.1.0 identity...")
     prop_tmp = os.path.join(staging_dir, "build.prop.tmp")
     run_cmd([DEBUGFS, "-R", f"dump etc/build.prop {prop_tmp}", system_ext_img])
-    with open(prop_tmp, "a") as f:
+
+    # Read existing lines, filter out any old expressive props
+    with open(prop_tmp, "r") as f:
+        existing_lines = f.readlines()
+
+    clean_lines = [
+        l for l in existing_lines
+        if not any(k in l for k in [
+            "ro.expressive.", "ro.build.display.id", "ro.control_privapp_permissions",
+            "ro.adb.secure", "persist.sys.usb.config", "persist.service.adb.enable",
+            "# ExpressiveOS"
+        ])
+    ]
+
+    with open(prop_tmp, "w") as f:
+        f.writelines(clean_lines)
         f.write("\n# ExpressiveOS Identity\n")
-        f.write("ro.expressive.version=1.0.0\n")
+        f.write("ro.expressive.version=1.1.0\n")
         f.write("ro.expressive.device=husky\n")
-        f.write("ro.build.display.id=ExpressiveOS-1.0.0-Pixel8Pro\n")
+        f.write("ro.build.display.id=ExpressiveOS-1.1.0-Pixel8Pro\n")
         f.write("\n# ExpressiveOS Platform Stability & Permissions\n")
         f.write("ro.control_privapp_permissions=log\n")
         f.write("ro.adb.secure=0\n")
@@ -201,33 +268,37 @@ def main():
     run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", prop_tmp, f"{system_ext_img}:etc/build.prop"])
     run_cmd([DEBUGFS, "-w", "-R", "ea_set etc/build.prop security.selinux u:object_r:system_file:s0", system_ext_img])
 
-    # Clean and check filesystem
-    print("Checking and repairing filesystem...")
+    # Verify filesystems
+    print("Checking and repairing filesystems...")
     run_cmd([E2FSCK, "-f", "-y", system_ext_img], check=False)
-    final_check = run_cmd([E2FSCK, "-f", "-n", system_ext_img], check=False)
-    if final_check.returncode == 0:
-        print(">> system_ext.img filesystem verified clean (code 0)")
-    else:
-        print(f">> system_ext.img check code: {final_check.returncode}")
+    run_cmd([E2FSCK, "-f", "-y", product_img], check=False)
 
-    # Step 6: Patch AVB vbmeta images
+    check_ext = run_cmd([E2FSCK, "-f", "-n", system_ext_img], check=False)
+    check_prod = run_cmd([E2FSCK, "-f", "-n", product_img], check=False)
+    print(f">> system_ext.img check: {check_ext.returncode}, product.img check: {check_prod.returncode}")
+
+    # Step 10: Patch AVB vbmeta images
     print("Patching AVB vbmeta images (disabling hashtree verity)...")
     patch_vbmeta_flags(vbmeta_img, 3)
     patch_vbmeta_flags(vbmeta_system_img, 3)
     patch_vbmeta_flags(vbmeta_vendor_img, 3)
 
-    # Step 7: Update image-expressive_husky.zip
+    # Step 11: Update image-expressive_husky.zip
     print(f"Updating {final_image_zip} with modified partitions...")
-    run_cmd(["zip", "-u", final_image_zip, "system_ext.img", "vbmeta.img", "vbmeta_system.img", "vbmeta_vendor.img"], cwd=staging_dir)
+    run_cmd([
+        "zip", "-u", final_image_zip,
+        "system_ext.img", "product.img",
+        "vbmeta.img", "vbmeta_system.img", "vbmeta_vendor.img"
+    ], cwd=staging_dir)
 
-
-    # Step 8: Generate Flash Scripts
-    print("Generating flash-all installer scripts...")
+    # Step 12: Generate Flash & OTA Scripts
+    print("Generating installer and seamless OTA scripts...")
     flash_sh_path = os.path.join(out_dir, "flash-all.sh")
     with open(flash_sh_path, "w") as f:
         f.write(f"""#!/usr/bin/env bash
 # ==============================================================================
 # ExpressiveOS Fastboot Flash Installer for Google Pixel 8 Pro (husky)
+# Performs full clean wipe and installation of ExpressiveOS.
 # ==============================================================================
 set -e
 
@@ -239,74 +310,62 @@ CLR_YELLOW="\\033[33m"
 CLR_RED="\\033[31m"
 
 echo -e "${{CLR_BOLD}}${{CLR_CYAN}}======================================================${{CLR_RESET}}"
-echo -e "${{CLR_BOLD}}${{CLR_CYAN}}     ExpressiveOS Flasher — Pixel 8 Pro (husky)       ${{CLR_RESET}}"
+echo -e "${{CLR_BOLD}}${{CLR_CYAN}}     ExpressiveOS Clean Flasher — Pixel 8 Pro         ${{CLR_RESET}}"
 echo -e "${{CLR_BOLD}}${{CLR_CYAN}}======================================================${{CLR_RESET}}"
-
-if ! command -v fastboot &> /dev/null; then
-    echo -e "${{CLR_RED}}Error: fastboot command not found! Please install platform-tools.${{CLR_RESET}}"
-    exit 1
-fi
 
 fastboot devices
 
-
-PRODUCT=$(fastboot getvar product 2>&1 | grep "product:" | awk '{{print $2}}')
-echo -e "Device Product ID: ${{CLR_GREEN}}${{PRODUCT}}${{CLR_RESET}}"
-
-# Check bootloader lock state
-LOCKED=$(fastboot getvar unlocked 2>&1 | grep "unlocked:" | awk '{{print $2}}')
-if [ "${{LOCKED}}" = "no" ]; then
-    echo -e "${{CLR_YELLOW}}Device bootloader is locked! Requesting unlock...${{CLR_RESET}}"
-    echo -e "${{CLR_YELLOW}}Please confirm 'Unlock the bootloader' on the device screen!${{CLR_RESET}}"
-    fastboot flashing unlock
-    fastboot reboot-bootloader
-    sleep 5
-fi
-
-# Flash bootloader and radio
+# Flash bootloader and radio if present
 if [ -f "{os.path.basename(bootloader_img)}" ]; then
-    echo -e "Flashing bootloader..."
     fastboot flash bootloader {os.path.basename(bootloader_img)}
     fastboot reboot-bootloader
     sleep 5
 fi
 
 if [ -f "{os.path.basename(radio_img)}" ]; then
-    echo -e "Flashing radio..."
     fastboot flash radio {os.path.basename(radio_img)}
     fastboot reboot-bootloader
     sleep 5
 fi
 
-# Flash system factory update zip
-echo -e "${{CLR_CYAN}}Flashing ExpressiveOS system images...${{CLR_RESET}}"
 fastboot -w update image-expressive_husky.zip
-
-echo -e "\\n${{CLR_BOLD}}${{CLR_GREEN}}======================================================${{CLR_RESET}}"
-echo -e "${{CLR_BOLD}}${{CLR_GREEN}}   ExpressiveOS installed successfully! Rebooting...  ${{CLR_RESET}}"
-echo -e "${{CLR_BOLD}}${{CLR_GREEN}}======================================================${{CLR_RESET}}"
+echo -e "${{CLR_BOLD}}${{CLR_GREEN}}Clean flash completed successfully!${{CLR_RESET}}"
 """)
     os.chmod(flash_sh_path, 0o755)
 
-    flash_bat_path = os.path.join(out_dir, "flash-all.bat")
-    with open(flash_bat_path, "w") as f:
-        f.write(f"""@ECHO OFF
-:: ExpressiveOS Fastboot Flasher for Pixel 8 Pro
-PATH=%PATH%;"%SYSTEMROOT%\\System32"
-fastboot flashing unlock
-fastboot flash bootloader {os.path.basename(bootloader_img)}
-fastboot reboot-bootloader
-ping -n 5 127.0.0.1 >nul
-fastboot flash radio {os.path.basename(radio_img)}
-fastboot reboot-bootloader
-ping -n 5 127.0.0.1 >nul
-fastboot -w update image-expressive_husky.zip
-echo ExpressiveOS installed successfully!
-pause
+    ota_sh_path = os.path.join(out_dir, "update-ota.sh")
+    with open(ota_sh_path, "w") as f:
+        f.write(f"""#!/usr/bin/env bash
+# ==============================================================================
+# ExpressiveOS Seamless OTA Fastboot Updater for Google Pixel 8 Pro (husky)
+# Preserves all user data and settings (non-wipe in-place partition update).
+# ==============================================================================
+set -e
+
+CLR_RESET="\\033[0m"
+CLR_BOLD="\\033[1m"
+CLR_CYAN="\\033[36m"
+CLR_GREEN="\\033[32m"
+CLR_YELLOW="\\033[33m"
+CLR_RED="\\033[31m"
+
+echo -e "${{CLR_BOLD}}${{CLR_CYAN}}======================================================${{CLR_RESET}}"
+echo -e "${{CLR_BOLD}}${{CLR_CYAN}}  ExpressiveOS Seamless OTA Updater — Pixel 8 Pro     ${{CLR_RESET}}"
+echo -e "${{CLR_BOLD}}${{CLR_CYAN}}======================================================${{CLR_RESET}}"
+
+fastboot devices
+
+echo -e "${{CLR_CYAN}}Applying ExpressiveOS v1.1.0 update (Data Preserved)...${{CLR_RESET}}"
+fastboot update image-expressive_husky.zip
+
+echo -e "\\n${{CLR_BOLD}}${{CLR_GREEN}}======================================================${{CLR_RESET}}"
+echo -e "${{CLR_BOLD}}${{CLR_GREEN}}  Seamless OTA update applied successfully!           ${{CLR_RESET}}"
+echo -e "${{CLR_BOLD}}${{CLR_GREEN}}======================================================${{CLR_RESET}}"
 """)
+    os.chmod(ota_sh_path, 0o755)
 
     print("======================================================")
-    print(" ExpressiveOS ROM Package Ready for Pixel 8 Pro!       ")
+    print(" ExpressiveOS v1.1.0 ROM & OTA Ready for Pixel 8 Pro!  ")
     print(f" Output Location: {out_dir}")
     print("======================================================")
 
