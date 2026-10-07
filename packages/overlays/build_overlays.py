@@ -64,7 +64,8 @@ def main():
 
     overlays = [
         ("ExpressiveSystemUIOverlay", "ExpressiveSystemUIOverlay.apk"),
-        ("ExpressiveAmoledThemeOverlay", "ExpressiveAmoledThemeOverlay.apk")
+        ("ExpressiveAmoledThemeOverlay", "ExpressiveAmoledThemeOverlay.apk"),
+        ("ExpressiveNavOverlay", "ExpressiveNavOverlay.apk")
     ]
 
     for src_name, apk_name in overlays:

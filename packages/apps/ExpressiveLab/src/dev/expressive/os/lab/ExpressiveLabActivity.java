@@ -54,6 +54,11 @@ public class ExpressiveLabActivity extends Activity {
 
         txtOtaStatus = findViewById(R.id.txt_ota_status);
         btnCheckOta = findViewById(R.id.btn_check_ota);
+
+        View btnBack = findViewById(R.id.btn_back);
+        if (btnBack != null) {
+            btnBack.setOnClickListener(v -> finish());
+        }
     }
 
     private void loadPreferences() {
