@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0C0E0D"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="20dp"
+            android:paddingTop="12dp">
+
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_expressive_lab" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textColor="@color/text_primary"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/lab_subtitle"
+                    android:textColor="@color/accent_emerald"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- CARD 1: Quick Settings & Blur -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#161A18"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/section_qs"
+                android:textColor="@color/accent_emerald"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingBottom="12dp" />
+
+            <Switch
+                android:id="@+id/switch_qs_blur"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/qs_blur_title"
+                android:textColor="@color/text_primary"
+                android:checked="true"
+                android:paddingBottom="12dp" />
+
+            <Switch
+                android:id="@+id/switch_quick_pull"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/qs_quick_pull_title"
+                android:textColor="@color/text_primary"
+                android:checked="true"
+                android:paddingBottom="12dp" />
+
+            <Switch
+                android:id="@+id/switch_auto_brightness"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/qs_auto_brightness_title"
+                android:textColor="@color/text_primary"
+                android:checked="true" />
+        </LinearLayout>
+
+        <!-- CARD 2: Status Bar & Battery -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#161A18"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/section_status_bar"
+                android:textColor="@color/accent_emerald"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingBottom="12dp" />
+
+            <Switch
+                android:id="@+id/switch_dt2s"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/dt2s_title"
+                android:textColor="@color/text_primary"
+                android:checked="true"
+                android:paddingBottom="12dp" />
+
+            <Switch
+                android:id="@+id/switch_network_traffic"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/network_traffic_title"
+                android:textColor="@color/text_primary"
+                android:checked="false"
+                android:paddingBottom="12dp" />
+
+            <Switch
+                android:id="@+id/switch_brightness_gesture"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/brightness_gesture_title"
+                android:textColor="@color/text_primary"
+                android:checked="true" />
+        </LinearLayout>
+
+        <!-- CARD 3: Lock Screen & Charging -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#161A18"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/section_lockscreen"
+                android:textColor="@color/accent_emerald"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingBottom="12dp" />
+
+            <Switch
+                android:id="@+id/switch_charging_stats"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/lockscreen_charging_title"
+                android:textColor="@color/text_primary"
+                android:checked="true" />
+        </LinearLayout>
+
+        <!-- CARD 4: Pure AMOLED & Theming -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#161A18"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/section_theming"
+                android:textColor="@color/accent_emerald"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingBottom="12dp" />
+
+            <Switch
+                android:id="@+id/switch_amoled"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/amoled_black_title"
+                android:textColor="@color/text_primary"
+                android:checked="true" />
+        </LinearLayout>
+
+        <!-- CARD 5: ExpressiveOS Updates (OTA) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#161A18"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/section_updates"
+                android:textColor="@color/accent_teal"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingBottom="8dp" />
+
+            <TextView
+                android:id="@+id/txt_ota_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ota_current_version"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:paddingBottom="12dp" />
+
+            <Button
+                android:id="@+id/btn_check_ota"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ota_check_button"
+                android:backgroundTint="@color/accent_emerald"
+                android:textColor="#000000" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

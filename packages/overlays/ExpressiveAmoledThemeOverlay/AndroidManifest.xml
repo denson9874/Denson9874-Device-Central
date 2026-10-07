@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="dev.expressive.overlay.amoled">
+    <overlay
+        android:targetPackage="android"
+        android:priority="2000"
+        android:isStatic="false" />
+    <application android:hasCode="false" android:label="Pure AMOLED Theme" />
+</manifest>

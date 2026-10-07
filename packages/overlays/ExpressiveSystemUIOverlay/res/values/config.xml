@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <integer name="config_quickSettingsNumColumns">3</integer>
+    <integer name="config_quickSettingsNumRows">3</integer>
+    <bool name="config_enableBackdropBlur">true</bool>
+    <integer name="config_backdropBlurRadius">80</integer>
+</resources>
