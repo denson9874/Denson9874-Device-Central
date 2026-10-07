@@ -8,27 +8,31 @@
         <!-- Quickstep, Recents, and Gesture Interaction -->
         <permission name="android.permission.MANAGE_ACTIVITY_TASKS" />
         <permission name="android.permission.STATUS_BAR_SERVICE" />
+        <permission name="android.permission.STATUS_BAR" />
         <permission name="android.permission.STOP_APP_SWITCHES" />
         <permission name="android.permission.SET_ORIENTATION" />
         <permission name="android.permission.READ_FRAME_BUFFER" />
         <permission name="android.permission.CONTROL_REMOTE_APP_TRANSITION_ANIMATIONS" />
+        <permission name="android.permission.INTERNAL_SYSTEM_WINDOW" />
+        <permission name="android.permission.MONITOR_INPUT" />
+        <permission name="android.permission.ALLOW_SLIPPERY_TOUCHES" />
+        <permission name="android.permission.MANAGE_KEY_GESTURES" />
+        <permission name="android.permission.MANAGE_ACCESSIBILITY" />
+        <permission name="android.permission.START_TASKS_FROM_RECENTS" />
+        <permission name="android.permission.REMOVE_TASKS" />
         
         <!-- Multi-User & Private Space Integration -->
-        <permission name="android.permission.INTERACT_ACROSS_USERS" />
-        <permission name="android.permission.INTERACT_ACROSS_USERS_FULL" />
-        <permission name="android.permission.MANAGE_USERS" />
+        <permission name="android.permission.ACCESS_HIDDEN_PROFILES" />
+        <permission name="android.permission.ACCESS_HIDDEN_PROFILES_FULL" />
+        <permission name="android.permission.PACKAGE_USAGE_STATS" />
 
         <!-- System Settings & Theming Bridge -->
         <permission name="android.permission.WRITE_SECURE_SETTINGS" />
         <permission name="android.permission.SET_WALLPAPER" />
-        <permission name="android.permission.SET_WALLPAPER_COMPONENT" />
-        <permission name="android.permission.BIND_APPWIDGET" />
-        
-        <!-- Smartspace & Notification Dots -->
-        <permission name="android.permission.NOTIFICATION_DURING_SETUP" />
+        <permission name="android.permission.SET_WALLPAPER_HINTS" />
         <permission name="android.permission.ACCESS_SHORTCUTS" />
-        <permission name="android.permission.START_TASKS_FROM_RECENTS" />
-        <permission name="android.permission.REMOVE_TASKS" />
-        <permission name="android.permission.REORDER_TASKS" />
+        <permission name="android.permission.SYSTEM_APPLICATION_OVERLAY" />
+        <permission name="android.permission.EXPAND_STATUS_BAR" />
+        <permission name="android.permission.BROADCAST_CLOSE_SYSTEM_DIALOGS" />
     </privapp-permissions>
 </permissions>

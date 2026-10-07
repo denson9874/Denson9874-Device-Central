@@ -28,24 +28,37 @@ Rather than running as a third-party application with restricted privileges, **E
 
 ## Hardware Verification: Pixel 8 Pro (husky)
 
-*Live captures directly from the physical Google Pixel 8 Pro running Android 17 (Build ZP11.260821.010, candidate 4.1.1 / code 60):*
+*Live captures taken directly from a physical Google Pixel 8 Pro (`husky`) running the flashed ExpressiveOS ROM based on Android 17 (Build `ZP11.260821.010`):*
 
 <div align="center">
   <table>
     <tr>
       <td width="50%" align="center">
-        <h4>Physical Pixel 8 Pro Home Screen</h4>
-        <img src="docs/assets/screenshots/pixel8pro-home.png" alt="Pixel 8 Pro Home" width="340" /><br />
-        <em>Physical Pixel 8 Pro running ExpressiveOS with themed icons, Google dock search, and At a Glance ("Celebrate the small wins 🎉").</em>
+        <h4>Physical Home Screen</h4>
+        <img src="docs/assets/screenshots/pixel8pro-expressive-home.png" alt="Pixel 8 Pro Home" width="320" /><br />
+        <em>Expressive Launcher running as primary system home with emerald wallpaper, dock search bar, and app layout.</em>
       </td>
       <td width="50%" align="center">
-        <h4>Physical Pixel 8 Pro Home Settings</h4>
-        <img src="docs/assets/screenshots/pixel8pro-settings.png" alt="Pixel 8 Pro Settings" width="340" /><br />
-        <em>Customization menu running on device hardware, showing Expressive Launcher L3 4.1.1.</em>
+        <h4>App Drawer & Blur</h4>
+        <img src="docs/assets/screenshots/pixel8pro-expressive-drawer.png" alt="Pixel 8 Pro Drawer" width="320" /><br />
+        <em>Floating app drawer with search pill, top predictions, and live frosted glass wallpaper blur.</em>
+      </td>
+    </tr>
+    <tr>
+      <td width="50%" align="center">
+        <h4>Home Settings Hub</h4>
+        <img src="docs/assets/screenshots/pixel8pro-expressive-settings.png" alt="Pixel 8 Pro Settings" width="320" /><br />
+        <em>Native system settings menu for Expressive Pro, icons, widgets, and gestures.</em>
+      </td>
+      <td width="50%" align="center">
+        <h4>Home Screen Options</h4>
+        <img src="docs/assets/screenshots/pixel8pro-expressive-icons.png" alt="Pixel 8 Pro Home Options" width="320" /><br />
+        <em>Controls for gestures, dock suggestions, Google search integration, and layout actions.</em>
       </td>
     </tr>
   </table>
 </div>
+
 
 ---
 
