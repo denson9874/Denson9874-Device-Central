@@ -150,16 +150,16 @@ def main():
     run_cmd([E2FSCK, "-f", "-y", system_ext_img], check=False)
 
     # Step 4: Expressive Launcher Quickstep Injection
-    launcher_apk_source = os.path.abspath(os.path.join(root_dir, "..", "ExpressiveLauncher",
-        "build", "outputs", "apk", "lawnWithQuickstepExpressive", "qa",
-        "ExpressiveLauncherL3.4.1.1.expressive.qa.apk"))
+    qa_dir = os.path.abspath(os.path.join(root_dir, "..", "ExpressiveLauncher", "build", "outputs", "apk", "lawnWithQuickstepExpressive", "qa"))
+    launcher_apk_source = None
+    if os.path.exists(qa_dir):
+        apks = sorted([os.path.join(qa_dir, f) for f in os.listdir(qa_dir) if f.endswith(".apk")], key=os.path.getmtime, reverse=True)
+        if apks:
+            launcher_apk_source = apks[0]
 
-    if not os.path.exists(launcher_apk_source):
-        qa_dir = os.path.abspath(os.path.join(root_dir, "..", "ExpressiveLauncher", "build", "outputs", "apk", "lawnWithQuickstepExpressive", "qa"))
-        for f in os.listdir(qa_dir):
-            if f.endswith(".apk"):
-                launcher_apk_source = os.path.join(qa_dir, f)
-                break
+    if not launcher_apk_source or not os.path.exists(launcher_apk_source):
+        print(f"Error: Expressive Launcher APK not found in {qa_dir}!")
+        sys.exit(1)
 
     print(f"Using Expressive Launcher APK: {launcher_apk_source}")
 
@@ -212,6 +212,14 @@ def main():
 
     run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", amoled_overlay_apk, f"{system_ext_img}:overlay/ExpressiveAmoledThemeOverlay.apk"])
     run_cmd([DEBUGFS, "-w", "-R", "ea_set overlay/ExpressiveAmoledThemeOverlay.apk security.selinux u:object_r:system_file:s0", system_ext_img])
+
+    nav_overlay_apk = os.path.join(root_dir, "packages", "overlays", "bin", "ExpressiveNavOverlay.apk")
+    print("Injecting Navigation Bar & Quickstep overlay (ExpressiveNavOverlay)...")
+    run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", nav_overlay_apk, f"{system_ext_img}:overlay/ExpressiveNavOverlay.apk"])
+    run_cmd([DEBUGFS, "-w", "-R", "ea_set overlay/ExpressiveNavOverlay.apk security.selinux u:object_r:system_file:s0", system_ext_img])
+
+    run_cmd([E2CP, "-G", "0", "-O", "0", "-P", "644", nav_overlay_apk, f"{product_img}:overlay/ExpressiveNavOverlay.apk"])
+    run_cmd([DEBUGFS, "-w", "-R", "ea_set overlay/ExpressiveNavOverlay.apk security.selinux u:object_r:system_file:s0", product_img])
 
     # Step 8: Inject Custom 60fps Boot Animation into system_ext & product
     bootanim_zip = os.path.join(root_dir, "packages", "overlays", "bootanimation", "bootanimation.zip")

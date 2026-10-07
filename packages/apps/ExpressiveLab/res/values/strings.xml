@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Expressive Lab</string>
+    <string name="app_summary">Quick Settings blur, status bar styles, AMOLED mode, and OTA updates</string>
     <string name="lab_subtitle">System Customization Suite &amp; OTA</string>
     
     <!-- Sections -->

@@ -1,159 +1,237 @@
 #!/usr/bin/env python3
 """
-ExpressiveOS Boot Animation Generator
-Renders a fluid, high-framerate Material 3 Expressive boot sequence
-and packages it into an Android-compliant uncompressed bootanimation.zip.
+ExpressiveOS 60fps Spinning Bloom Boot Animation Generator
+Recreates the exact Easter Egg spinning bloom animation from Expressive Launcher:
+- 52 bursting particle streams with dynamic velocities and quadratic gravity
+- 720-degree spinning Bloom mark with 7-cycle sine pulsing
+- Pulsing radiant emerald/teal glow halo
+- Smooth 60fps loop sequence with continuous spin & breathing
+- Packages into an uncompressed (STORED) Android bootanimation.zip
 """
 
 import os
 import math
 import shutil
 import zipfile
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont
 
 WIDTH = 720
 HEIGHT = 1600
 FPS = 60
 
+# Exact Material 3 Expressive palette from AboutEasterEgg.kt
 COLOR_BG = (0, 0, 0)
-COLOR_EMERALD = (0, 229, 160)     # #00E5A0
-COLOR_TEAL = (0, 180, 216)        # #00B4D8
-COLOR_LIME = (163, 230, 53)       # #A3E635
-COLOR_WHITE = (255, 255, 255)
+COLOR_EMERALD = (0, 230, 153)    # Primary: #00E699
+COLOR_TEAL = (0, 180, 216)       # Tertiary: #00B4D8
+COLOR_LIME = (163, 230, 53)      # Secondary: #A3E635
+COLOR_ELECTRIC = (112, 224, 0)   # InversePrimary: #70E000
+PARTICLE_COLORS = [COLOR_EMERALD, COLOR_TEAL, COLOR_LIME, COLOR_ELECTRIC]
 
-def ease_out_cubic(x):
-    return 1 - math.pow(1 - x, 3)
+PARTICLE_COUNT = 52
 
-def ease_in_out_sine(x):
-    return -(math.cos(math.pi * x) - 1) / 2
+BLOOM_PATH = "/Users/daryldenson/Developer/ExpressiveLauncher/docs/assets/expressive/expressive-bloom-foreground.png"
 
-def draw_expressive_emblem(draw, cx, cy, size, alpha=1.0, glow_factor=0.0):
-    """Draws the Material 3 Expressive clover / organic geometric emblem."""
-    # Outer glow if requested
-    glow_color = (
-        int(COLOR_EMERALD[0] * alpha * 0.4),
-        int(COLOR_EMERALD[1] * alpha * 0.4),
-        int(COLOR_EMERALD[2] * alpha * 0.4)
+def fast_out_slow_in(t):
+    """Cubic approximation of FastOutSlowInEasing."""
+    return t * t * (3.0 - 2.0 * t)
+
+def lerp_color(c1, c2, factor):
+    f = max(0.0, min(1.0, factor))
+    return (
+        int(c1[0] + (c2[0] - c1[0]) * f),
+        int(c1[1] + (c2[1] - c1[1]) * f),
+        int(c1[2] + (c2[2] - c1[2]) * f)
     )
-    
-    # Draw overlapping fluid rounded petals
-    petal_r = size * 0.42
-    offset = size * 0.28
-    
-    petals = [
-        (cx - offset, cy - offset, COLOR_EMERALD),
-        (cx + offset, cy - offset, COLOR_TEAL),
-        (cx + offset, cy + offset, COLOR_LIME),
-        (cx - offset, cy + offset, COLOR_EMERALD),
-    ]
-    
-    for px, py, col in petals:
-        c = (int(col[0] * alpha), int(col[1] * alpha), int(col[2] * alpha))
-        draw.ellipse([px - petal_r, py - petal_r, px + petal_r, py + petal_r], fill=c)
-        
-    # Center core ring
-    core_r = size * 0.22
-    draw.ellipse([cx - core_r, cy - core_r, cx + core_r, cy + core_r], fill=(0, 0, 0))
-    core_inner = size * 0.14
-    core_color = (int(255 * alpha), int(255 * alpha), int(255 * alpha))
-    draw.ellipse([cx - core_inner, cy - core_inner, cx + core_inner, cy + core_inner], fill=core_color)
 
-def generate_frames(output_dir):
-    part0_dir = os.path.join(output_dir, "part0")
-    part1_dir = os.path.join(output_dir, "part1")
+def render_particles(draw, cx, cy, progress, max_radius):
+    if progress <= 0:
+        return
+    for i in range(PARTICLE_COUNT):
+        angle = (2.0 * math.pi * i / PARTICLE_COUNT) + (i % 5) * 0.17
+        speed = 0.55 + (i % 7) * 0.065
+        radius = max_radius * progress * speed
+        x = cx + math.cos(angle) * radius
+        y = cy + math.sin(angle) * radius - (HEIGHT * 0.12 * progress * progress)
+        alpha = max(0.0, min(1.0, 1.0 - progress * 0.82))
+        base_color = PARTICLE_COLORS[i % len(PARTICLE_COLORS)]
+        col = (
+            int(base_color[0] * alpha),
+            int(base_color[1] * alpha),
+            int(base_color[2] * alpha)
+        )
+        if alpha < 0.05:
+            continue
+
+        if i % 3 == 0:
+            pr = (5.0 + (i % 4) * 3.0) * (1.0 - progress * 0.3)
+            draw.ellipse([x - pr, y - pr, x + pr, y + pr], fill=col)
+        else:
+            tail = 12.0 + (i % 5) * 5.0
+            x2 = x - math.cos(angle) * tail
+            y2 = y - math.sin(angle) * tail
+            draw.line([(x2, y2), (x, y)], fill=col, width=max(2, int(4 * alpha)))
+
+def render_halo(draw, cx, cy, radius, color, alpha=0.35):
+    # Radial tiered glow
+    r = int(radius)
+    c = (int(color[0] * alpha), int(color[1] * alpha), int(color[2] * alpha))
+    for step in range(4, 0, -1):
+        step_r = r * (0.6 + step * 0.12)
+        step_alpha = alpha * (0.2 + (5 - step) * 0.18)
+        step_col = (int(color[0] * step_alpha), int(color[1] * step_alpha), int(color[2] * step_alpha))
+        draw.ellipse([cx - step_r, cy - step_r, cx + step_r, cy + step_r], fill=step_col)
+
+def draw_branding(draw, cx, y_base, alpha=1.0):
+    if alpha <= 0.02:
+        return
+    title_col = (int(255 * alpha), int(255 * alpha), int(255 * alpha))
+    sub_col = (int(COLOR_EMERALD[0] * alpha * 0.85), int(COLOR_EMERALD[1] * alpha * 0.85), int(COLOR_EMERALD[2] * alpha * 0.85))
+
+    font_title = None
+    font_sub = None
+    for p in ["/System/Library/Fonts/SFPro-Bold.ttf", "/System/Library/Fonts/SFNS.ttf", "/System/Library/Fonts/Helvetica.ttc"]:
+        if os.path.exists(p):
+            try:
+                font_title = ImageFont.truetype(p, 36)
+                font_sub = ImageFont.truetype(p, 18)
+                break
+            except Exception:
+                pass
+    if not font_title:
+        font_title = ImageFont.load_default()
+        font_sub = ImageFont.load_default()
+
+    t_title = "ExpressiveOS"
+    t_sub = "Android 17"
+
+    bbox1 = draw.textbbox((0, 0), t_title, font=font_title)
+    w1 = bbox1[2] - bbox1[0]
+    draw.text((cx - w1 / 2, y_base), t_title, font=font_title, fill=title_col)
+
+    bbox2 = draw.textbbox((0, 0), t_sub, font=font_sub)
+    w2 = bbox2[2] - bbox2[0]
+    draw.text((cx - w2 / 2, y_base + 46), t_sub, font=font_sub, fill=sub_col)
+
+def main():
+    root = os.path.dirname(os.path.abspath(__file__))
+    frames_dir = os.path.join(root, "build_frames")
+    part0_dir = os.path.join(frames_dir, "part0")
+    part1_dir = os.path.join(frames_dir, "part1")
+    zip_path = os.path.join(root, "bootanimation.zip")
+
+    shutil.rmtree(frames_dir, ignore_errors=True)
     os.makedirs(part0_dir, exist_ok=True)
     os.makedirs(part1_dir, exist_ok=True)
 
-    cx = WIDTH // 2
-    cy = HEIGHT // 2 - 80
+    print(f"Loading Bloom artwork from {BLOOM_PATH}...")
+    bloom_src = Image.open(BLOOM_PATH).convert("RGBA")
+    # Base size for the bloom mark
+    base_dim = 260
+    bloom_base = bloom_src.resize((base_dim, base_dim), Image.Resampling.LANCZOS)
 
-    # PART 0: INTRO (45 frames)
-    print("Generating Part 0 (Intro)...")
-    total_intro = 45
-    for i in range(total_intro):
-        progress = i / float(total_intro - 1)
-        eased = ease_out_cubic(progress)
+    cx = WIDTH / 2.0
+    cy = HEIGHT / 2.0 - 50.0
 
-        img = Image.new("RGB", (WIDTH, HEIGHT), COLOR_BG)
-        draw = ImageDraw.Draw(img)
+    print("Rendering Part 0 (Easter Egg 720° Spinning Bloom & Particle Burst - 60 frames)...")
+    num_part0 = 60
+    for frame in range(num_part0):
+        t_raw = frame / float(num_part0 - 1)
+        progress = fast_out_slow_in(t_raw)
 
-        # Scale emblem up smoothly
-        current_size = 60 + 100 * eased
-        alpha = min(1.0, progress * 1.5)
+        im = Image.new("RGB", (WIDTH, HEIGHT), COLOR_BG)
+        draw = ImageDraw.Draw(im)
 
-        draw_expressive_emblem(draw, cx, cy, current_size, alpha=alpha)
+        # Entrance scale & rotation (exact 720° spin from AboutEasterEgg.kt)
+        entrance = max(0.0, min(1.0, t_raw / 0.22))
+        rotation = progress * 720.0
+        # Exact 7-cycle sine pulse from AboutEasterEgg.kt
+        pulse = 1.0 + math.sin(progress * math.pi * 7.0) * 0.08
+        current_scale = (0.70 + 0.30 * entrance) * pulse
+        current_dim = max(16, int(base_dim * current_scale))
 
-        # Draw "ExpressiveOS" text as it fades in
-        if progress > 0.4:
-            text_progress = (progress - 0.4) / 0.6
-            text_alpha = int(255 * ease_out_cubic(text_progress))
-            # Text rendering
-            text = "ExpressiveOS"
-            subtext = "Android 17"
-            # Draw simple vector representation of letters or clean dots
-            ty = cy + 180
-            draw.text((cx, ty), text, fill=(text_alpha, text_alpha, text_alpha), anchor="mm")
-            draw.text((cx, ty + 40), subtext, fill=(int(text_alpha * 0.6), int(text_alpha * 0.8), int(text_alpha * 0.7)), anchor="mm")
+        # Render 52 exploding particles
+        render_particles(draw, cx, cy, progress, WIDTH * 0.65)
 
-        filename = os.path.join(part0_dir, f"{i:05d}.png")
-        img.save(filename, "PNG")
+        # Radiant glowing halo behind Bloom
+        halo_color = lerp_color(COLOR_EMERALD, COLOR_TEAL, progress)
+        render_halo(draw, cx, cy, current_dim * 0.85, halo_color, alpha=0.35 * entrance)
 
-    # PART 1: LOOP (30 frames)
-    print("Generating Part 1 (Loop)...")
-    total_loop = 30
-    for i in range(total_loop):
-        progress = i / float(total_loop)
-        # Sine wave breathing between 155 and 165 size
-        sine_val = math.sin(progress * 2 * math.pi)
-        current_size = 160 + 8 * sine_val
-        alpha_pulse = 0.85 + 0.15 * sine_val
+        # Rotate and scale Bloom mark
+        b_scaled = bloom_base.resize((current_dim, current_dim), Image.Resampling.LANCZOS)
+        b_rot = b_scaled.rotate(-rotation, resample=Image.Resampling.BICUBIC, expand=False)
 
-        img = Image.new("RGB", (WIDTH, HEIGHT), COLOR_BG)
-        draw = ImageDraw.Draw(img)
+        bx = int(cx - current_dim / 2.0)
+        by = int(cy - current_dim / 2.0)
+        im.paste(b_rot, (bx, by), b_rot)
 
-        draw_expressive_emblem(draw, cx, cy, current_size, alpha=alpha_pulse)
+        # Branding text fade in
+        brand_alpha = max(0.0, min(1.0, (t_raw - 0.55) / 0.40))
+        draw_branding(draw, cx, cy + base_dim / 2.0 + 70.0, brand_alpha)
 
-        # Steady text
-        ty = cy + 180
-        draw.text((cx, ty), "ExpressiveOS", fill=(245, 245, 245), anchor="mm")
-        draw.text((cx, ty + 40), "Android 17", fill=(0, 200, 160), anchor="mm")
+        out_path = os.path.join(part0_dir, f"{frame:05d}.png")
+        im.save(out_path, format="PNG", compress_level=3)
 
-        # Fluid ambient ring
-        ring_r = current_size * 0.95 + 15 * sine_val
-        ring_col = (int(0 * alpha_pulse), int(180 * alpha_pulse * 0.3), int(216 * alpha_pulse * 0.3))
-        draw.ellipse([cx - ring_r, cy - ring_r, cx + ring_r, cy + ring_r], outline=ring_col, width=2)
+    print("Rendering Part 1 (Continuous 60fps Spinning Bloom Loop - 60 frames)...")
+    num_part1 = 60
+    for frame in range(num_part1):
+        tau = frame / float(num_part1)
+        im = Image.new("RGB", (WIDTH, HEIGHT), COLOR_BG)
+        draw = ImageDraw.Draw(im)
 
-        filename = os.path.join(part1_dir, f"{i:05d}.png")
-        img.save(filename, "PNG")
+        # Continuous smooth 360° spin per second
+        rotation = tau * 360.0
+        pulse = 1.0 + math.sin(tau * 2.0 * math.pi) * 0.04
+        current_dim = int(base_dim * pulse)
 
-    # Write desc.txt
-    desc_path = os.path.join(output_dir, "desc.txt")
-    with open(desc_path, "w") as f:
+        # Ambient floating sparkles around the Bloom
+        for s in range(16):
+            s_angle = tau * 2.0 * math.pi + (2.0 * math.pi * s / 16.0)
+            s_rad = (base_dim * 0.72) + math.sin(tau * 4.0 * math.pi + s) * 24.0
+            sx = cx + math.cos(s_angle) * s_rad
+            sy = cy + math.sin(s_angle) * s_rad
+            s_alpha = 0.4 + 0.5 * math.sin(tau * 2.0 * math.pi + s)
+            s_col = PARTICLE_COLORS[s % len(PARTICLE_COLORS)]
+            sc = (int(s_col[0] * s_alpha), int(s_col[1] * s_alpha), int(s_col[2] * s_alpha))
+            draw.ellipse([sx - 3, sy - 3, sx + 3, sy + 3], fill=sc)
+
+        # Glowing breathing halo
+        halo_color = lerp_color(COLOR_EMERALD, COLOR_TEAL, (math.sin(tau * 2.0 * math.pi) + 1.0) / 2.0)
+        render_halo(draw, cx, cy, current_dim * 0.85, halo_color, alpha=0.32)
+
+        # Rotate and paste Bloom
+        b_scaled = bloom_base.resize((current_dim, current_dim), Image.Resampling.LANCZOS)
+        b_rot = b_scaled.rotate(-rotation, resample=Image.Resampling.BICUBIC, expand=False)
+
+        bx = int(cx - current_dim / 2.0)
+        by = int(cy - current_dim / 2.0)
+        im.paste(b_rot, (bx, by), b_rot)
+
+        # Stationary branding text
+        draw_branding(draw, cx, cy + base_dim / 2.0 + 70.0, 1.0)
+
+        out_path = os.path.join(part1_dir, f"{frame:05d}.png")
+        im.save(out_path, format="PNG", compress_level=3)
+
+    print("Writing desc.txt (720 1600 60)...")
+    desc_path = os.path.join(frames_dir, "desc.txt")
+    with open(desc_path, "w", newline="\n") as f:
         f.write(f"{WIDTH} {HEIGHT} {FPS}\n")
-        f.write("c 1 0 part0\n")
-        f.write("c 0 0 part1\n")
+        f.write("p 1 0 part0\n")
+        f.write("p 0 0 part1\n")
 
-    print(f"Frames generated cleanly in {output_dir}")
+    print(f"Packaging uncompressed ZIP: {zip_path}...")
+    if os.path.exists(zip_path):
+        os.remove(zip_path)
 
-def package_bootanimation(work_dir, target_zip):
-    print(f"Creating uncompressed bootanimation archive: {target_zip}...")
-    with zipfile.ZipFile(target_zip, "w", zipfile.ZIP_STORED) as zf:
-        # desc.txt MUST be first
-        desc_file = os.path.join(work_dir, "desc.txt")
-        zf.write(desc_file, "desc.txt")
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as zf:
+        zf.write(desc_path, "desc.txt")
+        for f in sorted(os.listdir(part0_dir)):
+            zf.write(os.path.join(part0_dir, f), f"part0/{f}")
+        for f in sorted(os.listdir(part1_dir)):
+            zf.write(os.path.join(part1_dir, f), f"part1/{f}")
 
-        for part in ["part0", "part1"]:
-            part_dir = os.path.join(work_dir, part)
-            for f in sorted(os.listdir(part_dir)):
-                if f.endswith(".png"):
-                    full_p = os.path.join(part_dir, f)
-                    zf.write(full_p, f"{part}/{f}")
-    print(f"bootanimation.zip created successfully! ({os.path.getsize(target_zip)} bytes)")
+    sz = os.path.getsize(zip_path)
+    print(f"✓ Created bootanimation.zip ({sz / 1024:.1f} KB, 120 frames at 60fps)")
 
 if __name__ == "__main__":
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    work_dir = os.path.join(script_dir, "build_frames")
-    os.makedirs(work_dir, exist_ok=True)
-    generate_frames(work_dir)
-    zip_out = os.path.join(script_dir, "bootanimation.zip")
-    package_bootanimation(work_dir, zip_out)
+    main()
