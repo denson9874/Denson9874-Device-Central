@@ -44,10 +44,11 @@ if [ -f "build/envsetup.sh" ]; then
 fi
 
 # Define Expressive Lunch Targets
-function lunch_expressive() {
-    local variant="${1:-userdebug}"
-    echo -e "${CLR_CYAN}Setting target: expressive_pixel11-${variant}...${CLR_RESET}"
-    export TARGET_PRODUCT="expressive_pixel11"
+function lunch_expressive_device() {
+    local device="${1:-pixel11}"
+    local variant="${2:-userdebug}"
+    echo -e "${CLR_CYAN}Setting target: expressive_${device}-${variant}...${CLR_RESET}"
+    export TARGET_PRODUCT="expressive_${device}"
     export TARGET_BUILD_VARIANT="${variant}"
     export TARGET_BUILD_TYPE="release"
     
@@ -61,9 +62,15 @@ function lunch_expressive() {
     echo -e "${CLR_GREEN}✓ Environment ready for ${TARGET_PRODUCT}-${TARGET_BUILD_VARIANT}${CLR_RESET}"
 }
 
+function lunch_expressive() {
+    lunch_expressive_device "pixel11" "${1:-userdebug}"
+}
+
 # Aliases for quick building
-alias lunch_pixel11="lunch_expressive user"
-alias lunch_pixel11_debug="lunch_expressive userdebug"
+alias lunch_pixel11="lunch_expressive_device pixel11 user"
+alias lunch_pixel11_debug="lunch_expressive_device pixel11 userdebug"
+alias lunch_husky="lunch_expressive_device husky user"
+alias lunch_husky_debug="lunch_expressive_device husky userdebug"
 
 function make_expressive() {
     local jobs=$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 8)
@@ -72,12 +79,14 @@ function make_expressive() {
 }
 
 function package_expressive_release() {
-    echo -e "${CLR_BOLD}${CLR_CYAN}Running ExpressiveOS Automated Release Pipeline...${CLR_RESET}"
-    python3 build/release_pipeline.py --product pixel11 --channel "${1:-qa}"
+    local product="${1:-pixel11}"
+    local channel="${2:-qa}"
+    echo -e "${CLR_BOLD}${CLR_CYAN}Running ExpressiveOS Automated Release Pipeline for ${product}...${CLR_RESET}"
+    python3 build/release_pipeline.py --product "${product}" --channel "${channel}"
 }
 
 echo -e "${CLR_GREEN}Functions loaded:${CLR_RESET}"
-echo -e "  - ${CLR_BOLD}lunch_pixel11${CLR_RESET}        : Configure for production signed Pixel 11 release"
-echo -e "  - ${CLR_BOLD}lunch_pixel11_debug${CLR_RESET}  : Configure for debuggable Pixel 11 development build"
+echo -e "  - ${CLR_BOLD}lunch_pixel11${CLR_RESET}        : Configure for production signed Pixel 11 Pro/XL"
+echo -e "  - ${CLR_BOLD}lunch_husky${CLR_RESET}          : Configure for production signed Pixel 8 Pro"
 echo -e "  - ${CLR_BOLD}make_expressive${CLR_RESET}      : Build platform target-files package"
-echo -e "  - ${CLR_BOLD}package_expressive_release [qa|stable]${CLR_RESET} : Generate signed fastboot & OTA bundle"
+echo -e "  - ${CLR_BOLD}package_expressive_release [product] [qa|stable]${CLR_RESET} : Generate signed fastboot & OTA bundle"

@@ -1,13 +1,14 @@
-# ExpressiveOS — Android 17 for Pixel 11 Pro / XL
+# ExpressiveOS — Android 17 for Pixel 11 Pro / XL & Pixel 8 Pro
 
 <div align="center">
   <img src="docs/assets/screenshots/logo.png" alt="ExpressiveOS Logo" width="128" />
   <h1>ExpressiveOS</h1>
-  <p><strong>A customized, production-grade Android 17 operating system for Google Pixel 11 Pro and Pixel 11 Pro XL, infused with Material 3 Expressive design.</strong></p>
+  <p><strong>A customized, production-grade Android 17 operating system for Google Pixel 11 Pro / XL and Pixel 8 Pro (husky), infused with Material 3 Expressive design.</strong></p>
 
   <p>
     <a href="#major-features">Features</a> •
     <a href="#screenshots--gallery">Screenshots</a> •
+    <a href="#hardware-verification--pixel-8-pro">Hardware Test</a> •
     <a href="#installation-instructions">Installation</a> •
     <a href="#bootloader-locking--security">AVB 2.0 Locking</a> •
     <a href="#building-from-source">Building</a> •
@@ -22,6 +23,29 @@
 **ExpressiveOS** combines the clean stability, Tensor hardware optimization, and camera fidelity of Google's flagship Pixel firmware with the fluid design philosophy, system-level folder widgets, and rich personalization features pioneered by **Expressive Launcher**.
 
 Rather than running as a third-party application with restricted privileges, **Expressive Launcher** is integrated directly into the AOSP platform as the primary, privileged **Recents, Taskbar, and Home provider** (`system_ext/priv-app/ExpressiveLauncherQuickstep`). This unlocks zero-latency gesture navigation, native overview actions, fluid app-to-home physics, and seamless system-wide customization.
+
+---
+
+## Hardware Verification: Pixel 8 Pro (husky)
+
+*Live captures directly from the physical Google Pixel 8 Pro running Android 17 (Build ZP11.260821.010, candidate 4.1.1 / code 60):*
+
+<div align="center">
+  <table>
+    <tr>
+      <td width="50%" align="center">
+        <h4>Physical Pixel 8 Pro Home Screen</h4>
+        <img src="docs/assets/screenshots/pixel8pro-home.png" alt="Pixel 8 Pro Home" width="340" /><br />
+        <em>Physical Pixel 8 Pro running ExpressiveOS with themed icons, Google dock search, and At a Glance ("Celebrate the small wins 🎉").</em>
+      </td>
+      <td width="50%" align="center">
+        <h4>Physical Pixel 8 Pro Home Settings</h4>
+        <img src="docs/assets/screenshots/pixel8pro-settings.png" alt="Pixel 8 Pro Settings" width="340" /><br />
+        <em>Customization menu running on device hardware, showing Expressive Launcher L3 4.1.1.</em>
+      </td>
+    </tr>
+  </table>
+</div>
 
 ---
 

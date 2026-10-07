@@ -103,6 +103,17 @@ class TestDeviceAndBuildConfiguration(unittest.TestCase):
         self.assertIn("GoogleCamera", content)
         self.assertIn("ro.expressive.version=1.0.0", content)
 
+    def test_husky_product_makefile(self):
+        mk_path = os.path.join(REPO_ROOT, "device", "google", "husky", "expressive_husky.mk")
+        self.assertTrue(os.path.exists(mk_path), f"{mk_path} must exist")
+        with open(mk_path, "r") as f:
+            content = f.read()
+        self.assertIn("PRODUCT_NAME := expressive_husky", content)
+        self.assertIn("ExpressiveLauncherQuickstep", content)
+        self.assertIn("ExpressiveHub", content)
+        self.assertIn("GoogleCamera", content)
+        self.assertIn("ro.expressive.device=husky", content)
+
     def test_flash_all_script_executable(self):
         script_path = os.path.join(REPO_ROOT, "tools", "flash_all", "flash-all.sh")
         self.assertTrue(os.path.exists(script_path), f"{script_path} must exist")
