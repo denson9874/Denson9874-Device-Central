@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Pixel 8 Pro (husky): LineageOS lineage-24.0 device trees + TheMuppets blobs, for Evolution X cnb -->
+<manifest>
+  <remote name="lineage-gh" fetch="https://github.com/LineageOS" revision="lineage-24.0" />
+  <remote name="muppets" fetch="https://github.com/TheMuppets" revision="lineage-24.0" />
+
+  <project path="device/google/husky" name="android_device_google_husky" remote="lineage-gh" />
+  <project path="device/google/shusky" name="android_device_google_shusky" remote="lineage-gh" />
+  <project path="device/google/zuma" name="android_device_google_zuma" remote="lineage-gh" />
+  <project path="device/google/shusky-kernels" name="android_device_google_shusky-kernels" remote="lineage-gh" clone-depth="1" />
+  <project path="vendor/google/husky" name="proprietary_vendor_google_husky" remote="muppets" clone-depth="1" />
+</manifest>
