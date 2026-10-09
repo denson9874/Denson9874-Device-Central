@@ -1,0 +1,40 @@
+From 5c2ea75c777145107b76bdb35b37a3b7dceeaa76 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <daryldenson0405@gmail.com>
+Date: Sat, 10 Oct 2026 01:38:04 +0200
+Subject: [PATCH] husky: allow Evolution X /system additions
+
+Evolution X puts AppDataBackup and five vendor/gms system apps in /system,
+which generic_system.mk's artifact-path checks forbid for device makefiles.
+AppDataBackup's skip-on-Pixel check reads PRODUCT_MANUFACTURER, which
+inherited product makefiles never see; vendor/gms only allow-lists its blobs.
+Allow-list the files, as LineageOS does for its own additions.
+---
+ lineage_husky.mk | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/lineage_husky.mk b/lineage_husky.mk
+index 5f8dfc1..5936ad9 100644
+--- a/lineage_husky.mk
++++ b/lineage_husky.mk
+@@ -29,4 +29,18 @@ PRODUCT_BUILD_PROP_OVERRIDES += \
+     BuildSystemFingerprint=google/generic_system_google/generic:17/CP2A.260805.005/15828068:user/release-keys \
+     DeviceProduct=$(DEVICE_CODENAME)
+ 
++# Evolution X puts these in /system, which generic_system.mk's artifact-path
++# rules forbid for device makefiles: AppDataBackup (its skip-on-Pixel check reads
++# PRODUCT_MANUFACTURER, which inherited product makefiles never see) and the
++# vendor/gms system apps (vendor/gms only allow-lists its blobs). Allow them, as
++# LineageOS does for its own /system additions.
++PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \
++    system/etc/permissions/privapp-permissions-appbackup.xml \
++    system/priv-app/AppDataBackup/% \
++    system/app/GoogleExtShared/% \
++    system/app/GooglePrintRecommendationService/% \
++    system/priv-app/DocumentsUIGoogle/% \
++    system/priv-app/GooglePackageInstaller/% \
++    system/priv-app/TagGoogle/%
++
+ $(call inherit-product, $(VENDOR_PATH)/$(DEVICE_CODENAME)-vendor.mk)
+-- 
+2.43.0
+
