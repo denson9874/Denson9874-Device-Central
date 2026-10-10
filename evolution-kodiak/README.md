@@ -25,17 +25,34 @@ policy, HAL configs), so a from-source vendor isn't possible yet.
 
 ## Status (2026-10-10)
 
-- First build: `EvolutionX-17.0-20261010-kodiak-12.3-Unofficial.zip`
-  (userdebug, test-keys, firmware and vendor from `CD1A.261005.003`).
+**It boots.** `EvolutionX-17.0-20261010-kodiak-12.3-Unofficial` (userdebug,
+test-keys, firmware and vendor from `CD1A.261005.003`) runs on the test
+phone. The phone was first moved off the QPR3 beta onto stable
+`CD1A.261005.003`, so its bootloader and modem match the build.
+
+- Flashed with `fastboot update -w` from an image zip (all images from `out/`
+  plus the stock `super_empty.img`).
+- 3 of 3 reboots were clean: about 31 s to `sys.boot_completed`.
+- Working: display (stock default 1080x2404 at 390 dpi), Wi-Fi, modem/SIM,
+  no crashes in the crash buffer.
 - Offline checks pass:
-  - `check-sepolicy.sh` (the split policy compiles against the stock vendor)
+  - `check-sepolicy.sh`
   - kernel and dtbo are byte-identical to stock
   - recovery and its HALs are in vendor_boot
-  - the payload has 40 partitions, all of which exist on the phone
-- **Not booted yet.** The test phone runs the Android 17 beta
-  `DP11.260918.005` with bootloader `spacecraft-17.4-16354067`, which is newer
-  than this build's `16262255`, and its bootloader is locked. Do not flash this
-  build to it: the OTA would try to downgrade the bootloader.
+  - the payload has 40 partitions
+- The first boot failure was missing USB PHY firmware in vendor_boot:
+  `google-usb-phy.ko` loads it during first stage. This is now fixed.
+
+Open issues:
+- One kernel panic on the first boot after the wipe, in the DisplayPort
+  bridge (`dwc_dptx` `dptx_bridge_detach`, then DRM cleanup at
+  `drm_mode_put_tile_group`). It came after SELinux denials on display
+  debugfs and hasn't reproduced since.
+- 119 SELinux denials on the first boot, most from the camera HAL (44), so
+  the camera needs checking.
+- `edgetpu_vendor_service` and `hal_wlcservice` (wireless charging) are
+  stopped.
+- Google's product overlays aren't shipped; signing uses test keys.
 
 ## Workspace (build server)
 
