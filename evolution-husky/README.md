@@ -42,3 +42,16 @@ GMS and extra /system apps that collide with them:
 | device/google/shusky | `lineage_husky.mk` allow-lists Evolution X's /system additions (AppDataBackup, five vendor/gms system apps) under generic_system.mk's artifact-path rules. Evolution's skip-on-Pixel check for AppDataBackup can't work: it reads PRODUCT_MANUFACTURER, which inherited product makefiles never see |
 | device/google/zuma | Drops nine RRO overlays whose names vendor/pixel-style also defines (Evolution's copies are supersets); installs the Pixel default permissions as `default-permissions-zuma.xml` so they don't collide with vendor/gms's `default-permissions.xml` |
 | vendor/google/husky | Defers `DeviceIntelligenceNetworkPrebuiltAstrea` (vendor/gms ships a newer one) and 16 byte-identical Pixel sysconfig/default-permission XMLs to vendor/gms |
+
+## Status (2026-10-10)
+
+`EvolutionX-17.0-20261010-husky-12.3-Unofficial` (userdebug, GMS) installed by clean flash on a
+Pixel 8 Pro running CP3A firmware:
+- Boots on slot `_b`, verified boot green, kernel 6.1.157 from `build_kernel`, October firmware
+  kept (payload firmware hashes verified against CP3A.261005.005).
+- Device gate: 10/10 on two consecutive runs. The first run after setup missed one of ten
+  swipe-home attempts (Pixel Launcher's first-run tour).
+- Wi-Fi, Bluetooth, NFC service, 2 camera devices, fingerprint, face, audio, 43 sensors,
+  120/60 Hz, GMS + Play Store present. SIM not tested.
+- 56 non-shell SELinux denials (gxp_logging tracing socket, Evolution's system_app probing HALs,
+  Widevine dalvik-cache search). None blocks a tested feature; cleanup is a follow-up.
