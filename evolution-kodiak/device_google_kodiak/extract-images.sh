@@ -56,7 +56,13 @@ python3 "$UNPACK_BOOTIMG" --boot_img "$work/vendor_boot.img" --out "$work/vb" >/
 mkdir "$work/vb/root"
 lz4 -dc "$work/vb/vendor_ramdisk00" | (cd "$work/vb/root" && cpio -id --quiet)
 cp "$work/vb/root/first_stage_ramdisk/system/etc/fstab.malibu" "$OUT/proprietary/"
-cp "$work/vb/root/init.recovery.malibu.rc" "$OUT/proprietary/"
+cp "$work/vb/root/init.recovery.malibu.rc" "$work/vb/root/init.recovery.kodiak.rc" "$OUT/proprietary/"
+
+# USB PHY firmware: google-usb-phy.ko (a first-stage module in
+# vendor_kernel_boot) loads it from the vendor ramdisk; without it first-stage
+# init fails to load modules and reboots to the bootloader
+mkdir -p "$OUT/proprietary/vendor_ramdisk/lib/firmware"
+cp "$work/vb/root/lib/firmware/"usb_phy_fw*.bin "$OUT/proprietary/vendor_ramdisk/lib/firmware/"
 
 # Recovery HALs (boot control for sideload slot switching, health for the
 # battery check), as LineageOS's Pixel vendor trees ship them
@@ -151,6 +157,12 @@ cp "$work/vb/root/system/etc/vintf/manifest/"android.hardware.{boot-service.defa
     echo 'PRODUCT_SOONG_NAMESPACES += vendor/google/kodiak'
     echo
     echo 'PRODUCT_COPY_FILES += \'
+    for fw in "$OUT"/proprietary/vendor_ramdisk/lib/firmware/*; do
+        fw="$(basename "$fw")"
+        echo "    vendor/google/kodiak/proprietary/vendor_ramdisk/lib/firmware/$fw:\$(TARGET_COPY_OUT_VENDOR_RAMDISK)/lib/firmware/$fw \\"
+        echo "    vendor/google/kodiak/proprietary/vendor_ramdisk/lib/firmware/$fw:\$(TARGET_COPY_OUT_VENDOR_RAMDISK)/first_stage_ramdisk/lib/firmware/$fw \\"
+    done
+    echo "    vendor/google/kodiak/proprietary/init.recovery.kodiak.rc:\$(TARGET_COPY_OUT_RECOVERY)/root/init.recovery.kodiak.rc \\"
     for hal in $recovery_hals; do
         echo "    vendor/google/kodiak/proprietary/recovery/system/etc/init/$hal.rc:\$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/init/$hal.rc \\"
     done | sed '$ s/ \\$//'
