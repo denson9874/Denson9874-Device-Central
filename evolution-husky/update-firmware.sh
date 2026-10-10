@@ -27,4 +27,13 @@ for img in $images; do
     sed -i -E "s|(radio/${img//./\\.},)[0-9a-f]{40}|\1$sha|" "$vendor/Android.mk"
     echo "$img $sha"
 done
+# Verify every image, so a partial run (e.g. output piped into `head` killing the
+# script mid-loop under pipefail) can never leave mixed firmware behind.
+for img in $images; do
+    want="$(sha1sum "$work/$img" | cut -d' ' -f1)"
+    [[ "$(sha1sum "$vendor/radio/$img" | cut -d' ' -f1)" == "$want" ]] &&
+        grep -q "radio/$img,$want" "$vendor/Android.mk" ||
+        { echo "verify failed: $img" >&2; exit 1; }
+done
 echo "$(basename "$bootloader") + $(basename "$radio")" > "$vendor/radio/SOURCE"
+echo "verified: all $(echo $images | wc -w) firmware images match the factory release"
