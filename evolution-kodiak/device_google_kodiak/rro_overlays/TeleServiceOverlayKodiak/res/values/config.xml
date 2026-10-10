@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SPDX-FileCopyrightText: The LineageOS Project
+    SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- kodiak's MediaTek modem uses AOSP ImsStack, not Shannon. The stock
+         vendor TeleService RRO still names com.shannon.imsservice; stock
+         overrides it from product, as this overlay does. -->
+    <string name="config_ims_mmtel_package" translatable="false">com.android.imsstack</string>
+    <string name="config_ims_rcs_package" translatable="false">com.android.imsstack</string>
+</resources>

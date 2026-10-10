@@ -3,19 +3,19 @@
 # SPDX-FileCopyrightText: The LineageOS Project
 # SPDX-License-Identifier: Apache-2.0
 #
-# Generate vendor/google/kodiak from a Pixel 11 Pro XL factory image.
+# Generate vendor/google/kodiak-images from a Pixel 11 Pro XL factory image.
 #
 #   extract-images.sh <kodiak-*-factory-*.zip | image-kodiak-*.zip>
 #
 # Run from anywhere inside the Evolution X source tree. Replaces
-# vendor/google/kodiak (except its .git). Its contents are Google's proprietary
+# vendor/google/kodiak-images (except its .git). Its contents are Google's proprietary
 # images: never push that directory to a public remote.
 #
 set -euo pipefail
 
 MY_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 TOP="$(cd "$MY_DIR/../../.." && pwd -P)"
-OUT="$TOP/vendor/google/kodiak"
+OUT="$TOP/vendor/google/kodiak-images"
 UNPACK_BOOTIMG="$TOP/system/tools/mkbootimg/unpack_bootimg.py"
 
 zip="$(realpath "$1")"
@@ -100,7 +100,7 @@ cp "$work/vb/root/system/etc/vintf/manifest/"android.hardware.{boot-service.defa
     echo
     echo 'AB_OTA_PARTITIONS += \'
     for part in $firmware; do echo "    $part \\"; done | sed '$ s/ \\$//'
-} > "$OUT/BoardConfigVendor.mk"
+} > "$OUT/BoardConfigImages.mk"
 
 {
     echo '//'
@@ -154,26 +154,26 @@ cp "$work/vb/root/system/etc/vintf/manifest/"android.hardware.{boot-service.defa
     echo '# device/google/kodiak/BoardConfig.mk); only recovery blobs are listed here.'
     echo '#'
     echo
-    echo 'PRODUCT_SOONG_NAMESPACES += vendor/google/kodiak'
+    echo 'PRODUCT_SOONG_NAMESPACES += vendor/google/kodiak-images'
     echo
     echo 'PRODUCT_COPY_FILES += \'
     for fw in "$OUT"/proprietary/vendor_ramdisk/lib/firmware/*; do
         fw="$(basename "$fw")"
-        echo "    vendor/google/kodiak/proprietary/vendor_ramdisk/lib/firmware/$fw:\$(TARGET_COPY_OUT_VENDOR_RAMDISK)/lib/firmware/$fw \\"
-        echo "    vendor/google/kodiak/proprietary/vendor_ramdisk/lib/firmware/$fw:\$(TARGET_COPY_OUT_VENDOR_RAMDISK)/first_stage_ramdisk/lib/firmware/$fw \\"
+        echo "    vendor/google/kodiak-images/proprietary/vendor_ramdisk/lib/firmware/$fw:\$(TARGET_COPY_OUT_VENDOR_RAMDISK)/lib/firmware/$fw \\"
+        echo "    vendor/google/kodiak-images/proprietary/vendor_ramdisk/lib/firmware/$fw:\$(TARGET_COPY_OUT_VENDOR_RAMDISK)/first_stage_ramdisk/lib/firmware/$fw \\"
     done
-    echo "    vendor/google/kodiak/proprietary/init.recovery.kodiak.rc:\$(TARGET_COPY_OUT_RECOVERY)/root/init.recovery.kodiak.rc \\"
+    echo "    vendor/google/kodiak-images/proprietary/init.recovery.kodiak.rc:\$(TARGET_COPY_OUT_RECOVERY)/root/init.recovery.kodiak.rc \\"
     for hal in $recovery_hals; do
-        echo "    vendor/google/kodiak/proprietary/recovery/system/etc/init/$hal.rc:\$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/init/$hal.rc \\"
+        echo "    vendor/google/kodiak-images/proprietary/recovery/system/etc/init/$hal.rc:\$(TARGET_COPY_OUT_RECOVERY)/root/system/etc/init/$hal.rc \\"
     done | sed '$ s/ \\$//'
     echo
     echo 'PRODUCT_PACKAGES += \'
     { for hal in $recovery_hals; do echo "$hal"; done
       for xml in "$OUT"/proprietary/recovery/system/etc/vintf/manifest/*.xml; do echo "kodiak_recovery_$(basename "$xml")"; done
     } | sed 's/^/    /; s/$/ \\/' | sed '$ s/ \\$//'
-} > "$OUT/kodiak-vendor.mk"
+} > "$OUT/kodiak-images.mk"
 
 (cd "$OUT" && find images radio proprietary -type f | sort | xargs sha256sum > SHA256SUMS)
 echo "$build_id ($(basename "$zip"))" > "$OUT/SOURCE"
 (cd "$OUT" && sha256sum -c --quiet SHA256SUMS)
-echo "vendor/google/kodiak generated from $build_id: $(ls "$OUT/images" | wc -l) images, $(echo $firmware | wc -w) radio partitions"
+echo "vendor/google/kodiak-images generated from $build_id: $(ls "$OUT/images" | wc -l) images, $(echo $firmware | wc -w) radio partitions"

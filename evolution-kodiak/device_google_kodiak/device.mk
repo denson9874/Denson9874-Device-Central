@@ -17,6 +17,14 @@ $(call inherit-product, frameworks/native/build/phone-xhdpi-6144-dalvik-heap.mk)
 # API levels (stock ro.product.first_api_level)
 PRODUCT_SHIPPING_API_LEVEL := 37
 
+# IMS (AOSP packages/modules/ImsStack, ImsMedia) and Wi-Fi calling (AOSP Iwlan, as
+# LineageOS laguna). The rest of the Pixel telephony stack is stock blobs.
+PRODUCT_PACKAGES += \
+    ImsMediaService \
+    ImsStack \
+    Iwlan \
+    TeleServiceOverlayKodiak
+
 # HIDL: shipping API 37 drops these, but stock kodiak's system still ships
 # them (the stock vendor and Pixel services use HIDL), and vintffm requires
 # android.hidl.allocator for the frozen level-7 framework matrix.
@@ -73,12 +81,19 @@ PRODUCT_PACKAGES += \
 
 # First-stage fstab and recovery init, copied from the stock vendor_boot
 PRODUCT_COPY_FILES += \
-    vendor/google/kodiak/proprietary/fstab.malibu:$(TARGET_COPY_OUT_VENDOR_RAMDISK)/first_stage_ramdisk/system/etc/fstab.malibu \
-    vendor/google/kodiak/proprietary/init.recovery.malibu.rc:$(TARGET_COPY_OUT_RECOVERY)/root/init.recovery.malibu.rc
+    vendor/google/kodiak-images/proprietary/fstab.malibu:$(TARGET_COPY_OUT_VENDOR_RAMDISK)/first_stage_ramdisk/system/etc/fstab.malibu \
+    vendor/google/kodiak-images/proprietary/init.recovery.malibu.rc:$(TARGET_COPY_OUT_RECOVERY)/root/init.recovery.malibu.rc
 
 # pKVM (pvmfw is built from AOSP; prebuilt pvmfw is no longer allowed)
 $(call inherit-product, packages/modules/Virtualization/apex/product_packages.mk)
 PRODUCT_BUILD_PVMFW_IMAGE := true
+
+# Test builds only: trust a local adb key in recovery (and Android), so a
+# development machine can read logs from a device that fails to boot.
+# Set KODIAK_DEV_ADB_KEYS=/path/to/adbkey.pub in the build environment.
+ifneq ($(KODIAK_DEV_ADB_KEYS),)
+PRODUCT_ADB_KEYS := $(KODIAK_DEV_ADB_KEYS)
+endif
 
 # Characteristics
 PRODUCT_CHARACTERISTICS := nosdcard
@@ -90,5 +105,8 @@ PRODUCT_SOONG_NAMESPACES += \
     hardware/google/interfaces \
     hardware/google/pixel
 
-# Proprietary files
+# Stock images and ramdisk files (extract-images.sh)
+$(call inherit-product, vendor/google/kodiak-images/kodiak-images.mk)
+
+# Proprietary system_ext/product blobs (extract-files.py)
 $(call inherit-product, vendor/google/kodiak/kodiak-vendor.mk)
