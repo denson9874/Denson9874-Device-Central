@@ -1,0 +1,46 @@
+# All blobs are extracted from Google factory image CD1A.261005.003 (kodiak)
+# with ./extract-files.py <dumpyara dump>. Vendor, kernel and firmware are
+# stock images instead (extract-images.sh).
+
+# Carrier setup and settings
+product/etc/sysconfig/preinstalled-packages-pixel-carrier.xml
+product/priv-app/CarrierSettings/CarrierSettings.apk;PRESIGNED
+system_ext/priv-app/CarrierSetup/CarrierSetup.apk;PRESIGNED
+
+# eSIM
+system_ext/etc/default-permissions/default-permissions-euiccpixel.xml
+system_ext/etc/permissions/com.google.euiccpixel.permissions.xml
+system_ext/etc/permissions/com.google.euiccpixel.xml
+system_ext/priv-app/EuiccGoogleOverlay/EuiccGoogleOverlay.apk;PRESIGNED
+system_ext/priv-app/EuiccSupportPixel-P23/DKA_0303_03x_25.up
+system_ext/priv-app/EuiccSupportPixel-P23/esim-full-v1.img
+system_ext/priv-app/EuiccSupportPixel-P23/EuiccSupportPixel-P23.apk;PRESIGNED
+system_ext/priv-app/EuiccSupportPixelPermissions/EuiccSupportPixelPermissions.apk;PRESIGNED
+
+# IMS: ImsStack and ImsMediaService are built from AOSP. The stock
+# PixelImsMediaService shares android.uid.phone and is signed with Google's
+# platform key, so system_server rejects it (signature mismatch) and crashes.
+
+# Modem (MediaTek RIL glue, Pixel modem service)
+system_ext/etc/default-permissions/default-permissions_com.google.android.modem.pms_full.xml
+system_ext/etc/permissions/com.google.android.modem.pms.lib.xml
+system_ext/etc/permissions/com.google.android.modem.pms.xml
+system_ext/etc/permissions/com.google.android.rilextension.xml
+system_ext/etc/permissions/google-ril.xml
+system_ext/etc/permissions/privapp-permlist_com.google.android.grilservice.xml
+system_ext/etc/sysconfig/preinstalled-packages-gril.xml
+system_ext/etc/sysconfig/preinstalled-packages-pixel-modem-service.xml
+system_ext/etc/sysconfig/preinstalled-packages-ril.xml
+system_ext/framework/com.google.android.modem.pms.lib.jar
+system_ext/framework/google-ril.jar
+system_ext/lib64/libmtkproperty.so
+system_ext/lib64/libmtkrillog.so
+system_ext/priv-app/grilservice/grilservice.apk;PRESIGNED
+system_ext/priv-app/PixelModemService/PixelModemService.apk;PRESIGNED
+system_ext/priv-app/ril-extension/ril-extension.apk;PRESIGNED
+
+# Radio config
+system_ext/etc/permissions/com.android.omadm.radioconfig.xml
+system_ext/etc/permissions/com.android.qns.xml
+system_ext/etc/vintf/radio_framework_compatibility_matrix_system_ext
+system_ext/framework/RadioConfigLib.jar
