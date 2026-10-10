@@ -39,13 +39,13 @@ Its operating rules still apply (see section 9).
   `allow radio platform_app:udp_socket { read write getattr getopt setopt ioctl };`
   It passed the build's neverallow checks and `check-sepolicy.sh`.
   Image zip sha256: `8a897317eee7ce7e1df580219816099f7f660a4046990990025e08c9859022c8`.
-- **State at handoff:** that zip was being copied to the Mac and flashed (no wipe)
-  by a background job. **It's unknown whether the flash finished.** Check first
-  (section 6, step 1).
+- **State at handoff:** that zip **was flashed (no wipe) and the phone booted
+  cleanly** (first boot, default IMS service = `com.android.imsstack`). The fix is
+  on the phone but **not yet tested with a call**.
 
 ### Next steps, in order
 
-1. **Confirm the phone state.** Run `adb devices` / `fastboot devices`.
+1. **Confirm the phone state.** Run `adb devices` / `fastboot devices` (it should be booted in Android).
    - If it's in fastboot and the flash didn't complete, re-run the flash (section 6, step 3)
      with the zip already in `~/Downloads/kodiak-evox/kodiak-evox-img.zip`,
      after checking its sha256 against the hash above.
