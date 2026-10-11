@@ -97,6 +97,13 @@ ifneq ($(KODIAK_DEV_ADB_KEYS),)
 PRODUCT_ADB_KEYS := $(KODIAK_DEV_ADB_KEYS)
 endif
 
+# Personal builds only: a maintainer's private extras, if present. Off unless
+# KODIAK_PERSONAL=true is set in the build environment, so official builds
+# never pick them up.
+ifeq ($(KODIAK_PERSONAL),true)
+$(call inherit-product-if-exists, device/google/kodiak-personal/personal.mk)
+endif
+
 # Adaptive Connectivity Services (SCONE) and Google Fi (Tycho): vendor/gms
 # defines both modules in Android.mk, but gms_full.mk's PRODUCT_MANUFACTURER
 # filter doesn't match inside inherit-product. Install them from here, along
