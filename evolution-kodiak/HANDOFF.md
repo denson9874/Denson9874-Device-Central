@@ -8,6 +8,10 @@ Claude is available again. Read all of it before running anything.
 > The phone is now on **Android Canary** (Daryl needed a working phone), so there are no logs.
 > See section 2a, plus section 11 if you're a cloud session.
 
+> **Update 2026-10-11 (cloud session).** A source-level review against a working
+> LineageOS 24.0 Pixel 11 tree found several more causes for the calls failure and
+> other open issues, and fixed them in the device tree. **Read section 2b before building.**
+
 ## 1. Goal
 
 Make a working **Evolution X 17** (Android 17, branch `cnb`, LineageOS-based)
@@ -104,6 +108,88 @@ captured before the phone left Evolution X.
 3. If calls work: move ImsStack to its own `imsstack_app` domain and narrow `radio.te` (REEKY_DIFF section 3),
    then do the missing system_ext blobs (REEKY_DIFF section 2).
 
+## 2b. Review of 2026-10-11 (supersedes the "Next steps" in 2a)
+
+Reeky still hasn't published sources (their GitHub has only the kernel), so the review used
+[asdfmonster261/android_device_google_yogi](https://github.com/asdfmonster261/android_device_google_yogi)
+(LineageOS 24.0, Pixel 11 Pro Fold). It has the **same malibu SoC, MediaTek T900 modem, telephony blobs
+and Lineage base** as us, and its system_ext policy was recovered from the stock compiled policy.
+Details: [REEKY_DIFF.md](REEKY_DIFF.md), section 6.
+
+**Main finding: stock vendor SELinux rules for Google's apps never applied in our build.**
+- The stock vendor policy names Google's system_ext app domains (`imsstack_app`, `grilservice_app`,
+  `pixel_modem_app`, `rilextensionservice_app`, `euiccpixel_app`) through versioned attributes.
+  Our AOSP system_ext didn't declare those types, so those attributes mapped to nothing.
+- For calls specifically: stock lets the vendor `imsmediahaldaemon` use ImsStack's sockets
+  (`allow imsmediahaldaemon imsstack_app:fd use` and `:udp_socket`). Our ImsStack ran as `platform_app`,
+  so the vendor media daemon couldn't touch the RTP sockets. `radio.te` only fixed the phone-process
+  half. This fits `CODE_MEDIA_INIT_FAILED` (401) as well as the PixelImsMediaService theory.
+- GRIL, the RIL extension and modem.pms ran as `priv_app` (Google-signed, `PRESIGNED`), so their
+  stock rild/HAL rules didn't apply either.
+- `rilext.*`, `ims.*` and the NTN props were unlabelled (`default_prop`), so rild couldn't set them.
+
+**Other findings:**
+- `platform_carrier_config_package` was left at AOSP's `com.android.carrierconfig`, so the
+  **CarrierSettings we ship was never used** for carrier config. Stock, LineageOS laguna and yogi
+  all point it at `com.google.android.carrier`. Carrier IMS values (VoLTE, codecs, RTP/SIP timers)
+  come from there.
+- `system_ext.prop` sets `ro.audio.ihaladaptervendorextension_enabled=true`, but the service behind
+  it (`vendor.google.whitechapel.audio.hal.parserservice`) wasn't shipped.
+- The TPU app service wasn't shipped (it's why `edgetpu_vendor_service` stops), and neither were
+  QNS (Wi-Fi calling handover), `init.pms.rc` or `gs_watchdogd`.
+
+**What changed in the device tree:**
+
+| Change | Files |
+|---|---|
+| Stock domains for ImsStack, GRIL, RIL extension, modem.pms, EuiccSupportPixel | `sepolicy/system_ext/{public/apps.te,private/*_app.te,private/seapp_contexts,private/mac_permissions.xml}` |
+| `radio → imsstack_app` socket rule (the `platform_app` rule stays as a fallback for one round) | `sepolicy/system_ext/private/radio.te` |
+| Stock's system_ext property labels | `public/property.te`, `private/property_contexts`, `private/vendor_init.te` |
+| GRIL, ril-extension, PixelModemService re-signed (no `;PRESIGNED`; none uses a shared uid) | `proprietary-files.txt` |
+| `init.pms.rc` | `proprietary-files.txt` |
+| `SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS` | `BoardConfig.mk` |
+| CarrierSettings as the carrier config package, plus stock's other TeleService values | `rro_overlays/TeleServiceOverlayKodiak` |
+| QNS, plus stock's telephony framework values | `proprietary-files.txt`, new `rro_overlays/FrameworkResOverlayKodiak`, `device.mk` |
+| Audio parameter parser, TPU app service, gs_watchdogd, with their policy | `proprietary-files.txt`, `sepolicy/system_ext/private/{hal_audio_parameter_parser,edgetpu_app_service,gs_watchdogd}.te`, `file_contexts`, `service_contexts` |
+| Platform memfd rules from stock's newer base (DRM, camera, face) | `sepolicy/system_ext/private/platform.te` |
+| `check-sepolicy.sh` reports which Google types the stock vendor rules reach | `check-sepolicy.sh` |
+
+**Verified offline (cloud):**
+- The system_ext policy compiles with the LineageOS 24.0 `system/sepolicy` and `device/lineage/sepolicy`
+  (checkpolicy/secilc 3.9 built from source), and adds **no new neverallow failures**.
+- Every type named in the contexts files exists.
+- Every overlay resource name exists in LineageOS 24.0 frameworks/base and TeleService.
+- The EuiccSupportPixel certificate in `mac_permissions.xml` matches the Pixel 11 blob.
+
+**Not verifiable from the cloud (do these on the server, in order):**
+1. Sync the tree to the server (section 11), commit there, `git pull` into `~/evolution/device/google/kodiak`.
+2. **Re-run `extract-files.py`**: `proprietary-files.txt` changed. If it can't find a file, check the
+   name in the dump (`ls ~/android-dt/dumps/kodiak/system_ext/lib64 | grep edgetpu`). The edgetpu
+   `-V10`/`-V2` versions come from yogi's October build and should match.
+3. Build images (`~/kodiak-images.sh`). A missing shared library for a new blob fails here, not on the phone.
+4. **Run `check-sepolicy.sh`. It is mandatory before flashing.**
+   - It must print `OK`.
+   - It should list `imsstack_app grilservice_app …` under `mapped for the stock vendor`.
+   - If it fails with `Failed to resolve typeattributeset` naming one of our public types, stock doesn't
+     declare that type public. Move it from `sepolicy/system_ext/public/` to private and rebuild.
+     Without this fix, the phone bootloops.
+   - The `unmapped` list is the Google domains we still lack, which is the todo list for later rounds.
+5. Flash (section 6; mind the Canary/bootloader warning in 2a), then check on the phone:
+   ```bash
+   adb shell ps -AZ | grep -E "imsstack|grilservice|rilextension|modem.pms|euiccpixel|edgetpu_app|parserservice|gs_watchdogd"
+   adb shell service check android.media.audio.IHalAdapterVendorExtension/default
+   adb shell getprop | grep -E "^\[rilext|^\[ims\."
+   adb shell dumpsys carrier_config | grep -m3 -i "carrier_volte_available_bool\|package"
+   ```
+   ImsStack should be `u:r:imsstack_app`, not `platform_app`.
+6. Place a test call and pull logs (section 7). Grep for `onCallTerminated`, plus `avc: denied` lines that
+   mention `imsstack_app`, `imsmediahaldaemon` or `radio`.
+7. If calls work, drop the `platform_app` fallback from `radio.te`. Then move on to the `unmapped` list
+   (vendor_ims_app, satellite, PixelDisplayService, scone and so on; see REEKY_DIFF section 3).
+
+The changes are split into separate commits (telephony SELinux, carrier config/QNS, system_ext services),
+so a regression can be bisected by reverting one.
+
 ### Other open issues (lower priority)
 
 - **Display-driver kernel panic** (`drm_mode_put_tile_group`, after
@@ -111,7 +197,7 @@ captured before the phone left Evolution X.
   display binds late (after SELinux loads) and debugfs creation is denied. It hasn't
   recurred since the `user` build, but it isn't proven fixed.
 - SELinux denials: the camera HAL and gxp/edgetpu writing to `traced_producer`, and
-  edgetpu `service_manager find`.
+  edgetpu `service_manager find` (the TPU app service is shipped as of 2b, which should fix the latter).
 - `com.google.android.apps.scone` crashes once at boot (not essential).
 - Google's other product RROs (SystemUI/Settings device config) aren't shipped.
   extract-utils rejects prebuilt overlay APKs ("does not match known package rules"),
