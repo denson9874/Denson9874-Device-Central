@@ -1,0 +1,190 @@
+# Evolution X kodiak builds on the build server, through a self-hosted runner.
+#
+# Lets a cloud Claude session (which can reach GitHub but not the server) run
+# the HANDOFF.md workflow: sync the device tree from this repo, re-extract the
+# blobs, build images, check the SELinux policy against the stock vendor and
+# pack the fastboot zip. Flashing stays manual, on the Mac.
+#
+# Never add an upload-artifact step: build output contains Google's
+# proprietary images, which must not leave the server. Logs only.
+#
+# Runner setup (once, on the build server, as the `build` user, no sudo):
+#   1. GitHub: Settings > Actions > Runners > New self-hosted runner > Linux x64.
+#      Run the download commands it shows in ~/actions-runner.
+#   2. ./config.sh --url https://github.com/denson9874/ExpressiveOS \
+#        --token <token from that page> --name kodiak-build-server \
+#        --labels kodiak-build --work _work --unattended
+#   3. Start it (no sudo needed):
+#        tmux new -d -s runner 'cd ~/actions-runner && ./run.sh'
+#      Stop it with `tmux kill-session -t runner`; remove it with
+#      ./config.sh remove (token from the same Settings page).
+#
+# Only use a self-hosted runner with a private repository.
+
+name: kodiak build server
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: >-
+          status: read-only state check. sync: device tree from tree_ref to the
+          server. extract: extract-files.py. images: images build + check-sepolicy.
+          check-sepolicy: policy check only. imgzip: fastboot zip.
+          round: sync, extract, images, check-sepolicy, imgzip. ota: m evolution.
+        type: choice
+        default: status
+        options:
+          - status
+          - sync
+          - extract
+          - images
+          - check-sepolicy
+          - imgzip
+          - round
+          - ota
+      tree_ref:
+        description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak from (sync and round)
+        type: string
+        default: evolution/kodiak-port
+
+permissions:
+  contents: read
+
+# One job at a time on the server; never cancel a running build.
+concurrency:
+  group: kodiak-build-server
+  cancel-in-progress: false
+
+jobs:
+  server:
+    runs-on: [self-hosted, kodiak-build]
+    timeout-minutes: 240
+    env:
+      ACTION: ${{ inputs.action }}
+      TREE_REF: ${{ inputs.tree_ref }}
+    defaults:
+      run:
+        shell: bash --noprofile --norc -euo pipefail {0}
+    steps:
+      - name: Preflight
+        run: |
+          [[ "$TREE_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "::error::bad tree_ref: $TREE_REF"; exit 1; }
+          for p in ~/evolution ~/android-dt/trees/device_google_kodiak ~/evolution/device/google/kodiak; do
+            [[ -d "$p" ]] || { echo "::error::missing $p"; exit 1; }
+          done
+          # Builds started by hand (or by another agent) share ~/evolution with
+          # this job, and the husky build too. Don't start on top of one.
+          if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
+            pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
+            if [[ "$ACTION" != status ]]; then
+              echo "::error::a build is already running on the server"
+              exit 1
+            fi
+            echo "::notice::a build is running on the server"
+          fi
+          echo "host $(hostname), user $(id -un), action $ACTION, tree_ref $TREE_REF"
+
+      - name: Status
+        if: inputs.action == 'status'
+        run: |
+          echo "== machine"; uptime; free -g | head -2; df -h ~ /tmp | sed 1d
+          echo "== device tree (source of truth)"
+          git -C ~/android-dt/trees/device_google_kodiak log --oneline -3
+          git -C ~/android-dt/trees/device_google_kodiak status --short | head -20
+          echo "== ~/evolution/device/google/kodiak"
+          git -C ~/evolution/device/google/kodiak log --oneline -1
+          git -C ~/evolution/device/google/kodiak status --short | head -20
+          for v in vendor/google/kodiak vendor/google/kodiak-images; do
+            echo "== ~/evolution/$v"
+            git -C ~/evolution/$v log --oneline -1 2>/dev/null || echo "(not a git tree)"
+          done
+          echo "== scripts"; ls -l ~/kodiak-images.sh ~/kodiak-build.sh ~/kodiak-imgzip.sh 2>&1
+          echo "== last build log"; grep -E 'BUILD_EXIT|#### |FAILED:' ~/kodiak-build.log 2>/dev/null | tail -5 || true
+          echo "== image zips"; ls -lh /tmp/kodiak-evox-img*.zip 2>/dev/null || echo none
+
+      - name: Check out the device tree
+        if: inputs.action == 'sync' || inputs.action == 'round'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tree_ref }}
+          sparse-checkout: evolution-kodiak/device_google_kodiak
+          fetch-depth: 1
+
+      - name: Sync to the server tree
+        if: inputs.action == 'sync' || inputs.action == 'round'
+        run: |
+          src="$GITHUB_WORKSPACE/evolution-kodiak/device_google_kodiak/"
+          dst=~/android-dt/trees/device_google_kodiak
+          sha="$(git -C "$GITHUB_WORKSPACE" rev-parse --short HEAD)"
+          # Refuse to overwrite uncommitted work in either tree.
+          for t in "$dst" ~/evolution/device/google/kodiak; do
+            if [[ -n "$(git -C "$t" status --porcelain)" ]]; then
+              echo "::error::$t has uncommitted changes; commit or stash them first"
+              git -C "$t" status --short | head -20
+              exit 1
+            fi
+          done
+          # Same as HANDOFF.md section 11: copy over, no --delete.
+          rsync -a --exclude .git "$src" "$dst/"
+          git -C "$dst" add -A
+          if git -C "$dst" diff --cached --quiet; then
+            echo "server tree already matches $TREE_REF@$sha"
+          else
+            git -C "$dst" diff --cached --stat
+            ident=()
+            git -C "$dst" config user.email > /dev/null || ident=(-c user.name=kodiak-runner -c user.email=build@kodiak-build-server)
+            git -C "$dst" ${ident[@]+"${ident[@]}"} commit -q -m "sync from ExpressiveOS $TREE_REF@$sha"
+            if git -C "$dst" diff --name-only HEAD~1 HEAD | grep -q '^proprietary-files'; then
+              echo "::warning::proprietary-files changed: run extract before building"
+            fi
+          fi
+          git -C ~/evolution/device/google/kodiak pull -q --ff-only
+          git -C ~/evolution/device/google/kodiak log --oneline -1
+
+      - name: Extract blobs
+        if: inputs.action == 'extract' || inputs.action == 'round'
+        run: |
+          for venv in ~/android-dt/venv ~/android-dt/.venv; do
+            if [[ -f "$venv/bin/activate" ]]; then
+              echo "using $venv"; set +u; source "$venv/bin/activate"; set -u; break
+            fi
+          done
+          export PATH="$HOME/android-dt/bin:$PATH"
+          cd ~/evolution/device/google/kodiak
+          ./extract-files.py ~/android-dt/dumps/kodiak
+          git -C ~/evolution/vendor/google/kodiak status --short | head -40
+
+      - name: Build images
+        if: inputs.action == 'images' || inputs.action == 'round'
+        run: |
+          # Full log stays on the server, where the HANDOFF grep commands expect it.
+          ~/kodiak-images.sh > ~/kodiak-build.log 2>&1 || true
+          grep -E 'FAILED:|error:' ~/kodiak-build.log | head -40 || true
+          tail -40 ~/kodiak-build.log
+          grep -q '^BUILD_EXIT=0$' ~/kodiak-build.log || { echo "::error::build failed (log: ~/kodiak-build.log)"; exit 1; }
+
+      - name: Build OTA (m evolution)
+        if: inputs.action == 'ota'
+        run: |
+          ~/kodiak-build.sh > ~/kodiak-build.log 2>&1 || true
+          grep -E 'FAILED:|error:' ~/kodiak-build.log | head -40 || true
+          tail -40 ~/kodiak-build.log
+          grep -q '^BUILD_EXIT=0$' ~/kodiak-build.log || { echo "::error::build failed (log: ~/kodiak-build.log)"; exit 1; }
+          ls -lh ~/evolution/out/target/product/kodiak/EvolutionX-*.zip 2>/dev/null | tail -3 || true
+
+      - name: Check SELinux policy against the stock vendor
+        if: contains(fromJSON('["images","check-sepolicy","round","ota"]'), inputs.action)
+        run: |
+          cd ~/evolution
+          device/google/kodiak/check-sepolicy.sh out/host/linux-x86/bin/secilc \
+            out/target/product/kodiak ~/android-dt/dumps/kodiak/vendor | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Pack the fastboot zip
+        if: inputs.action == 'imgzip' || inputs.action == 'round'
+        run: |
+          sha="$(git -C ~/android-dt/trees/device_google_kodiak rev-parse --short HEAD)"
+          zip="/tmp/kodiak-evox-img-$sha.zip"
+          ~/kodiak-imgzip.sh ~/evolution/out/target/product/kodiak \
+            ~/android-dt/firmware/image-kodiak-cd1a.261005.003.zip "$zip"
+          echo "Image zip on the server: \`$zip\` (sha256 in \`$zip.sha256\`). Copy it to the Mac with scp; it never leaves the server otherwise." | tee -a "$GITHUB_STEP_SUMMARY"
