@@ -280,10 +280,12 @@ Follow-ups done after the test:
 | [#17](https://github.com/denson9874/ExpressiveOS/actions/runs/38131554424) | `8cc9b64` | `/tmp/kodiak-evox-img-9190352.zip` | `f7d1122e294800d7985e82914659cc75dcd5133597424e4e5970e200e03c87ed` | **Flash stalled** at `super` 2/10 |
 | [#20](https://github.com/denson9874/ExpressiveOS/actions/runs/38133386540) | `1a10718` | `/tmp/kodiak-evox-img-acd4512.zip` | `0ef682095e5621e279308b6afcd896722fa4e88b9b6fa9c7996f6489de07db15` | Flashed and checked: TPU labels, TPU and camera services, no crashes |
 | [#21](https://github.com/denson9874/ExpressiveOS/actions/runs/38135812562) | `851b0ab` | none | none | Failed in kati: `SCONE-v77459` defined twice. Fixed by `41ea3b5` |
-| built by hand on the server | `41ea3b5` | `/tmp/kodiak-evox-img-e974478.zip` | in the `.sha256` file next to the zip | `BUILD_EXIT=0`; `check-sepolicy.sh: OK` ([#24](https://github.com/denson9874/ExpressiveOS/actions/runs/38138299112)). **Flashed and checked; newest** |
+| built by hand on the server | `41ea3b5` | `/tmp/kodiak-evox-img-e974478.zip` | `3d92c0d6bbdd6ac5d38742302cd07d6bb634c8daa29c381afa65bf90d5639362` | `BUILD_EXIT=0`; `check-sepolicy.sh: OK` ([#24](https://github.com/denson9874/ExpressiveOS/actions/runs/38138299112)). Flashed and checked |
+| built by hand on the server | `fd84141` | `/tmp/kodiak-evox-img-0423cc2.zip` | `1986f295df3efe92bdc76835b2a16df723b202c5446eb1896b8338a5ddfa48b0` | `BUILD_EXIT=0`; `check-sepolicy.sh: OK`. **Flashed and checked; newest** |
 
 Every build except #21 passed with `BUILD_EXIT=0` and `check-sepolicy.sh: OK`. In #20 the six types
-from item 9 below dropped off the unmapped list. A hand-run build holds `~/evolution`, so the
+from item 9 below dropped off the unmapped list, and in `0423cc2` (`fd84141`) `dcservice_app` and
+`turbo_adapter` dropped off the unmapped list too. A hand-run build holds `~/evolution`, so the
 runner's preflight refuses to start on top of one; run #22 hit that.
 
 ### Checked on the phone (build #14)
@@ -300,12 +302,14 @@ runner's preflight refuses to start on top of one; run #22 hit that.
 | `sconed` | not started. That's expected: it's a lazy AIDL service (`disabled oneshot`) that starts when GRIL asks for it |
 | Face unlock, fingerprint unlock | work ✅ |
 
-On `e974478` (the hand-run build of `41ea3b5`):
-- scone runs as `priv_app_36` from `/product/priv-app/SCONE-v77459`, with no crashes.
+On `e974478` (`41ea3b5`) and `0423cc2` (`fd84141`):
+- scone runs as `priv_app_36` from `/product/priv-app/SCONE-v77459`, with no crashes, and `sconed` runs as `u:r:sconed:s0`.
   - `pm get-privapp-permissions` lists about 50 permissions; nothing logs "not in privapp-permissions allowlist".
   - GMS's module brings its own allowlist once it's installed. That's why it printed `{}` before.
   - `configs/permissions/privapp-permissions-kodiak-scone.xml` now overlaps with it; the entries
     combine, so it stays as a backstop.
+- `Tycho` (`com.google.android.apps.tycho`) is installed at `/product/app/Tycho/Tycho.apk` (also gated on `PRODUCT_MANUFACTURER` in `gms_full.mk`).
+- `dcservice_app` (`com.google.android.apps.pixel.dcservice`) and `turbo_adapter` (`com.google.android.turboadapter`) are mapped for the stock vendor policy.
 - The TPU nodes are labelled `edgetpu_device`, and the TPU and camera services are registered.
 
 Not yet done on the latest build: face and fingerprint unlock, the camera, the call re-test and the
