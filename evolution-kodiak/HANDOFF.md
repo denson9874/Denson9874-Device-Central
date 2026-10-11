@@ -10,7 +10,11 @@ Claude is available again. Read all of it before running anything.
 
 > **Update 2026-10-11 (cloud session).** A source-level review against a working
 > LineageOS 24.0 Pixel 11 tree found several more causes for the calls failure and
-> other open issues, and fixed them in the device tree. **Read section 2b before building.**
+> fixed them in the device tree (section 2b).
+>
+> **Voice calls work** (section 2c): two-way audio on T-Mobile VoLTE, tested on the phone
+> with server tree `b16749b` (ExpressiveOS `bd85ff9`). The phone is back on stock-matching
+> CD1A.261005.003 firmware with our build flashed (wiped).
 
 ## 1. Goal
 
@@ -189,6 +193,50 @@ Details: [REEKY_DIFF.md](REEKY_DIFF.md), section 6.
 
 The changes are split into separate commits (telephony SELinux, carrier config/QNS, system_ext services),
 so a regression can be bisected by reverting one.
+
+## 2c. Test round of 2026-10-11 (supersedes 2b's checklist)
+
+Built and packed through the runner (section 11), run
+[#2](https://github.com/denson9874/ExpressiveOS/actions/runs/38103425494):
+- Sync → server tree `b16749b` (ExpressiveOS `evolution/kodiak-port@bd85ff9`). Extract brought in the new blobs.
+- Images built in 14:42, including the VINTF checks.
+- `check-sepolicy.sh`: `OK`, and all 11 new public types mapped for the stock vendor.
+- Zip: `/tmp/kodiak-evox-img-b16749b.zip`, sha256 `c68e716582efb882e8b6640d746c35b14a776bdb2b632637de5eda34e5c7ef65`.
+
+On the phone (phone on CD1A.261005.003, bootloader `spacecraft-17.4-16262255`, slot b, flashed with `fastboot update -w`):
+
+| Check | Result |
+|---|---|
+| ImsStack domain | `u:r:imsstack_app` ✅ (was `platform_app`) |
+| GRIL, RIL extension, modem.pms, EuiccSupportPixel | `grilservice_app`, `rilextensionservice_app`, `pixel_modem_app`, `euiccpixel_app` ✅ |
+| TPU app service, audio parser, gs_watchdogd | running in their own domains ✅ |
+| `IHalAdapterVendorExtension/default` | found ✅ |
+| IMS service | `com.android.imsstack` ✅ |
+| **Voice call** | **connects, two-way audio** ✅. It ended with reasonCode 501 (`CODE_USER_TERMINATED`, local hang-up), where it used to end with 401 |
+| Carrier config from CarrierSettings | not confirmed yet: `cmd phone cc` is denied on this non-debuggable build. Check with `grep -E "CarrierConfigLoader\|CarrierSvcBindHelper" <logcat> \| grep -E "com.google.android.carrier\|carrierconfig"` |
+
+Denials still seen (none touch calls):
+- **`traced_producer` socket writes** from `hal_camera_default`, `mediacodec_google` and `gxp_logging`. These are perfetto tracing only.
+- **`hal_camera_default` can't find `com.google.pixel.camera.services.binder.IServiceBinder/default`.** It's labelled `camera_binder_service` on stock, and provided by Google's camera services app, which we don't ship.
+- **`com.google.android.pixelsystemservice`** runs as `priv_app` and is denied `vendor_intelligence_prop`. It needs stock's `pixelsystemservice_app` domain.
+
+Follow-ups done after the test:
+- `radio.te` dropped the `platform_app` fallback.
+- `check-sepolicy.sh` no longer lists secilc's `base_typeattr_*` names.
+
+**Still to do:**
+- Re-test a call after the `radio.te` change.
+- Run the 3× reboot test.
+- Work through the stock types the vendor names that we still lack, from this round's `check-sepolicy.sh`. Each needs its blob (if any), its policy, and a public declaration under stock's name.
+  - Telephony and satellite: `vendor_satellite_service`, `pixelntnservice_app`, `modem_diagnostic_app`, `mtk_wwan_device`
+  - Display and system: `pixeldisplayservice_app`, `pixelsystemservice_app`, `systemui_app`, `connectivity_thermal_power_manager`, `turbo_adapter`, `brownout_detection_app`, `pixelsupport_app`, `pixelaudioservices_app`, `touchinsights_app`, `ssr_detector_app`, `dcservice_app`, `con_monitor_app`, `better_bug_app`, `factory_ota_app`, `cccdktimesync_app`, `vendor_pcs_app`, `vendor_pbcs_app`
+  - Scone: `sconed`, `scone_aidl_service`
+  - Camera: `google_camera_app`, `debug_camera_app`, `camera_propsetter_app`, `camera_binder_service`, `camera_cameraidremapper_service`, `camera_lyricconfigprovider_service`
+  - TPU: `edgetpu_tachyon_server`, `edgetpu_tachyon_service`, `edgetpu_nnapi_service`, `edgetpu_device`
+  - Face, fingerprint, setup: `hal_face_ext_service`, `device_config_faceauth_native_prop`, `fingerprint_sp_prop`, `setupwizard_feature_prop`
+  - Other: `bluetooth_gci(_exec)`, `gpu_counter_producer(_exec)`, `gnss_config_app`, `google_recorder_app`, `hal_ambience_hub_service`, `ufs_internal_block_device`, `fips_block_device`
+
+  These names are safe to make public: the stock vendor names every one of them, so a public declaration can't bootloop.
 
 ### Other open issues (lower priority)
 
