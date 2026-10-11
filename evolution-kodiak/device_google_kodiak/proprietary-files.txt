@@ -72,7 +72,6 @@ system_ext/priv-app/PixelQualifiedNetworksService/PixelQualifiedNetworksService.
 # (satellite_sos.xml, the Satellite SOS feature declaration, comes from
 # Evolution's GMS, which installs the same path; shipping it here too breaks the
 # build with "overriding commands".)
-product/priv-app/SatelliteGateway-Phone-v96792000/SatelliteGateway-Phone-v96792000.apk;PRESIGNED
 system_ext/priv-app/PixelSatelliteService/PixelSatelliteService.apk
 system_ext/priv-app/VendorImplSatelliteService/VendorImplSatelliteService.apk
 
@@ -100,35 +99,6 @@ system_ext/etc/init/init.gs_watchdogd.rc
 system_ext/bin/sconed
 system_ext/etc/init/sconed.rc
 
-# On-device AI, Scam Detection, Magic Cue, and Device Intelligence. Evolution's
-# vendor/gms ships the privapp-permissions, sysconfig, and role overlays for
-# AICore (com.google.android.aicore), Pixel Sense / Magic Cue
-# (com.google.android.apps.pixel.psi), Pixel AI / Screenshots
-# (com.google.android.apps.pixel.agent), Creative Assistant, and Ambient
-# Streaming, but does not ship their /product/priv-app APK stubs. Without the
-# stubs in /product/priv-app, Play Store installs in /data/app lack FLAG_SYSTEM
-# and FLAG_PRIVILEGED, so PackageManager denies their privapp-permissions,
-# RoleManager denies SYSTEM_VENDOR_INTELLIGENCE, and PccSandboxManager denies
-# PCC sandbox process starts.
-product/priv-app/AICorePrebuilt-aicore_20260302.01_RC00/AICorePrebuilt-aicore_20260302.01_RC00.apk;PRESIGNED
-product/priv-app/AmbientStreaming/AmbientStreaming.apk;PRESIGNED
-product/priv-app/CreativeAssistant/CreativeAssistant.apk;PRESIGNED
-product/priv-app/PixelAIPrebuilt/PixelAIPrebuilt.apk;PRESIGNED
-product/priv-app/PixelSensePrebuilt/PixelSensePrebuilt.apk;PRESIGNED
-
-# Hotword and Now Playing
-product/app/NowPlayingPrebuilt/NowPlayingPrebuilt.apk;PRESIGNED
-product/etc/ambient/matcher_tah.leveldb
-product/etc/firmware/music_detector.descriptor
-product/etc/firmware/music_detector.sound_model
-product/etc/firmware/music_detector.sound_model_tflite
-product/etc/sysconfig/nowplaying_app_26q1.xml
-product/priv-app/HotwordEnrollmentOKGoogleFUSIONPro/HotwordEnrollmentOKGoogleFUSIONPro.apk;PRESIGNED
-product/priv-app/HotwordEnrollmentXGoogleFUSIONPro/HotwordEnrollmentXGoogleFUSIONPro.apk;PRESIGNED
-system_ext/etc/permissions/com.android.hotwordenrollment.common.util.xml
-system_ext/etc/sysconfig/preinstalled-packages-hotword-google-fusion-pro.xml
-system_ext/framework/com.android.hotwordenrollment.common.util.jar
-
 # Camera extension and Pixel camera libraries. Google Camera and Pixel Camera
 # Services declare these as optional shared libraries. Every declaration points
 # at one of the jars below, so none names a missing file.
@@ -136,9 +106,6 @@ product/etc/permissions/androidx.camera.extensions.impl.xml
 product/etc/permissions/com.google.pixel.camera.connectivity.impl.xml
 product/etc/permissions/com.google.pixel.camera.services.cameraidremapper.impl.xml
 product/etc/permissions/com.google.pixel.camera.services.lyricconfigprovider.impl.xml
-product/etc/sysconfig/preinstalled-packages-camera-services-base.xml
-product/etc/sysconfig/preinstalled-packages-camera-services-common.xml
-product/priv-app/PixelCameraServices/PixelCameraServices.apk;PRESIGNED
 system_ext/etc/permissions/com.google.android.camera.extensions.xml
 system_ext/etc/permissions/com.google.android.camerax.extensions.xml
 system_ext/etc/permissions/com.google.pixel.camera.connectivity.xml
