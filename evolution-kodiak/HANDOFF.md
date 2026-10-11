@@ -363,7 +363,11 @@ The vendor is stock and prebuilt; only system, system_ext and product are ours.
 1. **Adaptive Connectivity Services (`com.google.android.apps.scone`) keeps stopping.**
    - Cause: it's installed from Play as an ordinary app (`untrusted_app`) and crashes on
      `READ_PRIVILEGED_PHONE_STATE`.
-   - **Fix, in the build after #20:** ship stock's privileged copy, `product/priv-app/SCONE-v77459` (PRESIGNED).
+   - **Fix, in the build after #20:** install `SCONE-v77459` via `PRODUCT_PACKAGES` in `device.mk`
+     (`vendor/gms` already defines the prebuilt module in `Android.mk`, so adding it to
+     `proprietary-files.txt` fails in kati with duplicate module `SCONE-v77459`; `gms_full.mk`
+     skipped `PRODUCT_PACKAGES += SCONE-v77459` only because `PRODUCT_MANUFACTURER` is unset
+     inside `inherit-product`).
      - Evolution's GMS had no allowlist entry for it (`pm get-privapp-permissions` printed `{}`), so
        `configs/permissions/privapp-permissions-kodiak-scone.xml` adds the platform privileged
        permissions stock's SCONE requests.
