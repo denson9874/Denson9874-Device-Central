@@ -97,9 +97,13 @@ ifneq ($(KODIAK_DEV_ADB_KEYS),)
 PRODUCT_ADB_KEYS := $(KODIAK_DEV_ADB_KEYS)
 endif
 
-# Adaptive Connectivity Services (SCONE): stock's privileged app, from
-# proprietary-files.txt. Its privileged-permission allowlist and stock's
-# sysconfig entries for it, which Evolution's GMS doesn't carry.
+# Adaptive Connectivity Services (SCONE): vendor/gms defines SCONE-v77459 in
+# Android.mk, but gms_full.mk's PRODUCT_MANUFACTURER filter doesn't match inside
+# inherit-product. Install it from here, along with its privileged-permission
+# allowlist and stock's sysconfig entries.
+PRODUCT_PACKAGES += \
+    SCONE-v77459
+
 PRODUCT_COPY_FILES += \
     device/google/kodiak/configs/permissions/privapp-permissions-kodiak-scone.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/privapp-permissions-kodiak-scone.xml \
     device/google/kodiak/configs/sysconfig/kodiak-scone.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/sysconfig/kodiak-scone.xml

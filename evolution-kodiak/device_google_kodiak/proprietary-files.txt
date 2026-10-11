@@ -132,9 +132,3 @@ system_ext/priv-app/PixelDisplayService/PixelDisplayService.apk
 # Policy: vendor_pbcs_app.te.
 system_ext/app/PersistentBackgroundCameraServices/PersistentBackgroundCameraServices.apk
 system_ext/etc/vintf/manifest/com.google.pixel.camera.services@1.0-service-google.xml
-
-# Adaptive Connectivity Services (SCONE). Stock ships it as a privileged app.
-# Installed from Play it runs as an ordinary app and crashes on
-# READ_PRIVILEGED_PHONE_STATE. Keeps Google's signature. Its allowlist and
-# sysconfig are in configs/ (device.mk).
-product/priv-app/SCONE-v77459/SCONE-v77459.apk;PRESIGNED
