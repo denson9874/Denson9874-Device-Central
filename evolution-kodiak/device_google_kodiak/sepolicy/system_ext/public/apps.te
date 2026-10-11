@@ -18,4 +18,6 @@ type euiccpixel_app, domain;
 type grilservice_app, domain;
 type imsstack_app, domain;
 type pixel_modem_app, domain;
+type pixelntnservice_app, domain;
 type rilextensionservice_app, domain;
+type vendor_satellite_service, domain;
