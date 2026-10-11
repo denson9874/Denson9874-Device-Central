@@ -51,8 +51,12 @@ Open issues:
 - 119 SELinux denials on the first boot, most from the camera HAL (44), so
   the camera needs checking.
 - `edgetpu_vendor_service` and `hal_wlcservice` (wireless charging) are
-  stopped.
+  stopped. The TPU app service is now shipped (2026-10-11, not yet tested).
 - Google's product overlays aren't shipped; signing uses test keys.
+- Voice calls: see [HANDOFF.md](HANDOFF.md) section 2b. The 2026-10-11 review
+  found that stock vendor SELinux rules for Google's telephony apps never
+  applied, and that carrier config ignored CarrierSettings. Both are fixed in the
+  tree but not yet built or tested.
 
 ## Workspace (build server)
 

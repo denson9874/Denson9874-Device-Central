@@ -133,6 +133,41 @@ It's newer and authoritative; for imsstack_app, Reeky has 113 references and sto
 | `adb_root` and `init.kodiak.adbroot.rc` | Debug conveniences, not for shipped builds |
 | Lineage HALs (touch, health, powershare) | Optional |
 
+### 6. Update 2026-10-11: source-level comparison through the yogi tree
+
+Reeky's GitHub ([Reeky-ux](https://github.com/Reeky-ux)) still has only the kernel
+(`lineage_kernel_google_kodiak`). An open issue there asks for the device tree, and it has had no answer. The closest
+published source is [asdfmonster261/android_device_google_yogi](https://github.com/asdfmonster261/android_device_google_yogi)
+plus its vendor repo. That's LineageOS 24.0 for the Pixel 11 Pro Fold: same malibu SoC, MediaTek T900 modem and telephony
+blobs, and the same base as Evolution X cnb. It's built the way Reeky's is (vendor from source), and its
+`sepolicy/vendor/device_allow.te` was generated from the stock compiled policy, so it shows which stock rules name which
+domains. (The `0xnullsect0r/android_device_google_{kodiak,malibu,spacecraft}` repos are unmodified forks of the Pixel 10
+trees, so they don't help.)
+
+Its findings confirm sections 1 and 3, with one addition that matters for a **stock vendor** like ours:
+- The stock vendor policy grants Google's system_ext domains their HAL access, e.g.
+  `imsmediahaldaemon imsstack_app:udp_socket`, `grilservice_app rild:binder`,
+  `rilextensionservice_app hal_ril_ext_service`, `pixel_modem_app shared_modem_platform`.
+- With a prebuilt vendor these reach our build only through the system_ext mapping file. So the types must be
+  declared in **system_ext public** policy, under stock's names. Defining them privately would compile, but every
+  stock vendor rule would stay dead.
+- The reverse is a bootloop: a public type that stock's vendor doesn't know leaves an unresolved `typeattributeset`
+  (tested with secilc 3.9). Only types a vendor rule provably names are public. `check-sepolicy.sh` now reports both sides.
+
+What was adopted (device tree commits of 2026-10-11; see HANDOFF section 2b):
+- Section 1: already in; `radio.te` now targets `imsstack_app`.
+- Section 2: the TPU app service, the audio HAL parser service (`ro.audio.ihaladaptervendorextension_enabled` was
+  already set, so audioserver expected it), `gs_watchdogd`, QNS and `init.pms.rc`.
+- Section 3: `imsstack_app`, `grilservice_app`, `pixel_modem_app`, `rilextensionservice_app`, `euiccpixel_app`,
+  `edgetpu_app_server`, `hal_audio_parameter_parser`, `gs_watchdogd`, and stock's system_ext property labels.
+  GRIL, the RIL extension and modem.pms are re-signed with the platform key so seapp can match them on
+  `seinfo=platform`, as yogi does.
+- Section 4: `platform_carrier_config_package` = `com.google.android.carrier` (this was missing, so the shipped
+  CarrierSettings was unused), plus the telephony values from stock's framework-res product RRO.
+
+Still open: `vendor_ims_app` and the satellite domains, scone/mosey, PixelDisplayService, camera extensions, and the
+non-telephony product RROs.
+
 ## Suggested order
 
 1. **The calls test round:** do section 1 alone, so the result is clear.

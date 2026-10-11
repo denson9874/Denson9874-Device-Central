@@ -1,0 +1,14 @@
+# Google's IHalAdapterVendorExtension service. audioserver hands it vendor
+# parameters because system_ext.prop sets
+# ro.audio.ihaladaptervendorextension_enabled, as stock does.
+type hal_audio_parameter_parser, domain, coredomain;
+type hal_audio_parameter_parser_exec, exec_type, file_type, system_file_type;
+type hal_audio_parameter_parser_service, service_manager_type;
+
+init_daemon_domain(hal_audio_parameter_parser)
+typeattribute hal_audio_parameter_parser binderservicedomain;
+binder_call(hal_audio_parameter_parser, servicemanager)
+add_service(hal_audio_parameter_parser, hal_audio_parameter_parser_service)
+
+binder_call(audioserver, hal_audio_parameter_parser)
+allow audioserver hal_audio_parameter_parser_service:service_manager find;

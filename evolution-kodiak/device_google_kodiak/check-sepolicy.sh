@@ -5,7 +5,8 @@
 #
 # Compile the split SELinux policy the way init does at boot (init/selinux.cpp),
 # combining a system/system_ext/product tree with the stock vendor policy.
-# A failure here is a guaranteed bootloop with a prebuilt vendor.
+# A failure here is a guaranteed bootloop with a prebuilt vendor. It then lists
+# which Google system_ext types the stock vendor rules reach in this build.
 #
 #   check-sepolicy.sh <secilc> <root-with-system,system_ext,product> <vendor-root>
 #
@@ -33,6 +34,33 @@ for p in "$sext/system_ext_sepolicy.cil" "$sext/mapping/$vers.cil" \
     [[ -f "$p" ]] && args+=("$p")
 done
 
-out="$(mktemp)"; trap 'rm -f "$out"' EXIT
+out="$(mktemp)"; tmp="$(mktemp -d)"; trap 'rm -rf "$out" "$tmp"' EXIT
 "$secilc" -m -M true -G -N -c 30 "${args[@]}" -o "$out" -f /dev/null
 echo "OK: split policy compiles against vendor $vers ($(stat -c %s "$out") bytes)"
+
+# The stock vendor policy names system-side types through versioned attributes
+# (foo_<vers>). Only the ones a system or system_ext mapping file maps to a real
+# type do anything; rules on the rest are dead. Report which Google system_ext
+# domains our build provides to the stock vendor rules and which it still lacks.
+v="${vers//./_}"
+[[ -f "$sext/mapping/$vers.cil" ]] || \
+    echo "WARN: no $sext/mapping/$vers.cil: stock vendor rules for Google system_ext types can't apply"
+{ cat "$sys/mapping/$vers.cil" "$sext/mapping/$vers.cil" "$prod/mapping/$vers.cil" 2>/dev/null || true; } |
+    { grep -oE "\(typeattributeset [A-Za-z0-9_]+_$v " || true; } | awk '{print $2}' | sort -u > "$tmp/mapped"
+{ grep -oE "[A-Za-z0-9_]+_$v\b" "$ven/vendor_sepolicy.cil" || true; } | sort -u > "$tmp/used"
+comm -12 "$tmp/used" "$tmp/mapped" | grep -E "^($(paste -sd'|' <<'TYPES'
+euiccpixel_app
+grilservice_app
+imsstack_app
+pixel_modem_app
+rilextensionservice_app
+edgetpu_app_server
+edgetpu_app_service
+ims_prop
+system_ril_ext_prop
+telephony_ril_ntn_sim_deact_prop
+telephony_ntn_demo_mode_prop
+TYPES
+))_$v\$" | sed "s/_$v\$//" | paste -sd' ' | sed 's/^/mapped for the stock vendor: /; s/: $/: (none)/' || true
+unmapped="$(comm -23 "$tmp/used" "$tmp/mapped" | sed "s/_$v\$//" | paste -sd' ')"
+[[ -z "$unmapped" ]] || echo "unmapped (stock vendor rules on these are dead): $unmapped"
