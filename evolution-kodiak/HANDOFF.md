@@ -16,6 +16,14 @@ Claude is available again. Read all of it before running anything.
 > with server tree `b16749b` (ExpressiveOS `bd85ff9`). The phone is back on stock-matching
 > CD1A.261005.003 firmware with our build flashed (wiped).
 
+> **Update 2026-10-11, about 11:00 UTC. Read section 2d first.** It lists every fix made
+> since 2c, the phone's state, and the rules for changing this tree without undoing them.
+> **The phone is mid-flash.** `fastboot update` of `kodiak-evox-img-9190352.zip` stalled at
+> `Sending sparse 'super' 2/10`, and the Mac can no longer reach the phone. Section 2d
+> covers recovery: no wipe, no lock, no bootloader or firmware flash.
+> **Build from `claude/wizardly-hopper-gnqtlx` (PR #5), not `evolution/kodiak-port`.**
+> The base branch doesn't build until PR #5 merges.
+
 ## 1. Goal
 
 Make a working **Evolution X 17** (Android 17, branch `cnb`, LineageOS-based)
@@ -252,6 +260,149 @@ Follow-ups done after the test:
   so use **source RROs** in the device tree, as with `rro_overlays/TeleServiceOverlayKodiak`.
 - Distribution needs: release keys (it's test-keys now), `WITH_AVB` / verified boot
   (vbmeta uses `--flags 3` now), and `m evolution` for the OTA zip.
+
+## 2d. State as of 2026-10-11, about 11:00 UTC (supersedes 2c's "Still to do")
+
+### Branches and builds
+
+- `evolution/kodiak-port` (base) has PR #3 merged: the satellite services and the narrower `radio.te`.
+  **It doesn't build on its own.** PR #3 shipped stock's `product/etc/sysconfig/satellite_sos.xml`,
+  which Evolution's GMS also installs, and kati fails with "overriding commands".
+- **PR #5, branch `claude/wizardly-hopper-gnqtlx`,** has everything below, including that fix.
+  Build and sync from this branch until it merges.
+- Builds go through the runner (section 11): `action: round`, `tree_ref: claude/wizardly-hopper-gnqtlx`.
+  The zip is named after the **server** tree's commit (`~/android-dt/trees/device_google_kodiak`),
+  not the ExpressiveOS commit.
+
+| Runner run | ExpressiveOS commit | Zip on the server | sha256 | State |
+|---|---|---|---|---|
+| [#14](https://github.com/denson9874/ExpressiveOS/actions/runs/38109019533) | `9d13062` | `/tmp/kodiak-evox-img-45a812a.zip` | `bd22199bf63657e8227bd944bbf766169ef74dedf36ef6dba99c522832306934` | Flashed and checked (table below) |
+| [#17](https://github.com/denson9874/ExpressiveOS/actions/runs/38131554424) | `8cc9b64` | `/tmp/kodiak-evox-img-9190352.zip` | `f7d1122e294800d7985e82914659cc75dcd5133597424e4e5970e200e03c87ed` | **Flash stalled** at `super` 2/10 |
+| [#20](https://github.com/denson9874/ExpressiveOS/actions/runs/38133386540) | `1a10718` | see the run's summary | in the `.sha256` file next to the zip | Building at the time of writing. **Newest: flash this one** |
+
+Each run passed with `BUILD_EXIT=0` and `check-sepolicy.sh: OK`. #20 is the exception, still building
+when this was written.
+
+### Checked on the phone (build #14)
+
+| Check | Result |
+|---|---|
+| Voice call (T-Mobile VoLTE) | two-way audio ✅ (since 2c) |
+| ImsStack | `imsstack_app` ✅ |
+| PixelSystemService (both processes) | `pixelsystemservice_app` ✅ |
+| PixelDisplayService | `pixeldisplayservice_app` ✅ |
+| Satellite (`com.google.android.satellite`, `com.mediatek.satellite.service`) | `pixelntnservice_app`, `vendor_satellite_service` ✅ |
+| Google Camera | `google_camera_app` ✅ |
+| `com.google.pixel.camera.services` | right domain (`vendor_pbcs_app`), but it **crash-looped** with "VINTF declaration error". Fixed in #17 |
+| `sconed` | not started. That's expected: it's a lazy AIDL service (`disabled oneshot`) that starts when GRIL asks for it |
+| Face unlock, fingerprint unlock | work ✅ |
+
+Not yet done on the latest build: the call re-test and the 3× reboot test.
+
+### Fixed. Don't revert these
+
+Every file is under `device_google_kodiak/`. Each item names the symptom that comes back if it's undone.
+
+1. **IMS domain** (`sepolicy/system_ext/private/seapp_contexts`, `imsstack_app.te`, `radio.te`):
+   `com.android.imsstack` matched with `isPrivApp=true seinfo=platform` into `imsstack_app`.
+   Without it, calls fail with reasonCode 401, because the stock vendor's imsmediahaldaemon rules
+   only name `imsstack_app`. `radio.te` only keeps `radio → imsstack_app:udp_socket`.
+2. **Telephony app domains** (seapp_contexts, `public/apps.te`, private `*.te`):
+   GRIL, RIL extension, modem.pms (`seinfo=platform`), and EuiccSupportPixel (its own signer in
+   `mac_permissions.xml`).
+3. **Satellite:** `PixelSatelliteService.apk` and `VendorImplSatelliteService.apk` (re-signed),
+   with `pixelntnservice_app.te` and `vendor_satellite_service.te`.
+   **Don't add `product/etc/sysconfig/satellite_sos.xml`.** Evolution's GMS ships it.
+4. **scone:** `system_ext/bin/sconed` + `sconed.rc`, `sconed.te`, `scone_system_internals.te`,
+   and the `ISconeNetDaemon` service label. `sconed_exec` stays **private**.
+5. **PixelDisplayService:** the APK (re-signed) + `libpixeldisplaymanager_jni.so`, and `pixeldisplayservice_app.te`.
+6. **PixelSystemService:** `pixelsystemservice_app.te` and its contextual-awareness property.
+   The app comes from Evolution's GMS, signed with a key the stock vendor doesn't map.
+   `mac_permissions.xml` maps that certificate to `seinfo=pixelsystemservice` (signature hash
+   `e0926b9d`), and `seapp_contexts` matches both `platform` and `pixelsystemservice`.
+7. **Camera:**
+   - `PersistentBackgroundCameraServices.apk`: re-signed, `uid.system`, so it must **not** be `PRESIGNED`.
+   - `vendor_pbcs_app.te`, `google_camera_app.te`, `vendor_pcs_app.te`, and `public/camera_services.te`.
+   - The camera extension libraries and their permission XMLs.
+   - `system_ext/etc/vintf/manifest/com.google.pixel.camera.services@1.0-service-google.xml`.
+     **Without that manifest, the camera services app crash-loops** ("VINTF declaration error").
+   - Google Camera and Pixel Camera Services come from Play. The stock vendor's `mac_permissions.xml`
+     maps their signers to `google` and `CameraServices`, so `seapp_contexts` matches those seinfos.
+8. **Properties:** stock labels for
+   - `device_config_faceauth_native_prop` (`persist.device_config.pixel_faceauth.`; system_server sets it)
+   - `fingerprint_sp_prop`
+   - `setupwizard_feature_prop`
+   - `ims_prop`, the rilext/ntn props and `sota_prop` (since 2b)
+9. **TPU and face extension** (#20, `public/edgetpu.te`, `public/hal_face_ext.te`):
+   `edgetpu_device`, `edgetpu_nnapi_service`, `edgetpu_tachyon_service` and `hal_face_ext_service`,
+   with stock's attributes.
+   - The stock vendor labels `/dev/edgetpu-soc` and `/dev/edgetpu-limited` with `edgetpu_device`,
+     and the TPU services with the two service types. Before #20, those labels named types our policy lacked.
+   - After flashing #20, `adb shell ls -lZ /dev/edgetpu*` should show `edgetpu_device`.
+
+### Rules for changing the SELinux policy
+
+The vendor is stock and prebuilt; only system, system_ext and product are ours.
+- **A type goes in `sepolicy/system_ext/public` only if the stock vendor policy names it.**
+  A public type the vendor doesn't know adds a mapping entry the vendor can't resolve, and the
+  phone **bootloops**. Exec types and helper types stay in `private/`.
+- `check-sepolicy.sh` (the runner runs it after every build) compiles the policy against the
+  stock vendor. It must print `OK`.
+  - Its "unmapped" list is the stock vendor types we still don't define. Making one of them
+    public is safe.
+- Re-signed apps (no `;PRESIGNED` in `proprietary-files.txt`) carry our platform key, so their
+  `seapp_contexts` entries use `seinfo=platform`. Apps keeping Google's signature need the seinfo
+  their signer maps to.
+- Don't ship a stock file Evolution's GMS already installs. Kati fails with "overriding commands".
+- Offline compile check, before pushing: m4 + checkpolicy 3.9 against LineageOS 24.0
+  `system/sepolicy` + `device/lineage/sepolicy`. Baseline neverallow failures are expected; new
+  ones aren't.
+
+### Open issues (in priority order)
+
+1. **Adaptive Connectivity Services (`com.google.android.apps.scone`) keeps stopping.**
+   - Cause: it's installed from Play as an ordinary app (`untrusted_app`) and crashes on
+     `READ_PRIVILEGED_PHONE_STATE`. Stock ships it as a privileged app: `product/priv-app/SCONE-v77459/SCONE-v77459.apk`, PRESIGNED.
+   - Fix (not done): ship that APK. But first confirm its privileged permissions are allowlisted,
+     because a missing allowlist entry stops a clean flash from booting. Run
+     `pm get-privapp-permissions com.google.android.apps.scone` and
+     `getprop ro.control_privapp_permissions` on the phone. If Evolution's GMS doesn't allowlist
+     scone, copy stock's entry.
+   - Workaround: Settings → Apps → Adaptive Connectivity Services → Disable.
+2. Call re-test and the 3× reboot test on the newest build.
+3. The rest of `check-sepolicy.sh`'s unmapped list. Most are Pixel debug, factory or
+   internal apps we don't ship. Worth a look:
+   - `systemui_app`: stock runs SystemUI in its own domain.
+   - `pixelaudioservices_app`
+   - `connectivity_thermal_power_manager`
+   - `turbo_adapter`
+   - `bluetooth_gci`: a stock system_ext daemon we don't ship.
+   - `hal_ambience_hub_service`
+4. Noise, safe to ignore:
+   - `hal_camera_default` writing `traced_producer`. Stock's policy doesn't allow it either.
+   - Two `hal_camera_default` reads of `default_prop`. No log names the property.
+
+### Phone recovery (the flash stalled on 2026-10-11)
+
+- Our zip doesn't touch the bootloader. A half-written `super` only stops Android from booting.
+  Re-running the same no-wipe flash fixes it.
+- Steps:
+  1. Force the bootloader: hold **Power + Volume Down** for about 15 s.
+  2. Use a different cable, and plug straight into the Mac (no hub or dock).
+  3. Use a current Google platform-tools `fastboot`.
+  4. Check with `fastboot devices`.
+  5. Run `fastboot update <zip>`, without `-w`.
+  If it stops in fastbootd (the recovery-style screen), `fastboot reboot bootloader` and run it again.
+- **Never:**
+  - `fastboot flashing lock` (locking with these images leaves a phone that won't boot)
+  - `-w`, `fastboot erase`, or a wipe
+  - a bootloader or radio flash
+  - changing the active slot
+  - Android Flash Tool's "Wipe" option
+  Each of these needs Daryl's explicit OK.
+- Last resort, only with Daryl's OK: Android Flash Tool, stock `CD1A.261005.003`.
+  - Untick **Wipe device** to keep data, and leave **Lock bootloader** unticked.
+  - Going from our build back to stock without a wipe may still need a wipe to boot.
 
 ## 3. Machines and access
 
