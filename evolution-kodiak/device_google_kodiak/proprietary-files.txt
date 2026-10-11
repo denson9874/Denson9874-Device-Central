@@ -55,6 +55,12 @@ system_ext/priv-app/ril-extension/ril-extension.apk
 
 # Radio config
 system_ext/etc/permissions/com.android.omadm.radioconfig.xml
-system_ext/etc/permissions/com.android.qns.xml
 system_ext/etc/vintf/radio_framework_compatibility_matrix_system_ext
 system_ext/framework/RadioConfigLib.jar
+
+# Qualified Networks Service: picks cellular or IWLAN for IMS (Wi-Fi calling
+# handover). FrameworkResOverlayKodiak points
+# config_qualified_networks_service_package at it, as stock's product RRO does.
+# It runs as android.uid.system, so it must NOT be PRESIGNED.
+system_ext/etc/permissions/com.android.qns.xml
+system_ext/priv-app/PixelQualifiedNetworksService/PixelQualifiedNetworksService.apk

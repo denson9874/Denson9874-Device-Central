@@ -21,6 +21,7 @@ PRODUCT_SHIPPING_API_LEVEL := 37
 # LineageOS laguna). The rest of the Pixel telephony stack, including
 # PixelImsMediaService, is stock blobs.
 PRODUCT_PACKAGES += \
+    FrameworkResOverlayKodiak \
     ImsStack \
     Iwlan \
     PixelImsMediaServiceOverlayKodiak \
