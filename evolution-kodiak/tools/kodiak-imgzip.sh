@@ -5,8 +5,16 @@
 # super layout as BoardConfig.mk), because this tree doesn't build one.
 #
 #   kodiak-imgzip.sh <product-out> <image-kodiak-*.zip> <output.zip>
+#
+# Root for test builds: KODIAK_ROOT=magisk (or the word "magisk" in
+# ~/.kodiak-root) swaps in a Magisk-patched init_boot made by
+# ~/kodiak-magisk-patch.sh. KODIAK_ROOT=none forces an unrooted zip.
+# out/ is never modified, and the release OTA (m evolution) doesn't use
+# this script.
 set -euo pipefail
 out="$(cd "$1" && pwd)"; factory="$2"; zip_out="$3"
+root="${KODIAK_ROOT:-$(cat ~/.kodiak-root 2>/dev/null || true)}"
+root="${root:-none}"
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 
 for img in boot init_boot dtbo pvmfw vendor_boot vbmeta vbmeta_system \
@@ -23,6 +31,18 @@ else
     grep -v -- '--slot-other system system_other.img' "$out/fastboot-info.txt" > "$work/fastboot-info.txt"
 fi
 unzip -q -o -j "$factory" super_empty.img -d "$work"
+
+case "$root" in
+    none) ;;
+    magisk)
+        # init_boot.img in $work is a hard link to out/: replace it, don't edit it.
+        rm -f "$work/init_boot.img"
+        ~/kodiak-magisk-patch.sh "$out/init_boot.img" "$work/init_boot.img" | grep "^OK:"
+        echo "init_boot.img is Magisk-patched (kodiak-magisk-patch.sh). To remove root, flash the unpatched out/init_boot.img to init_boot." > "$work/ROOT.txt"
+        echo "ROOT: magisk"
+        ;;
+    *) echo "unknown KODIAK_ROOT=$root (use magisk or none)" >&2; exit 1 ;;
+esac
 
 rm -f "$zip_out"
 (cd "$work" && zip -q -0 "$zip_out" ./*)
