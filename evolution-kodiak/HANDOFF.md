@@ -26,7 +26,7 @@ Its operating rules still apply (see section 9).
 
 | Area | Status |
 |---|---|
-| Builds | ✅ `user` variant, test-keys |
+| Builds | ✅ `user` variant, signed with our own private keys (`vendor/evolution-priv/keys`, not AOSP test keys) |
 | Boots | ✅ first boot after each flash (since the 2 fixes below) |
 | Display, touch, fingerprint, Wi-Fi, camera, SMS | ✅ reported working by Daryl |
 | Cellular registration | ✅ T-Mobile, voice and data `IN_SERVICE` (LTE / NR SA) |
@@ -785,6 +785,29 @@ Daryl keeps them on his own phone through a **private add-on**:
 **Test builds are therefore:** official tree + personal extras + Magisk (`~/.kodiak-root`).
 **Release builds are:** official tree only.
 If an official build is ever made on this server, check that neither `KODIAK_PERSONAL` nor `~/.kodiak-root` applies.
+
+## 2h. First public release (2026-10-11)
+
+- **XDA thread:** https://xdaforums.com/t/rom-unofficial-17-kodiak-evolution-x-12-3-android-17-for-the-pixel-11-pro-xl.4804712/
+  - Forum: Google Pixel 11 Pro / Pro XL, prefix Development, posted as denson9874.
+  - Source: `evolution-kodiak/XDA_POST.bbcode`.
+- **Download:** https://sourceforge.net/projects/denson9874-s-user-builds/files/kodiak/17/
+  - `EvolutionX-17.0-20261011-kodiak-12.3-Unofficial-fastboot.zip` (5,162,799,375 bytes, sha256 `92c22a52…e62efe`;
+    SourceForge's own SHA-256 matches), plus `.sha256`.
+  - SourceForge user `daryldenson0405`, project `denson9874-s-user-builds`.
+  - Uploaded from the server with `~/.ssh/sourceforge_ed25519`, which was already registered from the husky uploads.
+  - New uploads take a few minutes to appear on the public pages. curl always gets 403 from SourceForge, so check
+    in a browser.
+- **What it is:** a fastboot image zip of the official tree only (no personal extras, not rooted), signed with our
+  private keys. No firmware: users must already be on CD1A.261005.003.
+- **How to make the next one:**
+  1. `~/kodiak-release-images.sh`, which unsets `KODIAK_PERSONAL`.
+  2. `~/kodiak-release-pack.sh --upload`. It checks for personal apps, sepolicy, no root, and the vbmeta boot patch
+     level, and refuses to upload otherwise. Copies of both are in `tools/`.
+- **Rebuild your test zip afterwards:** the release build overwrites `out/` with the non-personal tree, so run
+  `~/kodiak-images.sh` before packing another test zip.
+- **Daryl's own phone** gets `kodiak-evox-img-4021403-personal.zip` (rooted, plus extras; in `~/Downloads/kodiak-evox`,
+  sha256 `8ad8bfc9…`). Not flashed yet at the time of writing.
 
 ## 3. Machines and access
 

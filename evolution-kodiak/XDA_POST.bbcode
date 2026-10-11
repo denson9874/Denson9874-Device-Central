@@ -1,3 +1,4 @@
+Posted: https://xdaforums.com/t/rom-unofficial-17-kodiak-evolution-x-12-3-android-17-for-the-pixel-11-pro-xl.4804712/ (2026-10-11)
 Title: [ROM][UNOFFICIAL][17][kodiak] Evolution X 12.3 (Android 17) for the Pixel 11 Pro XL
 
 [CENTER][SIZE=6][B]Evolution X 12.3 — Android 17[/B][/SIZE]
@@ -12,6 +13,8 @@ Title: [ROM][UNOFFICIAL][17][kodiak] Evolution X 12.3 (Android 17) for the Pixel
 
 [SIZE=5][B]About[/B][/SIZE]
 An unofficial build of Evolution X 12.3 on Android 17 for the Pixel 11 Pro XL. Google hasn't published vendor sources for the Tensor G6, so this build keeps the stock vendor, kernel and firmware from the October 2026 factory image and builds everything else from source.
+
+[B]For the Pixel 11 Pro XL (kodiak) only.[/B] Don't flash it on the Pixel 11 Pro (grizzly) or any other model.
 
 This is [B]not[/B] an official Evolution X build. Please don't report its bugs to the Evolution X team; report them in this thread or on GitHub.
 
@@ -53,19 +56,19 @@ This is [B]not[/B] an official Evolution X build. Please don't report its bugs t
 Download the ROM zip and check its SHA-256, then:
 [CODE]
 adb reboot bootloader
-fastboot -w update EvolutionX-17.0-__DATE__-kodiak-12.3-Unofficial-fastboot.zip
+fastboot -w update EvolutionX-17.0-20261011-kodiak-12.3-Unofficial-fastboot.zip
 [/CODE]
 [B]-w wipes all your data.[/B] fastboot switches to fastbootd partway through to flash the dynamic partitions; leave the phone plugged in until it reboots by itself (a few minutes). The first boot takes a few minutes more.
 
 [B]Updating[/B] from an earlier build of this ROM (keeps your data):
 [CODE]
 adb reboot bootloader
-fastboot update EvolutionX-17.0-__DATE__-kodiak-12.3-Unofficial-fastboot.zip
+fastboot update EvolutionX-17.0-20261011-kodiak-12.3-Unofficial-fastboot.zip
 [/CODE]
 
 [SIZE=5][B]Downloads[/B][/SIZE]
 [LIST]
-[*]ROM zip (SourceForge): [URL]__SOURCEFORGE_URL__[/URL]
+[*]ROM zip (SourceForge): [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/kodiak/17/]SourceForge: kodiak/17[/URL]
 [*]SHA-256 checksums: in the SourceForge folder
 [/LIST]
 
