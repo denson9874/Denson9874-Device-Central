@@ -278,10 +278,10 @@ Follow-ups done after the test:
 |---|---|---|---|---|
 | [#14](https://github.com/denson9874/ExpressiveOS/actions/runs/38109019533) | `9d13062` | `/tmp/kodiak-evox-img-45a812a.zip` | `bd22199bf63657e8227bd944bbf766169ef74dedf36ef6dba99c522832306934` | Flashed and checked (table below) |
 | [#17](https://github.com/denson9874/ExpressiveOS/actions/runs/38131554424) | `8cc9b64` | `/tmp/kodiak-evox-img-9190352.zip` | `f7d1122e294800d7985e82914659cc75dcd5133597424e4e5970e200e03c87ed` | **Flash stalled** at `super` 2/10 |
-| [#20](https://github.com/denson9874/ExpressiveOS/actions/runs/38133386540) | `1a10718` | see the run's summary | in the `.sha256` file next to the zip | Building at the time of writing. **Newest: flash this one** |
+| [#20](https://github.com/denson9874/ExpressiveOS/actions/runs/38133386540) | `1a10718` | `/tmp/kodiak-evox-img-acd4512.zip` | `0ef682095e5621e279308b6afcd896722fa4e88b9b6fa9c7996f6489de07db15` | Built. **Newest: flash this one** |
 
-Each run passed with `BUILD_EXIT=0` and `check-sepolicy.sh: OK`. #20 is the exception, still building
-when this was written.
+All three passed with `BUILD_EXIT=0` and `check-sepolicy.sh: OK`. In #20 the six types from item 9
+below dropped off the unmapped list.
 
 ### Checked on the phone (build #14)
 
