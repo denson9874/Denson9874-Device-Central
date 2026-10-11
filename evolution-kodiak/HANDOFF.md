@@ -213,7 +213,7 @@ On the phone (phone on CD1A.261005.003, bootloader `spacecraft-17.4-16262255`, s
 | `IHalAdapterVendorExtension/default` | found ✅ |
 | IMS service | `com.android.imsstack` ✅ |
 | **Voice call** | **connects, two-way audio** ✅. It ended with reasonCode 501 (`CODE_USER_TERMINATED`, local hang-up), where it used to end with 401 |
-| Carrier config from CarrierSettings | not confirmed yet: `cmd phone cc` is denied on this non-debuggable build. Check with `grep -E "CarrierConfigLoader\|CarrierSvcBindHelper" <logcat> \| grep -E "com.google.android.carrier\|carrierconfig"` |
+| CarrierSettings | installed (`/product/priv-app/CarrierSettings`), carrier data present (`/product/etc/CarrierSettings/tmobile_us.pb` and the rest) ✅. Its binding as the carrier config package isn't confirmed directly yet: `cmd phone cc` is denied on this non-debuggable build. Check a logcat with `grep -E "CarrierConfigLoader\|CarrierSvcBindHelper" <logcat> \| grep -E "com.google.android.carrier\|carrierconfig"` |
 
 Denials still seen (none touch calls):
 - **`traced_producer` socket writes** from `hal_camera_default`, `mediacodec_google` and `gxp_logging`. These are perfetto tracing only.
