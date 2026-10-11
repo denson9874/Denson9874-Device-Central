@@ -84,7 +84,11 @@ captured before the phone left Evolution X.
     the stock product RRO values: `audio_switch_mode=2`, `cp_noflow_supported=true`.
   - `radio.te` stays.
   - No new vendor sepolicy is needed: stock vendor already allows `radio` → `hal_audio_ext_service` / `hal_audio_default`.
-- **Build:** `~/kodiak-images.sh` was started on the server. Check `grep BUILD_EXIT ~/kodiak-build.log`.
+- **Build: ✅ passed** (`BUILD_EXIT=0`), and `check-sepolicy.sh` is OK.
+  - PixelImsMediaService is signed with the same platform cert as `framework-res`.
+  - The image zip is `~/Downloads/kodiak-evox/kodiak-evox-img-pixelimsmedia.zip` on the Mac, also `/tmp/kodiak-evox-img.zip` on the server.
+  - sha256: `e07d75d71e6380084975a080b18824906441bd32ddb6312aed3aafc3dba41319`
+  - **Not flashed yet** (the phone is on Canary).
 
 **The phone is on Android Canary now.**
 - Canary most likely put a **newer bootloader** on it than CD1A.261005.003's (`spacecraft-17.4-16262255`).
