@@ -65,6 +65,15 @@ system_ext/framework/RadioConfigLib.jar
 system_ext/etc/permissions/com.android.qns.xml
 system_ext/priv-app/PixelQualifiedNetworksService/PixelQualifiedNetworksService.apk
 
+# Satellite (NTN). Stock's framework RRO already names com.google.android.satellite
+# as config_satellite_service_package, so without it the framework had nothing to
+# bind. PixelSatelliteService runs as android.uid.system, and MediaTek's service
+# needs DEVICE_POWER, so both are re-signed with the platform key, not PRESIGNED.
+# satellite_sos.xml declares the feature to Google's Satellite SOS app.
+product/etc/sysconfig/satellite_sos.xml
+system_ext/priv-app/PixelSatelliteService/PixelSatelliteService.apk
+system_ext/priv-app/VendorImplSatelliteService/VendorImplSatelliteService.apk
+
 # Audio HAL parameter parser (IHalAdapterVendorExtension). system_ext.prop sets
 # ro.audio.ihaladaptervendorextension_enabled=true as stock does, which makes
 # audioserver hand vendor parameters to this service; before, nothing provided

@@ -47,7 +47,10 @@ v="${vers//./_}"
     echo "WARN: no $sext/mapping/$vers.cil: stock vendor rules for Google system_ext types can't apply"
 { cat "$sys/mapping/$vers.cil" "$sext/mapping/$vers.cil" "$prod/mapping/$vers.cil" 2>/dev/null || true; } |
     { grep -oE "\(typeattributeset [A-Za-z0-9_]+_$v " || true; } | awk '{print $2}' | sort -u > "$tmp/mapped"
-{ grep -oE "[A-Za-z0-9_]+_$v\b" "$ven/vendor_sepolicy.cil" || true; } | sort -u > "$tmp/used"
+# base_typeattr_N are secilc-generated attributes the vendor policy defines
+# itself; they need no mapping.
+{ grep -oE "[A-Za-z0-9_]+_$v\b" "$ven/vendor_sepolicy.cil" || true; } |
+    { grep -v '^base_typeattr_' || true; } | sort -u > "$tmp/used"
 comm -12 "$tmp/used" "$tmp/mapped" | grep -E "^($(paste -sd'|' <<'TYPES'
 euiccpixel_app
 grilservice_app

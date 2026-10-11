@@ -12,3 +12,7 @@ user=_app isPrivApp=true seinfo=EuiccSupportPixel name=com.google.euiccpixel dom
 # Stock matches its ImsStack as the radio user. Ours is built from AOSP and runs
 # as an ordinary platform-signed app.
 user=_app isPrivApp=true seinfo=platform name=com.android.imsstack domain=imsstack_app type=app_data_file levelFrom=all
+# Satellite: Google's NTN service runs as the system user, MediaTek's as an
+# ordinary platform-signed priv-app. Both are re-signed with our platform key.
+user=system seinfo=platform name=com.google.android.satellite domain=pixelntnservice_app type=app_data_file levelFrom=all
+user=_app isPrivApp=true seinfo=platform name=com.mediatek.satellite.service domain=vendor_satellite_service levelFrom=all
