@@ -765,7 +765,8 @@ Also seen: the CSR has `fused: 0`. Not investigated yet.
 - **Upstream PR:** https://github.com/Evolution-X/build/pull/5, from fork `denson9874/build`, branch
   `releasetools-prebuilt-partitions`. It's our `patches/build_make` fix, rebased on upstream `cnb` (`5b95f1f`).
   When it merges, remove `patches/` and `apply-patches.sh`.
-- **Not published:** `vendor/google/kodiak` (blobs) and `vendor/google/kodiak-images` (whole stock images).
+- **Vendor blobs:** https://github.com/denson9874/vendor_google_kodiak (public). It's a fresh commit of the server's `~/evolution/vendor/google/kodiak` at `0fd223f`, after the blob trim. After `extract-files.py` runs, push the same changes there.
+- **Not published:** `vendor/google/kodiak-images` (whole stock images).
   See MAINTAINERSHIP.md, blocker 1.
 
 ## 3. Machines and access

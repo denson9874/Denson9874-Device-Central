@@ -31,7 +31,7 @@ device/google/kodiak/apply-patches.sh   # build/make fix for prebuilt partitions
 
 # Stock factory image CD1A.261005.003 for kodiak, from https://developers.google.com/android/images
 device/google/kodiak/extract-images.sh <kodiak-cd1a.261005.003-factory-*.zip>   # -> vendor/google/kodiak-images
-cd device/google/kodiak && ./extract-files.py <dump of the factory image> && cd -   # -> vendor/google/kodiak
+git clone https://github.com/denson9874/vendor_google_kodiak vendor/google/kodiak   # or: ./extract-files.py <dump>
 
 . build/envsetup.sh
 lunch lineage_kodiak-cp2a-user
@@ -41,7 +41,8 @@ m evolution
 Build the `user` variant. `userdebug` mounts debugfs early, which the stock vendor
 policy denies, and the display driver can panic on boot.
 
-Neither generated vendor directory is published here. `vendor/google/kodiak-images`
-holds whole stock partition images (vendor, vendor_dlkm, system_dlkm, boot, dtbo,
-firmware), and `vendor/google/kodiak` holds the proprietary blobs from
-`proprietary-files.txt`. Both are generated from Google's factory image.
+`vendor/google/kodiak` holds the proprietary blobs from `proprietary-files.txt`:
+[vendor_google_kodiak](https://github.com/denson9874/vendor_google_kodiak), or regenerate it
+with `extract-files.py`. `vendor/google/kodiak-images` holds whole stock partition images
+(vendor, vendor_dlkm, system_dlkm, boot, dtbo, firmware). It isn't published; generate it from
+Google's factory image with `extract-images.sh`.

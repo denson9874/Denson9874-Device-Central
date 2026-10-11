@@ -9,7 +9,7 @@ Reviewed 2026-10-11 against:
 
 | Blocker | State |
 |---|---|
-| 1. Public trees | **Device tree public:** https://github.com/denson9874/device_google_kodiak (branch `cnb`, one clean initial commit, noreply author e-mail). The vendor blobs (46 MB) and `kodiak-images` (1.5 GB of whole stock images, two files over GitHub's 100 MB limit) are **not** published. Ask the team how they want a prebuilt-vendor Pixel handled |
+| 1. Public trees | **Device tree public:** https://github.com/denson9874/device_google_kodiak (branch `cnb`, one clean initial commit, noreply author e-mail). **Vendor blobs public:** https://github.com/denson9874/vendor_google_kodiak (697 files, 46 MB, one clean commit). `kodiak-images` (1.5 GB of whole stock images, two files over GitHub's 100 MB limit) is **not** published. Ask the team how they want a prebuilt-vendor Pixel handled |
 | 2. ROM source patch | **Upstream PR opened:** https://github.com/Evolution-X/build/pull/5. It fixes a regression from their #4 (`5b95f1f`), tested with a minimal target-files zip. Once merged, drop `patches/` and `apply-patches.sh` from the tree |
 | 3. Proprietary apps | **Trimmed** (`9480969`): AI stubs, Hotword, Now Playing, PixelCameraServices and SatelliteGateway removed. 14 hardware-support APKs remain, to raise as an exception |
 | 4. Stability | Fresh build from the trimmed tree in progress. Then flash, the 3× reboot test and a call test |
@@ -108,7 +108,7 @@ The bot's exact questions aren't public. These answers cover what the wiki and o
 - **GitHub username:** denson9874
 - **SourceForge username:** ____
 - **Device tree:** https://github.com/denson9874/device_google_kodiak
-- **Vendor tree:** generated from the stock factory image with `extract-files.py` / `extract-images.sh` (not published yet; see blocker 1)
+- **Vendor tree:** https://github.com/denson9874/vendor_google_kodiak (blobs). The stock images are generated with `extract-images.sh` and not published (see blocker 1)
 - **Kernel:** stock prebuilt GKI 6.12 from the CD1A.261005.003 factory image (no kernel source tree yet)
 - **Unofficial build:** ____ (link to a test build: Drive or similar)
 - **What works:** calls (VoLTE), data, IMS, Wi-Fi, Bluetooth, camera, fingerprint, face unlock,
