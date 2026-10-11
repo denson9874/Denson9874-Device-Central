@@ -1,0 +1,2 @@
+# Labelled by stock's system_ext policy; only PixelSystemService sets it.
+system_internal_prop(pixelsystemservice_contextualawareness_prop)

@@ -17,3 +17,5 @@ persist.vendor.nfc.factoryota.                  u:object_r:sota_prop:s0
 # sets both.
 audio.camerasound.locale.enabled                u:object_r:audio_config_prop:s0 exact bool
 ro.egl.blobcache.multifile_dir_suffix           u:object_r:graphics_config_prop:s0 exact string
+
+pixelsystemservice.device.contextualawarenessbool       u:object_r:pixelsystemservice_contextualawareness_prop:s0 exact bool

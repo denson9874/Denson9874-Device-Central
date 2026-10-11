@@ -1,0 +1,5 @@
+# Pixel system apps stock runs in domains of its own. Public because the stock
+# vendor policy grants each of them HAL access (display, camera, power, ...).
+type pixeldisplayservice_app, domain;
+type pixelsystemservice_app, domain;
+type vendor_pbcs_app, domain;
