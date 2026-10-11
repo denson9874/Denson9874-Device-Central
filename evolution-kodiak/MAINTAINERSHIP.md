@@ -5,6 +5,15 @@ Reviewed 2026-10-11 against:
 - https://wiki.evolution-x.org/code-of-conduct (the CoC)
 - https://github.com/Evolution-X/onboarding
 
+## Progress (2026-10-11)
+
+| Blocker | State |
+|---|---|
+| 1. Public trees | **Device tree public:** https://github.com/denson9874/device_google_kodiak (branch `cnb`, one clean initial commit, noreply author e-mail). The vendor blobs (46 MB) and `kodiak-images` (1.5 GB of whole stock images, two files over GitHub's 100 MB limit) are **not** published. Ask the team how they want a prebuilt-vendor Pixel handled |
+| 2. ROM source patch | **Upstream PR opened:** https://github.com/Evolution-X/build/pull/5. It fixes a regression from their #4 (`5b95f1f`), tested with a minimal target-files zip. Once merged, drop `patches/` and `apply-patches.sh` from the tree |
+| 3. Proprietary apps | **Trimmed** (`9480969`): AI stubs, Hotword, Now Playing, PixelCameraServices and SatelliteGateway removed. 14 hardware-support APKs remain, to raise as an exception |
+| 4. Stability | Fresh build from the trimmed tree in progress. Then flash, the 3× reboot test and a call test |
+
 ## How applying works
 
 - **Where:** in Evolution X's Discord (https://discord.gg/3qbSZHx). Send `/apply` in any channel, and a bot runs
@@ -98,8 +107,8 @@ The bot's exact questions aren't public. These answers cover what the wiki and o
 - **Device ownership:** yes, it's my daily driver
 - **GitHub username:** denson9874
 - **SourceForge username:** ____
-- **Device tree:** ____ (must be public; see blocker 1)
-- **Vendor tree:** ____ (must be public)
+- **Device tree:** https://github.com/denson9874/device_google_kodiak
+- **Vendor tree:** generated from the stock factory image with `extract-files.py` / `extract-images.sh` (not published yet; see blocker 1)
 - **Kernel:** stock prebuilt GKI 6.12 from the CD1A.261005.003 factory image (no kernel source tree yet)
 - **Unofficial build:** ____ (link to a test build: Drive or similar)
 - **What works:** calls (VoLTE), data, IMS, Wi-Fi, Bluetooth, camera, fingerprint, face unlock,
