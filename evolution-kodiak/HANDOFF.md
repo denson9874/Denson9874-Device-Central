@@ -626,8 +626,43 @@ targets, without RKP. PCS (`com.google.android.as.oss`) isn't a target.
 adding `com.google.android.as.oss` to Evolution's TrickyStore targets (`Settings.Secure spoof_trickystore_target`,
 Evolver → TrickyStore apps), so its chain is keybox-signed like GMS's.
 
-**Permanent fix:** drop `--flags 3` from `BoardConfig.mk` (verification on, as on stock and LineageOS), then rebuild.
-Do it once the vbmeta test boots.
+**Result of the flags-0 test: it doesn't boot.** The bootloader returns to fastboot with
+`enter-reason: boot failure`. Daryl flashed `flags3` back, and Android boots again. The bootloader log
+(`/dev/block/by-name/klog`, read as root with `dd` + `strings`) didn't keep a readable AVB error for that attempt.
+A Magisk-patched chained `init_boot` is a likely suspect. **Don't retry flags 0 blind.**
+
+**What the bootloader log shows for the booting flags-3 configuration:**
+```
+[AVB] avb_property(com.android.build.system.os_version): not found
+[AVB] avb_property(com.android.build.system.security_patch): not found
+[AVB] avb_property(com.android.build.boot.security_patch): not found
+[AVB] boot_state: 000000:20000000:20000000
+[AVB] avb_property(com.android.build.boot.fingerprint): not found
+```
+With verification disabled, the bootloader reads properties from the **top-level vbmeta only**, and those live in the
+chained boot/vbmeta_system images.
+
+**Fix 2, staged:** `~/Downloads/kodiak-evox/vbmeta-2c120d1-flags3-spl.img` (sha256 `6de8f837…`).
+- It's the current flags-3 vbmeta, same key, descriptors and rollback index, plus 5 top-level props copied from the
+  chained images:
+  - `boot.os_version=17`, `boot.security_patch=2026-10-05`, `boot.fingerprint=<boot's>`
+  - `system.os_version=17`, `system.security_patch=2026-10-01`
+- **One-way:** once Android boots with it, KeyMint upgrades keys to boot patch level 2026-10-05. A later
+  vbmeta/build without these props would be a patch-level downgrade: keystore keys (lock screen, CE storage, app keys)
+  become unusable, and that can mean a wipe.
+- `vbmeta-2c120d1-flags3.img` is only a safe undo if the new image never finishes booting.
+- Every future build must carry these props: add them to `BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS` in `BoardConfig.mk`.
+
+**Permanent fix:** in `BoardConfig.mk`, next to the bring-up `--flags 3`, add:
+```make
+BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += \
+    --prop com.android.build.boot.os_version:$(PLATFORM_VERSION_LAST_STABLE) \
+    --prop com.android.build.boot.security_patch:$(BOOT_SECURITY_PATCH) \
+    --prop com.android.build.system.os_version:$(PLATFORM_VERSION_LAST_STABLE) \
+    --prop com.android.build.system.security_patch:$(PLATFORM_SECURITY_PATCH)
+```
+- Check that the variables expand to the same values as above: `BOOT_SECURITY_PATCH` must be stock's `2026-10-05`.
+- Keep them even if verification is turned on later.
 
 Also seen: the CSR has `fused: 0`. Not investigated yet.
 
