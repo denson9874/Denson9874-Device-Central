@@ -1,0 +1,89 @@
+Title: [ROM][UNOFFICIAL][17][kodiak] Evolution X 12.3 (Android 17) for the Pixel 11 Pro XL
+
+[CENTER][SIZE=6][B]Evolution X 12.3 — Android 17[/B][/SIZE]
+[SIZE=4]Google Pixel 11 Pro XL (kodiak) | UNOFFICIAL[/SIZE][/CENTER]
+
+[CODE]
+/*
+ * Your warranty is now void. You flash this at your own risk.
+ * I'm not responsible for bricked devices, lost data, or anything else.
+ */
+[/CODE]
+
+[SIZE=5][B]About[/B][/SIZE]
+An unofficial build of Evolution X 12.3 on Android 17 for the Pixel 11 Pro XL. Google hasn't published vendor sources for the Tensor G6, so this build keeps the stock vendor, kernel and firmware from the October 2026 factory image and builds everything else from source.
+
+This is [B]not[/B] an official Evolution X build. Please don't report its bugs to the Evolution X team; report them in this thread or on GitHub.
+
+[SIZE=5][B]Build info[/B][/SIZE]
+[LIST]
+[*]Evolution X 12.3, Android 17, security patch 2026-10-05 (vendor and boot), 2026-10-01 (system)
+[*]Build type: user, signed with private release keys
+[*]Google apps included
+[*]Kernel: stock Google GKI 6.12 from CD1A.261005.003 (unmodified)
+[*]Vendor, vendor_dlkm, system_dlkm, dtbo: stock CD1A.261005.003
+[*]Firmware not included: you must already be on stock CD1A.261005.003 (see Requirements)
+[*]Not rooted
+[/LIST]
+
+[SIZE=5][B]What works[/B][/SIZE]
+[LIST]
+[*]Boot, gesture navigation, Recents
+[*]Calls and SMS, including VoLTE (tested on T-Mobile US), mobile data (5G SA), eSIM
+[*]Wi-Fi, Bluetooth
+[*]Cameras, fingerprint, face unlock
+[*]Google Play; Play Integrity and Google Wallet tap-to-pay worked in my testing
+[/LIST]
+
+[SIZE=5][B]Known issues[/B][/SIZE]
+[LIST]
+[*]Gemini Nano and the features built on it (Magic Cue and others) don't work. Google only serves the on-device AI models to phones with a locked bootloader, so this applies to any custom ROM.
+[*]Pixel-exclusive extras such as Pixel Screenshots and Now Playing aren't included.
+[*]Tested on T-Mobile US. Reports from other carriers are welcome!
+[/LIST]
+
+[SIZE=5][B]Requirements[/B][/SIZE]
+[LIST]
+[*]Unlocked bootloader (unlocking wipes your phone)
+[*]Stock firmware [B]CD1A.261005.003 (October 2026)[/B]. The zip doesn't flash a bootloader or radio, so your phone must already be on this release. If you're on anything else (including a beta or Canary build), install CD1A.261005.003 with the Android Flash Tool first. Going back from a newer build wipes your phone, and only works if your bootloader allows it.
+[*]Latest platform-tools (adb/fastboot)
+[/LIST]
+
+[SIZE=5][B]Installation (clean flash)[/B][/SIZE]
+Download the ROM zip and check its SHA-256, then:
+[CODE]
+adb reboot bootloader
+fastboot -w update EvolutionX-17.0-__DATE__-kodiak-12.3-Unofficial-fastboot.zip
+[/CODE]
+[B]-w wipes all your data.[/B] fastboot switches to fastbootd partway through to flash the dynamic partitions; leave the phone plugged in until it reboots by itself (a few minutes). The first boot takes a few minutes more.
+
+[B]Updating[/B] from an earlier build of this ROM (keeps your data):
+[CODE]
+adb reboot bootloader
+fastboot update EvolutionX-17.0-__DATE__-kodiak-12.3-Unofficial-fastboot.zip
+[/CODE]
+
+[SIZE=5][B]Downloads[/B][/SIZE]
+[LIST]
+[*]ROM zip (SourceForge): [URL]__SOURCEFORGE_URL__[/URL]
+[*]SHA-256 checksums: in the SourceForge folder
+[/LIST]
+
+[SIZE=5][B]Source code[/B][/SIZE]
+[LIST]
+[*]ROM: [URL=https://github.com/Evolution-X/manifest/tree/cnb]Evolution-X/manifest (cnb)[/URL]
+[*]Device tree: [URL=https://github.com/denson9874/device_google_kodiak]denson9874/device_google_kodiak[/URL]
+[*]Vendor blobs: [URL=https://github.com/denson9874/vendor_google_kodiak]denson9874/vendor_google_kodiak[/URL]
+[*]Kernel: Google's stock GKI 6.12 binary, unmodified. Source and build instructions: [URL=https://source.android.com/docs/setup/build/building-pixel-kernels]Building Pixel kernels[/URL]
+[/LIST]
+
+[SIZE=5][B]Credits[/B][/SIZE]
+The Evolution X team, the LineageOS team (their Tensor device trees were the model for this one), and asdfmonster261 (Pixel 11 Pro Fold tree, used as a reference).
+
+[SIZE=5][B]Reporting bugs[/B][/SIZE]
+Include your build date, whether you clean or dirty flashed, your carrier, steps to reproduce, and a log:
+[CODE]adb logcat -d > logcat.txt[/CODE]
+
+[B]ROM OS version:[/B] Android 17
+[B]Based on:[/B] Evolution X / LineageOS
+[B]Status:[/B] Beta
