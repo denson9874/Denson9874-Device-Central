@@ -664,6 +664,32 @@ BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += \
 - Check that the variables expand to the same values as above: `BOOT_SECURITY_PATCH` must be stock's `2026-10-05`.
 - Keep them even if verification is turned on later.
 
+**Applied, 2026-10-11 ~19:40 UTC.** Daryl flashed `vbmeta-2c120d1-flags3-spl.img` to `vbmeta_b`.
+- It boots, and the CSR now has `boot_patch_level=20261005`.
+- RKPD provisions keys: `Key successfully assigned to client`, 12 signed keys in the pool, and no more 400s.
+  Hardware key attestation works again.
+- **The device is now committed to boot patch level 2026-10-05.** The BoardConfig fix is in GitHub `4df22cd` and
+  server tree `9b68771` (pulled into `~/evolution`). `get_build_var BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS` expands to the
+  same values as the flashed image.
+
+**AI features: still blocked, and the cause is now outside the ROM.**
+- With RKP working, PCS gets a real attestation token. Google's ProtectedDownload server still answers
+  `PERMISSION_DENIED`, for both AICore and PixelSense (Magic Cue) manifests.
+- The real attestation says `unlocked` / `orange`. On stock with a locked bootloader, the same account worked.
+- Test: `com.google.android.as.oss` added to `spoof_trickystore_target`. TrickyStore initialised in PCS, but logged
+  `Keybox warning: missing RSA key block` and `CertificateHacker: No keybox for algorithm: RSA`.
+  PCS attests an **RSA** key. Without an RSA keybox, `CertificateHacker` returns the **original** chain (it still logs
+  "Hacked certificate chain"), so the server still sees the unlocked device.
+- The list was restored exactly from `~/Downloads/kodiak-evox/logs/trickystore-targets-backup-20261011-1541.txt`.
+- **Conclusion:** Gemini Nano and Magic Cue need either a locked bootloader (stock) or an attestation keybox
+  with an RSA key. Evolution's keybox is EC-only. Sourcing leaked OEM keyboxes is out of scope.
+  Revisit if Evolution's official keybox gains an RSA block.
+
+**Side effect to watch:** with RKP working, `isTeeBroken()` is false, so TrickyStore `AUTO` targets (GMS, Play Store,
+Wallet…) use LEAF_HACK instead of GENERATE. An RSA attested key in those apps would now get its real, unlocked chain.
+Re-check Play Integrity (STRONG) and Wallet tap-to-pay. If STRONG fails, grep logcat for `No keybox for algorithm`
+and consider `pkg!` (GENERATE) for the affected package.
+
 Also seen: the CSR has `fused: 0`. Not investigated yet.
 
 ### Open issues (in priority order; replaces 2d's list)
