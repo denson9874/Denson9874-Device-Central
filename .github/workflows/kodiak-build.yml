@@ -6,7 +6,9 @@
 # pack the fastboot zip. Flashing stays manual, on the Mac.
 #
 # Never add an upload-artifact step: build output contains Google's
-# proprietary images, which must not leave the server. Logs only.
+# proprietary images, which must not leave the server. Logs only. `inspect`
+# prints policy excerpts, manifests and library lists, never file contents
+# beyond small text configs (.rc, .xml).
 #
 # Runner setup (once, on the build server, as the `build` user, no sudo):
 #   1. GitHub: Settings > Actions > Runners > New self-hosted runner > Linux x64.
@@ -32,6 +34,7 @@ on:
           server. extract: extract-files.py. images: images build + check-sepolicy.
           check-sepolicy: policy check only. imgzip: fastboot zip.
           round: sync, extract, images, check-sepolicy, imgzip. ota: m evolution.
+          inspect: read-only lookups in the stock dump (see query).
         type: choice
         default: status
         options:
@@ -43,10 +46,20 @@ on:
           - imgzip
           - round
           - ota
+          - inspect
       tree_ref:
         description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak from (sync and round)
         type: string
         default: evolution/kodiak-port
+      query:
+        description: >-
+          inspect only. Space-separated. A name (SELinux type, package, service)
+          is grepped in the stock system_ext/product/vendor policy and contexts; a
+          path relative to the dump (e.g. system_ext/priv-app/Foo) lists it and
+          describes its APKs (manifest), libraries and binaries (NEEDED), rc and
+          xml files.
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -63,6 +76,7 @@ jobs:
     env:
       ACTION: ${{ inputs.action }}
       TREE_REF: ${{ inputs.tree_ref }}
+      QUERY: ${{ inputs.query }}
     defaults:
       run:
         shell: bash --noprofile --norc -euo pipefail {0}
@@ -77,7 +91,7 @@ jobs:
           # this job, and the husky build too. Don't start on top of one.
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ "$ACTION" != status ]]; then
+            if [[ "$ACTION" != status && "$ACTION" != inspect ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -102,6 +116,68 @@ jobs:
           echo "== scripts"; ls -l ~/kodiak-images.sh ~/kodiak-build.sh ~/kodiak-imgzip.sh 2>&1
           echo "== last build log"; grep -E 'BUILD_EXIT|#### |FAILED:' ~/kodiak-build.log 2>/dev/null | tail -5 || true
           echo "== image zips"; ls -lh /tmp/kodiak-evox-img*.zip 2>/dev/null || echo none
+
+      - name: Inspect the stock dump
+        if: inputs.action == 'inspect'
+        run: |
+          dump=~/android-dt/dumps/kodiak
+          read -r -a toks <<< "$QUERY"
+          (( ${#toks[@]} > 0 && ${#toks[@]} <= 40 )) || { echo "::error::query needs 1-40 tokens"; exit 1; }
+          for t in "${toks[@]}"; do
+            if [[ ! "$t" =~ ^[A-Za-z0-9_.@/-]+$ || "$t" == /* || "$t" == *..* ]]; then
+              echo "::error::bad query token: $t"; exit 1
+            fi
+          done
+          aapt2=""
+          for c in ~/evolution/out/host/linux-x86/bin/aapt2 ~/evolution/prebuilts/sdk/tools/linux/bin/aapt2 ~/android-dt/bin/aapt2; do
+            [[ -x "$c" ]] && { aapt2="$c"; break; }
+          done
+          pol=(); ctx=()
+          for f in system_ext/etc/selinux/system_ext_sepolicy.cil product/etc/selinux/product_sepolicy.cil vendor/etc/selinux/vendor_sepolicy.cil; do
+            [[ -f "$dump/$f" ]] && pol+=("$dump/$f")
+          done
+          for f in "$dump"/{system_ext,product,vendor}/etc/selinux/*contexts* "$dump"/{system_ext,product}/etc/selinux/*mac_permissions.xml; do
+            [[ -f "$f" ]] && ctx+=("$f")
+          done
+          describe() {
+            local f="$1"; echo "--- ${f#"$dump"/}"
+            case "$f" in
+              *.apk)
+                if [[ -n "$aapt2" ]]; then
+                  "$aapt2" dump badging "$f" 2>/dev/null | grep -E '^(package|sdkVersion|targetSdkVersion|uses-library|uses-native-library|uses-permission|uses-static-library)' | head -100 || true
+                  "$aapt2" dump xmltree --file AndroidManifest.xml "$f" 2>/dev/null | grep -E 'sharedUserId|persistent|directBootAware|android:process|E: (service|provider|receiver)' | head -60 || true
+                else
+                  echo "(no aapt2 found)"
+                fi
+                unzip -l "$f" 2>/dev/null | grep -oE 'lib/[^ ]+\.so' | head -20 || true ;;
+              *.so|*/bin/*)
+                readelf -d "$f" 2>/dev/null | grep -E 'NEEDED|SONAME' | sed 's/.*\[\(.*\)\]/  \1/' || true ;;
+              *.rc|*.xml|*.txt)
+                head -100 "$f" ;;
+            esac
+          }
+          for t in "${toks[@]}"; do
+            if [[ "$t" == */* ]]; then
+              echo "===== path $t"
+              p="$dump/$t"
+              if [[ -d "$p" ]]; then
+                find "$p" -maxdepth 3 | sed "s|^$dump/||" | head -120
+                while IFS= read -r f; do describe "$f"; done < <(find "$p" -maxdepth 3 -type f \( -name '*.apk' -o -name '*.so' -o -name '*.rc' -o -name '*.xml' -o -path '*/bin/*' \) | head -40)
+              elif [[ -f "$p" ]]; then
+                describe "$p"
+              else
+                echo "(not found)"
+              fi
+            else
+              echo "===== name $t"
+              re="(^|[^A-Za-z0-9_.])${t//./\\.}(_[0-9]+)?([^A-Za-z0-9_]|\$)"
+              for f in "${pol[@]}" "${ctx[@]}"; do
+                m="$(grep -nE "$re" "$f" | head -300 || true)"
+                [[ -n "$m" ]] && { echo "--- ${f#"$dump"/}"; echo "$m"; }
+              done
+              true
+            fi
+          done
 
       - name: Check out the device tree
         if: inputs.action == 'sync' || inputs.action == 'round'
