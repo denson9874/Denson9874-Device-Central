@@ -769,6 +769,23 @@ Also seen: the CSR has `fused: 0`. Not investigated yet.
 - **Not published:** `vendor/google/kodiak-images` (whole stock images).
   See MAINTAINERSHIP.md, blocker 1.
 
+## 2g. Personal extras vs the official tree (2026-10-11)
+
+For the Evolution X CoC (no proprietary apps in device trees), the official tree no longer ships the AI stubs,
+Hotword, Now Playing, Creative Assistant, Ambient Streaming, PixelCameraServices or SatelliteGateway (`9480969`).
+Daryl keeps them on his own phone through a **private add-on**:
+
+| Piece | Where |
+|---|---|
+| Add-on source (blob list, extract script, `personal.mk`) | `evolution-kodiak/device_google_kodiak-personal/` here; `~/evolution/device/google/kodiak-personal` on the server (copied with rsync, **not** synced by the runner) |
+| Its blobs | `~/evolution/vendor/google/kodiak-personal` (local git, `050c806`). **Never publish** |
+| Hook | `device.mk`: `ifeq ($(KODIAK_PERSONAL),true)` → `inherit-product-if-exists device/google/kodiak-personal/personal.mk` |
+| Switch | `~/kodiak-images.sh` (test builds) exports `KODIAK_PERSONAL=true`. `~/kodiak-build.sh` (release OTA) doesn't. Backup: `~/kodiak-images.sh.bak-20261011` |
+
+**Test builds are therefore:** official tree + personal extras + Magisk (`~/.kodiak-root`).
+**Release builds are:** official tree only.
+If an official build is ever made on this server, check that neither `KODIAK_PERSONAL` nor `~/.kodiak-root` applies.
+
 ## 3. Machines and access
 
 | What | Where |
