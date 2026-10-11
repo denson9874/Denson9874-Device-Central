@@ -689,6 +689,8 @@ BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += \
 Wallet…) use LEAF_HACK instead of GENERATE. An RSA attested key in those apps would now get its real, unlocked chain.
 Re-check Play Integrity (STRONG) and Wallet tap-to-pay. If STRONG fails, grep logcat for `No keybox for algorithm`
 and consider `pkg!` (GENERATE) for the affected package.
+- **Checked by Daryl after the fix (2026-10-11):** Play Store's integrity check still gives `MEETS_STRONG_INTEGRITY`,
+  and Wallet tap-to-pay works. No `No keybox for algorithm` errors in logcat outside the (reverted) PCS test.
 
 Also seen: the CSR has `fused: 0`. Not investigated yet.
 
