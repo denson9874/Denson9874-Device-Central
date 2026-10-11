@@ -127,5 +127,8 @@ system_ext/priv-app/PixelDisplayService/PixelDisplayService.apk
 # com.google.pixel.camera.services (PersistentBackgroundCameraServices): publishes
 # the services the stock camera HAL looks up (IServiceBinder, LyricConfigProvider,
 # CameraIdRemapper). It runs as android.uid.system, so it must NOT be PRESIGNED.
+# The services are VINTF-stable, so servicemanager refuses to register them
+# (and the app crash-loops) unless the manifest fragment declares them.
 # Policy: vendor_pbcs_app.te.
 system_ext/app/PersistentBackgroundCameraServices/PersistentBackgroundCameraServices.apk
+system_ext/etc/vintf/manifest/com.google.pixel.camera.services@1.0-service-google.xml

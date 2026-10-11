@@ -5,3 +5,6 @@ system_public_prop(ims_prop)
 system_public_prop(system_ril_ext_prop)
 system_public_prop(telephony_ril_ntn_sim_deact_prop)
 system_restricted_prop(telephony_ntn_demo_mode_prop)
+# Face unlock's device_config flags. system_server syncs them from DeviceConfig
+# and the stock vendor's hal_face_default reads them.
+system_restricted_prop(device_config_faceauth_native_prop)
