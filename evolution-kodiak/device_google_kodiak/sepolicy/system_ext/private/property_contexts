@@ -22,3 +22,7 @@ pixelsystemservice.device.contextualawarenessbool       u:object_r:pixelsystemse
 
 # Face unlock device_config flags (stock system_ext label).
 persist.device_config.pixel_faceauth.           u:object_r:device_config_faceauth_native_prop:s0
+
+# Stock system_ext labels.
+persist.fingerprint.screenprotector.config      u:object_r:fingerprint_sp_prop:s0 exact string
+setupwizard.feature.provisioning_profile_mode   u:object_r:setupwizard_feature_prop:s0
