@@ -11,7 +11,7 @@ Reviewed 2026-10-11 against:
 |---|---|
 | 1. Public trees | **Device tree public:** https://github.com/denson9874/device_google_kodiak (branch `cnb`, one clean initial commit, noreply author e-mail). **Vendor blobs public:** https://github.com/denson9874/vendor_google_kodiak (697 files, 46 MB, one clean commit). `kodiak-images` (1.5 GB of whole stock images, two files over GitHub's 100 MB limit) is **not** published. Ask the team how they want a prebuilt-vendor Pixel handled |
 | 2. ROM source patch | **Upstream PR opened:** https://github.com/Evolution-X/build/pull/5. It fixes a regression from their #4 (`5b95f1f`), tested with a minimal target-files zip. Once merged, drop `patches/` and `apply-patches.sh` from the tree |
-| 3. Proprietary apps | **Trimmed** (`9480969`): AI stubs, Hotword, Now Playing, PixelCameraServices and SatelliteGateway removed. 14 hardware-support APKs remain, to raise as an exception |
+| 3. Proprietary apps | **Trimmed** (`9480969`): AI stubs, Hotword, Now Playing, PixelCameraServices and SatelliteGateway removed. 14 hardware-support APKs remain, to raise as an exception. Daryl's own phone keeps the removed apps through a private add-on (HANDOFF 2g), used only with `KODIAK_PERSONAL=true` |
 | 4. Stability | Fresh build from the trimmed tree in progress. Then flash, the 3× reboot test and a call test |
 
 ## How applying works
