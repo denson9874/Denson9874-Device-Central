@@ -1,0 +1,15 @@
+# com.google.pixel.camera.services (PersistentBackgroundCameraServices), stock's
+# product rules. It publishes the services the stock camera HAL looks up.
+typeattribute vendor_pbcs_app coredomain;
+app_domain(vendor_pbcs_app)
+
+add_service(vendor_pbcs_app, camera_binder_service)
+add_service(vendor_pbcs_app, camera_cameraidremapper_service)
+add_service(vendor_pbcs_app, camera_lyricconfigprovider_service)
+
+allow vendor_pbcs_app {
+    app_api_service
+    cameraserver_service
+}:service_manager find;
+
+dontaudit vendor_pbcs_app system_app_data_file:dir *;
