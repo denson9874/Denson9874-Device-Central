@@ -21,6 +21,10 @@ user=_app isPrivApp=true seinfo=platform name=com.mediatek.satellite.service dom
 user=_app seinfo=platform name=com.android.pixeldisplayservice domain=pixeldisplayservice_app type=app_data_file levelFrom=all
 user=_app seinfo=platform name=com.google.android.pixelsystemservice domain=pixelsystemservice_app type=app_data_file levelFrom=all
 user=_app seinfo=platform name=com.google.android.pixelsystemservice:ephemeral domain=pixelsystemservice_app type=app_data_file levelFrom=all
+# Evolution's GMS installs PixelSystemService with the key mapped to
+# seinfo=pixelsystemservice (mac_permissions.xml), not our platform key.
+user=_app seinfo=pixelsystemservice name=com.google.android.pixelsystemservice domain=pixelsystemservice_app type=app_data_file levelFrom=all
+user=_app seinfo=pixelsystemservice name=com.google.android.pixelsystemservice:ephemeral domain=pixelsystemservice_app type=app_data_file levelFrom=all
 user=system seinfo=platform name=com.google.pixel.camera.services domain=vendor_pbcs_app type=system_app_data_file levelFrom=all
 user=system seinfo=platform name=com.google.pixel.camera.services:* domain=vendor_pbcs_app type=system_app_data_file levelFrom=all
 # Google's camera apps. The stock vendor's mac_permissions.xml (already on the
