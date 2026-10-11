@@ -495,6 +495,77 @@ Denials: nothing new that touches these apps.
 Not done yet: a call, face and fingerprint unlock, the camera, the 3× reboot test, and using the
 AI features (Magic Cue, Pixel Screenshots, Now Playing). See open issues 1 and 2.
 
+### Root (Magisk), added 2026-10-11
+
+Daryl asked for root, **on condition that Google Wallet and the AI features keep working**.
+- Before root, Play Store's integrity check gave `MEETS_STRONG_INTEGRITY`, through Evolution's
+  built-in TrickyStore keybox plus the PIF config (`Settings.Secure` `spoof_trickystore_keybox` / `spoof_pif_config`).
+  Wallet tap-to-pay depends on that verdict.
+
+**Magisk v30.7**, the official GitHub release:
+- `Magisk-v30.7.apk`, sha256 `e0d32d2123532860f97123d927b1bb86c4e08e6fd8a48bfc6b5bee0afae9ebd5`,
+  signer "John Wu" (`b4cb83b4…`).
+- Unpacked on the server in `~/android-dt/ref/magisk/v30.7/`.
+
+**Patching** (`~/kodiak-magisk-patch.sh`, copy in `tools/`):
+- It mirrors Magisk's `assets/boot_patch.sh` for an `init_boot` (ramdisk-only) image, using the x86_64 `magiskboot`.
+- Flags are the values the app computes on kodiak:
+  - `KEEPVERITY=true` (system-as-root)
+  - `KEEPFORCEENCRYPT=true` (FBE)
+  - `PREINITDEVICE=sda12`, from `magisk --preinit-device` run as the shell user
+- `KEEPVERITY` and `KEEPFORCEENCRYPT` must be **exported**: `magiskboot cpio patch` reads them from the environment.
+- It verifies that the result reads as Magisk-patched (`cpio test` = 1).
+
+**Root in builds** (`~/kodiak-imgzip.sh`, copy in `tools/`):
+- With `KODIAK_ROOT=magisk`, or `magisk` in `~/.kodiak-root` (set on the server), the zip's `init_boot.img`
+  is the Magisk-patched one, and the zip gains a `ROOT.txt` marker.
+- `KODIAK_ROOT=none` gives an unrooted zip.
+- `out/` is never modified, and the release OTA (`m evolution`) doesn't go through this script.
+- The previous script is kept as `~/kodiak-imgzip.sh.bak-20261011`.
+
+**On the phone:**
+- `init_boot_b` is flashed with `init_boot-2c120d1-magisk.img` (sha256 `8de673c0…`), and the Magisk app is installed.
+- Root works: `adb shell /debug_ramdisk/su -c id` gives `uid=0 … u:r:magisk:s0`. `su` isn't in `/system/bin`.
+- Magisk's DB has `zygisk=1`, `denylist=1`, and 31 DenyList entries:
+  - every process of Wallet and Play Store
+  - GMS, including `gms.unstable` and `gms.persistent`
+  - GSF, AICore, PixelSense, ASI and Private Compute Services
+- **Still pending:** `/data/adb/magisk` is empty, because the app's "Requires Additional Setup" step hasn't run.
+  Until it does, Zygisk isn't loaded and the DenyList isn't enforced (`magisk --denylist status`).
+- After that: hide the Magisk app (Magisk settings → Hide the Magisk app), re-run the Play Store integrity check,
+  and **only then** open Wallet.
+- **Undo root:** `fastboot flash init_boot_b init_boot-2c120d1-stock.img` (sha256 `be9a06c0…`; both files are in
+  `~/Downloads/kodiak-evox/`).
+- Shell gotcha: `adb shell su -c "a; b"` splits at `;` on the device, so only `a` runs as root.
+  Push a script and run `su -c "sh /data/local/tmp/x.sh"`.
+
+### AI features investigation (2026-10-11, in progress)
+
+**Symptom:** Gemini Nano (AICore) and Magic Cue (PixelSense) don't work.
+
+**Evidence** (with the phone unlocked; before the first unlock nothing AI-related can run):
+- AICore: `Failed to fetch manifest config from source for com.google.android.aicore:…`, caused by
+  `PERMISSION_DENIED: The caller does not have permission`. It retries with backoff.
+- That leads to `606-FEATURE_NOT_FOUND`. Magic Cue's prefetch fails with `No such feature with ID 2611 … AiCore`,
+  and translation reports the AICore model unavailable.
+- Nothing on the phone (GMS, SELinux, PackageManager) logs a matching denial, so the refusal comes from **Google's server**.
+
+**Ruled out:**
+- **System image:** the AICore, PixelSense and PixelAI stubs are byte-identical to stock.
+- **Platform config:** all stock Gemini and Pixel-experience features are declared, the intelligence roles are
+  correct, and the AI apps are privileged system apps with their Play updates.
+- **TPU path:** tachyon runs in the vendor's `edgetpu_tachyon_server`.
+- **Identity spoofing:** Evolution gives AICore and PixelSense the "kodiak" profile (same fingerprint), and GMS isn't
+  spoofed. Its `MAINLINE_PIXEL_PATTERN` doesn't match "Pixel 11 Pro XL" (no space allowed), but that only means the
+  spoof applies, with kodiak's own values.
+- **Play Integrity:** STRONG.
+
+**PixelAI (Pixel Screenshots):** the `/data` copy installed before `2c120d1` had a different signer from Google's
+stub, so PackageManager deleted it at the `2c120d1` flash. Only the stub is left; install Pixel Screenshots from Play.
+
+**Next:** with root, read AICore's own state (`/data/data/com.google.android.aicore`: shared_prefs, databases) for
+the failing request and the server's details. Then check account eligibility (age, region, Workspace).
+
 ### Open issues (in priority order; replaces 2d's list)
 
 1. **Re-test on the newest build:** a voice call (`radio.te` was narrowed after 2c's test),
