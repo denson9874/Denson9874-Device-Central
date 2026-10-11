@@ -69,8 +69,9 @@ system_ext/priv-app/PixelQualifiedNetworksService/PixelQualifiedNetworksService.
 # as config_satellite_service_package, so without it the framework had nothing to
 # bind. PixelSatelliteService runs as android.uid.system, and MediaTek's service
 # needs DEVICE_POWER, so both are re-signed with the platform key, not PRESIGNED.
-# satellite_sos.xml declares the feature to Google's Satellite SOS app.
-product/etc/sysconfig/satellite_sos.xml
+# (satellite_sos.xml, the Satellite SOS feature declaration, comes from
+# Evolution's GMS, which installs the same path; shipping it here too breaks the
+# build with "overriding commands".)
 system_ext/priv-app/PixelSatelliteService/PixelSatelliteService.apk
 system_ext/priv-app/VendorImplSatelliteService/VendorImplSatelliteService.apk
 
