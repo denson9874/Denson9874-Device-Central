@@ -17,9 +17,16 @@ system_ext/priv-app/EuiccSupportPixel-P23/esim-full-v1.img
 system_ext/priv-app/EuiccSupportPixel-P23/EuiccSupportPixel-P23.apk;PRESIGNED
 system_ext/priv-app/EuiccSupportPixelPermissions/EuiccSupportPixelPermissions.apk;PRESIGNED
 
-# IMS: ImsStack and ImsMediaService are built from AOSP. The stock
-# PixelImsMediaService shares android.uid.phone and is signed with Google's
-# platform key, so system_server rejects it (signature mismatch) and crashes.
+# IMS media. ImsStack is built from AOSP, but call media needs the stock
+# PixelImsMediaService: libpixelimsmedia drives the modem audio path through
+# the whitechapel audio extension HAL, which AOSP ImsMedia lacks (calls ended
+# with CODE_MEDIA_INIT_FAILED). It shares android.uid.phone, so it must NOT be
+# PRESIGNED: extract-utils re-signs it with our platform key.
+system_ext/etc/sysconfig/preinstalled-packages-pixelimsmedia.xml
+system_ext/lib64/libpixelimsmedia.so
+system_ext/lib64/vendor.google.whitechapel.audio.audioext@4.0.so
+system_ext/lib64/vendor.google.whitechapel.audio.extension-V8-ndk.so
+system_ext/priv-app/PixelImsMediaService/PixelImsMediaService.apk
 
 # Modem (MediaTek RIL glue, Pixel modem service)
 system_ext/etc/default-permissions/default-permissions_com.google.android.modem.pms_full.xml
