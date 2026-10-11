@@ -692,6 +692,16 @@ and consider `pkg!` (GENERATE) for the affected package.
 - **Checked by Daryl after the fix (2026-10-11):** Play Store's integrity check still gives `MEETS_STRONG_INTEGRITY`,
   and Wallet tap-to-pay works. No `No keybox for algorithm` errors in logcat outside the (reverted) PCS test.
 
+**Cleanup (2026-10-11):** every flash artifact with a pre-fix vbmeta (boot patch level 0) was deleted, because flashing
+one now would be a KeyMint downgrade:
+- **Mac:** the two old vbmeta test images, 5 image zips, and the `EvolutionX-17.0-20261010` OTA zip.
+- **Server:** all 9 `/tmp/kodiak-evox-img-*.zip` files and the old OTA zip in `out/`.
+- `out/.../vbmeta.img` was rebuilt with `~/kodiak-vbmeta.sh` (`m vbmetaimage`; copy in `tools/`). It now carries the
+  patch-level props.
+
+**There's no flash zip right now.** Make a new one with `~/kodiak-imgzip.sh` (or a runner round) before the next flash.
+The only vbmeta image kept is `~/Downloads/kodiak-evox/vbmeta-2c120d1-flags3-spl.img`, which is what the phone runs.
+
 Also seen: the CSR has `fused: 0`. Not investigated yet.
 
 ### Open issues (in priority order; replaces 2d's list)
