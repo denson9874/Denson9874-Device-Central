@@ -64,3 +64,22 @@ system_ext/framework/RadioConfigLib.jar
 # It runs as android.uid.system, so it must NOT be PRESIGNED.
 system_ext/etc/permissions/com.android.qns.xml
 system_ext/priv-app/PixelQualifiedNetworksService/PixelQualifiedNetworksService.apk
+
+# Audio HAL parameter parser (IHalAdapterVendorExtension). system_ext.prop sets
+# ro.audio.ihaladaptervendorextension_enabled=true as stock does, which makes
+# audioserver hand vendor parameters to this service; before, nothing provided
+# it. Policy: sepolicy/system_ext/private/hal_audio_parameter_parser.te
+system_ext/bin/hw/vendor.google.whitechapel.audio.hal.parserservice
+system_ext/etc/init/vendor.google.whitechapel.audio.hal.parserservice.rc
+
+# TPU app service. Without it edgetpu_vendor_service stops and the vendor TPU
+# servers keep failing to find it. Policy: edgetpu_app_service.te (public types).
+system_ext/bin/hw/vendor.google.edgetpu_app_service@1.0-service
+system_ext/etc/init/vendor.google.edgetpu_app_service@1.0-service.rc
+system_ext/etc/vintf/manifest/vendor.google.edgetpu_app_service@1.0-service.xml
+system_ext/lib64/com.google.edgetpu_app_service-V10-ndk.so
+system_ext/lib64/com.google.edgetpu_vendor_service-V2-ndk.so
+
+# Userspace watchdog: pets watchdog0/1 so a hung system resets.
+system_ext/bin/gs_watchdogd
+system_ext/etc/init/init.gs_watchdogd.rc
