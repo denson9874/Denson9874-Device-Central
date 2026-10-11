@@ -3,26 +3,15 @@
 Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
-> **Update, late 2026-10-10.** The radio.te fix did **not** fix calls (still 401).
-> The next attempt (stock PixelImsMediaService) is committed and being built.
-> The phone is now on **Android Canary** (Daryl needed a working phone), so there are no logs.
-> See section 2a, plus section 11 if you're a cloud session.
-
-> **Update 2026-10-11 (cloud session).** A source-level review against a working
-> LineageOS 24.0 Pixel 11 tree found several more causes for the calls failure and
-> fixed them in the device tree (section 2b).
->
-> **Voice calls work** (section 2c): two-way audio on T-Mobile VoLTE, tested on the phone
-> with server tree `b16749b` (ExpressiveOS `bd85ff9`). The phone is back on stock-matching
-> CD1A.261005.003 firmware with our build flashed (wiped).
-
-> **Update 2026-10-11, about 11:00 UTC. Read section 2d first.** It lists every fix made
-> since 2c, the phone's state, and the rules for changing this tree without undoing them.
-> **The phone is mid-flash.** `fastboot update` of `kodiak-evox-img-9190352.zip` stalled at
-> `Sending sparse 'super' 2/10`, and the Mac can no longer reach the phone. Section 2d
-> covers recovery: no wipe, no lock, no bootloader or firmware flash.
-> **Build from `claude/wizardly-hopper-gnqtlx` (PR #5), not `evolution/kodiak-port`.**
-> The base branch doesn't build until PR #5 merges.
+> **Current state: read section 2e first.** It supersedes the status, next steps and branch
+> notes in sections 2 to 2d, which are kept below as history.
+> - Voice calls work (since 2c).
+> - The phone runs our build on CD1A.261005.003 firmware (bootloader `spacecraft-17.4-16262255`),
+>   with the bootloader unlocked, on slot b.
+> - PRs #1, #3 and #5 are all merged. **Build from `evolution/kodiak-port`.**
+> - The stalled flash of 2d was recovered, and later builds flashed normally.
+> - **The device tree's source of truth is GitHub** (`evolution/kodiak-port`). The runner syncs it to the
+>   server, so a commit made only on the server gets overwritten by the next sync (section 10).
 
 ## 1. Goal
 
@@ -33,7 +22,7 @@ modem, GKI kernel 6.12), for testing now and distribution later.
 The original instructions are in `~/Downloads/android-device-tree-toolchain-guide.md`.
 Its operating rules still apply (see section 9).
 
-## 2. Current status
+## 2. Status on 2026-10-10 (history; the current state is section 2e)
 
 | Area | Status |
 |---|---|
@@ -83,6 +72,12 @@ Its operating rules still apply (see section 9).
 4. Once calls work: do a reboot test (3×), then update the README status and commit.
 
 ## 2a. State as of late 2026-10-10 (supersedes the "Next steps" above)
+
+> **Outcome (history):**
+> - The phone went back from Canary to CD1A.261005.003 (wiped) before the 2c test round.
+> - The PixelImsMediaService change below stayed in the tree and is still shipped.
+> - Calls first worked in 2c, with this change and 2b's `imsstack_app` domain both in place.
+>   This change was never tested on its own. Keep both (2d, "Fixed", item 1).
 
 **The radio.te test:** Daryl placed a call on the 23d771b build. It failed the same way. No logs were
 captured before the phone left Evolution X.
@@ -254,7 +249,7 @@ Follow-ups done after the test:
   recurred since the `user` build, but it isn't proven fixed.
 - SELinux denials: the camera HAL and gxp/edgetpu writing to `traced_producer`, and
   edgetpu `service_manager find` (the TPU app service is shipped as of 2b, which should fix the latter).
-- `com.google.android.apps.scone` crashes once at boot (not essential).
+- ~~`com.google.android.apps.scone` crashes once at boot~~ Fixed on `e974478` (2d, open issue 1).
 - Google's other product RROs (SystemUI/Settings device config) aren't shipped.
   extract-utils rejects prebuilt overlay APKs ("does not match known package rules"),
   so use **source RROs** in the device tree, as with `rro_overlays/TeleServiceOverlayKodiak`.
@@ -265,12 +260,10 @@ Follow-ups done after the test:
 
 ### Branches and builds
 
-- `evolution/kodiak-port` (base) has PR #3 merged: the satellite services and the narrower `radio.te`.
-  **It doesn't build on its own.** PR #3 shipped stock's `product/etc/sysconfig/satellite_sos.xml`,
-  which Evolution's GMS also installs, and kati fails with "overriding commands".
-- **PR #5, branch `claude/wizardly-hopper-gnqtlx`,** has everything below, including that fix.
-  Build and sync from this branch until it merges.
-- Builds go through the runner (section 11): `action: round`, `tree_ref: claude/wizardly-hopper-gnqtlx`.
+- ~~`evolution/kodiak-port` doesn't build on its own; build from PR #5's branch~~
+  **Out of date:** PR #5 merged (`0f1b047`), and `evolution/kodiak-port` builds.
+  Use `tree_ref: evolution/kodiak-port`.
+- Builds go through the runner (section 11): `action: round`.
   The zip is named after the **server** tree's commit (`~/android-dt/trees/device_google_kodiak`),
   not the ExpressiveOS commit.
 
@@ -407,6 +400,130 @@ The vendor is stock and prebuilt; only system, system_ext and product are ours.
    - `hal_camera_default` writing `traced_producer`. Stock's policy doesn't allow it either.
    - Two `hal_camera_default` reads of `default_prop`. No log names the property.
 
+> 2d's open issues are restated, with fixed items removed, in section 2e.
+
+## 2e. State as of 2026-10-11, about 18:30 UTC (supersedes 2d's branch notes and open issues)
+
+### Work completed since 2a
+
+| Area | Done in | Verified on the phone |
+|---|---|---|
+| Voice calls (T-Mobile VoLTE, two-way audio) | 2b and 2c: stock telephony domains, `imsstack_app`, PixelImsMediaService, CarrierSettings | ✅ 2c |
+| Telephony domains: GRIL, RIL extension, modem.pms, EuiccSupportPixel | 2b | ✅ 2c |
+| QNS, audio parameter parser, TPU app service, `gs_watchdogd`, `init.pms.rc` | 2b | ✅ 2c |
+| `radio.te` narrowed to `radio → imsstack_app` only | 2c | built, but no call re-tested since |
+| Satellite services in stock's domains | PR #3 | ✅ build #14 |
+| PixelDisplayService, PixelSystemService, camera services, Google Camera domains | PR #5 | ✅ build #14 / #17 |
+| TPU device and service labels, face extension | #20 | ✅ |
+| SCONE as a privileged app (Adaptive Connectivity crash) | `41ea3b5` / `e974478` | ✅ |
+| Tycho, `dcservice_app`, `turbo_adapter` | `fd84141` / `0423cc2` | ✅ |
+| On-device AI and extra Pixel apps (below) | server tree `2c120d1` | see "Flash of 2c120d1" |
+
+### Server tree `2c120d1`: committed on the server, not through GitHub
+
+On 2026-10-11 at 14:08 UTC, a commit was made directly in `~/android-dt/trees/device_google_kodiak`:
+"Add AICore, PixelSense, PixelAI, Hotword, NowPlaying, and Camera/Satellite priv-apps".
+
+**What it adds:**
+- In `proprietary-files.txt`, all `;PRESIGNED` (they keep Google's signature):
+  - `AICorePrebuilt-aicore_20260302.01_RC00`, `PixelAIPrebuilt`, `PixelSensePrebuilt`,
+    `CreativeAssistant`, `AmbientStreaming`
+  - `HotwordEnrollment{OKGoogle,XGoogle}FUSIONPro` and the hotword util jar
+  - `NowPlayingPrebuilt` with its ambient and music-detector data
+  - `PixelCameraServices` with two camera sysconfigs
+  - `SatelliteGateway-Phone-v96792000`
+- In `FrameworkResOverlayKodiak`, stock's `config_messaging_read_restriction_allowlist`.
+- The vendor tree on the server holds the matching extracted blobs, which aren't committed there.
+
+**Build and check:**
+- `~/kodiak-build3.log`: `BUILD_EXIT=0` at 17:59 CEST (15:59 UTC).
+- `~/kodiak-build.log` shows `BUILD_EXIT=1`. That's a **duplicate run** started at the same moment that
+  lost the `out/.lock` race; it isn't a real failure. Before starting a build, check
+  `pgrep -af "soong_ui|ninja"` and use one log file.
+- `check-sepolicy.sh`: `OK`. Its unmapped list is the same as 2d's, minus `dcservice_app` and `turbo_adapter`.
+- The zip is `/tmp/kodiak-evox-img-2c120d1.zip` (5.3 GB) on the server and
+  `~/Downloads/kodiak-evox/kodiak-evox-img-2c120d1.zip` on the Mac.
+  sha256 `a761a1e3595644cd5e09b74c96129b61c51e1883f2dd536aa1b49fea475be2e7`.
+
+**Synced to GitHub on 2026-10-11:** ExpressiveOS `6727268` carries `2c120d1`'s
+`proprietary-files.txt` and `config.xml`. A runner sync from GitHub therefore no longer reverts it.
+On the server, the vendor tree's extracted blobs are committed as `9ace47b` (local git).
+
+**Not synced, and don't sync:** on the Mac, `device_google_kodiak/AICorePrebuilt/Android.bp`, plus
+`AICorePrebuilt` and `PixelAIPrebuilt` lines added to `device.mk`. It's an unbuilt experiment, and it's wrong:
+- Its `apk:` path points into the device tree, where no APK exists.
+- It has no `product_specific`.
+- Both modules are already defined in `vendor/google/kodiak/Android.bp` (from `proprietary-files.txt`)
+  and installed through `kodiak-vendor.mk`.
+
+It's left uncommitted in the Mac working tree. Delete it, or keep it out of `git add`.
+
+### Flash of 2c120d1
+
+Flashed on 2026-10-11 at about 18:27 UTC with `fastboot update`, **no wipe**. It took 140 s; log in
+`~/Downloads/kodiak-evox/logs/flash-2c120d1.log`. Before flashing, the bootloader read
+`spacecraft-17.4-16262255`, unlocked, slot b.
+
+| Check | Result |
+|---|---|
+| Boot | `sys.boot_completed=1` about 25 s after reboot ✅ |
+| Domains from earlier rounds | all present: `imsstack_app`, `grilservice_app`, `rilextensionservice_app`, `pixel_modem_app`, `euiccpixel_app`, `edgetpu_app_server`, `hal_audio_parameter_parser`, `gs_watchdogd`, `sconed`, `pixelsystemservice_app`, `pixeldisplayservice_app`, `pixelntnservice_app`, `vendor_satellite_service`, `vendor_pbcs_app` ✅ |
+| Cellular / IMS | voice and data `IN_SERVICE` (T-Mobile NR SA); IMS `REGISTERED` on WWAN at 22 s; IMS service `com.android.imsstack` ✅ |
+| New apps | all installed as `/product` system apps (`SYSTEM`, `PRIVILEGED` for priv-apps) ✅ |
+| Crashes | no `FATAL EXCEPTION` or ANR in the boot logcat ✅ |
+| privapp allowlist | only 2 lines, both `com.google.android.pixelsystemservice` (`READ_PRECISE_PHONE_STATE`, `USE_VIBRATOR_HAPTIC_GENERATOR`). Not new, and log-only |
+
+How the new apps installed:
+
+| App | Package | How |
+|---|---|---|
+| AICore | `com.google.android.aicore` | system, with the Play copy as `UPDATED_SYSTEM_APP` (data kept) |
+| PixelSense | `com.google.android.apps.pixel.psi` | same |
+| Ambient Streaming | `com.google.ambient.streaming` | same |
+| Pixel Camera Services | `com.google.android.apps.camera.services` | same |
+| SatelliteGateway | `com.google.android.apps.stargate` | same. Play's `100171000` is newer than our `96792000`. The boot log's "Expecting better updated system app; removing system app" line is that normal handover, not a failure |
+| PixelAI | `com.google.android.apps.pixel.agent` | system copy only |
+| CreativeAssistant | `com.google.android.apps.pixel.creativeassistant` | system copy only |
+| Hotword | `com.android.hotwordenrollment.okgoogle` / `.xgoogle` | system copy only |
+| NowPlaying | `com.google.android.apps.pixel.nowplaying` | system copy only |
+
+Denials: nothing new that touches these apps.
+- 15 × `system_server → default_android_service find` are Lineage framework lookups for its own HALs
+  (`vendor.lineage.livedisplay.*`, `touch.*`, `health.*`), which the stock vendor doesn't have. Harmless.
+- The rest is 2d's known noise: camera/gxp `traced_producer`, and `default_prop` reads.
+
+Not done yet: a call, face and fingerprint unlock, the camera, the 3× reboot test, and using the
+AI features (Magic Cue, Pixel Screenshots, Now Playing). See open issues 1 and 2.
+
+### Open issues (in priority order; replaces 2d's list)
+
+1. **Re-test on the newest build:** a voice call (`radio.te` was narrowed after 2c's test),
+   face and fingerprint unlock, the camera, then the 3× reboot test.
+2. **The new `PRESIGNED` priv-apps from `2c120d1`:** they install privileged with no allowlist complaints
+   (see "Flash of 2c120d1"). Still to check, by using them:
+   - Magic Cue (PixelSense), Pixel Screenshots (PixelAI), AICore model download, "Hey Google" enrollment,
+     Now Playing.
+   - Then grep for crashes and for `avc: denied` from `priv_app` naming `aicore`, `pixel.agent`, `psi`,
+     `nowplaying` or `hotword`.
+   - They run as `priv_app`. That's expected: none of them maps to a stock type in the unmapped list.
+3. **The rest of `check-sepolicy.sh`'s unmapped list.** Most are Pixel debug, factory or internal apps we
+   don't ship. Worth a look:
+   - `systemui_app`: stock runs SystemUI in its own domain.
+   - `pixelaudioservices_app`
+   - `connectivity_thermal_power_manager`
+   - `bluetooth_gci`: a stock system_ext daemon we don't ship.
+   - `hal_ambience_hub_service`
+4. **Product RROs:** Google's other product overlays (SystemUI/Settings device config) aren't shipped.
+   See REEKY_DIFF section 4.
+5. **Distribution:**
+   - release keys (it's test-keys now)
+   - `WITH_AVB` / verified boot (vbmeta uses `--flags 3` now)
+   - `m evolution` for the OTA zip
+6. **Noise, safe to ignore:**
+   - `hal_camera_default` writing `traced_producer`
+   - two `hal_camera_default` reads of `default_prop`
+   - the display-driver panic hasn't recurred since the `user` build
+
 ### Phone recovery (the flash stalled on 2026-10-11)
 
 - Our zip doesn't touch the bootloader. A half-written `super` only stops Android from booting.
@@ -515,18 +632,20 @@ Daryl has authorized flashing this phone. Still ask before anything **destructiv
 `-w` / wipes, or flashing firmware/bootloader.
 
 1. Check state: `adb devices` and `fastboot devices`.
-2. Copy and verify:
+2. Copy and verify. Zips are named after the **server** tree commit (`<tree>`), for example
+   `kodiak-evox-img-2c120d1.zip`:
    ```bash
    cd ~/Downloads/kodiak-evox
-   scp -i ~/.ssh/voltage_build_ed25519 build@157.180.50.152:/tmp/kodiak-evox-img.zip .
+   scp -i ~/.ssh/voltage_build_ed25519 build@157.180.50.152:/tmp/kodiak-evox-img-<tree>.zip .
    ```
-   Compare `shasum -a 256 kodiak-evox-img.zip` with the server's `/tmp/kodiak-evox-img.zip.sha256`.
+   Compare `shasum -a 256` with the server's `/tmp/kodiak-evox-img-<tree>.zip.sha256`.
+   The copy takes a few minutes (about 5 GB).
 3. Flash **without wiping** (keeps Daryl's data):
    ```bash
    adb -s 66020DLDV0049F reboot bootloader
    ```
    ```bash
-   fastboot -s 66020DLDV0049F update kodiak-evox-img.zip
+   fastboot -s 66020DLDV0049F update kodiak-evox-img-<tree>.zip
    ```
    It reboots by itself when it's done (about 135 s).
 4. Wait for `adb shell getprop sys.boot_completed` = `1`.
@@ -585,12 +704,12 @@ Write multi-step logic to a script file instead.
 
 **Telephony and IMS**
 - Telephony needs stock system_ext blobs; see `proprietary-files.txt`.
-- **ImsStack and ImsMediaService must be built from AOSP**
-  (`packages/modules/ImsStack`, `packages/modules/ImsMedia`).
-  - The stock ImsStack blob collides with the AOSP install.
-  - The stock `PixelImsMediaService` uses `android.uid.phone` with **Google's** key.
-    That gives `Signature mismatch … for shared user`, system_server crashes, and the
-    phone bootloops.
+- **ImsStack is built from AOSP** (`packages/modules/ImsStack`). The stock ImsStack blob collides with the AOSP install.
+- **IMS media is the stock `PixelImsMediaService`, re-signed** (since 2a). AOSP ImsMedia can't drive kodiak's call audio.
+  - It uses `android.uid.phone`, so it must **not** be `;PRESIGNED`.
+  - With Google's key it gives `Signature mismatch … for shared user`, system_server crashes, and the phone bootloops.
+  - Re-signed with our platform key, it works.
+- ImsStack must run as stock's `imsstack_app` domain: the vendor's imsmediahaldaemon rules only name that domain.
 - The stock **vendor** TeleService RRO names `com.shannon.imsservice` (wrong for MediaTek).
   Stock overrides it from product; `TeleServiceOverlayKodiak` does the same.
 
@@ -616,22 +735,23 @@ Write multi-step logic to a script file instead.
 
 ## 10. Keep the backup in sync
 
-After device-tree commits on the server, refresh the repo copy on the Mac:
+**Since 2026-10-11 the source of truth is GitHub, not the server.**
+- The runner's `sync` / `round` actions copy `evolution-kodiak/device_google_kodiak` from the chosen branch
+  into the server tree, then commit it as "sync from ExpressiveOS <branch>@<commit>".
+- A commit made only on the server is **overwritten** by the next sync. That nearly happened to `2c120d1` (section 2e).
+
+**If you do commit on the server** (a hand build), bring it to GitHub straight away (from the Mac):
 ```bash
 cd ~/Developer/ExpressiveOS
 ssh -i ~/.ssh/voltage_build_ed25519 build@157.180.50.152 'cd ~/android-dt/trees/device_google_kodiak && git archive HEAD' | tar -x -C evolution-kodiak/device_google_kodiak
-git add evolution-kodiak && git commit -m "evolution-kodiak: sync device tree"
+git add evolution-kodiak/device_google_kodiak && git commit -m "evolution-kodiak: sync device tree from server <commit>"
+git push origin HEAD:evolution/kodiak-port
 ```
-As of this update the backup matches the server (device tree `7385c90`). It includes:
-- the telephony blob list and `extract-files.py`
-- the PixelImsMediaService change
-- `TeleServiceOverlayKodiak` and `PixelImsMediaServiceOverlayKodiak`
-- `radio.te`
-- the move of the stock images to `kodiak-images`
+Check `git status` first: `tar -x` doesn't delete files, and the Mac copy may hold unrelated uncommitted edits.
 
-`tools/` also holds copies of the server's `kodiak-images.sh` and `kodiak-build.sh`.
+As of section 2e, GitHub `evolution/kodiak-port` matches the server tree `2c120d1`.
 
-Sync again after further commits.
+`tools/` holds copies of the server's `kodiak-images.sh` and `kodiak-build.sh`.
 
 ## 11. Working from a cloud session (GitHub only)
 
@@ -657,7 +777,7 @@ Without the runner, a cloud session sees only this repo. It has **no** SSH key f
 - **Reference data the cloud can't see** (it's on the server): stock policy at
   `~/android-dt/dumps/kodiak/system_ext/etc/selinux/system_ext_sepolicy.cil`, and Reeky's unpacked build at
   `~/android-dt/ref/reeky/`. REEKY_DIFF.md summarises what matters.
-- **Good cloud-only tasks:**
-  - Write `imsstack_app.te`, `vendor_ims_app.te` and the matching `seapp_contexts` (REEKY_DIFF section 3).
-    Rule text has to come from the stock CIL, so ask Daryl to paste excerpts or run a grep on the server.
-  - Draft product source RROs (REEKY_DIFF section 4).
+  With the runner, the `inspect` action reads the stock dump.
+- **Good cloud-only tasks** (`imsstack_app` and the telephony domains are done):
+  - The remaining unmapped domains (section 2e, open issue 3), with rule text from the stock CIL via `inspect`.
+  - Product source RROs (REEKY_DIFF section 4).
