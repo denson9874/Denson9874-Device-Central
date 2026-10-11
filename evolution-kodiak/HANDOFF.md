@@ -563,8 +563,73 @@ Daryl asked for root, **on condition that Google Wallet and the AI features keep
 **PixelAI (Pixel Screenshots):** the `/data` copy installed before `2c120d1` had a different signer from Google's
 stub, so PackageManager deleted it at the `2c120d1` flash. Only the stub is left; install Pixel Screenshots from Play.
 
-**Next:** with root, read AICore's own state (`/data/data/com.google.android.aicore`: shared_prefs, databases) for
-the failing request and the server's details. Then check account eligibility (age, region, Workspace).
+**With root (later on 2026-10-11):**
+- AICore fetches models through GMS's MDD. Its file-group store is empty (no models), with no stored error.
+- Failures repeat "within backoff period", but **fresh** attempts also fail. One failed at 15:02:29, after AICore
+  became a privileged system app and after root, so it isn't a stale error from when AICore was a `/data`-only app.
+- "The caller does not have permission" is the standard wording of Google's server APIs for a 403.
+
+**Lead: the PIF profile.** Evolution's `spoof_pif_config` makes **DroidGuard (`gms.unstable`) present the phone as a
+Pixel 6a** (`google/bluejay_beta/bluejay:CANARY/ZP11.260918.007`), which has no Gemini Nano or Magic Cue.
+- Per `PlayIntegritySpoofService.java`, only DroidGuard gets these fields. Play Store would too, but its
+  `spoofVendingFinger` is off, and the PixelPropsUtils targets (AICore, PixelSense) get the real "kodiak" profile.
+- So the server could only see "Pixel 6a" through a DroidGuard-signed request. Nothing in the logs shows AICore
+  calling DroidGuard when it fails, so this is plausible but **unproven**.
+- **Test:** temporarily switch the PIF profile to a kodiak Canary fingerprint. Save the current value first.
+  Then re-run Play Store's integrity check **before** opening Wallet, and restore the old value if it isn't STRONG.
+  Ask Daryl first: it touches the integrity setup Wallet depends on.
+
+**Other lead: account eligibility** (personal vs Workspace account, age, region). Ask whether Gemini Nano and
+Magic Cue worked on stock CD1A with the same Google account.
+
+**ROOT CAUSE, found 2026-10-11.** Daryl confirmed both worked on stock with the same account. Two tests,
+both reverted, were negative: the PIF profile switched to Pixel 11 Pro, and the build props set to stock
+values with `resetprop`.
+
+The chain, from logs and code:
+1. AICore's "manifest config source" is a gRPC call to Private Compute Services
+   (`com.google.android.as.oss`, "Astrea"): `ProtectedDownloadService/GetManifestConfig`. Found with `dexdump`
+   of AICore: class `dgf`.
+2. PCS needs a hardware-attested key for its request. Keystore asks RKPD for an attestation key and fails:
+   `Out of data budget due to repeated errors`. PCS then logs "Failed to get attestation token", and the server
+   answers `PERMISSION_DENIED`.
+3. RKPD fails because Google's RKP server rejects every CSR with
+   `400 INVALID_ARGUMENT: Couldn't parse boot_patch_level 20000000`.
+   - Seen after resetting RKPD's error budget (`/data/user_de/0/com.android.rkpdapp/shared_prefs/
+     com.android.rkpdapp.utils.preferences.xml`) and running its job.
+   - kodiak is RKP-only (`remote_provisioning.tee.rkp_only=1`), so there are no factory attestation keys to fall back on.
+4. The CSR's DeviceInfo (`cmd remote_provisioning csr --challenge … default`, decoded) has
+   `boot_patch_level=20000000`, `vendor_patch_level=20261005` and `system_patch_level=202610`.
+   The boot patch level is missing.
+5. Our images carry the right values: `boot` and `init_boot` AVB props `security_patch=2026-10-05`, and the
+   `init_boot` header `2026-10`, the same as stock. But **our vbmeta has `Flags: 3`** (verification disabled,
+   from the bring-up line in `BoardConfig.mk`: `BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --flags 3` unless
+   `WITH_AVB=true`). Stock has `Flags: 0`. With verification off, the bootloader doesn't pass the boot patch
+   level to KeyMint.
+
+Play Integrity is still STRONG only because Evolution's TrickyStore generates keybox-signed chains for its
+targets, without RKP. PCS (`com.google.android.as.oss`) isn't a target.
+
+**Test (staged, not flashed):**
+- `~/Downloads/kodiak-evox/vbmeta-2c120d1-flags0.img` (sha256 `ef8399a1…`) is our vbmeta re-signed with the build's
+  own key (`vendor/evolution-priv/keys/avb.pk8`, SHA256_RSA4096, rollback index 1790812800, padding 4096),
+  with `--flags 0`. It differs from `out/vbmeta.img` only in Flags.
+- Flash: `fastboot flash vbmeta_b vbmeta-2c120d1-flags0.img`.
+- Undo: `fastboot flash vbmeta_b vbmeta-2c120d1-flags3.img` (sha256 `f2e110db…`).
+- The flash was blocked by Claude Code's auto-mode permission check, so Daryl runs it.
+- After boot, check:
+  1. `cmd remote_provisioning csr …` shows `boot_patch_level` = 20261005.
+  2. RKPD provisions keys (logcat `RkpdServerInterface`; no 400).
+  3. AICore stops logging `Failed to fetch manifest config`.
+
+**If RKP then succeeds but PCS is still refused:** the real attestation will show `unlocked`/`orange`. Next is
+adding `com.google.android.as.oss` to Evolution's TrickyStore targets (`Settings.Secure spoof_trickystore_target`,
+Evolver → TrickyStore apps), so its chain is keybox-signed like GMS's.
+
+**Permanent fix:** drop `--flags 3` from `BoardConfig.mk` (verification on, as on stock and LineageOS), then rebuild.
+Do it once the vbmeta test boots.
+
+Also seen: the CSR has `fused: 0`. Not investigated yet.
 
 ### Open issues (in priority order; replaces 2d's list)
 
