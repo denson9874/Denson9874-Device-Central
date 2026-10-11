@@ -411,7 +411,15 @@ Sync again after further commits.
 
 ## 11. Working from a cloud session (GitHub only)
 
-A cloud session sees only this repo. It has **no** SSH key for the build server, no phone and no blobs, so:
+**Build server runner (since 2026-10-11).** `.github/workflows/kodiak-build.yml` (on `main`, added in PR #2)
+runs on a self-hosted runner on the build server (label `kodiak-build`). A cloud session dispatches it with
+`action` = `status` | `sync` | `extract` | `images` | `check-sepolicy` | `imgzip` | `round` | `ota` and a `tree_ref`
+(branch to sync the device tree from), then reads the job log. That covers the server steps below; flashing and
+the phone stay on the Mac. It never uploads build output, refuses to start while another build runs, and refuses to
+sync over uncommitted changes. The runner's setup steps are in the workflow's header comment. If the runner is
+offline (`status` stays queued), use the manual route below.
+
+Without the runner, a cloud session sees only this repo. It has **no** SSH key for the build server, no phone and no blobs, so:
 - **It can** edit the device tree in `evolution-kodiak/device_google_kodiak/` (sepolicy `.te` files, RROs,
   `proprietary-files.txt`, makefiles), update these notes, commit and push to `evolution/kodiak-port`.
 - **It can't** build, run `extract-files.py`, run `check-sepolicy.sh`, or flash.
