@@ -115,3 +115,16 @@ system_ext/framework/com.google.android.camerax.extensions.jar
 system_ext/framework/com.google.pixel.camera.connectivity.jar
 system_ext/framework/com.google.pixel.camera.services.cameraidremapper.jar
 system_ext/framework/com.google.pixel.camera.services.lyricconfigprovider.jar
+
+# PixelDisplayService (com.android.pixeldisplayservice): display features stock
+# drives through its display HAL extension. Persistent, platform-signed on stock,
+# so re-signed with our key. Its JNI library is loaded from system_ext/lib64.
+# Policy: pixeldisplayservice_app.te.
+system_ext/lib64/libpixeldisplaymanager_jni.so
+system_ext/priv-app/PixelDisplayService/PixelDisplayService.apk
+
+# com.google.pixel.camera.services (PersistentBackgroundCameraServices): publishes
+# the services the stock camera HAL looks up (IServiceBinder, LyricConfigProvider,
+# CameraIdRemapper). It runs as android.uid.system, so it must NOT be PRESIGNED.
+# Policy: vendor_pbcs_app.te.
+system_ext/app/PersistentBackgroundCameraServices/PersistentBackgroundCameraServices.apk
