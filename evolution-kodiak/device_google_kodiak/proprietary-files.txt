@@ -28,8 +28,15 @@ system_ext/lib64/vendor.google.whitechapel.audio.audioext@4.0.so
 system_ext/lib64/vendor.google.whitechapel.audio.extension-V8-ndk.so
 system_ext/priv-app/PixelImsMediaService/PixelImsMediaService.apk
 
-# Modem (MediaTek RIL glue, Pixel modem service)
+# Modem (MediaTek RIL glue, Pixel modem service). grilservice, ril-extension and
+# PixelModemService are re-signed with our platform key (no ;PRESIGNED), so they
+# carry seinfo=platform and seapp_contexts can put them in stock's domains
+# (grilservice_app, rilextensionservice_app, pixel_modem_app). Under Google's
+# keys they ran as priv_app and none of the stock vendor rules for them applied.
+# None of the three uses a shared uid, so re-signing is safe. init.pms.rc
+# creates /data/vendor/radio/pms, which modem.pms can't create itself.
 system_ext/etc/default-permissions/default-permissions_com.google.android.modem.pms_full.xml
+system_ext/etc/init/init.pms.rc
 system_ext/etc/permissions/com.google.android.modem.pms.lib.xml
 system_ext/etc/permissions/com.google.android.modem.pms.xml
 system_ext/etc/permissions/com.google.android.rilextension.xml
@@ -42,9 +49,9 @@ system_ext/framework/com.google.android.modem.pms.lib.jar
 system_ext/framework/google-ril.jar
 system_ext/lib64/libmtkproperty.so
 system_ext/lib64/libmtkrillog.so
-system_ext/priv-app/grilservice/grilservice.apk;PRESIGNED
-system_ext/priv-app/PixelModemService/PixelModemService.apk;PRESIGNED
-system_ext/priv-app/ril-extension/ril-extension.apk;PRESIGNED
+system_ext/priv-app/grilservice/grilservice.apk
+system_ext/priv-app/PixelModemService/PixelModemService.apk
+system_ext/priv-app/ril-extension/ril-extension.apk
 
 # Radio config
 system_ext/etc/permissions/com.android.omadm.radioconfig.xml
