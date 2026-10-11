@@ -97,6 +97,13 @@ ifneq ($(KODIAK_DEV_ADB_KEYS),)
 PRODUCT_ADB_KEYS := $(KODIAK_DEV_ADB_KEYS)
 endif
 
+# Adaptive Connectivity Services (SCONE): stock's privileged app, from
+# proprietary-files.txt. Its privileged-permission allowlist and stock's
+# sysconfig entries for it, which Evolution's GMS doesn't carry.
+PRODUCT_COPY_FILES += \
+    device/google/kodiak/configs/permissions/privapp-permissions-kodiak-scone.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/privapp-permissions-kodiak-scone.xml \
+    device/google/kodiak/configs/sysconfig/kodiak-scone.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/sysconfig/kodiak-scone.xml
+
 # Characteristics
 PRODUCT_CHARACTERISTICS := nosdcard
 
