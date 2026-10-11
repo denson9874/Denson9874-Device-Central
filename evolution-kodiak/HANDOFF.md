@@ -280,7 +280,7 @@ Follow-ups done after the test:
 | [#17](https://github.com/denson9874/ExpressiveOS/actions/runs/38131554424) | `8cc9b64` | `/tmp/kodiak-evox-img-9190352.zip` | `f7d1122e294800d7985e82914659cc75dcd5133597424e4e5970e200e03c87ed` | **Flash stalled** at `super` 2/10 |
 | [#20](https://github.com/denson9874/ExpressiveOS/actions/runs/38133386540) | `1a10718` | `/tmp/kodiak-evox-img-acd4512.zip` | `0ef682095e5621e279308b6afcd896722fa4e88b9b6fa9c7996f6489de07db15` | Flashed and checked: TPU labels, TPU and camera services, no crashes |
 | [#21](https://github.com/denson9874/ExpressiveOS/actions/runs/38135812562) | `851b0ab` | none | none | Failed in kati: `SCONE-v77459` defined twice. Fixed by `41ea3b5` |
-| built by hand on the server | `41ea3b5` | `/tmp/kodiak-evox-img-e974478.zip` | in the `.sha256` file next to the zip | `BUILD_EXIT=0`; `check-sepolicy.sh: OK` ([#24](https://github.com/denson9874/ExpressiveOS/actions/runs/38138299112)). **Newest: flash this one** |
+| built by hand on the server | `41ea3b5` | `/tmp/kodiak-evox-img-e974478.zip` | in the `.sha256` file next to the zip | `BUILD_EXIT=0`; `check-sepolicy.sh: OK` ([#24](https://github.com/denson9874/ExpressiveOS/actions/runs/38138299112)). **Flashed and checked; newest** |
 
 Every build except #21 passed with `BUILD_EXIT=0` and `check-sepolicy.sh: OK`. In #20 the six types
 from item 9 below dropped off the unmapped list. A hand-run build holds `~/evolution`, so the
@@ -300,7 +300,16 @@ runner's preflight refuses to start on top of one; run #22 hit that.
 | `sconed` | not started. That's expected: it's a lazy AIDL service (`disabled oneshot`) that starts when GRIL asks for it |
 | Face unlock, fingerprint unlock | work ✅ |
 
-Not yet done on the latest build: the call re-test and the 3× reboot test.
+On `e974478` (the hand-run build of `41ea3b5`):
+- scone runs as `priv_app_36` from `/product/priv-app/SCONE-v77459`, with no crashes.
+  - `pm get-privapp-permissions` lists about 50 permissions; nothing logs "not in privapp-permissions allowlist".
+  - GMS's module brings its own allowlist once it's installed. That's why it printed `{}` before.
+  - `configs/permissions/privapp-permissions-kodiak-scone.xml` now overlaps with it; the entries
+    combine, so it stays as a backstop.
+- The TPU nodes are labelled `edgetpu_device`, and the TPU and camera services are registered.
+
+Not yet done on the latest build: face and fingerprint unlock, the camera, the call re-test and the
+3× reboot test.
 
 ### Fixed. Don't revert these
 
@@ -363,7 +372,7 @@ The vendor is stock and prebuilt; only system, system_ext and product are ours.
 
 ### Open issues (in priority order)
 
-1. **Adaptive Connectivity Services (`com.google.android.apps.scone`) keeps stopping.**
+1. **Fixed on `e974478`:** Adaptive Connectivity Services (`com.google.android.apps.scone`) kept stopping.
    - Cause: it's installed from Play as an ordinary app (`untrusted_app`) and crashes on
      `READ_PRIVILEGED_PHONE_STATE`.
    - **Fix, in the build after #20:** install `SCONE-v77459` via `PRODUCT_PACKAGES` in `device.mk`
