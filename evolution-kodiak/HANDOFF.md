@@ -755,6 +755,19 @@ Also seen: the CSR has `fused: 0`. Not investigated yet.
   - Untick **Wipe device** to keep data, and leave **Lock bootloader** unticked.
   - Going from our build back to stock without a wipe may still need a wipe to boot.
 
+## 2f. Public repos (2026-10-11)
+
+- **Device tree:** https://github.com/denson9874/device_google_kodiak (public, branch `cnb`).
+  - It was published as one fresh commit from `evolution-kodiak/device_google_kodiak` (63 files), author
+    `9751141+denson9874@users.noreply.github.com`. The patch header uses the noreply address too.
+  - **It's a mirror, not the source of truth.** Keep editing `evolution-kodiak/device_google_kodiak` here, then push
+    the same changes to the public repo with the noreply author.
+- **Upstream PR:** https://github.com/Evolution-X/build/pull/5, from fork `denson9874/build`, branch
+  `releasetools-prebuilt-partitions`. It's our `patches/build_make` fix, rebased on upstream `cnb` (`5b95f1f`).
+  When it merges, remove `patches/` and `apply-patches.sh`.
+- **Not published:** `vendor/google/kodiak` (blobs) and `vendor/google/kodiak-images` (whole stock images).
+  See MAINTAINERSHIP.md, blocker 1.
+
 ## 3. Machines and access
 
 | What | Where |
