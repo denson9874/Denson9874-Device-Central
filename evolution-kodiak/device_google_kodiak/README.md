@@ -27,12 +27,21 @@ vendor stays stock for now.
 ```bash
 # inside the Evolution X (cnb) tree
 git clone <this repo> device/google/kodiak
-device/google/kodiak/apply-patches.sh   # build/make fix for prebuilt vendor
-device/google/kodiak/extract-images.sh ~/android-dt/firmware/kodiak-cd1a.261005.003-factory-006d44d7.zip
+device/google/kodiak/apply-patches.sh   # build/make fix for prebuilt partitions (until it's merged upstream)
+
+# Stock factory image CD1A.261005.003 for kodiak, from https://developers.google.com/android/images
+device/google/kodiak/extract-images.sh <kodiak-cd1a.261005.003-factory-*.zip>   # -> vendor/google/kodiak-images
+cd device/google/kodiak && ./extract-files.py <dump of the factory image> && cd -   # -> vendor/google/kodiak
+
 . build/envsetup.sh
-lunch lineage_kodiak-cp2a-userdebug
+lunch lineage_kodiak-cp2a-user
 m evolution
 ```
 
-`vendor/google/kodiak` contains Google's proprietary images. Never push it to a
-public remote.
+Build the `user` variant. `userdebug` mounts debugfs early, which the stock vendor
+policy denies, and the display driver can panic on boot.
+
+Neither generated vendor directory is published here. `vendor/google/kodiak-images`
+holds whole stock partition images (vendor, vendor_dlkm, system_dlkm, boot, dtbo,
+firmware), and `vendor/google/kodiak` holds the proprietary blobs from
+`proprietary-files.txt`. Both are generated from Google's factory image.
