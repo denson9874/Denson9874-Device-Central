@@ -3,6 +3,11 @@
 Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
+> **Update, late 2026-10-10.** The radio.te fix did **not** fix calls (still 401).
+> The next attempt (stock PixelImsMediaService) is committed and being built.
+> The phone is now on **Android Canary** (Daryl needed a working phone), so there are no logs.
+> See section 2a, plus section 11 if you're a cloud session.
+
 ## 1. Goal
 
 Make a working **Evolution X 17** (Android 17, branch `cnb`, LineageOS-based)
@@ -60,6 +65,40 @@ Its operating rules still apply (see section 9).
      name=com.android.imsstack domain=imsstack_app`). AOSP doesn't ship that policy.
      Stock defines it in Google's system_ext policy, about 109 references.
 4. Once calls work: do a reboot test (3×), then update the README status and commit.
+
+## 2a. State as of late 2026-10-10 (supersedes the "Next steps" above)
+
+**The radio.te test:** Daryl placed a call on the 23d771b build. It failed the same way. No logs were
+captured before the phone left Evolution X.
+
+**The new attempt:** device tree `7385c90`, vendor tree `45bfabd`.
+- **Why:** Reeky's working LineageOS kodiak build ships the **stock PixelImsMediaService**, not AOSP ImsMedia,
+  re-signed with their own platform key (its `classes.dex` is identical to stock). Its `libpixelimsmedia.so`
+  drives call audio through the `vendor.google.whitechapel.audio` extension HAL. AOSP ImsMedia can't, which fits
+  `CODE_MEDIA_INIT_FAILED`. Full analysis: [REEKY_DIFF.md](REEKY_DIFF.md).
+- **What changed:**
+  - `proprietary-files.txt` brings back PixelImsMediaService **without `;PRESIGNED`**, so extract-utils
+    re-signs it with `certificate: "platform"`. That avoids the old shared-uid signature-mismatch bootloop.
+  - It also adds `libpixelimsmedia.so`, the two whitechapel audio libraries and the sysconfig XML.
+  - `device.mk` drops AOSP `ImsMediaService` and adds `PixelImsMediaServiceOverlayKodiak`, a source RRO with
+    the stock product RRO values: `audio_switch_mode=2`, `cp_noflow_supported=true`.
+  - `radio.te` stays.
+  - No new vendor sepolicy is needed: stock vendor already allows `radio` → `hal_audio_ext_service` / `hal_audio_default`.
+- **Build:** `~/kodiak-images.sh` was started on the server. Check `grep BUILD_EXIT ~/kodiak-build.log`.
+
+**The phone is on Android Canary now.**
+- Canary most likely put a **newer bootloader** on it than CD1A.261005.003's (`spacecraft-17.4-16262255`).
+  Our image zip carries CD1A firmware.
+- **Before any flash**, read `fastboot getvar version-bootloader` and `fastboot getvar unlocked`.
+- If the bootloader is newer, Daryl has to return to stock CD1A.261005.003 with Android Flash Tool first.
+  That wipes the phone, and only works if anti-rollback wasn't raised.
+- **Ask Daryl first. Don't flash Canary-era firmware manually.**
+
+**Next steps:**
+1. Confirm the build passed, then run `check-sepolicy.sh` and package the image zip (section 5).
+2. Get the phone back on CD1A plus our build (ask Daryl), then place a test call and pull logs (section 7).
+3. If calls work: move ImsStack to its own `imsstack_app` domain and narrow `radio.te` (REEKY_DIFF section 3),
+   then do the missing system_ext blobs (REEKY_DIFF section 2).
 
 ### Other open issues (lower priority)
 
@@ -248,10 +287,12 @@ Write multi-step logic to a script file instead.
 
 ## 9. Rules from Daryl / the guide
 
-- **Never push** device or vendor trees to any remote, and never Google images
-  anywhere public. Local git only.
-  - `evolution-kodiak/` in the ExpressiveOS repo holds only tree files: no blobs,
-    no images, no aospdtgen first commit (it contains Google kernel binaries).
+- **Never push** vendor trees, blobs or Google images to any remote.
+  - On 2026-10-10 Daryl allowed pushing `evolution-kodiak/` (device-tree files only) to the **private**
+    repo `denson9874/ExpressiveOS`, on branch `evolution/kodiak-port`, so cloud sessions can work on it.
+    It still must not go anywhere public.
+  - `evolution-kodiak/` holds only tree files: no blobs, no images, and not the aospdtgen first commit
+    (that commit contains Google kernel binaries).
 - No `sudo` package installs or full `repo sync` without asking Daryl.
 - **Ask Daryl before** wipes (`-w`), bootloader/firmware flashes, or anything that
   can't be undone. Normal no-wipe `fastboot update` of our images is authorized.
@@ -267,11 +308,34 @@ cd ~/Developer/ExpressiveOS
 ssh -i ~/.ssh/voltage_build_ed25519 build@157.180.50.152 'cd ~/android-dt/trees/device_google_kodiak && git archive HEAD' | tar -x -C evolution-kodiak/device_google_kodiak
 git add evolution-kodiak && git commit -m "evolution-kodiak: sync device tree"
 ```
-As of this handoff the backup matches the server (device tree `23d771b`). It includes:
-- the telephony blobs and `extract-files.py`
-- the ImsStack / ImsMediaService changes
-- `TeleServiceOverlayKodiak`
+As of this update the backup matches the server (device tree `7385c90`). It includes:
+- the telephony blob list and `extract-files.py`
+- the PixelImsMediaService change
+- `TeleServiceOverlayKodiak` and `PixelImsMediaServiceOverlayKodiak`
 - `radio.te`
 - the move of the stock images to `kodiak-images`
 
+`tools/` also holds copies of the server's `kodiak-images.sh` and `kodiak-build.sh`.
+
 Sync again after further commits.
+
+## 11. Working from a cloud session (GitHub only)
+
+A cloud session sees only this repo. It has **no** SSH key for the build server, no phone and no blobs, so:
+- **It can** edit the device tree in `evolution-kodiak/device_google_kodiak/` (sepolicy `.te` files, RROs,
+  `proprietary-files.txt`, makefiles), update these notes, commit and push to `evolution/kodiak-port`.
+- **It can't** build, run `extract-files.py`, run `check-sepolicy.sh`, or flash.
+- **To apply a cloud change on the server** (from the Mac):
+  ```bash
+  cd ~/Developer/ExpressiveOS && git pull
+  rsync -a --exclude .git -e "ssh -i ~/.ssh/voltage_build_ed25519" evolution-kodiak/device_google_kodiak/ build@157.180.50.152:android-dt/trees/device_google_kodiak/
+  ```
+  Then commit in the server tree, `git pull` into `~/evolution/device/google/kodiak`, re-run `extract-files.py`
+  if `proprietary-files.txt` changed, and build.
+- **Reference data the cloud can't see** (it's on the server): stock policy at
+  `~/android-dt/dumps/kodiak/system_ext/etc/selinux/system_ext_sepolicy.cil`, and Reeky's unpacked build at
+  `~/android-dt/ref/reeky/`. REEKY_DIFF.md summarises what matters.
+- **Good cloud-only tasks:**
+  - Write `imsstack_app.te`, `vendor_ims_app.te` and the matching `seapp_contexts` (REEKY_DIFF section 3).
+    Rule text has to come from the stock CIL, so ask Daryl to paste excerpts or run a grep on the server.
+  - Draft product source RROs (REEKY_DIFF section 4).

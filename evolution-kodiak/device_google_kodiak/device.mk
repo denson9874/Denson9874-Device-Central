@@ -17,12 +17,13 @@ $(call inherit-product, frameworks/native/build/phone-xhdpi-6144-dalvik-heap.mk)
 # API levels (stock ro.product.first_api_level)
 PRODUCT_SHIPPING_API_LEVEL := 37
 
-# IMS (AOSP packages/modules/ImsStack, ImsMedia) and Wi-Fi calling (AOSP Iwlan, as
-# LineageOS laguna). The rest of the Pixel telephony stack is stock blobs.
+# IMS (AOSP packages/modules/ImsStack) and Wi-Fi calling (AOSP Iwlan, as
+# LineageOS laguna). The rest of the Pixel telephony stack, including
+# PixelImsMediaService, is stock blobs.
 PRODUCT_PACKAGES += \
-    ImsMediaService \
     ImsStack \
     Iwlan \
+    PixelImsMediaServiceOverlayKodiak \
     TeleServiceOverlayKodiak
 
 # HIDL: shipping API 37 drops these, but stock kodiak's system still ships
