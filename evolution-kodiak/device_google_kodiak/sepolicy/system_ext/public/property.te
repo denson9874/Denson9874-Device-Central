@@ -1,0 +1,7 @@
+# Properties stock labels in its system_ext policy. The stock vendor policy
+# lets rild read or set all four, so they have to be public. Unlabelled, they
+# read as default_prop, which rild may neither read nor set.
+system_public_prop(ims_prop)
+system_public_prop(system_ril_ext_prop)
+system_public_prop(telephony_ril_ntn_sim_deact_prop)
+system_restricted_prop(telephony_ntn_demo_mode_prop)

@@ -1,0 +1,15 @@
+# Platform rules stock's newer platform policy has and the AOSP base we build
+# from lacks. They meet stock vendor HALs, so the stock vendor can't add them.
+
+# Apps hand the DRM HALs their buffers as memfds, which carry the app's domain.
+allow hal_drm_server { appdomain -isolated_app }:memfd_file { read write getattr map };
+
+# Large parcels from the camera service arrive in system_server as memfds
+# labelled with cameraserver's domain.
+allow system_server cameraserver:memfd_file { read write getattr map };
+
+# The camera service and the face HAL share capture queues and buffers as
+# memfds, in both directions.
+hal_client_domain(cameraserver, hal_face)
+allow cameraserver hal_face:memfd_file { read write getattr map };
+allow hal_face cameraserver:memfd_file { read write getattr map };

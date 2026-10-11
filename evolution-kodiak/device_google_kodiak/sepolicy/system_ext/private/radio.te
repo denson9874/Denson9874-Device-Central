@@ -1,8 +1,10 @@
-# AOSP ImsStack (com.android.imsstack) runs as platform_app here. It opens the
-# RTP UDP sockets for a call and hands them to ImsMediaService, which runs in
-# the phone process (radio). Without this, media setup fails and IMS calls end
-# with ImsReasonInfo 401 (CODE_MEDIA_INIT_FAILED).
-#
-# Stock kodiak gives ImsStack its own imsstack_app domain from Google's
-# proprietary system_ext policy, which AOSP doesn't provide.
+# ImsStack opens the RTP UDP sockets for a call and hands them to
+# PixelImsMediaService, which runs in the phone process (radio). Without this,
+# media setup fails and IMS calls end with ImsReasonInfo 401
+# (CODE_MEDIA_INIT_FAILED). Stock's compiled policy has the imsstack_app rule.
+allow radio imsstack_app:udp_socket { getattr getopt ioctl read setopt shutdown write };
+
+# Fallback while ImsStack's move to imsstack_app (seapp_contexts) is unproven:
+# it ran as platform_app before. Drop this once a call log shows ImsStack in
+# imsstack_app.
 allow radio platform_app:udp_socket { read write getattr getopt setopt ioctl };
