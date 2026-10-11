@@ -158,7 +158,11 @@ BOARD_PREBUILT_SYSTEM_DLKMIMAGE := $(IMAGES_PATH)/images/system_dlkm.img
 TARGET_SYSTEM_EXT_PROP += $(DEVICE_PATH)/system_ext.prop
 TARGET_PRODUCT_PROP += $(DEVICE_PATH)/product.prop
 
-# SELinux
+# SELinux: the parts of Google's system_ext policy the stock vendor policy
+# depends on (Google app/daemon domains and props). The public types let the
+# system_ext mapping file connect stock vendor rules to them; see
+# sepolicy/system_ext/public/apps.te and check-sepolicy.sh.
+SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/system_ext/public
 SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/system_ext/private
 
 # Verified boot (same chain layout as stock and LineageOS laguna)
