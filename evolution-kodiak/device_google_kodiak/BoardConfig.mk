@@ -206,5 +206,18 @@ endif
 BOOT_SECURITY_PATCH := 2026-10-05
 VENDOR_SECURITY_PATCH := $(BOOT_SECURITY_PATCH)
 
+# With verification off (--flags 3) the bootloader reads properties only from
+# the top-level vbmeta, not from the chained boot/vbmeta_system images. Without
+# these, KeyMint gets boot patch level 0, Google's RKP server rejects every CSR
+# ("boot_patch_level 20000000"), no attestation keys are issued, and AICore
+# (Gemini Nano, Magic Cue) can't fetch its models. Keep them in every build
+# from now on: a lower boot patch level than the phone has booted is a KeyMint
+# downgrade and makes existing keystore keys unusable.
+BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += \
+    --prop com.android.build.boot.os_version:$(PLATFORM_VERSION_LAST_STABLE) \
+    --prop com.android.build.boot.security_patch:$(BOOT_SECURITY_PATCH) \
+    --prop com.android.build.system.os_version:$(PLATFORM_VERSION_LAST_STABLE) \
+    --prop com.android.build.system.security_patch:$(PLATFORM_SECURITY_PATCH)
+
 include $(IMAGES_PATH)/BoardConfigImages.mk
 -include vendor/google/kodiak/BoardConfigVendor.mk
