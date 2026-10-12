@@ -1,0 +1,35 @@
+From ff2b6e91873f026cd2b4ea5f3801811423e0d838 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <daryldenson0405@gmail.com>
+Date: Sat, 10 Oct 2026 14:48:23 +0200
+Subject: [PATCH] releasetools: tolerate prebuilt partitions without a
+ directory
+
+PartitionBuildProps._ReadPartitionPropFile indexed the partition map
+directly, so a device with BOARD_PREBUILT_VENDORIMAGE (only IMAGES/
+vendor.img in target-files) failed with KeyError: 'vendor'. Treat a
+missing directory like a missing build.prop.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ tools/releasetools/common.py | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/tools/releasetools/common.py b/tools/releasetools/common.py
+index e5e2c96..89a7abb 100644
+--- a/tools/releasetools/common.py
++++ b/tools/releasetools/common.py
+@@ -1115,6 +1115,11 @@ class PartitionBuildProps(object):
+     """
+     data = ''
+     partition_map = PartitionMapFromTargetFiles(input_file)
++    if name not in partition_map:
++      # Prebuilt partitions (BOARD_PREBUILT_VENDORIMAGE etc.) ship only
++      # IMAGES/<name>.img, without an extracted directory.
++      logger.warning("No directory for partition %s; skipping build.prop", name)
++      return data
+     for prop_file in ['{}/etc/build.prop'.format(partition_map[name]),
+                       '{}/build.prop'.format(partition_map[name])]:
+       try:
+-- 
+2.43.0
+

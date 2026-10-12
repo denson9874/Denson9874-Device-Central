@@ -2,7 +2,7 @@
 # Weekly parity routine for one Pixel 11 device: keep its build in step with
 # official Evolution X (cnb).
 #
-#   p11-routine.sh <kodiak|grizzly|cubs> [--dry-run] [--force] [--no-upload] [--mark-current]
+#   p11-routine.sh <kodiak|grizzly|cubs|yogi> [--dry-run] [--force] [--no-upload] [--mark-current]
 #
 #   1. Takes the tree lock, so the three weekly routines (and anything else using
 #      the lock) run one at a time, and waits for any build started by hand.
@@ -39,7 +39,8 @@ case $dev in
     kodiak)  BUILD=~/kodiak-release-images.sh; BLOG=~/kodiak-release-build.log; PACK=~/kodiak-release-pack.sh ;;
     grizzly) BUILD=~/grizzly-images.sh;        BLOG=~/grizzly-build.log;        PACK=~/grizzly-pack.sh ;;
     cubs)    BUILD=~/cubs-images.sh;           BLOG=~/cubs-build.log;           PACK=~/cubs-pack.sh ;;
-    *) echo "usage: p11-routine.sh <kodiak|grizzly|cubs> [--dry-run] [--force] [--no-upload] [--mark-current]" >&2; exit 2 ;;
+    yogi)    BUILD=~/yogi-images.sh;           BLOG=~/yogi-build.log;           PACK=~/yogi-pack.sh ;;
+    *) echo "usage: p11-routine.sh <kodiak|grizzly|cubs|yogi> [--dry-run] [--force] [--no-upload] [--mark-current]" >&2; exit 2 ;;
 esac
 
 TOP=~/evolution
