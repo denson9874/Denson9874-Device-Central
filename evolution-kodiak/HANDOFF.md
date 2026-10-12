@@ -907,6 +907,30 @@ How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
 - **Reflashing caveat:** a new personal test zip re-patches init_boot with Magisk, but `/data/adb` (modules, DenyList,
   policies) survives a no-wipe `fastboot update`.
 
+## 2l. Visual voicemail (GBA) fix, Voice Translate and Scam Detection (2026-10-12)
+
+- **Visual voicemail (T-Mobile) never activated.** Google Phone's REST VVM client authenticates with GBA and logged
+  `GBA failed with reason: 1` (feature not supported). The ROM shipped no GBA service, and `config_gba_package` came
+  only from the vendor RRO (`com.shannon.rcsservice`). The fix is in all three trees (private 19ebb53; server device
+  commits 566a1d0, 72186f7 and 404f420):
+  - Stock's `system_ext/priv-app/GbaService` is now in `proprietary-files.txt`. It's re-signed with our platform key,
+    because it runs as `android.uid.system`.
+  - The TeleService overlay sets `config_gba_package=com.android.gbaservice` and `config_gba_release_time=70000`, as
+    stock's product RRO does.
+  - Verified on Daryl's phone: voicemails sync, and on-device transcription runs.
+- **Daryl's phone was updated** with `EvolutionX-17.0-20261012-kodiak-12.3-Unofficial-personal-keep-initboot.zip`, a
+  no-wipe `fastboot update`. Built by `tools/kodiak-personal-pack.sh`, it leaves out `init_boot`, so the phone keeps
+  its own Magisk 31.0 `init_boot`. Before flashing, the previous partitions (slot b) were copied to
+  `~/Downloads/kodiak-evox/rollback-20261012/` (system, system_ext, product, vbmeta*, vendor_boot, init_boot, boot,
+  dtbo, pvmfw).
+- **Voice Translate and Scam Detection.** PCS's own `xposed_scope` lists 7 apps. The XDA guide used 5; it also needs
+  `com.google.android.tts` (Voice Translate) and `com.google.android.apps.pixel.psi`. `pixel.psi` was also removed from
+  the DenyList (now 58 entries). In PCS, Experiments → Advanced → **Handle Phone Manifests** and **Handle TTS
+  Manifests** are ON: without them those apps fetch manifests directly from Google and get `PERMISSION_DENIED`. Both
+  features downloaded their models. `revert.sh` covers this too.
+- **Hotfix release:** `p11-routine.sh <dev> --no-sync` released all three phones with the fix. A same-day rebuild gets
+  an `-r2` name, so posted SHA-256s stay valid.
+
 ## 3. Machines and access
 
 | What | Where |
