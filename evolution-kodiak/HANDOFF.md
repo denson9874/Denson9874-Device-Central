@@ -931,6 +931,33 @@ How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
 - **Hotfix release:** `p11-routine.sh <dev> --no-sync` released all three phones with the fix. A same-day rebuild gets
   an `-r2` name, so posted SHA-256s stay valid.
 
+## 2m. yogi (Pixel 11 Pro Fold) and husky decisions (2026-10-12)
+
+- **husky: not ours.** It has an active official maintainer, Giovanni (TechPanelGM): A16 builds up to 2026-09-20, and
+  cnb trees ready in Evolution-X-Devices (device_google_shusky and zuma). Don't publish husky builds.
+- **yogi** is the kodiak tree adapted for the Fold (`device_google_yogi`). Same bootloader, radio, cmdline,
+  partitions and first-stage ramdisk.
+  - The fold is described by the stock vendor (`etc/devicestate/device_state_configuration.xml`,
+    `displayconfig/display_layout_configuration.xml`). The framework, SystemUI and Settings fold behaviour lives in
+    Google's product RROs, which this ROM doesn't ship. `tools/rro2xml.py` generates the needed values from the stock
+    yogi overlays into `FrameworkResOverlayYogi` (device states, hinge `config_display_features`, rear display,
+    per-state rotation, tabletop, large-screen letterboxing from `LargeScreenConfigOverlay`), `SystemUIOverlayYogi`
+    (split shade and QS on the unfolded screen) and `SettingsOverlayYogi` (auto-rotate per fold state, two-pane).
+  - Left out on purpose: `config_deviceSpecificDeviceStatePolicyProvider` (a Google class; AOSP's policy reads the
+    vendor XML instead), wallpapers, the virtual gamepad, and the aspect-ratio label arrays (Google's are @null).
+  - `GRilServiceOverlayYogi` sets grilservice `cap_sensor_support=true` (SAR backoff), from stock's prebuilt
+    `GRilServiceOverlay_9YI4`. A prebuilt module can't install into `overlay/`, so it's rebuilt from source.
+  - Side fingerprint sensor: `TARGET_HAS_UDFPS := false`. The boot animation uses the outer screen, 1080x2342.
+  - `yogi-pack.sh` also checks the four overlays. Pipeline: `yogi-images.sh`, `yogi-pack.sh`,
+    `p11-routine.sh yogi`, and the weekly task `evox-parity-yogi`.
+- **First test build:** `EvolutionX-17.0-20261012-yogi-12.3-Unofficial-UNTESTED-fastboot.zip` (sha256 `449f69a8…`),
+  published on SourceForge as yogi/17.
+  - XDA has no Fold forum, so its thread is in Google Pixel 11 Pro / Pro XL:
+    https://xdaforums.com/t/rom-unofficial-17-yogi-evolution-x-12-3-android-17-for-the-pixel-11-pro-fold-testers-wanted.4804826/
+  - Announced in t.me/ExpressiveGroup.
+- **If a tester reports fold problems,** compare with the stock RRO values (`~/android-dt/p11-diff-yogi/rrodiff.txt`)
+  and with asdfmonster261/android_device_google_yogi (lineage-24.0).
+
 ## 3. Machines and access
 
 | What | Where |
