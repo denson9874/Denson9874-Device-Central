@@ -21,16 +21,17 @@
 #   --dry-run       report what would happen; no sync, build or upload
 #   --force         build even if nothing changed
 #   --no-upload     build and verify, but don't upload
+#   --no-sync       build from the tree as it is (hotfix releases)
 #   --mark-current  record the current tree as this device's published state
 #
 # The last line is ROUTINE_RESULT=PUBLISHED|BUILT|NOCHANGE|DRYRUN|MARKED|FAILED.
 set -uo pipefail
 
 dev=${1:-}; [ $# -gt 0 ] && shift
-DRY=0; FORCE=0; UPLOAD=1; MARK=0
+DRY=0; FORCE=0; UPLOAD=1; MARK=0; NOSYNC=0
 for a in "$@"; do
     case $a in
-        --dry-run) DRY=1 ;; --force) FORCE=1 ;; --no-upload) UPLOAD=0 ;; --mark-current) MARK=1 ;;
+        --dry-run) DRY=1 ;; --force) FORCE=1 ;; --no-upload) UPLOAD=0 ;; --mark-current) MARK=1 ;; --no-sync) NOSYNC=1 ;;
         *) echo "unknown option: $a" >&2; exit 2 ;;
     esac
 done
@@ -50,7 +51,7 @@ fail() { echo "FAIL: $*"; finish FAILED 1; }
 # Projects that don't go into a Pixel 11 build (the husky port's local manifest)
 SKIP='^(device/google/(husky|shusky|shusky-kernels|zuma)|vendor/google/husky)( |$)'
 
-echo "== $(date '+%F %T %Z') $dev routine (dry-run=$DRY force=$FORCE upload=$UPLOAD mark=$MARK)"
+echo "== $(date '+%F %T %Z') $dev routine (dry-run=$DRY force=$FORCE upload=$UPLOAD mark=$MARK no-sync=$NOSYNC)"
 
 exec 9>~/.evolution-tree.lock
 echo "== waiting for the tree lock"
@@ -68,6 +69,8 @@ last=$(cat ~/.evolution-last-sync 2>/dev/null || echo 0)
 age=$(( $(date +%s) - last ))
 if [ $MARK = 1 ]; then
     :
+elif [ $NOSYNC = 1 ]; then
+    echo "== --no-sync: building the tree as it is"
 elif [ $age -lt 21600 ]; then
     echo "== tree synced $((age / 60)) min ago; using that sync"
 elif [ $DRY = 1 ]; then
