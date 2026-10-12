@@ -1,0 +1,25 @@
+# EuiccSupportPixel (com.google.euiccpixel), eUICC firmware and applet updates.
+# Its modem and secure element property access comes from the stock vendor policy.
+typeattribute euiccpixel_app coredomain;
+app_domain(euiccpixel_app)
+
+allow euiccpixel_app {
+    activity_service
+    activity_task_service
+    app_api_service
+    audio_service
+    autofill_service
+    batteryproperties_service
+    batterystats_service
+    content_capture_service
+    gpu_service
+    hint_service
+    netstats_service
+    nfc_service
+    permission_checker_service
+    radio_service
+    sensitive_content_protection_service
+    voiceinteraction_service
+}:service_manager find;
+
+dontaudit euiccpixel_app default_prop:file read;

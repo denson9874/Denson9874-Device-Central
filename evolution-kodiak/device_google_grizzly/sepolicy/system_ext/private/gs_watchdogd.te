@@ -1,0 +1,10 @@
+# Stock's userspace watchdog daemon. It pets watchdog0/1, so a hung system
+# resets instead of sitting there.
+type gs_watchdogd, domain, coredomain;
+type gs_watchdogd_exec, exec_type, file_type, system_file_type;
+
+init_daemon_domain(gs_watchdogd)
+
+allow gs_watchdogd watchdog_device:chr_file rw_file_perms;
+allow gs_watchdogd kmsg_device:chr_file rw_file_perms;
+allow gs_watchdogd sysfs:dir r_dir_perms;
