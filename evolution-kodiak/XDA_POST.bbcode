@@ -1,5 +1,6 @@
 Posted: https://xdaforums.com/t/rom-unofficial-17-kodiak-evolution-x-12-3-android-17-for-the-pixel-11-pro-xl.4804712/ (2026-10-11)
 Edited 2026-10-12: grizzly test build section and title; URL now https://xdaforums.com/t/rom-unofficial-17-kodiak-grizzly-evolution-x-12-3-android-17-for-the-pixel-11-pro-xl-and-11-pro-grizzly-testers-wanted.4804712/
+Edited 2026-10-12 (later): visual voicemail fix, new kodiak and grizzly file names, Changelog; reply posted (see XDA_UPDATE_20261012.bbcode)
 Title: [ROM][UNOFFICIAL][17][kodiak][grizzly] Evolution X 12.3 (Android 17) for the Pixel 11 Pro XL and 11 Pro (grizzly: testers wanted)
 
 [CENTER][SIZE=6][B]Evolution X 12.3 — Android 17[/B][/SIZE]
@@ -15,9 +16,9 @@ Title: [ROM][UNOFFICIAL][17][kodiak][grizzly] Evolution X 12.3 (Android 17) for 
 [SIZE=5][B]NEW: Pixel 11 Pro (grizzly) test build, testers wanted[/B][/SIZE]
 There's now a build for the [B]Pixel 11 Pro (grizzly)[/B], made from the same source as the kodiak build with grizzly's own stock images and blobs. It passes every check I can run without the phone, but [B]I don't own a grizzly, so it has never been booted.[/B] Only try it if you're comfortable restoring stock with the Android Flash Tool if it doesn't boot.
 [LIST]
-[*]Download: [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/]SourceForge: grizzly/17[/URL] ([ICODE]EvolutionX-17.0-20261012-grizzly-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE], SHA-256 in the same folder)
+[*]Download: [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/]SourceForge: grizzly/17[/URL] ([ICODE]EvolutionX-17.0-20261012-grizzly-12.3-Unofficial-UNTESTED-r2-fastboot.zip[/ICODE], SHA-256 in the same folder)
 [*]Requirements: the same as below, but with [B]grizzly's[/B] stock CD1A.261005.003 installed
-[*]Clean flash only (wipes your data): [ICODE]fastboot -w update EvolutionX-17.0-20261012-grizzly-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE]
+[*]Clean flash only (wipes your data): [ICODE]fastboot -w update EvolutionX-17.0-20261012-grizzly-12.3-Unofficial-UNTESTED-r2-fastboot.zip[/ICODE]
 [*]Never flash the grizzly zip on a Pixel 11 Pro XL, or the kodiak zip on a Pixel 11 Pro
 [/LIST]
 If you try it, please reply in this thread with:
@@ -52,6 +53,7 @@ This is [B]not[/B] an official Evolution X build. Please don't report its bugs t
 [*]Boot, gesture navigation, Recents
 [*]Calls and SMS, including VoLTE (tested on T-Mobile US), mobile data (5G SA), eSIM
 [*]Wi-Fi, Bluetooth
+[*]Visual voicemail (tested on T-Mobile US)
 [*]Cameras, fingerprint, face unlock
 [*]Google Play; Play Integrity and Google Wallet tap-to-pay worked in my testing
 [/LIST]
@@ -61,6 +63,13 @@ This is [B]not[/B] an official Evolution X build. Please don't report its bugs t
 [*]Gemini Nano and the features built on it (Magic Cue and others) don't work. Google only serves the on-device AI models to phones with a locked bootloader, so this applies to any custom ROM.
 [*]Pixel-exclusive extras such as Pixel Screenshots and Now Playing aren't included.
 [*]Tested on T-Mobile US. Reports from other carriers are welcome!
+[/LIST]
+
+[SIZE=5][B]Changelog[/B][/SIZE]
+[LIST]
+[*][B]2026-10-12:[/B] Fixed visual voicemail not activating. Google Phone authenticates visual voicemail with GBA (SIM-based authentication), and the ROM was missing Google's GBA service. kodiak and grizzly builds.
+[*][B]2026-10-12:[/B] Pixel 11 Pro (grizzly) test build.
+[*][B]2026-10-11:[/B] First release.
 [/LIST]
 
 [SIZE=5][B]Requirements[/B][/SIZE]
@@ -74,14 +83,14 @@ This is [B]not[/B] an official Evolution X build. Please don't report its bugs t
 Download the ROM zip and check its SHA-256, then:
 [CODE]
 adb reboot bootloader
-fastboot -w update EvolutionX-17.0-20261011-kodiak-12.3-Unofficial-fastboot.zip
+fastboot -w update EvolutionX-17.0-20261012-kodiak-12.3-Unofficial-fastboot.zip
 [/CODE]
 [B]-w wipes all your data.[/B] fastboot switches to fastbootd partway through to flash the dynamic partitions; leave the phone plugged in until it reboots by itself (a few minutes). The first boot takes a few minutes more.
 
 [B]Updating[/B] from an earlier build of this ROM (keeps your data):
 [CODE]
 adb reboot bootloader
-fastboot update EvolutionX-17.0-20261011-kodiak-12.3-Unofficial-fastboot.zip
+fastboot update EvolutionX-17.0-20261012-kodiak-12.3-Unofficial-fastboot.zip
 [/CODE]
 
 [SIZE=5][B]Downloads[/B][/SIZE]

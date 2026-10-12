@@ -1,0 +1,37 @@
+Replies posted 2026-10-12 for the visual voicemail fix.
+
+== kodiak/grizzly thread (4804712) ==
+[B]Update 2026-10-12: visual voicemail fix[/B]
+
+New builds for both phones in this thread:
+[LIST]
+[*][B]Pixel 11 Pro XL (kodiak):[/B] [ICODE]EvolutionX-17.0-20261012-kodiak-12.3-Unofficial-fastboot.zip[/ICODE]
+    SHA-256 [ICODE]1fddd65d9f03ffa8f651f356364dfd8576630c8a254de14896709b22d6c2787c[/ICODE]
+    [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/kodiak/17/]SourceForge: kodiak/17[/URL]
+[*][B]Pixel 11 Pro (grizzly, still untested):[/B] [ICODE]EvolutionX-17.0-20261012-grizzly-12.3-Unofficial-UNTESTED-r2-fastboot.zip[/ICODE]
+    SHA-256 [ICODE]418fe94a035af470e3ff4ac23bd1584d3653b9f60a7d5911d0cf4a54715da2f4[/ICODE]
+    [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/]SourceForge: grizzly/17[/URL]
+[/LIST]
+[B]Changes[/B]
+[LIST]
+[*]Fixed visual voicemail not activating. Google Phone authenticates visual voicemail with GBA (SIM-based authentication), and the ROM was missing Google's GBA service. Tested on T-Mobile US.
+[*]Nothing else changed: same Evolution X source as the previous build.
+[/LIST]
+[B]Updating[/B] from an earlier build keeps your data:
+[CODE]adb reboot bootloader
+fastboot update <zip>[/CODE]
+Fresh installs: see the first post.
+
+== cubs thread (4804723) ==
+[B]Update 2026-10-12: visual voicemail fix[/B]
+
+New test build: [ICODE]EvolutionX-17.0-20261012-cubs-12.3-Unofficial-UNTESTED-r2-fastboot.zip[/ICODE]
+SHA-256 [ICODE]9686c2e8312c8e10eb1f4a0d26b4a08e088f8261b086844ac9632b65f5ef703b[/ICODE]
+[URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/cubs/17/]SourceForge: cubs/17[/URL]
+
+[B]Changes[/B]
+[LIST]
+[*]Fixed visual voicemail not activating. Google Phone authenticates visual voicemail with GBA (SIM-based authentication), and the ROM was missing Google's GBA service. Verified on a Pixel 11 Pro XL on T-Mobile US.
+[*]Nothing else changed: same Evolution X source as the first build.
+[/LIST]
+Still untested on a Pixel 11, so reports are very welcome (see the first post for what to check).
