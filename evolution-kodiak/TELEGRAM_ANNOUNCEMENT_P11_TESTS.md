@@ -1,4 +1,4 @@
-Draft for t.me/ExpressiveGroup (grizzly and cubs test builds).
+Posted to t.me/ExpressiveGroup (2026-10-12), channel renamed from Expressive Launcher the same day.
 
 🧪 **Evolution X 12.3 for the Pixel 11 and Pixel 11 Pro: testers wanted**
 
@@ -18,7 +18,7 @@ The Pixel 11 Pro XL build now has two siblings: **Evolution X 12.3 (Android 17)*
 • SHA-256: `063ac6130bd9c10f0af1a933a4f9f21e2accd3eaff273bc6383c7c7345103e84`
 
 📱 **Pixel 11 (cubs)**
-• XDA: @CUBS_XDA_URL@
+• XDA: https://xdaforums.com/t/rom-unofficial-17-cubs-evolution-x-12-3-android-17-for-the-pixel-11-testers-wanted.4804723/
 • Download: https://sourceforge.net/projects/denson9874-s-user-builds/files/cubs/17/
 • SHA-256: `345ed966dcc1a7fa2e5393116ab054f44d60453fe65c027cf9bff9cb71d2a916`
 

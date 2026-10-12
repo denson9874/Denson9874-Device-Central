@@ -809,6 +809,41 @@ If an official build is ever made on this server, check that neither `KODIAK_PER
 - **Daryl's own phone** gets `kodiak-evox-img-4021403-personal.zip` (rooted, plus extras; in `~/Downloads/kodiak-evox`,
   sha256 `8ad8bfc9…`). Not flashed yet at the time of writing.
 
+## 2i. grizzly and cubs test builds (2026-10-12)
+
+Pixel 11 Pro (`grizzly`) and Pixel 11 (`cubs`) builds, made from the kodiak tree. **Neither has been booted:** Daryl
+owns neither phone, so they're "testers wanted" releases. Why the port is small, and what differs between the three
+phones: `P11_FAMILY_DIFF.md`.
+
+- **Trees:** `device_google_grizzly/` and `device_google_cubs/` (server: `device/google/{grizzly,cubs}`, local git).
+  Vendor dirs are generated from each phone's own stock image, never copied from kodiak, because some blobs are
+  signed with each phone's own platform key:
+  - `vendor/google/{grizzly,cubs}-images` comes from `extract-images.sh`.
+  - `vendor/google/{grizzly,cubs}` comes from `extract-files.py` against `~/android-dt/dumps/<dev>`.
+  - grizzly has no PixelSystemService signer in `mac_permissions.xml` (Evolution signs it with grizzly's platform
+    key); cubs keeps kodiak's.
+- **Build and release:** `~/grizzly-images.sh` / `~/cubs-images.sh`, then `~/grizzly-pack.sh --upload` /
+  `~/cubs-pack.sh --upload`. They check identity, personal apps, sepolicy against the stock vendor policy, the
+  mac_permissions signer, blob signers, root, the vbmeta patch level, and the stock kernel/dtbo/vendor. Copies are in
+  `tools/`. Each build overwrites `out/` only for its own product.
+- **Downloads:**
+  - grizzly: https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/ (`063ac613…3e84`)
+  - cubs: https://sourceforge.net/projects/denson9874-s-user-builds/files/cubs/17/ (`345ed966…a916`)
+- **XDA:**
+  - grizzly is a section at the top of the kodiak thread. Its title now names grizzly, so the URL changed:
+    https://xdaforums.com/t/rom-unofficial-17-kodiak-grizzly-evolution-x-12-3-android-17-for-the-pixel-11-pro-xl-and-11-pro-grizzly-testers-wanted.4804712/
+  - cubs has its own thread in the Pixel 11 forum:
+    https://xdaforums.com/t/rom-unofficial-17-cubs-evolution-x-12-3-android-17-for-the-pixel-11-testers-wanted.4804723/
+  - A reply to nutzfreelance (who asked for grizzly/cub builds) links both.
+  - Source: `XDA_POST.bbcode`, `XDA_POST_CUBS.bbcode`.
+- **Telegram:** the channel was renamed to **Expressive Group**, t.me/ExpressiveGroup.
+  - t.me/ExpressiveLauncher is a placeholder channel, "Expressive Launcher (moved)", with a pinned pointer to the
+    new channel. It also keeps anyone else from claiming the handle.
+  - The discussion group is "Expressive Group Feedback" (link unchanged).
+  - Announcement: `TELEGRAM_ANNOUNCEMENT_P11_TESTS.md`.
+  - Telegram Web K can show a stale description after an edit, and puts a sent message back into the compose box
+    as a draft. Clear the box after sending.
+
 ## 3. Machines and access
 
 | What | Where |
