@@ -840,6 +840,9 @@ phones: `P11_FAMILY_DIFF.md`.
   - t.me/ExpressiveLauncher is a placeholder channel, "Expressive Launcher (moved)", with a pinned pointer to the
     new channel. It also keeps anyone else from claiming the handle.
   - The discussion group is "Expressive Group Feedback" (link unchanged).
+  - Channel description: "Official Expressive Group news: Expressive Launcher updates and custom ROM releases
+    (Evolution X for the Pixel 11 series). Report bugs, suggest features, and chat with the community:
+    https://t.me/ExpressiveLauncherFeedback".
   - Announcement: `TELEGRAM_ANNOUNCEMENT_P11_TESTS.md`.
   - Telegram Web K can show a stale description after an edit, and puts a sent message back into the compose box
     as a draft. Clear the box after sending.
