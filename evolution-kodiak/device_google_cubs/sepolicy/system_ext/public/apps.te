@@ -1,0 +1,23 @@
+# Google's telephony apps run in domains of their own on stock, declared in
+# Google's system_ext policy. Our system_ext is built from AOSP, so they ran as
+# platform_app or priv_app, and every rule the stock vendor policy grants these
+# domains (rild, the audio HAL, imsmediahaldaemon, the modem services) matched
+# nothing.
+#
+# The stock vendor policy names these types through versioned attributes
+# (e.g. imsstack_app_<vers>). Declaring them public makes our build's
+# system_ext mapping file map those attributes to our types again.
+#
+# Only types that stock's vendor policy provably references belong here. A
+# public type the stock vendor doesn't know leaves an unresolved mapping and
+# the policy fails to compile at boot. check-sepolicy.sh catches that offline.
+#
+# Names and split follow the LineageOS yogi (Pixel 11 Pro Fold, malibu) tree,
+# which recovered them from the stock compiled policy.
+type euiccpixel_app, domain;
+type grilservice_app, domain;
+type imsstack_app, domain;
+type pixel_modem_app, domain;
+type pixelntnservice_app, domain;
+type rilextensionservice_app, domain;
+type vendor_satellite_service, domain;

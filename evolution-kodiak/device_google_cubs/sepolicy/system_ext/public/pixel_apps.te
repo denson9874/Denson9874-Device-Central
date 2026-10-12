@@ -1,0 +1,9 @@
+# Pixel system apps stock runs in domains of its own. Public because the stock
+# vendor policy grants each of them HAL access (display, camera, power, ...).
+type dcservice_app, domain;
+type google_camera_app, domain;
+type pixeldisplayservice_app, domain;
+type pixelsystemservice_app, domain;
+type turbo_adapter, domain;
+type vendor_pbcs_app, domain;
+type vendor_pcs_app, domain;

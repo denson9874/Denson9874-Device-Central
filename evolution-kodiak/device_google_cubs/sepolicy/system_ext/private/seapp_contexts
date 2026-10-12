@@ -1,0 +1,44 @@
+# Stock's domains for the telephony apps this build ships (see public/apps.te).
+#
+# GRIL, the RIL extension and modem.pms are re-signed with our platform key
+# (not PRESIGNED in proprietary-files.txt), where stock signs them with keys of
+# Google's own. So they carry seinfo=platform, and an entry without a seinfo
+# would lose to the generic seinfo=platform -> platform_app one: seapp ranks
+# seinfo above the package name.
+user=_app isPrivApp=true seinfo=platform name=com.google.android.grilservice domain=grilservice_app type=app_data_file levelFrom=all
+user=_app isPrivApp=true seinfo=platform name=com.google.android.rilextension domain=rilextensionservice_app levelFrom=all
+user=_app isPrivApp=true seinfo=platform name=com.google.android.modem.pms domain=pixel_modem_app type=app_data_file levelFrom=none
+user=_app isPrivApp=true seinfo=EuiccSupportPixel name=com.google.euiccpixel domain=euiccpixel_app type=app_data_file levelFrom=all
+# Stock matches its ImsStack as the radio user. Ours is built from AOSP and runs
+# as an ordinary platform-signed app.
+user=_app isPrivApp=true seinfo=platform name=com.android.imsstack domain=imsstack_app type=app_data_file levelFrom=all
+# Satellite: Google's NTN service runs as the system user, MediaTek's as an
+# ordinary platform-signed priv-app. Both are re-signed with our platform key.
+user=system seinfo=platform name=com.google.android.satellite domain=pixelntnservice_app type=app_data_file levelFrom=all
+user=_app isPrivApp=true seinfo=platform name=com.mediatek.satellite.service domain=vendor_satellite_service levelFrom=all
+# Pixel system apps, matched as stock matches them. Ours are re-signed with the
+# platform key, as stock's are signed with its own.
+user=_app seinfo=platform name=com.android.pixeldisplayservice domain=pixeldisplayservice_app type=app_data_file levelFrom=all
+user=_app seinfo=platform name=com.google.android.pixelsystemservice domain=pixelsystemservice_app type=app_data_file levelFrom=all
+user=_app seinfo=platform name=com.google.android.pixelsystemservice:ephemeral domain=pixelsystemservice_app type=app_data_file levelFrom=all
+# Evolution's GMS installs PixelSystemService with the key mapped to
+# seinfo=pixelsystemservice (mac_permissions.xml), not our platform key.
+user=_app seinfo=pixelsystemservice name=com.google.android.pixelsystemservice domain=pixelsystemservice_app type=app_data_file levelFrom=all
+user=_app seinfo=pixelsystemservice name=com.google.android.pixelsystemservice:ephemeral domain=pixelsystemservice_app type=app_data_file levelFrom=all
+user=_app isPrivApp=true name=com.google.android.apps.pixel.dcservice domain=dcservice_app type=privapp_data_file levelFrom=user
+user=_app isPrivApp=true name=com.google.android.apps.pixel.dcservice.ui domain=dcservice_app type=privapp_data_file levelFrom=user
+user=_app seinfo=platform name=com.google.android.turboadapter domain=turbo_adapter type=app_data_file levelFrom=all
+user=system seinfo=platform name=com.google.pixel.camera.services domain=vendor_pbcs_app type=system_app_data_file levelFrom=all
+user=system seinfo=platform name=com.google.pixel.camera.services:* domain=vendor_pbcs_app type=system_app_data_file levelFrom=all
+# Google's camera apps. The stock vendor's mac_permissions.xml (already on the
+# device) maps their signers to seinfo google and CameraServices; only these
+# entries were missing. Google Camera comes from the Play Store here, so
+# isPrivApp is dropped from stock's entry (stock preinstalls it). The
+# Google-signature seinfo still pins it to Google's build.
+user=_app seinfo=google name=com.google.android.GoogleCamera domain=google_camera_app type=app_data_file levelFrom=all
+user=_app seinfo=google name=com.google.android.GoogleCamera:* domain=google_camera_app type=app_data_file levelFrom=all
+user=_app seinfo=CameraServices name=com.google.android.apps.camera.services domain=vendor_pcs_app type=app_data_file levelFrom=all
+user=_app seinfo=CameraServices name=com.google.android.apps.camera.services:* domain=vendor_pcs_app type=app_data_file levelFrom=all
+# One process of the scone app, exactly as stock matches it. It only applies to
+# a preinstalled scone; a Play-installed one keeps its normal app domain.
+user=_app isPrivApp=true name=com.google.android.apps.scone:perfstats_system_internals_process domain=scone_system_internals type=app_data_file levelFrom=all

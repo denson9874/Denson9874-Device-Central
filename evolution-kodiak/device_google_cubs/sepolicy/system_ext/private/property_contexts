@@ -1,0 +1,28 @@
+# Labels stock keeps in its system_ext policy. rild sets rilext.* (e.g.
+# rilext.vendor.rild.pid) and ims.*, and reads the NTN and sota props.
+rilext.                                         u:object_r:system_ril_ext_prop:s0
+persist.rilext.                                 u:object_r:system_ril_ext_prop:s0
+ims.reg_retry_time                              u:object_r:ims_prop:s0 prefix int
+ims.emergency_call_fail_cause                   u:object_r:ims_prop:s0 prefix int
+telephony.ril.ntn_sim_deact                     u:object_r:telephony_ril_ntn_sim_deact_prop:s0 exact bool
+telephony.ril.ntn_demo_mode                     u:object_r:telephony_ntn_demo_mode_prop:s0 exact bool
+sota.charge.stop.level                          u:object_r:sota_prop:s0
+ro.boot.sota                                    u:object_r:sota_prop:s0
+ro.boot.sota.                                   u:object_r:sota_prop:s0
+persist.vendor.factoryota.                      u:object_r:sota_prop:s0
+persist.vendor.radio.bootwithlpm                u:object_r:sota_prop:s0
+persist.vendor.nfc.factoryota.                  u:object_r:sota_prop:s0
+
+# Labelled by stock's newer AOSP base, which ours predates. The stock vendor_init
+# sets both.
+audio.camerasound.locale.enabled                u:object_r:audio_config_prop:s0 exact bool
+ro.egl.blobcache.multifile_dir_suffix           u:object_r:graphics_config_prop:s0 exact string
+
+pixelsystemservice.device.contextualawarenessbool       u:object_r:pixelsystemservice_contextualawareness_prop:s0 exact bool
+
+# Face unlock device_config flags (stock system_ext label).
+persist.device_config.pixel_faceauth.           u:object_r:device_config_faceauth_native_prop:s0
+
+# Stock system_ext labels.
+persist.fingerprint.screenprotector.config      u:object_r:fingerprint_sp_prop:s0 exact string
+setupwizard.feature.provisioning_profile_mode   u:object_r:setupwizard_feature_prop:s0
