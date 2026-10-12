@@ -10,13 +10,14 @@ cd ~/evolution
 O=out/target/product/cubs
 H=out/host/linux-x86/bin
 IMG=vendor/google/cubs-images/images
-DATE=$(date +%Y%m%d)
-NAME=EvolutionX-17.0-$DATE-cubs-12.3-Unofficial-UNTESTED-fastboot.zip
+# The build's own name, e.g. EvolutionX-17.0-20261012-cubs-12.3-Unofficial
+NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)-UNTESTED-fastboot.zip
 DEST=~/releases/cubs; mkdir -p $DEST
 ZIP=$DEST/$NAME
 SF_USER=daryldenson0405
 SF_DIR=/home/frs/project/denson9874-s-user-builds/cubs/17
 fail() { echo "FAIL: $*" >&2; exit 1; }
+[[ $NAME == EvolutionX-* ]] || fail "can't read ro.evolution.build.version from $O"
 
 pgrep -x soong_ui >/dev/null && fail "a build is running"
 grep -q "BUILD_EXIT=0" ~/cubs-build.log || fail "the cubs build didn't succeed"

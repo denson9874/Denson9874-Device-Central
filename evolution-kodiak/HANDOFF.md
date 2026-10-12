@@ -847,6 +847,37 @@ phones: `P11_FAMILY_DIFF.md`.
   - Telegram Web K can show a stale description after an edit, and puts a sent message back into the compose box
     as a draft. Clear the box after sending.
 
+## 2j. Weekly parity routines (set up 2026-10-12)
+
+Three Claude desktop scheduled tasks, `evox-parity-kodiak`, `evox-parity-grizzly` and `evox-parity-cubs`
+(prompts in `~/.claude/scheduled-tasks/<id>/SKILL.md` on the Mac). They run **Sundays at about 3 PM local time**, and
+only while the Claude app is open; a missed run happens on the next launch. Each one SSHes to the server, starts
+`~/p11-routine.sh <device>`, waits, and reports. They never flash phones, post on XDA or Telegram, or touch trees.
+
+What `p11-routine.sh` does (copy in `tools/`):
+
+- **Lock:** takes `~/.evolution-tree.lock` (so the three runs go one at a time) and waits for any build started by hand.
+- **Sync:** runs `repo sync` if the tree wasn't synced in the last 6 hours. It fetches everything, then checks out
+  every project except the husky port's five (`vendor/google/husky` has uncommitted radio images a checkout would
+  refuse to touch). After that it re-runs `apply-patches.sh`. The last sync time is in `~/.evolution-last-sync`.
+- **Change check:** compares the git tree hash of every project plus our device, vendor, images and keys trees with
+  `~/releases/<dev>/LAST_STATE`. The baselines were recorded on 2026-10-12 for the current releases. If nothing
+  changed, the result is `NOCHANGE`.
+- **Build and publish:** builds with the device's release script, then runs its pack script with `--upload`. Zip
+  names now come from `ro.evolution.build.version`, and kodiak zips go to `~/releases/kodiak/` instead of `/tmp`.
+- **Records:** writes `LAST_STATE`, `LAST_TREES`, `LAST_MANIFEST.xml` and `CHANGES-<date>.txt` (upstream commits since
+  the last published build) under `~/releases/<dev>/`, and keeps the two newest zips on the server.
+- **Logs:** `~/routine-logs/<dev>-<time>.log`, plus `<dev>-latest.out`. The last line is
+  `ROUTINE_RESULT=PUBLISHED|NOCHANGE|FAILED`.
+- **Options:** `--dry-run`, `--force`, `--no-upload`, `--mark-current` (record the current tree as published).
+
+Not automated:
+
+- XDA and Telegram announcements. The routine offers drafts.
+- Monthly Google firmware. New factory images change the stock vendor, kernel and firmware and the users'
+  requirements: `BOOT_SECURITY_PATCH`, the pack scripts' boot patch-level check, `extract-images.sh`, and the posts.
+  Do that by hand, and never lower the boot patch level.
+
 ## 3. Machines and access
 
 | What | Where |
