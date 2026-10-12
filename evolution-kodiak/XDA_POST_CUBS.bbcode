@@ -1,6 +1,7 @@
 Posted: https://xdaforums.com/t/rom-unofficial-17-cubs-evolution-x-12-3-android-17-for-the-pixel-11-testers-wanted.4804723/ (2026-10-12)
 Forum: Google Pixel 11 (https://xdaforums.com/f/google-pixel-11.13035/), prefix Development
 Title: [ROM][UNOFFICIAL][17][cubs] Evolution X 12.3 (Android 17) for the Pixel 11 - testers wanted
+Edited 2026-10-12: visual voicemail fix (r2), Changelog; reply posted (see XDA_UPDATE_20261012.bbcode)
 
 [CENTER][SIZE=6][B]Evolution X 12.3 — Android 17[/B][/SIZE]
 [SIZE=4]Google Pixel 11 (cubs) | UNOFFICIAL | TEST BUILD[/SIZE][/CENTER]
@@ -47,6 +48,7 @@ All of this works on the Pixel 11 Pro XL with the same source, but none of it is
 [LIST]
 [*]Calls and SMS, including VoLTE, mobile data (5G SA), eSIM
 [*]Wi-Fi, Bluetooth
+[*]Visual voicemail
 [*]Cameras, fingerprint, face unlock
 [*]Google Play; Play Integrity and Google Wallet tap-to-pay
 [/LIST]
@@ -56,6 +58,12 @@ All of this works on the Pixel 11 Pro XL with the same source, but none of it is
 [*]Untested on real hardware (see above).
 [*]Gemini Nano and the features built on it (Magic Cue and others) don't work. Google only serves the on-device AI models to phones with a locked bootloader, so this applies to any custom ROM.
 [*]Pixel-exclusive extras such as Pixel Screenshots and Now Playing aren't included.
+[/LIST]
+
+[SIZE=5][B]Changelog[/B][/SIZE]
+[LIST]
+[*][B]2026-10-12 (r2):[/B] Fixed visual voicemail not activating. Google Phone authenticates visual voicemail with GBA (SIM-based authentication), and the ROM was missing Google's GBA service.
+[*][B]2026-10-12:[/B] First test build.
 [/LIST]
 
 [SIZE=5][B]Requirements[/B][/SIZE]
@@ -69,7 +77,7 @@ All of this works on the Pixel 11 Pro XL with the same source, but none of it is
 Download the ROM zip and check its SHA-256, then:
 [CODE]
 adb reboot bootloader
-fastboot -w update EvolutionX-17.0-20261012-cubs-12.3-Unofficial-UNTESTED-fastboot.zip
+fastboot -w update EvolutionX-17.0-20261012-cubs-12.3-Unofficial-UNTESTED-r2-fastboot.zip
 [/CODE]
 [B]-w wipes all your data.[/B] fastboot switches to fastbootd partway through to flash the dynamic partitions; leave the phone plugged in until it reboots by itself (a few minutes). The first boot takes a few minutes more.
 
