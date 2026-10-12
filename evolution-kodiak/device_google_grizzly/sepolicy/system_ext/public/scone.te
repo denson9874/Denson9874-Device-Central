@@ -1,0 +1,4 @@
+# Google's scone network daemon. Public because the stock vendor policy names
+# both: GRIL finds scone_aidl_service and calls sconed over binder.
+type sconed, domain;
+type scone_aidl_service, service_manager_type;

@@ -1,0 +1,15 @@
+# The scone app's perfstats process
+# (com.google.android.apps.scone:perfstats_system_internals_process), as stock
+# has it.
+type scone_system_internals, domain;
+typeattribute scone_system_internals coredomain;
+app_domain(scone_system_internals)
+
+hal_client_domain(scone_system_internals, hal_power_stats)
+allow scone_system_internals hal_power_stats:memfd_file { read write getattr map };
+allow hal_power_stats scone_system_internals:memfd_file { read write getattr map };
+
+allow scone_system_internals {
+    activity_service
+    netstats_service
+}:service_manager find;
