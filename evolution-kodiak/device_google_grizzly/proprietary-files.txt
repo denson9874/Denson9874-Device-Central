@@ -53,6 +53,13 @@ system_ext/priv-app/grilservice/grilservice.apk
 system_ext/priv-app/PixelModemService/PixelModemService.apk
 system_ext/priv-app/ril-extension/ril-extension.apk
 
+# GBA (Generic Bootstrapping Architecture): SIM-based authentication for
+# carrier services, e.g. T-Mobile visual voicemail (the Phone app's REST
+# client failed with "GBA failed with reason: 1", feature not supported).
+# TeleServiceOverlay names it config_gba_package, as stock's product RRO
+# does. It runs as android.uid.system, so it must NOT be PRESIGNED.
+system_ext/priv-app/GbaService/GbaService.apk
+
 # Radio config
 system_ext/etc/permissions/com.android.omadm.radioconfig.xml
 system_ext/etc/vintf/radio_framework_compatibility_matrix_system_ext
