@@ -1,4 +1,4 @@
-Posted to t.me/ExpressiveLauncher (2026-10-11).
+Posted to t.me/ExpressiveLauncher (2026-10-11). The channel is now Expressive Group, t.me/ExpressiveGroup (renamed 2026-10-12); t.me/ExpressiveLauncher is a placeholder channel pointing there.
 
 🚀 **Evolution X 12.3 for the Pixel 11 Pro XL**
 
