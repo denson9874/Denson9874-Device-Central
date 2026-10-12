@@ -1,0 +1,25 @@
+# PixelDisplayService (com.android.pixeldisplayservice), stock's system_ext
+# rules. Its display HAL access (hal_graphics_composer_default,
+# hal_pixel_display_service) is in the stock vendor policy.
+typeattribute pixeldisplayservice_app coredomain;
+app_domain(pixeldisplayservice_app)
+binder_use(pixeldisplayservice_app)
+
+allow pixeldisplayservice_app {
+    activity_service
+    activity_task_service
+    audio_service
+    cameraserver_service
+    color_display_service
+    device_state_service
+    fwk_stats_service
+    gpu_service
+    hint_service
+    media_session_service
+    netstats_service
+    protolog_configuration_service
+    sensitive_content_protection_service
+    sensorservice_service
+    thermal_service
+    virtual_device_native_service
+}:service_manager find;

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SPDX-FileCopyrightText: The LineageOS Project
+    SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- From stock's product/overlay/GRilServiceOverlay_9YI4: grilservice uses
+         yogi's capacitive (SAR) sensor to back off transmit power when the
+         phone is against the body. Stock ships it as a prebuilt RRO, which a
+         prebuilt module can't install into overlay/, so it's rebuilt here. -->
+    <bool name="cap_sensor_support">true</bool>
+</resources>
