@@ -16,5 +16,3 @@ allow edgetpu_app_server fwk_stats_service:service_manager find;
 allow edgetpu_app_server self:capability ipc_lock;
 allow edgetpu_app_server privapp_data_file:file { read map };
 allow edgetpu_app_server shell_data_file:file { read map };
-
-allow pcc_component edgetpu_app_service:service_manager find;

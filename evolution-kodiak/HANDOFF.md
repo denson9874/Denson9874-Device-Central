@@ -979,6 +979,32 @@ How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
   (auto-brightness below about 0.05).
 - **Upstreaming (not done):** Evolution X / LineageOS would want `DozeScreenBrightnessTest` updated; its mocked
   `DisplayManager.getBrightness()` returns 0, which the new clamp would apply.
+- **Verified on Daryl's phone** (personal `EvolutionX-17.0-20261013-…-personal-keep-initboot.zip`, no-wipe flash,
+  sha256 `c1035796…`): at about 4.5 lux the timeout went from 0.5 → 121 nits before the fix to a maximum of 1.0 nit
+  after it (`aod-flash/before-fix-184628.txt`, `after-fix-193023.txt`). Over USB the script pauses "Stay awake while
+  charging" and the charging screen saver for the one cycle and restores both.
+- **Ashray's other reports** (replies in `TELEGRAM_FEEDBACK_20261012.md`):
+  - PIN asked twice after a reboot before fingerprint works: not reproducible on Daryl's phone (stock kernel); asked
+    for a logcat plus the `KeyguardUpdateMonitor` dump.
+  - Pixel features: Now Playing etc. stay out of release builds (CoC, section 2g). **HiLight** (the rear light bar on
+    the 11 Pro/XL/Fold) needs no proprietary app in the tree: the stock lights HAL V3 (8 LEDs) and AOSP's
+    `MultiLightEffect` framework are already present. Missing: Google's Settings page, the
+    `favorites_incoming_call_lights` flag (off in cp2a) and the `light_animation_*` settings. Notes in the same file.
+
+## 2o. PixelSense (Magic Cue) crash loop: pcc_component and the TPU (2026-10-12)
+
+- After the 20261013 flash, PixelSense (`com.google.android.apps.pixel.psi`, personal build only) aborted every few
+  seconds: `Check failed: compute_service != nullptr` in `libedgetpu_client.google.so`
+  (`TachyonComputeService_createSession`). Its model process runs as `pcc_component`, and SELinux denied
+  `find` on `edgetpu_tachyon_service`. No PixelSense crashes before that boot are in dropbox; the Magic Cue model set
+  up through PCS (2k) is the likely reason it only started now.
+- Stock grants it in system_ext (gs-common `edgetpu/sepolicy/system_ext/private/pcc_component.te`). All four trees now
+  carry the same rules in `sepolicy/system_ext/private/pcc_component.te`, plus `type edgetpu_tachyon_server, domain;`
+  in `system_ext/public/edgetpu.te` (stock declares it there).
+- A live test with `magiskpolicy --live` on Daryl's phone (until reboot) stopped the crashes: a notification started
+  PixelSense, it opened a Tachyon session, no abort.
+- Still denied, not fatal: `pcc_component` → `hal_ambience_hub_service` find. Stock declares the whole
+  `hal_ambience_hub` HAL in its product policy (gs-common proprietary ambience_hub); not added yet.
 
 ## 3. Machines and access
 
