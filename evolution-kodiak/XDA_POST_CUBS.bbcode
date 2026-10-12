@@ -1,0 +1,97 @@
+Forum: Google Pixel 11 (https://xdaforums.com/f/google-pixel-11.13035/), prefix Development
+Title: [ROM][UNOFFICIAL][17][cubs] Evolution X 12.3 (Android 17) for the Pixel 11 - testers wanted
+
+[CENTER][SIZE=6][B]Evolution X 12.3 — Android 17[/B][/SIZE]
+[SIZE=4]Google Pixel 11 (cubs) | UNOFFICIAL | TEST BUILD[/SIZE][/CENTER]
+
+[CODE]
+/*
+ * Your warranty is now void. You flash this at your own risk.
+ * I'm not responsible for bricked devices, lost data, or anything else.
+ */
+[/CODE]
+
+[SIZE=5][B]Testers wanted: this build has never been booted[/B][/SIZE]
+I build Evolution X for the Pixel 11 Pro XL (kodiak) and run it daily ([URL=https://xdaforums.com/t/rom-unofficial-17-kodiak-grizzly-evolution-x-12-3-android-17-for-the-pixel-11-pro-xl-and-11-pro-grizzly-testers-wanted.4804712/]kodiak thread[/URL]). This is the same source built for the [B]Pixel 11 (cubs)[/B] with the Pixel 11's own stock images and blobs. It passes every check I can run without the phone, but [B]I don't own a Pixel 11, so it has never been booted.[/B] Only try it if you're comfortable restoring stock with the Android Flash Tool if it doesn't boot.
+
+If you try it, please reply in this thread with:
+[LIST]
+[*]Whether it boots, and whether it still boots after a couple of reboots
+[*]Your carrier, and whether calls, SMS, VoLTE, mobile data and Wi-Fi calling work
+[*]Wi-Fi, Bluetooth, cameras, fingerprint and face unlock
+[*]Play Integrity and Google Wallet
+[*]If something fails: what you saw, and a log if you can get one ([ICODE]adb logcat -d > logcat.txt[/ICODE])
+[/LIST]
+
+[SIZE=5][B]About[/B][/SIZE]
+An unofficial build of Evolution X 12.3 on Android 17 for the Pixel 11. Google hasn't published vendor sources for the Tensor G6, so this build keeps the stock vendor, kernel and firmware from the October 2026 factory image and builds everything else from source.
+
+[B]For the Pixel 11 (cubs) only.[/B] Don't flash it on the Pixel 11 Pro, Pro XL or any other model.
+
+This is [B]not[/B] an official Evolution X build. Please don't report its bugs to the Evolution X team; report them in this thread.
+
+[SIZE=5][B]Build info[/B][/SIZE]
+[LIST]
+[*]Evolution X 12.3, Android 17, security patch 2026-10-05 (vendor and boot), 2026-10-01 (system)
+[*]Build type: user, signed with private release keys
+[*]Google apps included
+[*]Kernel: stock Google GKI 6.12 from CD1A.261005.003 (unmodified)
+[*]Vendor, vendor_dlkm, system_dlkm, dtbo: stock Pixel 11 CD1A.261005.003
+[*]Firmware not included: you must already be on stock CD1A.261005.003 (see Requirements)
+[*]Not rooted
+[/LIST]
+
+[SIZE=5][B]What should work[/B][/SIZE]
+All of this works on the Pixel 11 Pro XL with the same source, but none of it is confirmed on the Pixel 11 yet:
+[LIST]
+[*]Calls and SMS, including VoLTE, mobile data (5G SA), eSIM
+[*]Wi-Fi, Bluetooth
+[*]Cameras, fingerprint, face unlock
+[*]Google Play; Play Integrity and Google Wallet tap-to-pay
+[/LIST]
+
+[SIZE=5][B]Known issues[/B][/SIZE]
+[LIST]
+[*]Untested on real hardware (see above).
+[*]Gemini Nano and the features built on it (Magic Cue and others) don't work. Google only serves the on-device AI models to phones with a locked bootloader, so this applies to any custom ROM.
+[*]Pixel-exclusive extras such as Pixel Screenshots and Now Playing aren't included.
+[/LIST]
+
+[SIZE=5][B]Requirements[/B][/SIZE]
+[LIST]
+[*]Unlocked bootloader (unlocking wipes your phone)
+[*]The Pixel 11's stock firmware [B]CD1A.261005.003 (October 2026)[/B]. The zip doesn't flash a bootloader or radio, so your phone must already be on this release. If you're on anything else (including a beta or Canary build), install CD1A.261005.003 with the Android Flash Tool first. Going back from a newer build wipes your phone, and only works if your bootloader allows it.
+[*]Latest platform-tools (adb/fastboot)
+[/LIST]
+
+[SIZE=5][B]Installation (clean flash)[/B][/SIZE]
+Download the ROM zip and check its SHA-256, then:
+[CODE]
+adb reboot bootloader
+fastboot -w update EvolutionX-17.0-20261012-cubs-12.3-Unofficial-UNTESTED-fastboot.zip
+[/CODE]
+[B]-w wipes all your data.[/B] fastboot switches to fastbootd partway through to flash the dynamic partitions; leave the phone plugged in until it reboots by itself (a few minutes). The first boot takes a few minutes more.
+
+[SIZE=5][B]Downloads[/B][/SIZE]
+[LIST]
+[*]ROM zip: [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/cubs/17/]SourceForge: cubs/17[/URL]
+[*]SHA-256 checksum: in the same folder
+[/LIST]
+
+[SIZE=5][B]Source code[/B][/SIZE]
+[LIST]
+[*]ROM: [URL=https://github.com/Evolution-X/manifest/tree/cnb]Evolution-X/manifest (cnb)[/URL]
+[*]Device tree: adapted from the Pixel 11 Pro XL tree, [URL=https://github.com/denson9874/device_google_kodiak]denson9874/device_google_kodiak[/URL]
+[*]Kernel: Google's stock GKI 6.12 binary, unmodified. Source and build instructions: [URL=https://source.android.com/docs/setup/build/building-pixel-kernels]Building Pixel kernels[/URL]
+[/LIST]
+
+[SIZE=5][B]Credits[/B][/SIZE]
+The Evolution X team, the LineageOS team (their Tensor device trees were the model for this one), and asdfmonster261 (Pixel 11 Pro Fold tree, used as a reference).
+
+[SIZE=5][B]Reporting bugs[/B][/SIZE]
+Include your build date, your carrier, steps to reproduce, and a log:
+[CODE]adb logcat -d > logcat.txt[/CODE]
+
+[B]ROM OS version:[/B] Android 17
+[B]Based on:[/B] Evolution X / LineageOS
+[B]Status:[/B] Testing

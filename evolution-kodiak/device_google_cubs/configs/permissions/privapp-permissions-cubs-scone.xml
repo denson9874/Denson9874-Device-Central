@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SPDX-FileCopyrightText: The LineageOS Project
+    SPDX-License-Identifier: Apache-2.0
+
+    Adaptive Connectivity Services (SCONE), shipped as stock's privileged app
+    (product/priv-app/SCONE-v77459). Evolution's GMS has no allowlist entry for
+    it (pm get-privapp-permissions printed {}). These are the platform
+    signature|privileged permissions stock's SCONE requests.
+-->
+<permissions>
+    <privapp-permissions package="com.google.android.apps.scone">
+        <permission name="android.permission.ACCESS_CONTEXT_HUB" />
+        <permission name="android.permission.BROADCAST_CLOSE_SYSTEM_DIALOGS" />
+        <permission name="android.permission.CONTROL_INCALL_EXPERIENCE" />
+        <permission name="android.permission.INTERACT_ACROSS_USERS" />
+        <permission name="android.permission.LOCATION_BYPASS" />
+        <permission name="android.permission.LOCATION_HARDWARE" />
+        <permission name="android.permission.MANAGE_GAME_MODE" />
+        <permission name="android.permission.MANAGE_USB" />
+        <permission name="android.permission.MODIFY_AUDIO_ROUTING" />
+        <permission name="android.permission.MODIFY_PHONE_STATE" />
+        <permission name="android.permission.MONITOR_DEFAULT_SMS_PACKAGE" />
+        <permission name="android.permission.NETWORK_SCAN" />
+        <permission name="android.permission.OVERRIDE_WIFI_CONFIG" />
+        <permission name="android.permission.PACKAGE_USAGE_STATS" />
+        <permission name="android.permission.READ_DROPBOX_DATA" />
+        <permission name="android.permission.READ_LOGS" />
+        <permission name="android.permission.READ_PRECISE_PHONE_STATE" />
+        <permission name="android.permission.READ_PRIVILEGED_PHONE_STATE" />
+        <permission name="android.permission.REBOOT" />
+        <permission name="android.permission.REGISTER_STATS_PULL_ATOM" />
+        <permission name="android.permission.RENOUNCE_PERMISSIONS" />
+        <permission name="android.permission.RESTART_TELEPHONY_PROCESS" />
+        <permission name="android.permission.RESTART_WIFI_SUBSYSTEM" />
+        <permission name="android.permission.SATELLITE_COMMUNICATION" />
+        <permission name="android.permission.START_ACTIVITIES_FROM_BACKGROUND" />
+        <permission name="android.permission.SUBSTITUTE_NOTIFICATION_APP_NAME" />
+        <permission name="android.permission.THREAD_NETWORK_PRIVILEGED" />
+        <permission name="android.permission.WIFI_SET_DEVICE_MOBILITY_STATE" />
+        <permission name="android.permission.WIFI_UPDATE_USABILITY_STATS_SCORE" />
+        <permission name="android.permission.WRITE_APN_SETTINGS" />
+        <permission name="android.permission.WRITE_SECURE_SETTINGS" />
+    </privapp-permissions>
+</permissions>

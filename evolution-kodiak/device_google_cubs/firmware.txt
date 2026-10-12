@@ -1,0 +1,30 @@
+# A/B partitions that the OTA flashes raw from the stock factory image.
+# Bootloader/radio firmware (same set as LineageOS mustang, plus
+# dram_init_10/11 which Tensor G6 adds) and the stock vendor_kernel_boot,
+# which holds the first-stage kernel modules matching the stock GKI kernel.
+abl
+bl31
+cap
+cpm
+dbc
+dbl
+dram_init_0
+dram_init_1
+dram_init_2
+dram_init_3
+dram_init_4
+dram_init_5
+dram_init_6
+dram_init_7
+dram_init_8
+dram_init_9
+dram_init_10
+dram_init_11
+dram_phy
+gc
+gdmc
+gsa_bl1
+gsa_fw
+modem
+tzsw
+vendor_kernel_boot

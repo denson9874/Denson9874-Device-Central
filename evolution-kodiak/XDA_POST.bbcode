@@ -1,8 +1,9 @@
 Posted: https://xdaforums.com/t/rom-unofficial-17-kodiak-evolution-x-12-3-android-17-for-the-pixel-11-pro-xl.4804712/ (2026-10-11)
-Title: [ROM][UNOFFICIAL][17][kodiak] Evolution X 12.3 (Android 17) for the Pixel 11 Pro XL
+Edited 2026-10-12: grizzly test build section and title; URL now https://xdaforums.com/t/rom-unofficial-17-kodiak-grizzly-evolution-x-12-3-android-17-for-the-pixel-11-pro-xl-and-11-pro-grizzly-testers-wanted.4804712/
+Title: [ROM][UNOFFICIAL][17][kodiak][grizzly] Evolution X 12.3 (Android 17) for the Pixel 11 Pro XL and 11 Pro (grizzly: testers wanted)
 
 [CENTER][SIZE=6][B]Evolution X 12.3 — Android 17[/B][/SIZE]
-[SIZE=4]Google Pixel 11 Pro XL (kodiak) | UNOFFICIAL[/SIZE][/CENTER]
+[SIZE=4]Google Pixel 11 Pro XL (kodiak) and Pixel 11 Pro (grizzly, test build) | UNOFFICIAL[/SIZE][/CENTER]
 
 [CODE]
 /*
@@ -11,10 +12,27 @@ Title: [ROM][UNOFFICIAL][17][kodiak] Evolution X 12.3 (Android 17) for the Pixel
  */
 [/CODE]
 
+[SIZE=5][B]NEW: Pixel 11 Pro (grizzly) test build, testers wanted[/B][/SIZE]
+There's now a build for the [B]Pixel 11 Pro (grizzly)[/B], made from the same source as the kodiak build with grizzly's own stock images and blobs. It passes every check I can run without the phone, but [B]I don't own a grizzly, so it has never been booted.[/B] Only try it if you're comfortable restoring stock with the Android Flash Tool if it doesn't boot.
+[LIST]
+[*]Download: [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/]SourceForge: grizzly/17[/URL] ([ICODE]EvolutionX-17.0-20261012-grizzly-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE], SHA-256 in the same folder)
+[*]Requirements: the same as below, but with [B]grizzly's[/B] stock CD1A.261005.003 installed
+[*]Clean flash only (wipes your data): [ICODE]fastboot -w update EvolutionX-17.0-20261012-grizzly-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE]
+[*]Never flash the grizzly zip on a Pixel 11 Pro XL, or the kodiak zip on a Pixel 11 Pro
+[/LIST]
+If you try it, please reply in this thread with:
+[LIST]
+[*]Whether it boots, and whether it still boots after a couple of reboots
+[*]Your carrier, and whether calls, SMS, VoLTE, mobile data and Wi-Fi calling work
+[*]Wi-Fi, Bluetooth, cameras, fingerprint and face unlock
+[*]Play Integrity and Google Wallet
+[*]If something fails: what you saw, and a log if you can get one ([ICODE]adb logcat -d > logcat.txt[/ICODE])
+[/LIST]
+
 [SIZE=5][B]About[/B][/SIZE]
 An unofficial build of Evolution X 12.3 on Android 17 for the Pixel 11 Pro XL. Google hasn't published vendor sources for the Tensor G6, so this build keeps the stock vendor, kernel and firmware from the October 2026 factory image and builds everything else from source.
 
-[B]For the Pixel 11 Pro XL (kodiak) only.[/B] Don't flash it on the Pixel 11 Pro (grizzly) or any other model.
+[B]The main build is for the Pixel 11 Pro XL (kodiak) only.[/B] Pixel 11 Pro (grizzly) owners: use the test build above. Don't flash either one on any other model.
 
 This is [B]not[/B] an official Evolution X build. Please don't report its bugs to the Evolution X team; report them in this thread or on GitHub.
 
@@ -68,8 +86,9 @@ fastboot update EvolutionX-17.0-20261011-kodiak-12.3-Unofficial-fastboot.zip
 
 [SIZE=5][B]Downloads[/B][/SIZE]
 [LIST]
-[*]ROM zip (SourceForge): [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/kodiak/17/]SourceForge: kodiak/17[/URL]
-[*]SHA-256 checksums: in the SourceForge folder
+[*]Pixel 11 Pro XL (kodiak) ROM zip: [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/kodiak/17/]SourceForge: kodiak/17[/URL]
+[*]Pixel 11 Pro (grizzly) test build: [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/]SourceForge: grizzly/17[/URL]
+[*]SHA-256 checksums: in each SourceForge folder
 [/LIST]
 
 [SIZE=5][B]Source code[/B][/SIZE]
