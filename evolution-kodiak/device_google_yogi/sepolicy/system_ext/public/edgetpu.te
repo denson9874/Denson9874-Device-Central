@@ -5,3 +5,6 @@
 type edgetpu_device, dev_type, isolated_compute_allowed_device, mlstrustedobject;
 type edgetpu_nnapi_service, app_api_service, isolated_compute_allowed_service, service_manager_type;
 type edgetpu_tachyon_service, app_api_service, isolated_compute_allowed_service, service_manager_type;
+# The vendor's Tachyon TPU server. Stock declares its domain here, because
+# system_ext rules (pcc_component.te) name it.
+type edgetpu_tachyon_server, domain;
