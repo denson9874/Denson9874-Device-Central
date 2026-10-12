@@ -66,4 +66,9 @@
         <item>vn</item>
         <item>za</item>
     </string-array>
+
+    <!-- GBA service (GbaService in proprietary-files.txt), as stock's product
+         RRO sets it; the vendor RRO still names com.shannon.rcsservice. -->
+    <string name="config_gba_package" translatable="false">com.android.gbaservice</string>
+    <integer name="config_gba_release_time">70000</integer>
 </resources>
