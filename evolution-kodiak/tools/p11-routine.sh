@@ -8,8 +8,8 @@
 #      the lock) run one at a time, and waits for any build started by hand.
 #   2. Runs `repo sync` unless the tree was synced in the last 6 hours (the first
 #      routine of the day syncs; the others build from the same sync), skipping
-#      the husky port's projects, then re-applies the build/make patch
-#      (apply-patches.sh, idempotent).
+#      the husky port's projects. Then (synced or not) applies our build/make and
+#      frameworks/base patches (apply-patches.sh, idempotent).
 #   3. Skips the build when nothing the device depends on changed since its last
 #      published build. The state is the content (git tree hash) of every repo
 #      project plus our device, vendor, images and signing-key trees, so
@@ -89,8 +89,12 @@ else
     [ ${#projects[@]} -gt 1000 ] || fail "repo list returned only ${#projects[@]} projects"
     echo "== repo sync: check out ${#projects[@]} projects"
     repo sync -c -l -j8 --fail-fast "${projects[@]}" 9>&- || fail "repo sync (checkout) failed"
-    device/google/kodiak/apply-patches.sh "$TOP" 9>&- || fail "apply-patches.sh failed: upstream build/make may conflict with patches/build_make"
     date +%s > ~/.evolution-last-sync
+fi
+# Our patches (build/make, frameworks/base) go into every build, whether or not this
+# run synced. A sync drops them; apply-patches.sh skips the ones already applied.
+if [ $DRY = 0 ] && [ $MARK = 0 ]; then
+    device/google/kodiak/apply-patches.sh "$TOP" 9>&- || fail "apply-patches.sh failed: upstream may conflict with device/google/kodiak/patches"
 fi
 
 # 3. State: content of every project that goes into the build, plus our trees

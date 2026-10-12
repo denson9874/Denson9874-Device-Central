@@ -958,6 +958,28 @@ How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
 - **If a tester reports fold problems,** compare with the stock RRO values (`~/android-dt/p11-diff-yogi/rrodiff.txt`)
   and with asdfmonster261/android_device_google_yogi (lineage-24.0).
 
+## 2n. Bright flash when the screen times out to AOD (2026-10-12)
+
+- **Report:** Ashray V K (Telegram feedback group; Pixel 11 Pro XL with the Espada kernel and KernelSU Next) saw the
+  screen flash bright for a split second around a screen timeout. Their log is `~/Downloads/screen_timeout_full.log`.
+- **Cause (SystemUI, not the kernel or root):** on a timeout in a dark room, DisplayPowerController dims the screen to
+  0.0 (0.5 nits). Then `DozeScreenBrightness.clampToDimBrightnessForScreenOff()` starts AOD at
+  `min(doze brightness - minimum dim amount, dim brightness)` = 0.05, about 121 nits, because in auto-brightness mode
+  nothing clamps the doze brightness (34/255, stock vendor RRO) to the screen brightness. The AOD light sensor corrects
+  it about 20 ms later, and HWC ramps down over about 0.5 s.
+- **Fix:** a frameworks/base patch (`patches/frameworks_base/0001-SystemUI-don-t-start-AOD-brighter-than-the-dimmed-sc.patch`
+  in all four trees) also clamps to the current screen brightness (`DisplayManager.getBrightness()`, the pre-dim auto
+  brightness), so AOD starts at or below the dimmed level. Server commits: frameworks/base 4fc91b5; device trees
+  kodiak 19b9040, grizzly dd75db8, cubs 689628d, yogi f3e3f8f.
+- **Pipeline:** `p11-routine.sh` now runs `apply-patches.sh` on every run, not only after a sync, so `--no-sync` hotfixes
+  carry the patches too. The patch changes the frameworks/base tree hash, so the next weekly run rebuilds all four
+  devices even if upstream is quiet.
+- **Testing on Daryl's phone:** `~/Downloads/kodiak-evox/aod-flash/timeout-cycle.sh <label>` wakes the screen, lets the
+  lock screen time out and prints the brightness sequence; it changes no settings. It only shows the flash in the dark
+  (auto-brightness below about 0.05).
+- **Upstreaming (not done):** Evolution X / LineageOS would want `DozeScreenBrightnessTest` updated; its mocked
+  `DisplayManager.getBrightness()` returns 0, which the new clamp would apply.
+
 ## 3. Machines and access
 
 | What | Where |
