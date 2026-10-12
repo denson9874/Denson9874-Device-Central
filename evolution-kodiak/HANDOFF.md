@@ -878,6 +878,35 @@ Not automated:
   requirements: `BOOT_SECURITY_PATCH`, the pack scripts' boot patch-level check, `extract-images.sh`, and the posts.
   Do that by hand, and never lower the boot patch level.
 
+## 2k. On-device AI on Daryl's phone: Public Compute Services (2026-10-12, proof of concept)
+
+This fixes the AI blocker from 2e. Google's manifest server refuses unlocked-bootloader attestation, which gave
+`ProtectedDownloadGrpcBindableService: Failed to handle GetManifestConfig`. Kieron Quinn's **Public Compute
+Services** (PCS), an Xposed module, makes Private Compute Services fetch the manifests from a mirrored repository
+instead; the models still download from Google. It's personal-phone only: the release ROM stays unrooted.
+
+How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
+
+- **Root:** Magisk had updated itself to v31.0. Its built-in Zygisk **does** inject on our build, so NeoZygisk wasn't
+  needed (the XDA guide says it is). Zygisk and the enforced DenyList are unchanged.
+- **Vector:** `Vector-v2.2-3112-Debug.zip` (canary), installed with `magisk --install-module`.
+- **Configuration:** done with Vector's CLI (`/data/adb/modules/zygisk_vector/cli`) instead of the hidden manager UI:
+  `modules enable com.kieronquinn.app.pcs`, then
+  `scope set com.kieronquinn.app.pcs com.google.android.aicore/0 com.google.android.as/0 com.google.android.as.oss/0 com.google.android.dialer/0 com.google.android.apps.pixel.agent/0`.
+- **PCS:** `PublicComputeServices-v1.0.6.apk`, package `com.kieronquinn.app.pcs`, uid 10538. Root is granted through
+  Magisk's policies table. The repository is `https://raw.githubusercontent.com/PublicComputeServices/pcs-manifests/refs/heads/main`
+  (as listed in the PCS thread, post 2), with Auto Sync on. Pixel Screenshots manifests are off.
+- **The trap:** AICore, ASI (`com.google.android.as`) and PCS (`com.google.android.as.oss`) had been put on the Magisk
+  DenyList during the earlier AI debugging. Denylisted processes get no Zygisk modules, so nothing was hooked. Removing
+  those 7 entries (DenyList 67 → 60) fixed it.
+- **Result:** Vector injects into as.oss and aicore, `AstreaService: Sending back manifest for com.google.android.aicore`,
+  `Successfully handled GetManifestConfig`, and AICore loads models on the TPU (data 3.6 GB).
+- **Still to check:** that Play Integrity is still STRONG and Wallet tap-to-pay still works.
+- **Revert:** `~/Downloads/kodiak-evox/pcs-poc/revert.sh` re-adds the DenyList entries, removes Vector and PCS, and
+  reboots. Baseline: `baseline-20261012.txt`, `denylist-20261012.txt`.
+- **Reflashing caveat:** a new personal test zip re-patches init_boot with Magisk, but `/data/adb` (modules, DenyList,
+  policies) survives a no-wipe `fastboot update`.
+
 ## 3. Machines and access
 
 | What | Where |
