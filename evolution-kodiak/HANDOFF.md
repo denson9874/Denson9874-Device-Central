@@ -1070,6 +1070,14 @@ How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
   Still to check after Daryl unlocks: the Settings entry, the switches, Preview, the Play services update components
   (queries return nothing for any GMS component before the first unlock), and a call from a starred contact.
 - Daryl's phone PIN is never typed by Claude, even when offered; the on-screen checks wait for him to unlock.
+- **Verified 2026-10-13 after Daryl unlocked:** he reports HiLight works (entry, switches, preview).
+  `light_animation_feedback_enabled` and `light_animation_favorite_calls_enabled` are both 1, strong-auth flags 0.
+  Play services' update services (SystemUpdateService, GcmTaskService, PersistentListenerService,
+  ResumeOnRebootEscrowService) resolve to nothing, while the untouched `UpdateFromSdCardActivity` still resolves.
+  `SystemUpdateActivity` and `OtaSuggestionSummaryProvider` stay enabled: Play services lists them under its runtime
+  `enabledComponents`, which overrides the sysconfig default. That's only the UI; nothing downloads or arms resume on
+  reboot without the services.
+- Ships with the weekly routine (Sunday) for all four phones; Daryl approved ("go ahead with all").
 
 ## 3. Machines and access
 

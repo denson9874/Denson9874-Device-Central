@@ -41,3 +41,21 @@ HiLight notes (2026-10-12):
   `light_animation_feedback_enabled`, `light_animation_favorite_calls_enabled`). The Google app (Velvet) reads
   `light_animation_feedback_enabled`. Evolution's GMS already grants `CONTROL_DEVICE_LIGHTS` to Google (Velvet),
   GoogleCamera and Settings.
+
+2026-10-13 follow-ups to Ashray (all posted):
+
+03:03, after his first logs (reply to his 02:55 message): asked for the KeyguardUpdateMonitor dump while the lock
+screen refuses the fingerprint, said there was no need to disable modules, and mentioned lmkd crashing at boot on his
+kernel.
+
+03:29, after he said the second lock goes straight to the PIN: asked for the dump and `logcat -b all -d` while the PIN
+screen is showing on the second unlock.
+
+05:45, after the second logs:
+
+> No worries, thanks! Found it! Your log shows Google Play services found a Google system update for the stock Pixel
+> build this ROM reports, and it's preparing to install it overnight with "resume on reboot". When that's armed,
+> Android asks for your PIN once more after a reboot, which is why fingerprint only works after the second PIN. The
+> update can't actually install over this ROM (it's signed with Google's keys, and the ROM only accepts its own), so
+> it's harmless, just annoying. I'll block Google's updater in the next build, which also has the screen-timeout flash
+> fix.
