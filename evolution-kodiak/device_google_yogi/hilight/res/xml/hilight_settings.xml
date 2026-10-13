@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Daryl Denson
+  SPDX-License-Identifier: Apache-2.0
+-->
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:title="@string/hilight_title">
+
+    <com.android.settingslib.widget.TopIntroPreference
+        android:key="hilight_intro"
+        android:title="@string/hilight_intro" />
+
+    <com.android.settingslib.widget.MainSwitchPreference
+        android:key="hilight_main_switch"
+        android:title="@string/hilight_main_switch"
+        android:persistent="false" />
+
+    <PreferenceCategory
+        android:key="hilight_category_when"
+        android:title="@string/hilight_category_when">
+
+        <SwitchPreferenceCompat
+            android:key="hilight_gemini"
+            android:title="@string/hilight_gemini_title"
+            android:summary="@string/hilight_gemini_summary"
+            android:persistent="false" />
+
+        <SwitchPreferenceCompat
+            android:key="hilight_favorite_calls"
+            android:title="@string/hilight_calls_title"
+            android:summary="@string/hilight_calls_summary"
+            android:persistent="false" />
+    </PreferenceCategory>
+
+    <Preference
+        android:key="hilight_preview"
+        android:title="@string/hilight_preview_title"
+        android:summary="@string/hilight_preview_summary" />
+
+    <com.android.settingslib.widget.FooterPreference
+        android:key="hilight_footer"
+        android:title="@string/hilight_footer"
+        android:selectable="false" />
+</PreferenceScreen>

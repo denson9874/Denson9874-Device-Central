@@ -102,6 +102,10 @@ PRODUCT_COPY_FILES += \
     device/google/cubs/configs/permissions/privapp-permissions-cubs-scone.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/privapp-permissions-cubs-scone.xml \
     device/google/cubs/configs/sysconfig/cubs-scone.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/sysconfig/cubs-scone.xml
 
+# Keep Google Play services from preparing Google's OTAs (configs/sysconfig/disable-google-ota.xml).
+PRODUCT_COPY_FILES += \
+    device/google/cubs/configs/sysconfig/disable-google-ota.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/sysconfig/disable-google-ota.xml
+
 # Characteristics
 PRODUCT_CHARACTERISTICS := nosdcard
 

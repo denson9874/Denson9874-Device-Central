@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Daryl Denson
+  SPDX-License-Identifier: Apache-2.0
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.evolution.hilight">
+
+    <!-- The HiLight settings are Settings.Secure keys. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <!-- For the preview animation. -->
+    <uses-permission android:name="android.permission.CONTROL_DEVICE_LIGHTS" />
+
+    <application
+        android:label="@string/hilight_title"
+        android:icon="@drawable/ic_hilight"
+        android:supportsRtl="true">
+
+        <activity
+            android:name=".HiLightActivity"
+            android:label="@string/hilight_title"
+            android:icon="@drawable/ic_hilight"
+            android:theme="@style/Theme.SubSettingsBase.Expressive"
+            android:exported="true">
+            <!-- An entry in Settings > System, where stock Pixel Settings puts HiLight. -->
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.system" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:resource="@string/hilight_summary" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_hilight" />
+            <meta-data
+                android:name="com.android.settings.profile"
+                android:value="primary_profile_only" />
+        </activity>
+    </application>
+</manifest>

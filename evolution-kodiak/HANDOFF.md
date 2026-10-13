@@ -1032,6 +1032,44 @@ How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
 - Their kernel differs: `lmkd` aborts (`terminating`) at boot and restarts, which never happens on the stock kernel.
 - Next capture needed: the KeyguardUpdateMonitor dump taken **while** the lock screen refuses the fingerprint
   (adb from a computer, or a delayed root command).
+- **Solved with the second capture** (`~/Downloads/keyguard_locked.txt`, `lock_log2.txt`): on the PIN screen
+  `strongAuthFlags=40` (hex) = `STRONG_AUTH_REQUIRED_FOR_UNATTENDED_UPDATE`. Google Play services' system updater
+  (`system_update` events with an `ota.googlezip.net` package) found a Google OTA for the stock fingerprint we report
+  and armed resume on reboot (`RebootEscrowManager: Using server based resume on reboot` right after the unlock). By
+  design that requires the PIN once more. The OTA can't install (update_engine only takes payloads signed with our
+  key), but every user can hit the PIN prompt. Fix below (2r).
+
+## 2r. HiLight page, a Lineage crash it exposed, and blocking Google OTAs (2026-10-13)
+
+- **HiLight app** (`hilight/` in kodiak, grizzly and yogi; not cubs, whose vendor has no lights service): package
+  `org.evolution.hilight`, privileged, platform-signed, Kotlin + SettingsLib. Settings > System entry (category
+  `com.android.settings.category.ia.system`), main switch, "Light up for" Gemini (`light_animation_feedback_enabled`)
+  and calls from favorites (`light_animation_favorite_calls_enabled`), a Preview that sweeps the 8 LEDs with
+  `MultiLightEffect`, and a photosensitivity footer. Turning HiLight off saves each trigger in `<key>.previous`, as
+  stock does. The name stays "HiLight" (Daryl's choice). The APK is 26 MB because R8 is off; shrinking is a TODO.
+- **The favorites flag:** `hilight/release/release_config_map.textproto`, added only to this product with
+  `PRODUCT_RELEASE_CONFIG_MAPS`, contributes an aconfig value set to cp2a enabling
+  `com.android.server.notification.favorites_incoming_call_lights`. The value set lives in the tree's Soong namespace,
+  so the release config must name it fully qualified (`//device/google/kodiak:aconfig_value_set-hilight-kodiak-cp2a`);
+  a bare name fails (`powerhal_flags-aconfig depends on undefined module`). A map at `device/*/*/release/` would be
+  auto-discovered for every product, so it's one level deeper on purpose.
+- **Crash it exposed:** with that flag on, system_server crashed in `NotificationManagerService.onStart` on every
+  boot (Daryl's phone fell to fastboot, `DBL request`; rolled back with `…-personal-keep-initboot-pcctpu.zip`).
+  `LineageNotificationLights`' constructor calls back into `NotificationAttentionHelper.updateLightsLocked()` before
+  `mLineageNotificationLights` is assigned, and the favorites block lacks a null check. Fixed by
+  `patches/frameworks_base/0002-NotificationAttentionHelper-…patch` (frameworks/base 1de1c80; worth sending to
+  LineageOS). Evolution sets `persist.sys.disable_rescue=true`, so the crash loop reset nothing.
+- **Google OTA block** (all four trees): `configs/sysconfig/disable-google-ota.xml` disables Play services'
+  `.update.*` components (SystemUpdateService, GcmTaskService, PersistentListenerService, activities, the OTA
+  suggestion, the popup and `ResumeOnRebootEscrowService`). Component overrides apply to updated system apps on every
+  boot (`ScanPackageUtils.configurePackageComponents`).
+- Server device commits: kodiak cc07a72, grizzly daddb0e, yogi f7c6432, cubs a71f962.
+- **On Daryl's phone** (2026-10-13 04:16, `…-personal-keep-initboot-hilight2.zip`, sha256 `818783ae…`, flashed with
+  `aod-flash/flash-guarded.sh`, which rolls back to `…-pcctpu.zip` by itself if the phone falls to fastboot): boots,
+  no system_server crash, `favorites_incoming_call_lights` enabled, HiLight privileged with both permissions granted.
+  Still to check after Daryl unlocks: the Settings entry, the switches, Preview, the Play services update components
+  (queries return nothing for any GMS component before the first unlock), and a call from a starred contact.
+- Daryl's phone PIN is never typed by Claude, even when offered; the on-screen checks wait for him to unlock.
 
 ## 3. Machines and access
 

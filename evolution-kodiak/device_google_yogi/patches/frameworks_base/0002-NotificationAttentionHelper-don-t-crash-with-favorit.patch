@@ -1,0 +1,40 @@
+From 1de1c8055fe5fbcaf7a94f5fb7aff3b113d78b4f Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 13 Oct 2026 09:46:28 +0200
+Subject: [PATCH] NotificationAttentionHelper: don't crash with favorites call
+ lights on
+
+The LineageNotificationLights constructor registers its settings
+observer and runs the LedUpdater callback straight away, so
+updateLightsLocked() runs before mLineageNotificationLights is
+assigned. The favorites-incoming-call-lights block dereferences it
+without the null check the rest of the method has, and with
+com.android.server.notification.favorites_incoming_call_lights enabled
+system_server crashes in NotificationManagerService.onStart on every
+boot. Treat a missing LineageNotificationLights like "don't show lights
+with the screen on".
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../server/notification/NotificationAttentionHelper.java     | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/notification/NotificationAttentionHelper.java b/services/core/java/com/android/server/notification/NotificationAttentionHelper.java
+index 7b0206d1c..fba5fd0a4 100644
+--- a/services/core/java/com/android/server/notification/NotificationAttentionHelper.java
++++ b/services/core/java/com/android/server/notification/NotificationAttentionHelper.java
+@@ -1094,7 +1094,10 @@ public final class NotificationAttentionHelper {
+ 
+         if (favoritesIncomingCallLights()) {
+             if (!isCallLight(ledNotification) || mUserPresent || isInCall()) {
+-                if (!mLineageNotificationLights.showLightsScreenOn()) {
++                // The LineageNotificationLights constructor calls back into
++                // updateLightsLocked() before mLineageNotificationLights is assigned.
++                if (mLineageNotificationLights == null
++                        || !mLineageNotificationLights.showLightsScreenOn()) {
+                     stopPriorityNotificationLight();
+                 }
+             }
+-- 
+2.43.0
+
