@@ -1005,6 +1005,33 @@ How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
   PixelSense, it opened a Tachyon session, no abort.
 - Still denied, not fatal: `pcc_component` → `hal_ambience_hub_service` find. Stock declares the whole
   `hal_ambience_hub` HAL in its product policy (gs-common proprietary ambience_hub); not added yet.
+- **Shipped to Daryl's phone** 2026-10-12 19:57 (`…-personal-keep-initboot-pcctpu.zip`, sha256 `dda300e8…`, server
+  device commits kodiak a977e01, grizzly 48732c0, cubs 3a9da8a, yogi 664e9af). Seven hours later: PixelSense
+  running, no native crashes, no `pcc_component` TPU denials.
+
+## 2p. HiLight (rear light bar) works for Gemini with one setting (2026-10-13)
+
+- On Daryl's phone, `settings put secure light_animation_feedback_enabled 1` (it was unset) made the light bar
+  animate while Gemini listened and answered. Nothing else was needed: the Google app (Velvet) reads that key and
+  drives the stock lights HAL through AOSP's `MultiLightEffect` API, with `CONTROL_DEVICE_LIGHTS` from Evolution's
+  GMS permissions. The setting stays on; undo with `settings delete secure light_animation_feedback_enabled`.
+- Not tried yet: favorite-contact calls (`light_animation_favorite_calls_enabled` plus the
+  `com.android.server.notification.favorites_incoming_call_lights` flag, off in cp2a).
+- To ship it: a HiLight page (or toggles) in Evolution's Settings writing those two keys, and the favorites flag
+  enabled. No proprietary app is involved, so it fits the CoC. Findings: `TELEGRAM_FEEDBACK_20261012.md`.
+
+## 2q. Ashray's double-PIN report: first logs (2026-10-13)
+
+- Files: `~/Downloads/lock_log.txt` (logcat from boot, 47 s) and `~/Downloads/keyguard.txt` (KeyguardUpdateMonitor
+  dump). Their setup: Espada kernel, KernelSU Next + SuSFS, Vector + PCS, Jio (India).
+- Sequence: PIN unlock 12:20:10, power-button lock 12:20:25, wake 12:20:26, second PIN 12:20:29. **No
+  `FingerprintAuthenticationClient` is ever added**, so SystemUI never started a fingerprint listen after the first
+  lock. On Daryl's phone (stock kernel) the same steps add one as soon as the lock screen shows.
+- The dump was taken after the second unlock (shade showing), so it can't show why. Daryl's dump also has an empty
+  `KeyguardFingerprintListen` table and `allowed=false` outside the lock screen, so neither is a clue.
+- Their kernel differs: `lmkd` aborts (`terminating`) at boot and restarts, which never happens on the stock kernel.
+- Next capture needed: the KeyguardUpdateMonitor dump taken **while** the lock screen refuses the fingerprint
+  (adb from a computer, or a delayed root command).
 
 ## 3. Machines and access
 
