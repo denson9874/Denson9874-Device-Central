@@ -33,7 +33,7 @@ vendor stays stock.
 ```bash
 # inside the Evolution X (cnb) tree
 git clone <this repo> device/google/cubs
-device/google/cubs/apply-patches.sh   # build/make fix for prebuilt partitions (until it's merged upstream)
+device/google/cubs/apply-patches.sh   # patches/: build/make (prebuilt partitions), frameworks/base (AOD brightness, favorites call lights)
 
 # Stock factory image CD1A.261005.003 for cubs, from https://developers.google.com/android/images
 device/google/cubs/extract-images.sh <cubs-cd1a.261005.003-factory-*.zip>   # -> vendor/google/cubs-images

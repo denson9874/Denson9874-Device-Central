@@ -27,7 +27,7 @@ vendor stays stock for now.
 ```bash
 # inside the Evolution X (cnb) tree
 git clone <this repo> device/google/kodiak
-device/google/kodiak/apply-patches.sh   # build/make fix for prebuilt partitions (until it's merged upstream)
+device/google/kodiak/apply-patches.sh   # patches/: build/make (prebuilt partitions), frameworks/base (AOD brightness, favorites call lights)
 
 # Stock factory image CD1A.261005.003 for kodiak, from https://developers.google.com/android/images
 device/google/kodiak/extract-images.sh <kodiak-cd1a.261005.003-factory-*.zip>   # -> vendor/google/kodiak-images
