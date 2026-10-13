@@ -37,7 +37,7 @@ vendor stays stock.
 ```bash
 # inside the Evolution X (cnb) tree
 git clone <this repo> device/google/yogi
-device/google/yogi/apply-patches.sh   # build/make fix for prebuilt partitions (until it's merged upstream)
+device/google/yogi/apply-patches.sh   # patches/: build/make (prebuilt partitions), frameworks/base (AOD brightness, favorites call lights)
 
 # Stock factory image CD1A.261005.003 for yogi, from https://developers.google.com/android/images
 device/google/yogi/extract-images.sh <yogi-cd1a.261005.003-factory-*.zip>   # -> vendor/google/yogi-images
