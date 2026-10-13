@@ -6,7 +6,14 @@
 # Same system/product composition as LineageOS's Pixel trees (laguna aosp_common.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit_only.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/generic_system.mk)
+# RisingOS's vendor/rising adds its own props to /system (PRODUCT_SYSTEM_PROPERTIES),
+# which generic_system.mk's artifact-path check rejects. Evolution X keeps its
+# props off /system, so it keeps the check.
+ifneq ($(wildcard vendor/rising/config/version.mk),)
+PRODUCT_ENFORCE_ARTIFACT_PATH_REQUIREMENTS := false
+else
 PRODUCT_ENFORCE_ARTIFACT_PATH_REQUIREMENTS := relaxed
+endif
 $(call inherit-product, $(SRC_TARGET_DIR)/product/handheld_system_ext.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/telephony_system_ext.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/aosp_product.mk)
