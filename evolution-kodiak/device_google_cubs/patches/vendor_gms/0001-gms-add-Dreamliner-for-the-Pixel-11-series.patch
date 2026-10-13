@@ -1,0 +1,88 @@
+From d63c25dd3a425f9eefacef7d777221613c3d6c4f Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Wed, 14 Oct 2026 01:25:35 +0200
+Subject: [PATCH] gms: add Dreamliner for the Pixel 11 series
+
+Stock ships Google's charging screensaver (Dreamliner), its Hub dreams
+and DreamlinerUpdater on cubs, grizzly, kodiak and yogi, and the rest of
+this repo already lists those codenames for the Pixel 11 blobs, but the
+Dreamliner modules and their product packages were still limited to
+Pixels up to the Pixel 10.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ gms_full.mk                                                     | 2 +-
+ gms_mini.mk                                                     | 2 +-
+ .../privileged_apps/DreamlinerDreamsPrebuilt_100894/Android.mk  | 2 +-
+ .../privileged_apps/DreamlinerPrebuilt_22000020/Android.mk      | 2 +-
+ product/packages/privileged_apps/DreamlinerUpdater/Android.mk   | 2 +-
+ 5 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/gms_full.mk b/gms_full.mk
+index ad2ffa9..4f17e28 100644
+--- a/gms_full.mk
++++ b/gms_full.mk
+@@ -87,7 +87,7 @@ PRODUCT_PACKAGES += \
+     SCONE-v77459
+ endif
+ 
+-ifneq ($(filter flame coral redfin oriole raven panther cheetah lynx felix shiba husky akita tokay caiman komodo tegu frankel blazer mustang rango stallion, $(LINEAGE_BUILD)),)
++ifneq ($(filter flame coral redfin oriole raven panther cheetah lynx felix shiba husky akita tokay caiman komodo tegu frankel blazer mustang rango stallion cubs grizzly kodiak yogi, $(LINEAGE_BUILD)),)
+ PRODUCT_PACKAGES += \
+     DreamlinerDreamsPrebuilt_100894 \
+     DreamlinerPrebuilt_22000020 \
+diff --git a/gms_mini.mk b/gms_mini.mk
+index ebdb169..28aa0f0 100644
+--- a/gms_mini.mk
++++ b/gms_mini.mk
+@@ -92,7 +92,7 @@ PRODUCT_PACKAGES += \
+     SCONE-v77459
+ endif
+ 
+-ifneq ($(filter flame coral redfin oriole raven panther cheetah lynx felix shiba husky akita tokay caiman komodo tegu frankel blazer mustang rango stallion, $(LINEAGE_BUILD)),)
++ifneq ($(filter flame coral redfin oriole raven panther cheetah lynx felix shiba husky akita tokay caiman komodo tegu frankel blazer mustang rango stallion cubs grizzly kodiak yogi, $(LINEAGE_BUILD)),)
+ PRODUCT_PACKAGES += \
+     DreamlinerDreamsPrebuilt_100894 \
+     DreamlinerPrebuilt_22000020 \
+diff --git a/product/packages/privileged_apps/DreamlinerDreamsPrebuilt_100894/Android.mk b/product/packages/privileged_apps/DreamlinerDreamsPrebuilt_100894/Android.mk
+index e62c3ed..18cf685 100644
+--- a/product/packages/privileged_apps/DreamlinerDreamsPrebuilt_100894/Android.mk
++++ b/product/packages/privileged_apps/DreamlinerDreamsPrebuilt_100894/Android.mk
+@@ -17,7 +17,7 @@
+ 
+ LOCAL_PATH := $(call my-dir)
+ 
+-ifneq ($(filter flame coral redfin oriole raven panther cheetah lynx felix shiba husky akita tokay caiman komodo comet frankel blazer mustang rango stallion, $(LINEAGE_BUILD)),)
++ifneq ($(filter flame coral redfin oriole raven panther cheetah lynx felix shiba husky akita tokay caiman komodo comet frankel blazer mustang rango stallion cubs grizzly kodiak yogi, $(LINEAGE_BUILD)),)
+ 
+ include $(CLEAR_VARS)
+ LOCAL_MODULE := DreamlinerDreamsPrebuilt_100894
+diff --git a/product/packages/privileged_apps/DreamlinerPrebuilt_22000020/Android.mk b/product/packages/privileged_apps/DreamlinerPrebuilt_22000020/Android.mk
+index 8eab74e..b06d431 100644
+--- a/product/packages/privileged_apps/DreamlinerPrebuilt_22000020/Android.mk
++++ b/product/packages/privileged_apps/DreamlinerPrebuilt_22000020/Android.mk
+@@ -17,7 +17,7 @@
+ 
+ LOCAL_PATH := $(call my-dir)
+ 
+-ifneq ($(filter flame coral redfin oriole raven panther cheetah lynx felix shiba husky akita tokay caiman komodo comet frankel blazer mustang rango stallion, $(LINEAGE_BUILD)),)
++ifneq ($(filter flame coral redfin oriole raven panther cheetah lynx felix shiba husky akita tokay caiman komodo comet frankel blazer mustang rango stallion cubs grizzly kodiak yogi, $(LINEAGE_BUILD)),)
+ 
+ include $(CLEAR_VARS)
+ LOCAL_MODULE := DreamlinerPrebuilt_22000020
+diff --git a/product/packages/privileged_apps/DreamlinerUpdater/Android.mk b/product/packages/privileged_apps/DreamlinerUpdater/Android.mk
+index 4304a36..9d89fbe 100644
+--- a/product/packages/privileged_apps/DreamlinerUpdater/Android.mk
++++ b/product/packages/privileged_apps/DreamlinerUpdater/Android.mk
+@@ -17,7 +17,7 @@
+ 
+ LOCAL_PATH := $(call my-dir)
+ 
+-ifneq ($(filter flame coral redfin oriole raven panther cheetah lynx felix shiba husky akita tokay caiman komodo comet frankel blazer mustang rango stallion, $(LINEAGE_BUILD)),)
++ifneq ($(filter flame coral redfin oriole raven panther cheetah lynx felix shiba husky akita tokay caiman komodo comet frankel blazer mustang rango stallion cubs grizzly kodiak yogi, $(LINEAGE_BUILD)),)
+ 
+ include $(CLEAR_VARS)
+ LOCAL_MODULE := DreamlinerUpdater
+-- 
+2.43.0
+

@@ -1112,16 +1112,25 @@ How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
   reports true (2 s fallback), then the latest sensor reading is applied.
 - Verified on Daryl's phone (`…-personal-keep-initboot-aodhold.zip`, sha256 `4cc03846…`): lock screen timeout at about
   10-16 lux, the sensor changed bin at 11.283, AOD held at 0.0 until LOCKSCREEN->AOD finished at 11.762, sensor value
-  applied at 11.766 (`aod-flash/after-hold-174901.txt`). The open-app (GONE->AOD) case still needs a run with the phone
-  unlocked.
+  applied at 11.766 (`aod-flash/after-hold-174901.txt`). Open-app case (Gmail, GONE->AOD, 0.05 lux, fontfix build):
+  transition started 46.900, sensor bin change 46.930, doze held at 0.0 until FINISHED at 48.227, sensor value (1 nit)
+  applied at 48.232 (`aod-flash/after-hold-app-191815.txt`).
 - Upstreaming would need `DozeScreenBrightnessTest` updated (new constructor parameter).
 
 ## 2u. Charging screensaver: 0% and oversized digits (2026-10-13)
 
 - Daryl's phone runs Google's charging screensaver (Dreamliner, `kitt.dream.fuelgauge.ChargingDreamService`) from the
   Play Store. Evolution's `vendor/gms/gms_full.mk` only installs `DreamlinerPrebuilt`/`DreamlinerDreamsPrebuilt`/
-  `DreamlinerUpdater` for Pixels up to the Pixel 10, so a clean install of our ROM has no built-in charging screensaver.
-  Adding them to the P11 trees (or the codenames to Evolution's list) is still open.
+  `DreamlinerUpdater` for Pixels up to the Pixel 10, so a clean install of our ROM had no built-in charging screensaver.
+  The module definitions themselves are gated too (each `Android.mk` checks `LINEAGE_BUILD`), so adding them to
+  `PRODUCT_PACKAGES` in device.mk does nothing. **Fix:** `patches/vendor_gms/0001-gms-add-Dreamliner-for-the-Pixel-11-series.patch`
+  (vendor/gms d63c25d; device commits kodiak 550ed86, grizzly 50f81eb, cubs 37d59f7, yogi c7c0241) adds
+  `cubs grizzly kodiak yogi` to the five Dreamliner lists (the rest of that repo already lists them). Stock ships all
+  three on all four phones; Dreamliner's seven privileged permissions are in Evolution's privapp file, hubui needs none,
+  the updater is platform-signed. Verified on Daryl's phone (`…-personal-keep-initboot-dreamliner.zip`, sha256
+  `5610a719…`): the Play Store copies of Dreamliner and hubui became updates of the new system apps, the privileged
+  permissions are granted, and the screensaver works. An upstream PR to Evolution-X/vendor_gms would make the patch
+  unnecessary.
 - **0%:** the dream gets its data from SystemUI: it binds `com.android.systemui/com.google.android.systemui.power.
   batteryevent.domain.BatteryEventService` and calls `IBatteryEventService` transaction 6
   (`registerBatteryEventsDataCallback(IBatteryEventsDataListener, List<BatteryEventType>, int[] targetSocs)`,
