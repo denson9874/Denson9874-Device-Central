@@ -59,3 +59,22 @@ screen is showing on the second unlock.
 > update can't actually install over this ROM (it's signed with Google's keys, and the ROM only accepts its own), so
 > it's harmless, just annoying. I'll block Google's updater in the next build, which also has the screen-timeout flash
 > fix.
+
+2026-10-13 14:31, reply to Ashray's 13:18 Morphe report (log `~/.claude/uploads/…/morphe_full_unfiltered_1.log`):
+
+> Thanks for the log! It's not memory. Morphe's first try (2048 MB) fails on any phone and it steps down by itself. The
+> tries after that fail because Morphe's patcher process can't see `/system/framework/org.lineageos.platform-res.apk`
+> ("No such file or directory"), and Android crashes without it. The file is there in the ROM, so something is hiding
+> it from apps, most likely a "hide custom ROM" option in SuSFS or a similar hiding module. Stock has no Lineage files,
+> which is why it works there. If you stop hiding that one path, Morphe should patch normally. Otherwise the in-app
+> workaround keeps working. I'm also looking at making the ROM tolerate it being hidden.
+
+Behind it: Morphe's `PatcherProcess` runs `ActivityThread.systemMain()` under `app_process`, and Lineage's
+`AssetManager.createSystemAssetsInZygoteLocked()` always loads `PLATFORM_EXT_APK_PATH`
+(`/system/framework/org.lineageos.platform-res.apk`), throwing "Failed to create system AssetManager" if it can't. The
+patcher got ENOENT for a file our build installs at that path; the phone runs a custom 6.12.92 kernel with KernelSU
+Next. The low_4gb heap failures (2048, 1792 MB) are Morphe's own memory probing. Possible ROM hardening: skip the
+Lineage resource APK with a warning when it can't be loaded. Not done yet.
+
+Unanswered: Ashray 13:54, "I assume the extreme charging is part of the pixel 11 specific feature list which currently
+isn't available, yeah?"
