@@ -1,0 +1,61 @@
+Replies for the 2026-10-13 update (HiLight, screen-timeout flash, double PIN after reboot).
+
+== kodiak/grizzly thread (4804712) ==
+[B]Update 2026-10-13: HiLight settings, two fixes[/B]
+
+New builds for both phones in this thread:
+[LIST]
+[*][B]Pixel 11 Pro XL (kodiak):[/B] [ICODE]EvolutionX-17.0-20261013-kodiak-12.3-Unofficial-fastboot.zip[/ICODE]
+    SHA-256 [ICODE]a5983b04c138de319e56bcb42cc5fe993f4f27f592b59b384a4eda4793858e3e[/ICODE]
+    [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/kodiak/17/]SourceForge: kodiak/17[/URL]
+[*][B]Pixel 11 Pro (grizzly, still untested):[/B] [ICODE]EvolutionX-17.0-20261013-grizzly-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE]
+    SHA-256 [ICODE]4664e8a4713350200ec3063059c36085eb625e885b7f4b39c390f23fdce322df[/ICODE]
+    [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/]SourceForge: grizzly/17[/URL]
+[/LIST]
+[B]Changes[/B]
+[LIST]
+[*][B]New: HiLight settings[/B] in Settings > System > HiLight. Turn the light bar on the back on or off for Gemini and for calls from your starred contacts, and play a preview.
+[*][B]Fixed:[/B] a bright flash for a split second when the screen times out into the always-on display in a dark room.
+[*][B]Fixed:[/B] after a reboot, the lock screen asking for your PIN a second time before fingerprint works. Google Play services was preparing Google's own system updates for the stock build (they can't install over this ROM) and arming "resume on reboot" for them. Its system updater is now disabled; updates for this ROM come as new zips in this thread.
+[*]On-device AI features in Private Compute Core can use the Tensor TPU, as on stock (SELinux).
+[*]Same Evolution X source as the previous build.
+[/LIST]
+Thanks to Ashray V K for the logs that tracked down both fixes.
+
+[B]Updating[/B] from an earlier build keeps your data:
+[CODE]adb reboot bootloader
+fastboot update <zip>[/CODE]
+Fresh installs: see the first post.
+
+== cubs thread (4804723) ==
+[B]Update 2026-10-13: two fixes[/B]
+
+New test build: [ICODE]EvolutionX-17.0-20261013-cubs-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE]
+SHA-256 [ICODE]b452951cc1bd97c8198b5ca9c90c68b1f299f1d46fdb32b0e1364c5ebaccccf4[/ICODE]
+[URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/cubs/17/]SourceForge: cubs/17[/URL]
+
+[B]Changes[/B]
+[LIST]
+[*][B]Fixed:[/B] a bright flash for a split second when the screen times out into the always-on display in a dark room.
+[*][B]Fixed:[/B] after a reboot, the lock screen asking for your PIN a second time before fingerprint works. Google Play services was preparing Google's own system updates for the stock build (they can't install over this ROM) and arming "resume on reboot" for them. Its system updater is now disabled.
+[*]On-device AI features in Private Compute Core can use the Tensor TPU, as on stock (SELinux).
+[*]Same Evolution X source as the previous build.
+[/LIST]
+Both fixes are verified on a Pixel 11 Pro XL; this Pixel 11 build is still untested, so reports are very welcome (see the first post for what to check).
+
+== yogi thread (4804826) ==
+[B]Update 2026-10-13: HiLight settings, two fixes[/B]
+
+New test build: [ICODE]EvolutionX-17.0-20261013-yogi-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE]
+SHA-256 [ICODE]c118f75def604d60feaf90cbb4d10182048d9c882cc82e6a0a76c4f0357193a5[/ICODE]
+[URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/yogi/17/]SourceForge: yogi/17[/URL]
+
+[B]Changes[/B]
+[LIST]
+[*][B]New: HiLight settings[/B] in Settings > System > HiLight. Turn the light bar on the back on or off for Gemini and for calls from your starred contacts, and play a preview.
+[*][B]Fixed:[/B] a bright flash for a split second when the screen times out into the always-on display in a dark room.
+[*][B]Fixed:[/B] after a reboot, the lock screen asking for your PIN a second time before fingerprint works. Google Play services was preparing Google's own system updates for the stock build (they can't install over this ROM) and arming "resume on reboot" for them. Its system updater is now disabled.
+[*]On-device AI features in Private Compute Core can use the Tensor TPU, as on stock (SELinux).
+[*]Same Evolution X source as the previous build.
+[/LIST]
+All of this is verified on a Pixel 11 Pro XL; this Fold build is still untested, so reports are very welcome (see the first post for what to check).

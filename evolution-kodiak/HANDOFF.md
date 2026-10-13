@@ -1079,6 +1079,24 @@ How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
   reboot without the services.
 - Ships with the weekly routine (Sunday) for all four phones; Daryl approved ("go ahead with all").
 
+## 2s. Release 2026-10-13 (hotfix, all four phones)
+
+- Built with `~/release-chain-20261013.sh` (`p11-routine.sh <dev> --no-sync` for kodiak, grizzly, cubs, yogi), all
+  PUBLISHED to SourceForge:
+  - kodiak `EvolutionX-17.0-20261013-kodiak-12.3-Unofficial-fastboot.zip` `a5983b04c138de319e56bcb42cc5fe993f4f27f592b59b384a4eda4793858e3e`
+  - grizzly `EvolutionX-17.0-20261013-grizzly-12.3-Unofficial-UNTESTED-fastboot.zip` `4664e8a4713350200ec3063059c36085eb625e885b7f4b39c390f23fdce322df`
+  - cubs `EvolutionX-17.0-20261013-cubs-12.3-Unofficial-UNTESTED-fastboot.zip` `b452951cc1bd97c8198b5ca9c90c68b1f299f1d46fdb32b0e1364c5ebaccccf4`
+  - yogi `EvolutionX-17.0-20261013-yogi-12.3-Unofficial-UNTESTED-fastboot.zip` `c118f75def604d60feaf90cbb4d10182048d9c882cc82e6a0a76c4f0357193a5`
+- Contents: AOD flash fix (2n), PixelSense/PCC TPU policy (2o), HiLight on kodiak/grizzly/yogi (2r), Lineage null-check
+  patch 0002, Google OTA block (2q/2r). Same Evolution X source as 20261012.
+- XDA: all three first posts edited (file names, changelog, HiLight under What works) and a reply posted in each
+  (`XDA_UPDATE_20261013.bbcode`). The XDA editor remembers BBCode mode once toggled (the `[ ]` button sits in the
+  toolbar's overflow menu); a save can silently not happen, so re-check the first post after saving. Telegram: see
+  `TELEGRAM_UPDATE_20261013.md`. Bare `*.zip` names auto-link in Telegram (.zip is a TLD): always put them in code.
+- Public mirror denson9874/device_google_kodiak at 82df27f. LineageOS change 507761 (upstream/).
+- New XDA posts not answered: kodiak thread #21 (Paddybecks87, locked apps visible in Recents; will try yogi) and #22
+  (xerel89, "waiting for any device"), yogi #2 (stevecaboose, will test this week).
+
 ## 3. Machines and access
 
 | What | Where |
