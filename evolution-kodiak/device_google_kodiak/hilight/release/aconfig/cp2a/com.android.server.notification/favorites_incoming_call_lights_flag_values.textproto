@@ -1,0 +1,9 @@
+# Light the bar (the PRIORITY_NOTIFICATIONS light) for calls from starred contacts
+# when Settings.Secure light_animation_favorite_calls_enabled is 1. AOSP only
+# enables this in trunk_staging.
+flag_value {
+  package: "com.android.server.notification"
+  name: "favorites_incoming_call_lights"
+  state: ENABLED
+  permission: READ_ONLY
+}

@@ -105,6 +105,18 @@ PRODUCT_COPY_FILES += \
     device/google/yogi/configs/permissions/privapp-permissions-yogi-scone.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/privapp-permissions-yogi-scone.xml \
     device/google/yogi/configs/sysconfig/yogi-scone.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/sysconfig/yogi-scone.xml
 
+# HiLight, the light bar on the back: a Settings > System page for the stock
+# Pixel settings that the Google app (Gemini) and NotificationAttentionHelper
+# (calls from favorites) read, and the build flag for the favorites light.
+PRODUCT_PACKAGES += \
+    HiLight
+PRODUCT_RELEASE_CONFIG_MAPS += \
+    device/google/yogi/hilight/release/release_config_map.textproto
+
+# Keep Google Play services from preparing Google's OTAs (configs/sysconfig/disable-google-ota.xml).
+PRODUCT_COPY_FILES += \
+    device/google/yogi/configs/sysconfig/disable-google-ota.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/sysconfig/disable-google-ota.xml
+
 # Characteristics
 PRODUCT_CHARACTERISTICS := nosdcard
 

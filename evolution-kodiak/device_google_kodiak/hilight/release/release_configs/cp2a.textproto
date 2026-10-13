@@ -1,0 +1,4 @@
+name: "cp2a"
+# Fully qualified: the module is in this tree's Soong namespace, and every
+# aconfig_declarations module in the build must be able to find it.
+aconfig_value_sets: "//device/google/kodiak:aconfig_value_set-hilight-kodiak-cp2a"
