@@ -1097,6 +1097,25 @@ How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
 - New XDA posts not answered: kodiak thread #21 (Paddybecks87, locked apps visible in Recents; will try yogi) and #22
   (xerel89, "waiting for any device"), yogi #2 (stevecaboose, will test this week).
 
+## 2t. AOD flash, part 2: the light sensor during the screen-off animation (2026-10-13)
+
+- Ashray reported the flash again (`~/Downloads/screen_timeout_full_4.log`). Patch 0001 works (AOD starts at the dimmed
+  0.0), but about 10 ms later the AOD light sensor's first reading is applied while the GONE/LOCKSCREEN -> AOD
+  transition (about 1.3 s) is still running. At about 10-20 lux that is 0.00393, 10 nits, against the dimmed 0.5 nits.
+  It doesn't show in the dark (the sensor gives about 1 nit), which is why Daryl hadn't seen it. Reproduced on Daryl's
+  phone at about 22 lux (`aod-flash/repro-lit-170648.txt`).
+- Stock's framework-res has the same dim/doze values (0.04 minimum dim amount, 0.05 dim floor), and the logic is AOSP's
+  `DozeScreenBrightness`, whose clamp only covers the first value set while the doze machine is INITIALIZED.
+- **Fix:** `patches/frameworks_base/0003-SystemUI-hold-AOD-at-the-dimmed-brightness-until-it-.patch` (frameworks/base
+  a5a7c8c; device commits kodiak 52d5bba, grizzly 669249d, cubs bcf40c8, yogi 771da52). After a timeout, the doze
+  brightness stays at or below the dimmed level until `KeyguardTransitionInteractor.isFinishedIn(KeyguardState.AOD)`
+  reports true (2 s fallback), then the latest sensor reading is applied.
+- Verified on Daryl's phone (`…-personal-keep-initboot-aodhold.zip`, sha256 `4cc03846…`): lock screen timeout at about
+  10-16 lux, the sensor changed bin at 11.283, AOD held at 0.0 until LOCKSCREEN->AOD finished at 11.762, sensor value
+  applied at 11.766 (`aod-flash/after-hold-174901.txt`). The open-app (GONE->AOD) case still needs a run with the phone
+  unlocked.
+- Upstreaming would need `DozeScreenBrightnessTest` updated (new constructor parameter).
+
 ## 3. Machines and access
 
 | What | Where |
