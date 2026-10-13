@@ -2,6 +2,7 @@ Posted: https://xdaforums.com/t/rom-unofficial-17-cubs-evolution-x-12-3-android-
 Forum: Google Pixel 11 (https://xdaforums.com/f/google-pixel-11.13035/), prefix Development
 Title: [ROM][UNOFFICIAL][17][cubs] Evolution X 12.3 (Android 17) for the Pixel 11 - testers wanted
 Edited 2026-10-12: visual voicemail fix (r2), Changelog; reply posted (see XDA_UPDATE_20261012.bbcode)
+Edited 2026-10-13: screen-timeout flash and double-PIN fixes; new file name, Changelog; reply posted (see XDA_UPDATE_20261013.bbcode)
 
 [CENTER][SIZE=6][B]Evolution X 12.3 — Android 17[/B][/SIZE]
 [SIZE=4]Google Pixel 11 (cubs) | UNOFFICIAL | TEST BUILD[/SIZE][/CENTER]
@@ -62,6 +63,7 @@ All of this works on the Pixel 11 Pro XL with the same source, but none of it is
 
 [SIZE=5][B]Changelog[/B][/SIZE]
 [LIST]
+[*][B]2026-10-13:[/B] Fixed a bright flash when the screen times out into the always-on display. Fixed the PIN being asked twice after a reboot (Google Play services was preparing Google's own updates; its system updater is now disabled). On-device AI features can use the Tensor TPU, as on stock.
 [*][B]2026-10-12 (r2):[/B] Fixed visual voicemail not activating. Google Phone authenticates visual voicemail with GBA (SIM-based authentication), and the ROM was missing Google's GBA service.
 [*][B]2026-10-12:[/B] First test build.
 [/LIST]
@@ -77,7 +79,7 @@ All of this works on the Pixel 11 Pro XL with the same source, but none of it is
 Download the ROM zip and check its SHA-256, then:
 [CODE]
 adb reboot bootloader
-fastboot -w update EvolutionX-17.0-20261012-cubs-12.3-Unofficial-UNTESTED-r2-fastboot.zip
+fastboot -w update EvolutionX-17.0-20261013-cubs-12.3-Unofficial-UNTESTED-fastboot.zip
 [/CODE]
 [B]-w wipes all your data.[/B] fastboot switches to fastbootd partway through to flash the dynamic partitions; leave the phone plugged in until it reboots by itself (a few minutes). The first boot takes a few minutes more.
 
