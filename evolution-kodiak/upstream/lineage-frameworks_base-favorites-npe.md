@@ -1,8 +1,11 @@
 # LineageOS: NotificationAttentionHelper null dereference with favorites call lights
 
-**Status (2026-10-13):** ready to submit, not submitted. LineageOS takes changes only through Gerrit
-(review.lineageos.org), which needs Daryl's own LineageOS account with an SSH key. This Mac has neither, and Claude
-doesn't create accounts.
+**Status (2026-10-13): submitted** as https://review.lineageos.org/c/LineageOS/android_frameworks_base/+/507761
+(`lineage-24.0`, change `I0685ba9be6d8127d37d950140c5cbad603d1382b`). Gerrit account `denson9874` (Daryl signed the
+Individual Contributor Agreement); the commit author is the account's Gmail address, as Gerrit requires (Daryl
+approved that for this change only). Pushed from the build server with `~/.ssh/lineage_gerrit_ed25519`. To amend it,
+keep the Change-Id and push to `refs/for/lineage-24.0` again. When it merges and reaches Evolution X, drop
+`patches/frameworks_base/0002-…` from the trees.
 
 - **Bug:** in `lineage-24.0`, `NotificationAttentionHelper`'s constructor creates `LineageNotificationLights`, whose
   constructor runs the `LedUpdater` callback straight away. `updateLightsLocked()` then runs before
@@ -15,15 +18,3 @@ doesn't create accounts.
 - **Patch:** `lineage-frameworks_base-0001-NotificationAttentionHelper-favorites-npe.patch`, rebased on
   LineageOS/android_frameworks_base `lineage-24.0` (`6cdc375a2`), applies cleanly, noreply author, Change-Id included.
 
-## Submitting (one time setup, then one push)
-
-1. Sign in at https://review.lineageos.org and add an SSH public key under Settings > SSH keys.
-2. In any Evolution X or LineageOS tree (the build server's works):
-
-```bash
-cd frameworks/base
-git fetch https://github.com/LineageOS/android_frameworks_base lineage-24.0
-git checkout FETCH_HEAD
-git am <path>/lineage-frameworks_base-0001-NotificationAttentionHelper-favorites-npe.patch
-git push ssh://<gerrit-username>@review.lineageos.org:29418/LineageOS/android_frameworks_base HEAD:refs/for/lineage-24.0
-```
