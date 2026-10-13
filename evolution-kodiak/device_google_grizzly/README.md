@@ -32,7 +32,7 @@ vendor stays stock.
 ```bash
 # inside the Evolution X (cnb) tree
 git clone <this repo> device/google/grizzly
-device/google/grizzly/apply-patches.sh   # patches/: build/make (prebuilt partitions), frameworks/base (AOD brightness, favorites call lights)
+device/google/grizzly/apply-patches.sh   # patches/: build/make (prebuilt partitions), frameworks/base (AOD brightness, favorites call lights, charging screensaver)
 
 # Stock factory image CD1A.261005.003 for grizzly, from https://developers.google.com/android/images
 device/google/grizzly/extract-images.sh <grizzly-cd1a.261005.003-factory-*.zip>   # -> vendor/google/grizzly-images

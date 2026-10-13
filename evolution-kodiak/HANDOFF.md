@@ -1116,6 +1116,42 @@ How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
   unlocked.
 - Upstreaming would need `DozeScreenBrightnessTest` updated (new constructor parameter).
 
+## 2u. Charging screensaver: 0% and oversized digits (2026-10-13)
+
+- Daryl's phone runs Google's charging screensaver (Dreamliner, `kitt.dream.fuelgauge.ChargingDreamService`) from the
+  Play Store. Evolution's `vendor/gms/gms_full.mk` only installs `DreamlinerPrebuilt`/`DreamlinerDreamsPrebuilt`/
+  `DreamlinerUpdater` for Pixels up to the Pixel 10, so a clean install of our ROM has no built-in charging screensaver.
+  Adding them to the P11 trees (or the codenames to Evolution's list) is still open.
+- **0%:** the dream gets its data from SystemUI: it binds `com.android.systemui/com.google.android.systemui.power.
+  batteryevent.domain.BatteryEventService` and calls `IBatteryEventService` transaction 6
+  (`registerBatteryEventsDataCallback(IBatteryEventsDataListener, List<BatteryEventType>, int[] targetSocs)`,
+  oneway; 7 unregisters). The listener's transaction 1 is `onBatteryEventDataChanged(List<BatteryEventType>, Bundle)`
+  (BatteryEventType parcels as its type-name string; Bundle keys `current_battery_level`, `plugged_type`,
+  `time_to_target_<soc>_seconds`). Evolution's SystemUI has a placeholder service of that name (for the Settings
+  Intelligence battery widget) whose `onBind` returned null, so the dream kept its initial 0%.
+  **Fix:** `patches/frameworks_base/0004-SystemUI-serve-battery-data-to-Google-s-charging-scr.patch` (frameworks/base
+  a302849): a hand-written binder for those two calls; events (full, fast/regular/slow, not charging, charging limit =
+  LONGLIFE policy plus `Secure.charge_optimization_mode` 1) follow Google's SystemUI modules; time to 100% from
+  `BatteryManager.computeChargeTimeRemaining()` (Google's other targets come from its battery HAL and are left unset).
+- **Oversized digits:** the dream draws the level in `DeviceFontFamilyName("google-sans-flex")` with `wdth` 25 (stock
+  digits are tall and narrow). Evolution's `Typeface.changeFont()` repoints `Typeface.DEFAULT` at the chosen font
+  (Google Sans Flex), so `Typeface.create("google-sans-flex")` equalled `DEFAULT`; Compose treats that as "not installed"
+  and falls back to the default typeface without the variation settings. Fonts, font configs and every text/graphics
+  aconfig flag match stock. **Fix:** `patches/frameworks_base/0005-Typeface-give-the-default-typefaces-their-own-copy-o.patch`
+  (frameworks/base 959cff5): the defaults get a copy of the chosen font (own native instance, made once per family and
+  kept, because paints keep the native pointer). Likely helps other Compose apps that ask for Google Sans Flex with
+  variations.
+- Device commits: kodiak 5ec2d67, grizzly 95677e3, cubs f321cbc, yogi 2156675. Also fixed in all four
+  `apply-patches.sh` (kodiak c156e8a, grizzly 4a0cd28, cubs 85e4b6f, yogi 0ac6981): `git log | grep -q` under pipefail
+  could fail with SIGPIPE and report patches near the top of the log as not applied.
+- Verified on Daryl's phone (`…-20261014-…-personal-keep-initboot-fontfix.zip`, sha256 `78ccd667…`): the dream shows the
+  real level, "100% 3m" to full and "Charging"/"Charged"; the digits are condensed like stock; a test app confirmed
+  `google-sans-flex` resolves as its own family; the system font on the lock screen is unchanged. In a dark room
+  SystemUI's low-light clock replaces the dream (`Secure.low_light_display_behavior_enabled`, unset = on); tests set it
+  to 0 and deleted it again. `cmd dreams start-dreaming` needs root.
+- The server's global git identity is the Gmail address: commit there with an explicit noreply author and check patch
+  headers.
+
 ## 3. Machines and access
 
 | What | Where |
