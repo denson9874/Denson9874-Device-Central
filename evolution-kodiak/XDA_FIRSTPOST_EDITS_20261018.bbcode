@@ -32,7 +32,23 @@ fastboot update EvolutionX-17.0-20261018-kodiak-12.3-Unofficial-fastboot.zip
 
 == 5. Changelog (new first entry) ==
 kodiak post:
-[*][B]2026-10-18:[/B] Over-the-air updates through Settings > System > System updates. Google's charging screensaver built in, and fixed: it showed 0% and drew the battery level too wide. Fixed a remaining brighter flash, in a lit room, when the screen times out into the always-on display. Some Google apps drew Google Sans Flex text wider than designed. kodiak and grizzly builds.
+[*][B]2026-10-18:[/B] Over-the-air updates through Settings > System > System updates. Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 built in (CASS scheduler, Simple LMK, measured EM). Google's charging screensaver built in, and fixed: it showed 0% and drew the battery level too wide. Fixed a remaining brighter flash, in a lit room, when the screen times out into the always-on display. Some Google apps drew Google Sans Flex text wider than designed. kodiak and grizzly builds.
 cubs post:
-[*][B]2026-10-18:[/B] Over-the-air updates through Settings > System > System updates. Google's charging screensaver built in, and fixed: it showed 0% and drew the battery level too wide. Fixed a remaining brighter flash, in a lit room, when the screen times out into the always-on display. Some Google apps drew Google Sans Flex text wider than designed.
-yogi post: same as cubs.
+[*][B]2026-10-18:[/B] Over-the-air updates through Settings > System > System updates. Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 built in (CASS scheduler, Simple LMK, measured EM). Google's charging screensaver built in, and fixed: it showed 0% and drew the battery level too wide. Fixed a remaining brighter flash, in a lit room, when the screen times out into the always-on display. Some Google apps drew Google Sans Flex text wider than designed.
+yogi post: same as cubs (yogi remains on stock Google GKI).
+
+== 6. Kernel line in Build info (kodiak and cubs posts) ==
+Replace:
+[*]Kernel: stock Google GKI 6.12 from CD1A.261005.003 (unmodified)
+With:
+[*]Kernel: Espada v3 (Linux 6.12.92) by Kevtrejo37 (CASS scheduler, Simple LMK, measured EM; plain flavor)
+
+== 7. Kernel source in Source code (kodiak and cubs posts) ==
+Replace:
+[*]Kernel: Google's stock GKI 6.12 binary, unmodified. Source and build instructions: [URL=https://source.android.com/docs/setup/build/building-pixel-kernels]Building Pixel kernels[/URL]
+With:
+[*]Kernel source: [URL=https://github.com/atrejokm301/espada-kernel]atrejokm301/espada-kernel[/URL] (GPL-2.0, branch espada-magisk; vh_mm zram read-ahead fix from [URL=https://github.com/GrapheneOS/kernel_device_google_zuma]The GrapheneOS Project[/URL])
+
+== 8. Credits (kodiak and cubs posts; append to Credits list) ==
+Kevtrejo37 for the Espada Kernel ([URL=https://xdaforums.com/t/4799975/]XDA thread[/URL], [URL=https://t.me/+DJmYe5_dfmwyODUx]Telegram[/URL]), Sultan Alsawaf (CASS and Simple LMK), and The GrapheneOS Project (zram read-ahead fix).
+

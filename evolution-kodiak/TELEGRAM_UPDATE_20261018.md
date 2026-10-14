@@ -7,12 +7,13 @@ auto-link as .zip domains, so keep every file name in monospace.
 New builds for the **Pixel 11 Pro XL (kodiak)**, **Pixel 11 Pro (grizzly)**, **Pixel 11 (cubs)** and **Pixel 11 Pro Fold (yogi)**.
 
 ✨ **New**: over-the-air updates. From this build on, Settings > System > System updates downloads and installs new builds, no computer needed. This one still goes on with `fastboot update <zip>` (keeps your data).
+✨ **New**: Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 built in for kodiak, grizzly, and cubs (plain flavor; CASS scheduler, Simple LMK, measured EM; yogi remains on stock GKI).
 ✨ **New**: Google's charging screensaver is built in (Settings > Display & touch > Screen saver).
 ✅ **Fixed**: the charging screensaver showed 0% and drew the number too wide.
 ✅ **Fixed**: a brief brighter flash, in a lit room, when the screen times out into the always-on display.
 🔐 Rooted? When an update is ready, use Magisk > Install > Install to inactive slot instead of restarting, or root is gone.
 📦 Updates include the stock Pixel firmware the build is made for (today the CD1A you already have). If an update doesn't boot, the phone goes back to the build you had.
-Thanks to Ashray V K for the logs.
+Thanks to Kevtrejo37 for the Espada kernel, Sultan Alsawaf for CASS/Simple LMK, GrapheneOS for the zram read-ahead fix, and Ashray V K for the logs.
 
 📱 **Pixel 11 Pro XL (kodiak)**: `EvolutionX-17.0-20261018-kodiak-12.3-Unofficial-fastboot.zip`, SHA-256 `{KODIAK_SHA}`
 📱 **Pixel 11 Pro (grizzly)**, untested: `EvolutionX-17.0-20261018-grizzly-12.3-Unofficial-UNTESTED-fastboot.zip`, SHA-256 `{GRIZZLY_SHA}`
