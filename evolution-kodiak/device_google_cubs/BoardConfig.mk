@@ -28,11 +28,15 @@ TARGET_BOARD_PLATFORM := malibu
 TARGET_BOOTLOADER_BOARD_NAME := cubs
 TARGET_NO_BOOTLOADER := true
 
-# Kernel: stock GKI 6.12 boot image; modules live in the stock
-# vendor_kernel_boot, vendor_dlkm and system_dlkm images.
+# Kernel: Espada when present and verified; otherwise stock GKI 6.12 boot image.
+# Modules live in vendor_kernel_boot, vendor_dlkm and system_dlkm images.
 TARGET_NO_KERNEL := true
 BOARD_USES_GENERIC_KERNEL_IMAGE := true
+ifneq ($(wildcard vendor/google/espada-kernel/$(TARGET_BOOTLOADER_BOARD_NAME)/boot.img),)
+BOARD_PREBUILT_BOOTIMAGE := vendor/google/espada-kernel/$(TARGET_BOOTLOADER_BOARD_NAME)/boot.img
+else
 BOARD_PREBUILT_BOOTIMAGE := $(IMAGES_PATH)/images/boot.img
+endif
 BOARD_PREBUILT_DTBOIMAGE := $(IMAGES_PATH)/images/dtbo.img
 
 # vendor_boot header and cmdline match stock CD1A.261005.003. mkbootimg's
@@ -102,7 +106,8 @@ AB_OTA_PARTITIONS += \
     vbmeta_vendor \
     vendor \
     vendor_boot \
-    vendor_dlkm
+    vendor_dlkm \
+    vendor_kernel_boot
 
 # Partitions (sizes from the stock factory image)
 BOARD_FLASH_BLOCK_SIZE := 4096

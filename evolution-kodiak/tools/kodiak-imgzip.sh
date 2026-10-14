@@ -22,6 +22,9 @@ for img in boot init_boot dtbo pvmfw vendor_boot vbmeta vbmeta_system \
     [[ -f "$out/$img.img" ]] || { echo "missing $img.img" >&2; exit 1; }
     ln "$out/$img.img" "$work/" 2>/dev/null || cp "$out/$img.img" "$work/"
 done
+if [[ -f "$out/vendor_kernel_boot.img" ]]; then
+    ln "$out/vendor_kernel_boot.img" "$work/" 2>/dev/null || cp "$out/vendor_kernel_boot.img" "$work/"
+fi
 cp "$out/android-info.txt" "$work/"
 if [[ -f "$out/system_other.img" ]]; then
     cp "$out/system_other.img" "$work/"
@@ -29,6 +32,9 @@ if [[ -f "$out/system_other.img" ]]; then
 else
     # No dexpreopt: there is no system_other to flash to the other slot
     grep -v -- '--slot-other system system_other.img' "$out/fastboot-info.txt" > "$work/fastboot-info.txt"
+fi
+if [[ -f "$work/vendor_kernel_boot.img" ]] && ! grep -q "^flash vendor_kernel_boot" "$work/fastboot-info.txt"; then
+    sed -i '/^flash vendor_boot/a flash vendor_kernel_boot' "$work/fastboot-info.txt"
 fi
 unzip -q -o -j "$factory" super_empty.img -d "$work"
 

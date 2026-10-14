@@ -86,7 +86,7 @@ names = {m.group(2).decode() for m in re.finditer(rb"\x0a([\x02-\x20])([a-z0-9_]
 print("\n".join(sorted(names)))
 EOF
 want=$(grep -v '^#' $TOP/device/google/$dev/firmware.txt | sed '/^$/d')
-want+=$'\n'"boot init_boot vendor_boot dtbo vbmeta vbmeta_system vbmeta_vendor system system_ext product vendor vendor_dlkm system_dlkm"
+want+=$'\n'"boot init_boot vendor_kernel_boot vendor_boot dtbo vbmeta vbmeta_system vbmeta_vendor system system_ext product vendor vendor_dlkm system_dlkm"
 missing=$(for p in $want; do grep -qx "$p" $T/partitions || echo "$p"; done)
 [ -z "$missing" ] || fail "the payload lacks: $(echo $missing)"
 
@@ -167,7 +167,11 @@ EOF
     [ -n "$TAG" ] && echo "- Untested: this build has never been booted on a $MODEL. If it doesn't boot, the phone goes back to the build you had."
     echo "- The update includes the stock Pixel firmware $firmware (bootloader and radio)."
     echo "- Rooted? Before rebooting, install Magisk (or KernelSU) to the inactive slot, or root is gone after the update."
-    echo "- A custom kernel is replaced by the stock one; flash it again after the update."
+    if [ "$dev" = "yogi" ]; then
+        echo "- Kernel: stock Google GKI (Linux 6.12)."
+    else
+        echo "- Kernel: Espada v3 (Linux 6.12.92) by Kevtrejo37 (CASS scheduler, Simple LMK, GrapheneOS zram fix; source: https://github.com/atrejokm301/espada-kernel)."
+    fi
     echo "- First installs need a computer: see $FORUM"
     echo
     echo "Device changes:"

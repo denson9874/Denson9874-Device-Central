@@ -49,6 +49,7 @@ for part in $firmware; do
     unzip -q -p "$image_zip" "$part.img" > "$OUT/radio/$part.img"
     [[ -s "$OUT/radio/$part.img" ]] || { echo "missing $part.img" >&2; exit 1; }
 done
+unzip -q -p "$image_zip" vendor_kernel_boot.img > "$OUT/radio/vendor_kernel_boot.img"
 
 # First-stage fstab and recovery init from the stock vendor_boot ramdisk
 unzip -q -p "$image_zip" vendor_boot.img > "$work/vendor_boot.img"

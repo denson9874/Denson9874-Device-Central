@@ -78,8 +78,13 @@ done
 # boot and dtbo are stock but re-signed with our AVB key (as for kodiak): compare
 # the kernel, and the dtbo payload before the AVB footer
 python3 system/tools/mkbootimg/unpack_bootimg.py --boot_img $T/boot.img --out $T/b-ours >/dev/null
-python3 system/tools/mkbootimg/unpack_bootimg.py --boot_img $IMG/boot.img --out $T/b-stock >/dev/null
-cmp -s $T/b-ours/kernel $T/b-stock/kernel || fail "boot.img kernel isn't stock grizzly's"
+if [ -f vendor/google/espada-kernel/grizzly/boot.img ]; then
+    python3 system/tools/mkbootimg/unpack_bootimg.py --boot_img vendor/google/espada-kernel/grizzly/boot.img --out $T/b-ref >/dev/null
+    cmp -s $T/b-ours/kernel $T/b-ref/kernel || fail "boot.img kernel doesn't match Espada grizzly kernel"
+else
+    python3 system/tools/mkbootimg/unpack_bootimg.py --boot_img $IMG/boot.img --out $T/b-stock >/dev/null
+    cmp -s $T/b-ours/kernel $T/b-stock/kernel || fail "boot.img kernel isn't stock grizzly's"
+fi
 n=$($H/avbtool info_image --image $IMG/dtbo.img | awk '/Original image size/ {print $4}')
 cmp -s <(head -c "$n" $T/dtbo.img) <(head -c "$n" $IMG/dtbo.img) || fail "dtbo payload isn't stock grizzly's"
 unzip -p ~/android-dt/firmware/image-grizzly-cd1a.261005.003.zip super_empty.img | cmp -s - $T/super_empty.img || fail "super_empty isn't grizzly's"
