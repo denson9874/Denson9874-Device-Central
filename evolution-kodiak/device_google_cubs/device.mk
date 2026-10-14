@@ -25,7 +25,8 @@ PRODUCT_PACKAGES += \
     ImsStack \
     Iwlan \
     PixelImsMediaServiceOverlayCubs \
-    TeleServiceOverlayCubs
+    TeleServiceOverlayCubs \
+    UpdaterOverlayCubs
 
 # HIDL: shipping API 37 drops these, but stock cubs's system still ships
 # them (the stock vendor and Pixel services use HIDL), and vintffm requires

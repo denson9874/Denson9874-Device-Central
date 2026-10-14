@@ -1161,6 +1161,43 @@ How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
 - The server's global git identity is the Gmail address: commit there with an explicit noreply author and check patch
   headers.
 
+## 2v. Over-the-air updates through Evolution's Updater (2026-10-13/14)
+
+- **Updater:** `packages/apps/Updater` (org.evolution.updater) fetches `updater_server_url` with `{device}` =
+  `ro.evolution.device`, default `https://raw.githubusercontent.com/Evolution-X/OTA/cnb/builds/{device}.json`. It has no
+  official-only check; it needs the fields `timestamp filename md5 size download version maintainer forum firmware
+  paypal` and only offers a build whose `timestamp` > `ro.build.date.utc`. Downloads follow redirects (SourceForge's
+  `/download` links work) and are checked with `RecoverySystem.verifyPackage` against `otacerts.zip` before install.
+  Note: Evolution's `system/update_engine` ("Allow backup tool to run in user builds") makes
+  `PayloadVerifier::VerifySignature` always succeed, so update_engine itself checks no signature; the Updater's
+  `verifyPackage` (and our pre-upload check) is the real gate.
+- **Overlay:** `rro_overlays/UpdaterOverlay<Dev>` in all four trees (kodiak 1ef7190, grizzly 2c7a0ad, cubs d9cb7e6,
+  yogi 7a092a3) sets `updater_server_url` and `menu_changelog_url` to
+  `https://raw.githubusercontent.com/denson9874/evolution_ota/cnb/{builds/{device}.json,changelogs/<device>.txt}`.
+  **Delete it if a device goes official.** Official builds are signed with Evolution's keys, so users can't OTA from
+  ours to official (clean flash).
+- **Repo:** public `denson9874/evolution_ota` (branch cnb, README only until the first release). The build server pushes
+  through a read-write deploy key (`~/.ssh/evolution_ota_deploy`, ssh host alias `github-evolution-ota`, clone
+  `~/evolution_ota`).
+- **Package:** `m evolution` (vendor/lineage/build/tasks/evolution.mk) builds `out/.../<ro.evolution.build.version>.zip`, a
+  full A/B OTA signed with `vendor/evolution-priv/keys/testkey` (the private dev cert in keys.mk; it is what
+  `otacerts.zip` holds, pubkey sha256 `09bc63e4…`). The payload carries the ROM plus every `firmware.txt` partition
+  (bootloader chain and radio from the stock CD1A factory image), like LineageOS's Pixel OTAs; the fastboot zips
+  still don't flash firmware. Its vbmeta has the same chain and the same boot/system patch levels as `vbmeta.img`.
+- **Routine:** the four release image scripts now run `m evolution`; `p11-routine.sh` runs `~/p11-ota.sh <dev>` after
+  the fastboot upload and the upstream changelog and before recording the published state. p11-ota.sh checks A/B, device,
+  build timestamp, zip and payload signatures (`check_ota_package_signature` against the build's otacerts), the
+  partition list, and the vbmeta patch levels; with `--upload` it copies the package to `~/releases/<dev>`
+  (`<version>[-UNTESTED][-rN].zip`), uploads it with `sftp -b`, waits until SourceForge serves it with the right
+  length (up to an hour), then commits `builds/<dev>.json` and `changelogs/<dev>.txt` and pushes (last).
+  `--preview` prints what it would publish. The server keeps the newest 4 zips per device.
+- **Tested on Daryl's phone** (2026-10-13): a personal OTA (`~/kodiak-ota-personal.sh`, sha256 `53de3d2b…`) installed
+  through the Updater's "Local update" from slot b to a; the firmware it wrote was byte-identical to slot b's;
+  Magisk "Install to inactive slot" kept root; the slot booted and was marked successful, no snapshot merge pending;
+  the Updater then asked our repo URL (404 until the first release).
+- **First OTA users:** builds before this one point at Evolution's server, so users need one more `fastboot update` to a
+  build with the overlay; updates after that arrive in the Updater.
+
 ## 3. Machines and access
 
 | What | Where |

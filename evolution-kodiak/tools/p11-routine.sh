@@ -14,13 +14,16 @@
 #      published build. The state is the content (git tree hash) of every repo
 #      project plus our device, vendor, images and signing-key trees, so
 #      re-applying the same patch doesn't count as a change.
-#   4. Builds, then runs the device's pack script, which verifies the build and
-#      uploads it to SourceForge only if every check passes.
-#   5. Records the published state and a changelog of upstream commits.
+#   4. Builds (images plus the signed A/B OTA package), then runs the device's pack
+#      script, which verifies the build and uploads the fastboot zip to SourceForge
+#      only if every check passes.
+#   5. Writes a changelog of upstream commits, then p11-ota.sh verifies the OTA
+#      package, uploads it and publishes builds/<dev>.json in denson9874/evolution_ota
+#      for the Updater (last). Only then is the published state recorded.
 #
 #   --dry-run       report what would happen; no sync, build or upload
 #   --force         build even if nothing changed
-#   --no-upload     build and verify, but don't upload
+#   --no-upload     build and verify (fastboot zip and OTA), but don't upload or publish
 #   --no-sync       build from the tree as it is (hotfix releases)
 #   --mark-current  record the current tree as this device's published state
 #
@@ -163,11 +166,18 @@ for path in sorted(new):
 EOF
     echo "== changelog since the last published build: $changes ($(grep -c '^[^ ]' "$changes") projects)"
 fi
+# The OTA package for the Updater: verified always, uploaded and announced with an upload
+echo "== OTA package (p11-ota.sh)"
+if [ $UPLOAD = 1 ]; then out=$(~/p11-ota.sh "$dev" --upload --changes "$changes" 2>&1 9>&-); else out=$(~/p11-ota.sh "$dev" 2>&1 9>&-); fi
+rc=$?
+echo "$out"
+[ $rc = 0 ] || { rm -f "$snap"; fail "p11-ota.sh refused or failed (exit $rc)"; }
+[ $UPLOAD = 0 ] || grep -q "^OTA_PUBLISHED" <<<"$out" || { rm -f "$snap"; fail "the OTA wasn't published"; }
 # Only a published build moves the baseline
 if [ $UPLOAD = 1 ]; then
     echo "$cur" > "$STATE/LAST_STATE"; cp "$trees" "$STATE/LAST_TREES"; cp "$snap" "$STATE/LAST_MANIFEST.xml"
 fi
 rm -f "$snap"
-# Keep the two newest zips on the server (the uploads stay on SourceForge)
-ls -t "$STATE"/EvolutionX-*.zip 2>/dev/null | tail -n +3 | while read -r z; do rm -f "$z" "$z.sha256"; done
+# Keep the newest two builds' zips (fastboot and OTA) on the server (the uploads stay on SourceForge)
+ls -t "$STATE"/EvolutionX-*.zip 2>/dev/null | tail -n +5 | while read -r z; do rm -f "$z" "$z.sha256"; done
 [ $UPLOAD = 1 ] && finish PUBLISHED || finish BUILT
