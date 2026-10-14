@@ -130,7 +130,12 @@ if [ -f "$STATE/LAST_TREES" ]; then
 fi
 [ $DRY = 1 ] && { echo "== would build $dev, verify, and $([ $UPLOAD = 1 ] && echo upload || echo "not upload")"; finish DRYRUN; }
 
-# 4. Build, verify, upload
+# 4. Kernel and build
+if [ "$dev" != "yogi" ] && [ -x ~/espada-fetch.sh ]; then
+    echo "== espada kernel: fetch & verify"
+    ~/espada-fetch.sh "$dev" || echo "== espada fetch failed or unavailable, falling back to stock kernel"
+fi
+
 echo "== build ($BUILD, log $BLOG)"
 $BUILD > "$BLOG" 2>&1 9>&-
 if ! grep -q "BUILD_EXIT=0" "$BLOG"; then

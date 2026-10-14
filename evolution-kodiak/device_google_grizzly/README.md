@@ -19,13 +19,21 @@ apps, and one SELinux signer mapping (see `mac_permissions.xml`).
 | init_boot (generic ramdisk) | built |
 | vendor_boot (first-stage fstab, recovery) | built |
 | vbmeta, vbmeta_system, vbmeta_vendor | built (verification disabled: `--flags 3`) |
-| boot (GKI kernel), dtbo | stock |
+| boot, vendor_kernel_boot | Espada kernel (Linux 6.12.92, CASS + Simple LMK, plain flavor) by Kevtrejo37; stock GKI fallback |
+| dtbo | stock |
 | pvmfw | built (AOSP) |
 | vendor, vendor_dlkm, system_dlkm | stock |
-| vendor_kernel_boot, bootloader/modem firmware | stock, flashed raw by the OTA |
+| bootloader/modem firmware | stock, flashed raw by the OTA |
 
 Google publishes no malibu vendor sources (SELinux policy, HAL configs), so
 vendor stays stock.
+
+## Kernel Credits
+
+- **Espada Kernel** by **Kevtrejo37** ([XDA Thread](https://xdaforums.com/t/4799975/), [Telegram](https://t.me/+DJmYe5_dfmwyODUx), [GitHub](https://github.com/atrejokm301/espada-kernel)). Features CASS scheduler, Simple LMK, measured EM, and upstream Linux 6.12 patches.
+- ZRAM read-ahead fix by **The GrapheneOS Project**.
+- Sultan Alsawaf for CASS and Simple LMK.
+
 
 ## Setup
 

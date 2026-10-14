@@ -27,4 +27,3 @@ gsa_bl1
 gsa_fw
 modem
 tzsw
-vendor_kernel_boot
