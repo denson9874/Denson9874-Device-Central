@@ -91,6 +91,14 @@ cp "$work/vb/root/system/etc/vintf/manifest/"android.hardware.{boot-service.defa
         echo "\$(call add-radio-file-sha1-checked,radio/$part.img,$(sha1sum "$OUT/radio/$part.img" | cut -d' ' -f1))"
     done
     echo
+    echo 'ifneq ($(wildcard vendor/google/espada-kernel/grizzly/vendor_kernel_boot.img),)'
+    echo '$(PRODUCT_OUT)/vendor_kernel_boot.img: vendor/google/espada-kernel/grizzly/vendor_kernel_boot.img'
+    echo '	$(transform-prebuilt-to-target)'
+    echo 'INSTALLED_RADIOIMAGE_TARGET += $(PRODUCT_OUT)/vendor_kernel_boot.img'
+    echo 'else'
+    echo "\$(call add-radio-file-sha1-checked,radio/vendor_kernel_boot.img,$(sha1sum "$OUT/radio/vendor_kernel_boot.img" | cut -d' ' -f1))"
+    echo 'endif'
+    echo
     echo 'endif'
 } > "$OUT/Android.mk"
 
