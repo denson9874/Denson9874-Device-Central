@@ -1,0 +1,74 @@
+DRAFT, not posted. Replies for the 2026-10-18 weekly builds (over-the-air updates, charging screensaver, AOD flash part 2).
+Before posting: check the file names against ~/releases/<dev>/ on the server (a same-day rebuild adds -r2) and fill in
+{KODIAK_SHA} {GRIZZLY_SHA} {CUBS_SHA} {YOGI_SHA} from the .sha256 files, and {UPSTREAM} from CHANGES-20261018.txt
+(one line, e.g. "Latest Evolution X source (12 projects updated)" or "Same Evolution X source as the previous build").
+
+== kodiak/grizzly thread (4804712) ==
+[B]Update 2026-10-18: over-the-air updates, charging screensaver fixes[/B]
+
+New builds for both phones in this thread:
+[LIST]
+[*][B]Pixel 11 Pro XL (kodiak):[/B] [ICODE]EvolutionX-17.0-20261018-kodiak-12.3-Unofficial-fastboot.zip[/ICODE]
+    SHA-256 [ICODE]{KODIAK_SHA}[/ICODE]
+    [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/kodiak/17/]SourceForge: kodiak/17[/URL]
+[*][B]Pixel 11 Pro (grizzly, still untested):[/B] [ICODE]EvolutionX-17.0-20261018-grizzly-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE]
+    SHA-256 [ICODE]{GRIZZLY_SHA}[/ICODE]
+    [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/]SourceForge: grizzly/17[/URL]
+[/LIST]
+[B]Changes[/B]
+[LIST]
+[*][B]New: over-the-air updates.[/B] From this build on, [B]Settings > System > System updates[/B] finds new builds, downloads them and installs them in the background, then asks you to restart. No computer needed. Details below.
+[*][B]New: Google's charging screensaver is built in[/B] (Settings > Display & touch > Screen saver). A clean install didn't have it before.
+[*][B]Fixed:[/B] the charging screensaver showing 0% instead of your battery level, and drawing the number too wide, into the charge bar. It now shows the level, the time to full and the charging state, with the narrow digits stock uses.
+[*][B]Fixed:[/B] in a lit room, the screen could still flash brighter for about a second when it timed out into the always-on display. The always-on display now stays dim until the screen-off animation has finished.
+[*][B]Fixed:[/B] some Google apps drew Google Sans Flex text wider (or rounder) than designed; the charging screensaver was the visible case.
+[*]{UPSTREAM}
+[/LIST]
+Thanks to Ashray V K for the logs behind the screen-timeout fix.
+
+[B]Over-the-air updates[/B]
+[LIST]
+[*][B]This build still needs a computer[/B] ([ICODE]fastboot update <zip>[/ICODE], keeps your data): earlier builds look for updates on Evolution X's official server, which doesn't list these phones.
+[*]After that, open Settings > System > System updates (it also checks by itself). The update installs to the other slot while you use the phone; restart when it's done. If the new build ever fails to boot, the phone goes back to the one you had.
+[*][B]Rooted with Magisk?[/B] When the update says it's ready, don't restart from there: open Magisk > Install > [I]Install to inactive slot (after OTA)[/I], which keeps root and restarts for you. KernelSU has the same option. Without it, root is gone after the update.
+[*][B]Custom kernel?[/B] The update brings the stock kernel back; flash yours again afterwards.
+[*]Updates include the stock Pixel firmware (bootloader and radio) the build is made for, as official LineageOS builds do. Today that's the CD1A.261005.003 firmware you already have.
+[*]The OTA zips (without [ICODE]-fastboot[/ICODE] in the name) sit next to the fastboot zips on SourceForge; they're for the updater, not for fastboot.
+[/LIST]
+Fresh installs: see the first post.
+
+== cubs thread (4804723) ==
+[B]Update 2026-10-18: over-the-air updates, charging screensaver fixes[/B]
+
+New test build: [ICODE]EvolutionX-17.0-20261018-cubs-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE]
+SHA-256 [ICODE]{CUBS_SHA}[/ICODE]
+[URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/cubs/17/]SourceForge: cubs/17[/URL]
+
+[B]Changes[/B]
+[LIST]
+[*][B]New: over-the-air updates.[/B] From this build on, [B]Settings > System > System updates[/B] finds, downloads and installs new builds, then asks you to restart. This build itself still needs [ICODE]fastboot update <zip>[/ICODE] (keeps your data). Rooted with Magisk? When the update is ready, use Magisk > Install > Install to inactive slot instead of restarting, or root is gone. Updates include the stock Pixel firmware the build is made for (today the CD1A.261005.003 you already have). If an update doesn't boot, the phone goes back to the build you had.
+[*][B]New: Google's charging screensaver is built in[/B] (Settings > Display & touch > Screen saver).
+[*][B]Fixed:[/B] the charging screensaver showing 0% instead of your battery level, and drawing the number too wide.
+[*][B]Fixed:[/B] in a lit room, a brief brighter flash when the screen times out into the always-on display.
+[*][B]Fixed:[/B] some Google apps drew Google Sans Flex text wider than designed.
+[*]{UPSTREAM}
+[/LIST]
+All of this is verified on a Pixel 11 Pro XL; this Pixel 11 build is still untested, so reports are very welcome (see the first post for what to check).
+
+== yogi thread (4804826) ==
+[B]Update 2026-10-18: over-the-air updates, charging screensaver fixes[/B]
+
+New test build: [ICODE]EvolutionX-17.0-20261018-yogi-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE]
+SHA-256 [ICODE]{YOGI_SHA}[/ICODE]
+[URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/yogi/17/]SourceForge: yogi/17[/URL]
+
+[B]Changes[/B]
+[LIST]
+[*][B]New: over-the-air updates.[/B] From this build on, [B]Settings > System > System updates[/B] finds, downloads and installs new builds, then asks you to restart. This build itself still needs [ICODE]fastboot update <zip>[/ICODE] (keeps your data). Rooted with Magisk? When the update is ready, use Magisk > Install > Install to inactive slot instead of restarting, or root is gone. Updates include the stock Pixel firmware the build is made for (today the CD1A.261005.003 you already have). If an update doesn't boot, the phone goes back to the build you had.
+[*][B]New: Google's charging screensaver is built in[/B] (Settings > Display & touch > Screen saver).
+[*][B]Fixed:[/B] the charging screensaver showing 0% instead of your battery level, and drawing the number too wide.
+[*][B]Fixed:[/B] in a lit room, a brief brighter flash when the screen times out into the always-on display.
+[*][B]Fixed:[/B] some Google apps drew Google Sans Flex text wider than designed.
+[*]{UPSTREAM}
+[/LIST]
+All of this is verified on a Pixel 11 Pro XL; this Fold build is still untested, so reports are very welcome (see the first post for what to check).
