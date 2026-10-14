@@ -25,7 +25,8 @@ PRODUCT_PACKAGES += \
     ImsStack \
     Iwlan \
     PixelImsMediaServiceOverlayGrizzly \
-    TeleServiceOverlayGrizzly
+    TeleServiceOverlayGrizzly \
+    UpdaterOverlayGrizzly
 
 # HIDL: shipping API 37 drops these, but stock grizzly's system still ships
 # them (the stock vendor and Pixel services use HIDL), and vintffm requires

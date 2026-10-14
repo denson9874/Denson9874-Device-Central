@@ -28,7 +28,8 @@ PRODUCT_PACKAGES += \
     PixelImsMediaServiceOverlayYogi \
     SettingsOverlayYogi \
     SystemUIOverlayYogi \
-    TeleServiceOverlayYogi
+    TeleServiceOverlayYogi \
+    UpdaterOverlayYogi
 
 # HIDL: shipping API 37 drops these, but stock yogi's system still ships
 # them (the stock vendor and Pixel services use HIDL), and vintffm requires
