@@ -3,7 +3,9 @@
 Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
-> **Current state: read section 2e first.** It supersedes the status, next steps and branch
+> **Current state (2026-10-14): read section 2w first**, then 2t-2v. The rest of this banner is from 2026-10-11.
+>
+> **Older state: section 2e.** It supersedes the status, next steps and branch
 > notes in sections 2 to 2d, which are kept below as history.
 > - Voice calls work (since 2c).
 > - The phone runs our build on CD1A.261005.003 firmware (bootloader `spacecraft-17.4-16262255`),
@@ -1197,6 +1199,136 @@ How it was set up (files and checksums: `~/Downloads/kodiak-evox/pcs-poc/`):
   the Updater then asked our repo URL (404 until the first release).
 - **First OTA users:** builds before this one point at Evolution's server, so users need one more `fastboot update` to a
   build with the overlay; updates after that arrive in the Updater.
+
+## 2w. State on 2026-10-14 and handoff to Gemini (READ THIS FIRST)
+
+Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the details behind this summary.
+
+### Where everything is
+- **Mac repo:** branch `claude/wizardly-hopper-gnqtlx` (ExpressiveOS), **16 commits ahead of
+  `origin/evolution/kodiak-port`, 0 behind** (not pushed). It mirrors the server trees. Before anything
+  syncs GitHub to the server (the runner, section 10), fast-forward GitHub first
+  (`git push origin claude/wizardly-hopper-gnqtlx:evolution/kodiak-port`, check what the runner does on
+  push), or the server trees lose this work.
+- **Server trees (the build source):** device/google/{kodiak 1ef7190, grizzly 2c7a0ad, cubs d9cb7e6,
+  yogi 7a092a3}; frameworks/base 959cff5 (our patches 0001-0005 applied); vendor/gms d63c25d (our
+  `patches/vendor_gms/0001`). `apply-patches.sh` reports all as applied.
+- **Daryl's kodiak:** slot **_a**, personal build `EvolutionX-17.0-20261014` installed as an OTA (Magisk
+  kept via "Install to inactive slot"), with Dreamliner built in and the Updater overlay. Rollback zips in
+  `~/Downloads/kodiak-evox/` (`…-fontfix.zip`, `…-dreamliner.zip`); `aod-flash/flash-guarded.sh` flashes the
+  active slot with automatic rollback.
+- **Public:** last release 2026-10-13 (all four). **Sunday 2026-10-18** the routines (desktop tasks
+  evox-parity-*, about 15:00 local) build and publish the first builds with patches 0004/0005, the
+  vendor_gms patch, the Updater overlay, and OTA packages plus `builds/<dev>.json` in
+  denson9874/evolution_ota (2v). Warn Daryl: his Updater will offer the public 20261018 build; installing
+  it replaces his personal build (Magisk needs "install to inactive slot" again).
+
+### Tasks for Gemini, in order
+1. **Check Sunday's release.** Each routine log (`~/routine-logs/<dev>-*.log`) must end in
+   `ROUTINE_RESULT=PUBLISHED` with an `OTA_PUBLISHED` line; check the JSON at
+   `https://raw.githubusercontent.com/denson9874/evolution_ota/cnb/builds/<dev>.json` and the SourceForge
+   files. Then fill the drafts (`XDA_UPDATE_20261018.bbcode`, `XDA_FIRSTPOST_EDITS_20261018.bbcode`,
+   `TELEGRAM_UPDATE_20261018.md`: SHA-256s from `~/releases/<dev>/*.sha256`, `-rN` names, `{UPSTREAM}`)
+   and **show Daryl before posting anything**.
+2. **Include the Espada kernel in the ROM** (approved by Daryl 2026-10-14). Details below.
+3. **Extreme Charging Mode** (not approved yet; ask Daryl first). Details below.
+4. Smaller open items: answer Ashray's Extreme Charging question (it's the missing "Bodega" feature below);
+   unanswered XDA posts (kodiak #21, #22; yogi #2); offered but not decided: a PR adding
+   `cubs grizzly kodiak yogi` to the Dreamliner lists in Evolution-X/vendor_gms (would retire our patch),
+   ROM hardening for Morphe (skip a missing Lineage platform-res APK, 2s).
+
+### Espada kernel: verified facts
+- Kevtrejo37 (GitHub atrejokm301), [XDA thread](https://xdaforums.com/t/kernel-pixel-11-11-pro-11-pro-xl-espada-kernel-cass-scheduler-simple-lmk-6-12-lts.4799975/)
+  (short `https://xdaforums.com/t/4799975/`), Telegram `https://t.me/+DJmYe5_dfmwyODUx`, source
+  https://github.com/atrejokm301/espada-kernel (GPL-2.0; branch `espada` = KernelSU-Next + SuSFS,
+  `espada-magisk` = plain). Daryl talked to him: OK to use, but **support is limited**, so use only what is
+  published.
+- **Use the plain flavor** (`Espada-Kernel-spacecraft-v3-magisk-20261013.zip`, sha256
+  `e2639fcabc13c6cb8bf846284642bc9df07807fe411e993750f1427d30303eaa`). Never the KSU zip (root by default).
+- v3 is an AnyKernel3 zip writing only `boot` (`boot-es301.img`) and `vendor_kernel_boot`
+  (`vkb-es301.img`), both 64 MiB; `anykernel.sh` gates on devices cubs/grizzly(_2)/kodiak(_2) and
+  `supported.patchlevels=2026-10 - 2026-10`. Downloaded, verified and unpacked on the server in
+  `~/espada/v3/` (`plain/`, `ksu/`, unpacked `x-*`/`y-*`, CRC data in `cmp/`).
+- Kernel 6.12.92 (stock 6.12.69), CASS + Simple LMK built in, no Rust binder. Plain flavor has no
+  KernelSU/SuSFS strings. Its boot AVB footer has `com.android.build.boot.security_patch` 2026-10-05 and
+  `os_version` 17, the same as stock (signed with the dev's RSA key; our vbmeta has verification
+  disabled, flags 3).
+- `vkb-es301.img` has the same 198 first-stage modules as stock kodiak/grizzly/cubs, rebuilt for 6.12.92.
+  Module CRCs: 11,084 shared module/symbol pairs, 0 changed. **But stock `vh_sched.ko` needs
+  `RUST_BINDER_LAYOUT` and two rust_binder tracepoints that Espada lacks, so Espada's boot must always
+  ship with Espada's vkb (never with stock modules).**
+- **yogi stays on the stock kernel:** same kernel binary, but the Fold's first-stage module set differs,
+  and only someone with Google's source drop can build Fold modules for Espada.
+- **Don't build from source:** since Android 16 Google hands out Pixel kernel source only through a
+  request form (weeks per monthly drop), and the dev's modified `vh_mm` (the GrapheneOS zram read-ahead
+  fix) isn't published.
+- **lmkd aborts once per boot** with Simple LMK (`Reaper::~Reaper` from `ctrl_data_handler`, then init
+  restarts it and system_server reconnects; Ashray's logs `~/Downloads/lock_log*.txt`).
+
+### Espada kernel: plan
+1. **Fetch script** (server, e.g. `~/espada-fetch.sh <dev>`): list GitHub releases, take the newest whose
+   plain zip's `anykernel.sh` lists the device and whose `supported.patchlevels` covers the build's
+   firmware month (the stock boot's `com.android.build.boot.security_patch` month); download the plain
+   zip; check its sha256 against the one in the release body; extract the two images into a local
+   (unpublished) dir such as `vendor/google/espada-kernel/<tag>/` with a SOURCE file (tag, URL, sha256).
+2. **Checks before use, else fall back to stock:** no `kernelsu|ksu_handle|susfs` in the decompressed
+   kernel (lz4); boot `security_patch` and `os_version` equal stock's; vkb module names equal stock vkb's;
+   CRC consistency as in `~/espada/v3/cmp` (`modprobe --dump-modversions`, `LC_ALL=C` join); image sizes
+   64 MiB.
+3. **Device trees (kodiak, grizzly, cubs only):** where BoardConfig picks the prebuilt `boot.img` and
+   `vendor_kernel_boot.img` from `vendor/google/<dev>-images`, use the Espada pair when present and
+   checked. Confirm vbmeta keeps the same chain, flags and boot/system patch props (the pack scripts
+   check the boot patch level; `p11-ota.sh` checks the OTA's vbmeta). The OTA payload includes boot and
+   vendor_kernel_boot, so OTA users get the kernel too.
+4. **lmkd:** reproduce on Daryl's phone with Espada, find why the reinit path aborts, fix it properly in
+   the ROM (system_server talks to lmkd; don't just stop the service blindly).
+5. **Test first** on Daryl's kodiak: a personal build with Espada via `flash-guarded.sh` (no wipe; Espada
+   doesn't touch init_boot, so Magisk stays). Check boot, `dmesg` for module load failures or
+   "Unknown symbol" (the rust_binder "disagrees about version" fallback is expected), charging, thermals,
+   camera, modem/IMS, AOD, HiLight, fingerprint, battery drain. Only then enable it for the public
+   builds (grizzly and cubs stay "untested").
+6. **Routine:** run the fetch and checks before each build; with no matching release, build with the
+   stock kernel and say so in the log and changelog.
+7. **Credits (required by Daryl):** credit Kevtrejo37 with links to his XDA thread, Telegram and source
+   in the XDA first posts (Credits, and Build info: "Kernel: Espada vN (Linux 6.12.92) by Kevtrejo37" for
+   kodiak/grizzly/cubs, yogi stays "stock Google GKI"), the device-tree READMEs, the OTA changelog
+   template in `~/p11-ota.sh`, and the Telegram post. Replace the "stock Google GKI, unmodified" kernel
+   lines. GPL: point to his repo for the kernel source, and note the vh_mm zram read-ahead fix comes from
+   GrapheneOS (public source).
+
+### Extreme Charging Mode ("Bodega"): findings, not started
+- Stock SettingsGoogle/SystemUIGoogle offer it (Settings > Battery & charging, lock-screen shortcut, QS
+  tile "Extreme Charging"; below 50%, 30 W+ charger, off when unplugged or full). Stock SystemUI's
+  `PowerExtManagerImpl` calls the Pixel Power HAL extension `IPowerExt.setMode("BODEGA", on)` and uses
+  `Settings.Global` `bodega_enabled`, `bodega_eligible`, `bodega_enabled_timestamp_ms`.
+- The vendor side is stock in our ROM: `powerhint.json` hint `BODEGA` sets the
+  `VIRTUAL-SKIN-CHARGE-{BOOST,WIRED,PERSIST}` thermal profiles to `bodega` (relaxed `chg_mdis` ceilings in
+  `thermal_info_config_charge.json`), writes `/sys/class/power_supply/battery/priority_charging_enable`,
+  and drives the background-task throttling sensor (`thermal_info_config_bg_tasks_throttling.json`).
+- Our SystemUI/Settings have no Bodega code, and our SystemUI runs as `platform_app`, which is not a
+  `hal_power_client` (stock runs SystemUI as `systemui_app`, which is). The AIDL is in-tree
+  (`hardware/google/interfaces/power`, `pixel-power-ext`).
+- Proposed design: a QS tile (plus optionally a Settings entry) with stock's eligibility rules that writes
+  `bodega_enabled`; a small system_server observer (already a power HAL client) calls
+  `IPowerExt.setMode("BODEGA", …)` and switches it off when unplugged or full. Runs hotter by design
+  (about 43 °C measured by reviewers); helps the 45 W Pro XL most.
+
+### Rules that still apply
+- Public commits: author `Daryl Denson <9751141+denson9874@users.noreply.github.com>` plus the trailer
+  `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (or Gemini's own). **The server's global git
+  identity is Daryl's Gmail**: always pass `--author` and `GIT_COMMITTER_NAME/EMAIL`, and check `head -3`
+  of every generated patch before it goes into a tree.
+- Never publish `vendor/google/*-images`, the personal add-on (`device_google_kodiak-personal`,
+  `vendor/google/kodiak-personal`) or `vendor/evolution-priv/keys`.
+- Never flash a vbmeta or build lacking the boot/system patch-level props. Ask Daryl before wipes,
+  bootloader/firmware flashes, slot changes (an OTA install does both), `fastboot flashing lock`, and any
+  public post or irreversible action. A no-wipe `fastboot update` of our images via `flash-guarded.sh`
+  is fine.
+- Never type Daryl's PIN. Don't tap or swipe on his phone without asking: he uses it (read-only `adb`
+  checks are fine).
+- No leaked OEM keyboxes. Husky: skipped. The build server stays on 24/7.
+- Telegram Web K: insert text only into `.chat.active`'s non-fake input; a sent message comes back as a
+  draft (clear it); put `.zip` names in monospace.
 
 ## 3. Machines and access
 
