@@ -18,6 +18,7 @@ New builds for both phones in this thread:
 [B]Changes[/B]
 [LIST]
 [*][B]New: over-the-air updates.[/B] From this build on, [B]Settings > System > System updates[/B] finds new builds, downloads them and installs them in the background, then asks you to restart. No computer needed. Details below.
+[*][B]New: Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 built in[/B] (plain flavor). Features CASS scheduler, Simple LMK, measured energy model, and upstream 6.12 fixes. Special thanks to Kevtrejo37 ([URL=https://xdaforums.com/t/4799975/]XDA thread[/URL]), Sultan Alsawaf (CASS/Simple LMK), and The GrapheneOS Project (zram read-ahead fix). (yogi remains on stock Google GKI).
 [*][B]New: Google's charging screensaver is built in[/B] (Settings > Display & touch > Screen saver). A clean install didn't have it before.
 [*][B]Fixed:[/B] the charging screensaver showing 0% instead of your battery level, and drawing the number too wide, into the charge bar. It now shows the level, the time to full and the charging state, with the narrow digits stock uses.
 [*][B]Fixed:[/B] in a lit room, the screen could still flash brighter for about a second when it timed out into the always-on display. The always-on display now stays dim until the screen-off animation has finished.
@@ -31,14 +32,14 @@ Thanks to Ashray V K for the logs behind the screen-timeout fix.
 [*][B]This build still needs a computer[/B] ([ICODE]fastboot update <zip>[/ICODE], keeps your data): earlier builds look for updates on Evolution X's official server, which doesn't list these phones.
 [*]After that, open Settings > System > System updates (it also checks by itself). The update installs to the other slot while you use the phone; restart when it's done. If the new build ever fails to boot, the phone goes back to the one you had.
 [*][B]Rooted with Magisk?[/B] When the update says it's ready, don't restart from there: open Magisk > Install > [I]Install to inactive slot (after OTA)[/I], which keeps root and restarts for you. KernelSU has the same option. Without it, root is gone after the update.
-[*][B]Custom kernel?[/B] The update brings the stock kernel back; flash yours again afterwards.
+[*][B]Custom kernel?[/B] The build now includes Espada kernel v3 (Linux 6.12.92) out of the box (yogi remains on stock GKI). Over-the-air updates carry both boot and vendor_kernel_boot.
 [*]Updates include the stock Pixel firmware (bootloader and radio) the build is made for, as official LineageOS builds do. Today that's the CD1A.261005.003 firmware you already have.
 [*]The OTA zips (without [ICODE]-fastboot[/ICODE] in the name) sit next to the fastboot zips on SourceForge; they're for the updater, not for fastboot.
 [/LIST]
 Fresh installs: see the first post.
 
 == cubs thread (4804723) ==
-[B]Update 2026-10-18: over-the-air updates, charging screensaver fixes[/B]
+[B]Update 2026-10-18: over-the-air updates, Espada kernel, charging screensaver fixes[/B]
 
 New test build: [ICODE]EvolutionX-17.0-20261018-cubs-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE]
 SHA-256 [ICODE]{CUBS_SHA}[/ICODE]
@@ -47,6 +48,7 @@ SHA-256 [ICODE]{CUBS_SHA}[/ICODE]
 [B]Changes[/B]
 [LIST]
 [*][B]New: over-the-air updates.[/B] From this build on, [B]Settings > System > System updates[/B] finds, downloads and installs new builds, then asks you to restart. This build itself still needs [ICODE]fastboot update <zip>[/ICODE] (keeps your data). Rooted with Magisk? When the update is ready, use Magisk > Install > Install to inactive slot instead of restarting, or root is gone. Updates include the stock Pixel firmware the build is made for (today the CD1A.261005.003 you already have). If an update doesn't boot, the phone goes back to the build you had.
+[*][B]New: Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 built in[/B] (plain flavor). Features CASS scheduler, Simple LMK, and measured energy model. Special thanks to Kevtrejo37 ([URL=https://xdaforums.com/t/4799975/]XDA thread[/URL]), Sultan Alsawaf (CASS/Simple LMK), and The GrapheneOS Project (zram read-ahead fix).
 [*][B]New: Google's charging screensaver is built in[/B] (Settings > Display & touch > Screen saver).
 [*][B]Fixed:[/B] the charging screensaver showing 0% instead of your battery level, and drawing the number too wide.
 [*][B]Fixed:[/B] in a lit room, a brief brighter flash when the screen times out into the always-on display.
