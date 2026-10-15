@@ -3,17 +3,14 @@
 Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
-> **Current state (2026-10-14): read section 2x first**, then 2w and 2t-2v. The rest of this banner is from 2026-10-11.
->
-> **Older state: section 2e.** It supersedes the status, next steps and branch
-> notes in sections 2 to 2d, which are kept below as history.
-> - Voice calls work (since 2c).
-> - The phone runs our build on CD1A.261005.003 firmware (bootloader `spacecraft-17.4-16262255`),
->   with the bootloader unlocked, on slot b.
-> - PRs #1, #3 and #5 are all merged. **Build from `evolution/kodiak-port`.**
-> - The stalled flash of 2d was recovered, and later builds flashed normally.
-> - **The device tree's source of truth is GitHub** (`evolution/kodiak-port`). The runner syncs it to the
->   server, so a commit made only on the server gets overwritten by the next sync (section 10).
+> **Current state (2026-10-15): read section 2z first**, then 2y, 2x, and 2w.
+> - **Kernel Review:** Submitted to Kevtrejo37 (Espada kernel dev) on GitHub Issue #1 (`atrejokm301/espada-kernel#1`).
+> - **Extreme Charging Mode ("Bodega"):** Full implementation via `system_server` controller and Quick Settings tile compiled into `system_ext.img`.
+> - **SELinux Policy:** `hal_power_server` access to `sysfs_batteryinfo` compiled and verified.
+> - **Fastboot Package:** `/tmp/kodiak-evox-img.zip` (5.1 GB, Magisk v30.7 patched, SHA-256 `71c192c34d21de3ca41519efcf46a11db029040a8461b8b0102cb455fee7bc63`) generated on Hetzner server (`build@157.180.50.152`).
+> - **Release Notes & Community Drafts:** Sunday 2026-10-18 release notes and community replies (Telegram + XDA) completed.
+> - **Upstream PR:** Opened PR #2 on `Evolution-X/vendor_gms` for Pixel 11 Dreamliner support.
+> - **Local Restoration Guide:** Section 2z and `LOCAL_SETUP_AND_RESTORATION_GUIDE.md` detail the complete setup to get back up and running after wiping the Mac.
 
 ## 1. Goal
 
@@ -1384,6 +1381,55 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
   - Verified with `m selinux_policy` (built cleanly) and `check-sepolicy.sh` (`OK: split policy compiles against vendor 202604`).
   - Synced across all four Tensor G6 device trees (`kodiak`, `grizzly`, `cubs`, `yogi`).
 
+## 2z. State as of 2026-10-15 (Execution of All Remaining Items & Mac Rebuild Guide)
+
+### 1. Espada Kernel Review Submitted to Kevtrejo37
+- **Submission:** Created GitHub Issue #1 on upstream repo: https://github.com/atrejokm301/espada-kernel/issues/1
+- **Title:** "Simple LMK & Android 14–17 Userspace lmkd Boot Abort: Root Cause Analysis and Mitigation Strategies"
+- **Technical Summary:**
+  - Explains how Simple LMK's suppression of standard vmpressure events causes userspace `lmkd` in Android 14–17 to divide by zero when computing memory pressure on cold boot, triggering SIGABRT and rescue party bootloops.
+  - Documents Kevtrejo37's v2->v3 patch on `vmpressure.c` that restored userspace events, and points to Sultan Alsawaf's canonical upstream fix (`lmkd: Don't abort if memory pressure calculation fails`).
+  - Stored locally for reference: `evolution-kodiak/ESPADA_LMKD_REVIEW.md`.
+
+### 2. Sunday (2026-10-18) Release Notes Updated
+- **Files Modified & Committed:**
+  - `evolution-kodiak/TELEGRAM_UPDATE_20261018.md`: Added bullet point explaining the Extreme Charging Mode ("Bodega") Quick Settings tile.
+  - `evolution-kodiak/XDA_UPDATE_20261018.bbcode`: Added changelog entries across `kodiak/grizzly`, `cubs`, and `yogi` posts.
+  - `evolution-kodiak/XDA_FIRSTPOST_EDITS_20261018.bbcode`: Updated "What works" and "Changelog" sections.
+
+### 3. Community Feedback & Replies Prepared
+- **File Created:** `evolution-kodiak/COMMUNITY_REPLIES_20261015.md`
+- **Ready-to-Post Responses:**
+  - **Telegram (Ashray V K):** Detailed response explaining how Bodega works on Pixel 11 (requires 30W+ charger, battery <= 50%, activates relaxed thermal profiles and priority charging via `system_server`).
+  - **XDA Kodiak #21 (Paddybecks87):** Clarified locked apps in Recents clearing behavior and suggested next steps for testing fold features on `yogi`.
+  - **XDA Kodiak #22 (xerel89):** Step-by-step troubleshooting for `< waiting for any device >` fastboot USB driver issues on Windows/Mac.
+  - **XDA Yogi #2 (stevecaboose):** Comprehensive fold test plan: hinge angle sensor, outer-to-inner screen transition, dual microphones, and earpiece routing.
+
+### 4. Upstream Evolution X `vendor_gms` Dreamliner PR
+- **Submission:** Opened Pull Request #2 on upstream Evolution-X repository: https://github.com/Evolution-X/vendor_gms/pull/2
+- **Title:** "gms: add Dreamliner for the Pixel 11 series"
+- **Branch:** `cnb-dreamliner-pixel11` on `denson9874/vendor_gms` (commit `d63c25dd3a425f9eefacef7d777221613c3d6c4f`).
+- **Effect:** Adds `cubs grizzly kodiak yogi` to Dreamliner targets, eliminating our local vendor_gms patch once merged.
+
+### 5. SELinux Power HAL Fix & SystemExt Build
+- **Policy Fix:** Added `hal_client_domain(hal_power_default, hal_battery)` and granted `hal_power_server` access to `sysfs_batteryinfo` (`r_dir_perms` and `rw_file_perms`) in `sepolicy/system_ext/private/platform.te`.
+- **Target Built:** `m systemextimage` on Hetzner server (`157.180.50.152`) completed cleanly in **04:32**.
+- **Output Verified:** `system_ext.img` (824 MB) generated at `/home/build/evolution/out/target/product/kodiak/system_ext.img`.
+- **Fastboot Zip Packaged:**
+  - Script: `~/kodiak-imgzip.sh` executed on Hetzner server.
+  - Output: `/tmp/kodiak-evox-img.zip` (5.1 GB) with Magisk v30.7 patched `init_boot.img`.
+  - SHA-256: `71c192c34d21de3ca41519efcf46a11db029040a8461b8b0102cb455fee7bc63`.
+
+### 6. Flashing & Diagnostic Scripts Archived in Repo
+- Copied from `~/Downloads/kodiak-evox/aod-flash/` to `evolution-kodiak/tools/flashing/` to prevent loss during Mac wipe:
+  - `flash-guarded.sh`: Guarded flashing script with automatic rollback on boot failure.
+  - `flash-and-log.sh`: No-wipe update with immediate logcat capture.
+  - `hilight-watch.sh`: Monitor light HAL and ambient effects.
+  - `timeout-cycle.sh`: Automated screen timeout to AOD test harness.
+
+### 7. Mac OS Rebuild & Environment Restoration Guide
+*See Section 12 below and `LOCAL_SETUP_AND_RESTORATION_GUIDE.md` for full step-by-step setup after erasing the Mac.*
+
 ## 3. Machines and access
 
 | What | Where |
@@ -1619,3 +1665,142 @@ Without the runner, a cloud session sees only this repo. It has **no** SSH key f
 - **Good cloud-only tasks** (`imsstack_app` and the telephony domains are done):
   - The remaining unmapped domains (section 2e, open issue 3), with rule text from the stock CIL via `inspect`.
   - Product source RROs (REEKY_DIFF section 4).
+
+## 12. Local Environment Rebuild & Restoration Guide (Fresh Mac Setup)
+
+When wiping and reinstalling macOS from scratch, follow this complete restoration guide to pick development back up immediately without missing credentials, configurations, or tooling.
+
+### 12.1 Critical Pre-Erase Checklist (BACK UP BEFORE ERASING)
+
+1. **Hetzner Build Server SSH Key (HIGHEST PRIORITY):**
+   - File: `~/.ssh/voltage_build_ed25519` and `~/.ssh/voltage_build_ed25519.pub`.
+   - **Crucial:** Without this private key, all SSH access to `build@157.180.50.152` is permanently lost unless reset through Hetzner Robot rescue console.
+   - A backup copy has been synced to your Google Drive under `My Drive/ExpressiveOS_Handoff_Backup/SSH_KEYS_BACKUP/`.
+2. **Uncommitted Work in Other Projects:**
+   - `/Users/daryldenson/Developer/ExpressiveLauncher`: Branch `codex/pixel-parity` has uncommitted modifications (`git status` shows modified taskbar, preferences, and wmshell files). Commit, stash, or back up before wiping!
+   - `/Users/daryldenson/Documents/Sermon Presenter`: Check and back up if necessary.
+3. **Google Drive Sync:**
+   - Verify that Google Drive (`daryldenson0405@gmail.com`) has finished syncing `ExpressiveOS_Handoff_Backup/`.
+
+---
+
+### 12.2 Step-by-Step Restoration on Fresh Mac
+
+#### Step 1: Install Xcode Command Line Tools
+Open Terminal and run:
+```bash
+xcode-select --install
+```
+Follow the graphical prompt to complete installation.
+
+#### Step 2: Install Homebrew
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+eval "$(/opt/homebrew/bin/brew shellenv zsh)"
+```
+
+#### Step 3: Install Required Packages via Homebrew
+```bash
+brew install git gh rclone node python@3.14 openjdk@21 e2fsprogs sevenzip xz zstd
+brew install --cask android-commandlinetools
+```
+
+#### Step 4: Setup Android Platform Tools (ADB & Fastboot)
+1. Install platform-tools directly or via commandlinetools sdkmanager:
+   ```bash
+   mkdir -p ~/Library/Android/sdk
+   # Either download official platform-tools zip or use sdkmanager:
+   # https://dl.google.com/android/repository/platform-tools-latest-darwin.zip
+   curl -o /tmp/platform-tools.zip https://dl.google.com/android/repository/platform-tools-latest-darwin.zip
+   unzip -q /tmp/platform-tools.zip -d ~/Library/Android/sdk/
+   rm /tmp/platform-tools.zip
+   ```
+2. Configure shell environment in `~/.zshrc`:
+   ```bash
+   cat << 'EOF' >> ~/.zshrc
+   # Homebrew
+   eval "$(/opt/homebrew/bin/brew shellenv zsh)"
+
+   # Android SDK command-line tools (ADB and Fastboot)
+   export ANDROID_HOME="$HOME/Library/Android/sdk"
+   export PATH="$ANDROID_HOME/platform-tools:$PATH"
+
+   # Java / OpenJDK 21 (ARM64)
+   export JAVA_HOME="/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home"
+   export PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"
+
+   # Python & local tools
+   export PATH="$HOME/.local/bin:$PATH"
+   alias python="python3"
+   EOF
+   source ~/.zshrc
+   ```
+3. Verify adb and fastboot:
+   ```bash
+   adb --version
+   fastboot --version
+   ```
+
+#### Step 5: Restore SSH Key for Build Server
+1. Download `voltage_build_ed25519` from your Google Drive backup.
+2. Place it into `~/.ssh/`:
+   ```bash
+   mkdir -p ~/.ssh && chmod 700 ~/.ssh
+   # Copy voltage_build_ed25519 into ~/.ssh/
+   chmod 600 ~/.ssh/voltage_build_ed25519
+   chmod 644 ~/.ssh/voltage_build_ed25519.pub 2>/dev/null || true
+   ```
+3. Test SSH connection to the Hetzner build server:
+   ```bash
+   ssh -i ~/.ssh/voltage_build_ed25519 -o StrictHostKeyChecking=accept-new build@157.180.50.152 "uname -a && uptime"
+   ```
+
+#### Step 6: Authenticate GitHub & Configure Git
+```bash
+gh auth login
+git config --global user.name "Daryl Denson"
+git config --global user.email "daryldenson0405@gmail.com"
+git config --global init.defaultbranch main
+git config --global pull.rebase true
+```
+
+#### Step 7: Clone the ExpressiveOS Repository
+```bash
+mkdir -p ~/Developer && cd ~/Developer
+git clone https://github.com/denson9874/ExpressiveOS.git
+cd ExpressiveOS
+git checkout evolution/kodiak-port
+```
+
+#### Step 8: Reinstall Claude Code CLI & Antigravity
+1. **Claude Code:**
+   ```bash
+   # If installing via npm or native package:
+   npm install -g @anthropic-ai/claude-code
+   # Run claude and authenticate
+   claude
+   ```
+2. **Google Antigravity:**
+   - Download and install the Antigravity macOS DMG.
+   - Open Antigravity, open folder `~/Developer/ExpressiveOS`, and start pairing!
+
+#### Step 9: Setup Kodiak Flashing Directory
+```bash
+mkdir -p ~/Downloads/kodiak-evox/aod-flash
+cp ~/Developer/ExpressiveOS/evolution-kodiak/tools/flashing/*.sh ~/Downloads/kodiak-evox/aod-flash/
+chmod +x ~/Downloads/kodiak-evox/aod-flash/*.sh
+```
+
+#### Step 10: Download & Flash the Latest Kodiak ROM
+To fetch the latest fastboot zip with Extreme Charging Mode ("Bodega") and the SELinux fix:
+```bash
+scp -i ~/.ssh/voltage_build_ed25519 build@157.180.50.152:/tmp/kodiak-evox-img.zip ~/Downloads/kodiak-evox/EvolutionX-17.0-20261015-kodiak-12.3-Unofficial-personal-keep-initboot-bodega-sepolicy.zip
+echo "71c192c34d21de3ca41519efcf46a11db029040a8461b8b0102cb455fee7bc63  EvolutionX-17.0-20261015-kodiak-12.3-Unofficial-personal-keep-initboot-bodega-sepolicy.zip" > ~/Downloads/kodiak-evox/EvolutionX-17.0-20261015-kodiak-12.3-Unofficial-personal-keep-initboot-bodega-sepolicy.zip.sha256
+```
+Connect Pixel 11 Pro XL (`66020DLDV0049F`) via USB and flash:
+```bash
+cd ~/Downloads/kodiak-evox/aod-flash
+# Optional: if you have an older rollback zip, provide it as 3rd arg; otherwise flash directly:
+fastboot update ../EvolutionX-17.0-20261015-kodiak-12.3-Unofficial-personal-keep-initboot-bodega-sepolicy.zip
+```
+
