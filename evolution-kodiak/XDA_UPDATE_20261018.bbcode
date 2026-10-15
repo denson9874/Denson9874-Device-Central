@@ -20,6 +20,7 @@ New builds for both phones in this thread:
 [*][B]New: over-the-air updates.[/B] From this build on, [B]Settings > System > System updates[/B] finds new builds, downloads them and installs them in the background, then asks you to restart. No computer needed. Details below.
 [*][B]New: Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 built in[/B] (plain flavor). Features CASS scheduler, Simple LMK, measured energy model, and upstream 6.12 fixes. Special thanks to Kevtrejo37 ([URL=https://xdaforums.com/t/4799975/]XDA thread[/URL]), Sultan Alsawaf (CASS/Simple LMK), and The GrapheneOS Project (zram read-ahead fix). (yogi remains on stock Google GKI).
 [*][B]New: Google's charging screensaver is built in[/B] (Settings > Display & touch > Screen saver). A clean install didn't have it before.
+[*][B]New: Extreme Charging Mode ("Bodega") Quick Settings tile.[/B] Implements Pixel 11's stock Extreme Charging feature via a dedicated Quick Settings tile and system_server controller. Communicates directly with the Pixel Power HAL extension ([ICODE]IPowerExt.setMode("BODEGA", on)[/ICODE]) to unlock relaxed thermal ceilings and battery priority charging when fast-charging below 50% battery on 30 W+ chargers. Automatically disables when unplugged or when fully charged.
 [*][B]Fixed:[/B] the charging screensaver showing 0% instead of your battery level, and drawing the number too wide, into the charge bar. It now shows the level, the time to full and the charging state, with the narrow digits stock uses.
 [*][B]Fixed:[/B] in a lit room, the screen could still flash brighter for about a second when it timed out into the always-on display. The always-on display now stays dim until the screen-off animation has finished.
 [*][B]Fixed:[/B] some Google apps drew Google Sans Flex text wider (or rounder) than designed; the charging screensaver was the visible case.
@@ -50,6 +51,7 @@ SHA-256 [ICODE]{CUBS_SHA}[/ICODE]
 [*][B]New: over-the-air updates.[/B] From this build on, [B]Settings > System > System updates[/B] finds, downloads and installs new builds, then asks you to restart. This build itself still needs [ICODE]fastboot update <zip>[/ICODE] (keeps your data). Rooted with Magisk? When the update is ready, use Magisk > Install > Install to inactive slot instead of restarting, or root is gone. Updates include the stock Pixel firmware the build is made for (today the CD1A.261005.003 you already have). If an update doesn't boot, the phone goes back to the build you had.
 [*][B]New: Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 built in[/B] (plain flavor). Features CASS scheduler, Simple LMK, and measured energy model. Special thanks to Kevtrejo37 ([URL=https://xdaforums.com/t/4799975/]XDA thread[/URL]), Sultan Alsawaf (CASS/Simple LMK), and The GrapheneOS Project (zram read-ahead fix).
 [*][B]New: Google's charging screensaver is built in[/B] (Settings > Display & touch > Screen saver).
+[*][B]New: Extreme Charging Mode ("Bodega") Quick Settings tile.[/B] Implements Pixel 11's stock Extreme Charging feature via a dedicated Quick Settings tile and system_server controller.
 [*][B]Fixed:[/B] the charging screensaver showing 0% instead of your battery level, and drawing the number too wide.
 [*][B]Fixed:[/B] in a lit room, a brief brighter flash when the screen times out into the always-on display.
 [*][B]Fixed:[/B] some Google apps drew Google Sans Flex text wider than designed.
@@ -68,6 +70,7 @@ SHA-256 [ICODE]{YOGI_SHA}[/ICODE]
 [LIST]
 [*][B]New: over-the-air updates.[/B] From this build on, [B]Settings > System > System updates[/B] finds, downloads and installs new builds, then asks you to restart. This build itself still needs [ICODE]fastboot update <zip>[/ICODE] (keeps your data). Rooted with Magisk? When the update is ready, use Magisk > Install > Install to inactive slot instead of restarting, or root is gone. Updates include the stock Pixel firmware the build is made for (today the CD1A.261005.003 you already have). If an update doesn't boot, the phone goes back to the build you had.
 [*][B]New: Google's charging screensaver is built in[/B] (Settings > Display & touch > Screen saver).
+[*][B]New: Extreme Charging Mode ("Bodega") Quick Settings tile.[/B] Implements Pixel 11's stock Extreme Charging feature via a dedicated Quick Settings tile and system_server controller.
 [*][B]Fixed:[/B] the charging screensaver showing 0% instead of your battery level, and drawing the number too wide.
 [*][B]Fixed:[/B] in a lit room, a brief brighter flash when the screen times out into the always-on display.
 [*][B]Fixed:[/B] some Google apps drew Google Sans Flex text wider than designed.

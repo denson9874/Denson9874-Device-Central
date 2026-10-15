@@ -9,6 +9,7 @@ New builds for the **Pixel 11 Pro XL (kodiak)**, **Pixel 11 Pro (grizzly)**, **P
 ✨ **New**: over-the-air updates. From this build on, Settings > System > System updates downloads and installs new builds, no computer needed. This one still goes on with `fastboot update <zip>` (keeps your data).
 ✨ **New**: Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 built in for kodiak, grizzly, and cubs (plain flavor; CASS scheduler, Simple LMK, measured EM; yogi remains on stock GKI).
 ✨ **New**: Google's charging screensaver is built in (Settings > Display & touch > Screen saver).
+✨ **New**: Extreme Charging Mode ("Bodega") Quick Settings tile. Allows relaxed thermal ceilings and priority charging on 30 W+ chargers when plugged in below 50% battery (auto-resets at full charge or upon disconnect).
 ✅ **Fixed**: the charging screensaver showed 0% and drew the number too wide.
 ✅ **Fixed**: a brief brighter flash, in a lit room, when the screen times out into the always-on display.
 🔐 Rooted? When an update is ready, use Magisk > Install > Install to inactive slot instead of restarting, or root is gone.
