@@ -1378,6 +1378,11 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
     - Reflects live state: Active (on), Ready (eligible, off), or Unavailable (unplugged or battery > 50%).
 - **Patch Created:** `0006-Extreme-Charging-implement-Bodega-mode-controller-an.patch` formatted and added to `patches/frameworks_base/` across all 4 device trees (`kodiak`, `grizzly`, `cubs`, `yogi`). Tested with `apply-patches.sh` (verified idempotent).
 - **Compilation Verified:** Incremental builds of `services` and `SystemUI` succeeded with zero errors, and full image build completed (`BUILD_EXIT=0`).
+- **SELinux Power HAL Access Fixed:**
+  - `android.hardware.power-service.pixel-libperfmgr` attempts to write `1` to `/sys/class/power_supply/battery/priority_charging_enable` (`sysfs_batteryinfo`) when Bodega mode is activated (and reset on init).
+  - Granted `hal_power_server` access to `sysfs_batteryinfo` (`r_dir_perms` and `rw_file_perms`) in `sepolicy/system_ext/private/platform.te`.
+  - Verified with `m selinux_policy` (built cleanly) and `check-sepolicy.sh` (`OK: split policy compiles against vendor 202604`).
+  - Synced across all four Tensor G6 device trees (`kodiak`, `grizzly`, `cubs`, `yogi`).
 
 ## 3. Machines and access
 
