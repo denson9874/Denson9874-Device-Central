@@ -1230,8 +1230,8 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
    files. Then fill the drafts (`XDA_UPDATE_20261018.bbcode`, `XDA_FIRSTPOST_EDITS_20261018.bbcode`,
    `TELEGRAM_UPDATE_20261018.md`: SHA-256s from `~/releases/<dev>/*.sha256`, `-rN` names, `{UPSTREAM}`)
    and **show Daryl before posting anything**.
-2. **Include the Espada kernel in the ROM** (approved by Daryl 2026-10-14). Details below.
-3. **Extreme Charging Mode** (not approved yet; ask Daryl first). Details below.
+2. **Include the Espada kernel in the ROM** (approved by Daryl 2026-10-14, complete in 2x). Details below.
+3. **Extreme Charging Mode** (approved by Daryl 2026-10-14, complete in 2y). Details below.
 4. Smaller open items: answer Ashray's Extreme Charging question (it's the missing "Bodega" feature below);
    unanswered XDA posts (kodiak #21, #22; yogi #2); offered but not decided: a PR adding
    `cubs grizzly kodiak yogi` to the Dreamliner lists in Evolution-X/vendor_gms (would retire our patch),
@@ -1296,7 +1296,7 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
    lines. GPL: point to his repo for the kernel source, and note the vh_mm zram read-ahead fix comes from
    GrapheneOS (public source).
 
-### Extreme Charging Mode ("Bodega"): findings, not started
+### Extreme Charging Mode ("Bodega"): architecture and implementation (complete, see 2y)
 - Stock SettingsGoogle/SystemUIGoogle offer it (Settings > Battery & charging, lock-screen shortcut, QS
   tile "Extreme Charging"; below 50%, 30 W+ charger, off when unplugged or full). Stock SystemUI's
   `PowerExtManagerImpl` calls the Pixel Power HAL extension `IPowerExt.setMode("BODEGA", on)` and uses
@@ -1357,6 +1357,27 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
 - Local branch: `claude/wizardly-hopper-gnqtlx`.
 - GitHub remotes fast-forwarded and synchronized: `origin/claude/wizardly-hopper-gnqtlx` and `origin/evolution/kodiak-port` both match local HEAD.
 - Server device trees and makefiles verified clean and matching.
+
+## 2y. State as of late 2026-10-15 (Task 3: Extreme Charging Mode "Bodega" implemented and verified)
+
+### 1. Extreme Charging Architecture & Implementation
+- **Problem & SELinux Constraint:** Stock Pixel 11 series introduces Extreme Charging mode ("Bodega"), allowing relaxed charging thermal limits and battery priority charging (`/sys/class/power_supply/battery/priority_charging_enable`) when fast-charging below 50% SoC. Stock SystemUIGoogle implements this via `IPowerExt.setMode("BODEGA", on)`, which requires `hal_power_client` SELinux permissions. In AOSP/Evolution X, SystemUI runs as `platform_app`, which lacks `hal_power_client` permissions.
+- **Solution:** Brokered through `system_server` (already a power HAL client):
+  - **`ExtremeChargingController` (`com.android.server.power`):**
+    - Dynamic raw binder IPC communicating with `android.hardware.power.IPower/default` extension interface (`google.hardware.power.extension.pixel.IPowerExt`).
+    - At boot (`PHASE_BOOT_COMPLETED`), queries `IPowerExt.isModeSupported("BODEGA")`. On Pixel 11 (`kodiak`, `grizzly`, `cubs`, `yogi`), sets `Settings.Global.bodega_supported = 1`; on non-Pixel 11 devices (e.g. `husky`), marks `bodega_supported = 0` and stays completely dormant.
+    - Observes `Settings.Global.bodega_enabled` via `ContentObserver`. When enabled, sends transaction `1` (`setMode("BODEGA", true)`) and records `bodega_enabled_timestamp_ms`.
+    - Integrated directly into `BatteryService`: listens to `onBatteryValuesChanged(plugType, level, status, chargingState)`.
+    - Manages eligibility (`Settings.Global.bodega_eligible` = 1 if plugged in, battery <= 50%, not full, not charge-limited).
+    - Automatically turns off Bodega and resets HAL state when the device is unplugged or reaches 100% full charge.
+    - Exposes state dump via `dumpsys battery`.
+  - **`ExtremeChargingTile` (`com.android.systemui.qs.tiles`):**
+    - QS tile with spec `extremecharging`, using stock Pixel 11 vector charging icon (`ic_qs_extreme_charging.xml`).
+    - Bound via `LineageModule.kt` and registered in `quick_settings_tiles_stock`.
+    - Gated by `isAvailable()` returning `false` on unsupported devices (`bodega_supported == 0`), hiding it automatically on non-Pixel 11 builds.
+    - Reflects live state: Active (on), Ready (eligible, off), or Unavailable (unplugged or battery > 50%).
+- **Patch Created:** `0006-Extreme-Charging-implement-Bodega-mode-controller-an.patch` formatted and added to `patches/frameworks_base/` across all 4 device trees (`kodiak`, `grizzly`, `cubs`, `yogi`). Tested with `apply-patches.sh` (verified idempotent).
+- **Compilation Verified:** Incremental builds of `services` and `SystemUI` succeeded with zero errors, and full image build completed (`BUILD_EXIT=0`).
 
 ## 3. Machines and access
 
