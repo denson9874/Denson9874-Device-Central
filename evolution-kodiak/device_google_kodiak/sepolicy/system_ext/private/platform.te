@@ -13,3 +13,7 @@ allow system_server cameraserver:memfd_file { read write getattr map };
 hal_client_domain(cameraserver, hal_face)
 allow cameraserver hal_face:memfd_file { read write getattr map };
 allow hal_face cameraserver:memfd_file { read write getattr map };
+
+# Pixel Power HAL priority charging in sysfs_batteryinfo
+allow hal_power_server sysfs_batteryinfo:dir r_dir_perms;
+allow hal_power_server sysfs_batteryinfo:file rw_file_perms;
