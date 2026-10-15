@@ -3,14 +3,13 @@
 Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
-> **Current state (2026-10-15): read section 2z first**, then 2y, 2x, and 2w.
-> - **Kernel Review:** Submitted to Kevtrejo37 (Espada kernel dev) on GitHub Issue #1 (`atrejokm301/espada-kernel#1`).
-> - **Extreme Charging Mode ("Bodega"):** Full implementation via `system_server` controller and Quick Settings tile compiled into `system_ext.img`.
-> - **SELinux Policy:** `hal_power_server` access to `sysfs_batteryinfo` compiled and verified.
-> - **Fastboot Package:** `/tmp/kodiak-evox-img.zip` (5.1 GB, Magisk v30.7 patched, SHA-256 `71c192c34d21de3ca41519efcf46a11db029040a8461b8b0102cb455fee7bc63`) generated on Hetzner server (`build@157.180.50.152`).
-> - **Release Notes & Community Drafts:** Sunday 2026-10-18 release notes and community replies (Telegram + XDA) completed.
+> **Current state (late 2026-10-15): read section 2aa first**, then 2z, 2y, 2x, and 2w.
+> - **Live Hardware Verification:** Fastboot zip flashed to Daryl's `kodiak` (slot `_a`), booted in ~25 s. Bodega mode (`ExtremeChargingController`), Espada kernel v3 (`Linux 6.12.92`), `lmkd` stability (PID 401), Magisk root, and zero SELinux denials on `sysfs_batteryinfo` verified live.
+> - **Community:** All community replies posted to Telegram (Ashray V K) and XDA (#21, #22, Yogi #2).
+> - **Device Trees:** `grizzly`, `cubs`, and `yogi` synchronized and committed on the Hetzner build server (`dfad2b9`, `b97dcef`, `11b0c1c`). All trees clean.
+> - **Upstream Evolution X:** Checked latest `cnb` commits (Photos Tensor chip detection fix, PIF hardening, typography). Tested 3-way patch queue merge against upstream HEAD with 100% success (`OK`).
 > - **Upstream PR:** Opened PR #2 on `Evolution-X/vendor_gms` for Pixel 11 Dreamliner support.
-> - **Local Restoration Guide:** Section 2z and `LOCAL_SETUP_AND_RESTORATION_GUIDE.md` detail the complete setup to get back up and running after wiping the Mac.
+> - **Local Restoration:** Mac fully restored and operational post-wipe.
 
 ## 1. Goal
 
@@ -1429,6 +1428,52 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
 
 ### 7. Mac OS Rebuild & Environment Restoration Guide
 *See Section 12 below and `LOCAL_SETUP_AND_RESTORATION_GUIDE.md` for full step-by-step setup after erasing the Mac.*
+
+## 2aa. State as of late 2026-10-15 (Mac Restored, Hardware Verified, Community Posted, Upstream Parity Verified)
+
+### 1. Mac Restoration & Network Setup
+- Mac fully rebuilt from scratch post-reset; Homebrew, Android platform-tools (`v37.0.1`), GitHub CLI (`gh`), Git, and SSH keys restored.
+- **Network bypass:** The office Wi-Fi network uses a Cato Networks perimeter firewall that intercepts/resets outbound port 22 SSH connections. Toggling Wi-Fi off on the Pixel enabled pure T-Mobile cellular hotspot routing, bypassing Cato cleanly.
+
+### 2. Live Hardware Flash & Verification (kodiak, slot _a)
+- **Fastboot Package:** `EvolutionX-17.0-20261015-kodiak-12.3-Unofficial-personal-keep-initboot-bodega-sepolicy.zip` (SHA-256 `71c192c34d21de3ca41519efcf46a11db029040a8461b8b0102cb455fee7bc63`) downloaded via SCP and verified.
+- **Flashing:** Executed via `fastboot update` in 135 s (no-wipe, preserved all user data and Magisk root).
+- **Boot:** Reached `sys.boot_completed=1` in ~25 s on slot `_a`.
+- **Extreme Charging Mode ("Bodega"):**
+  - `ExtremeChargingController` active in `system_server`.
+  - `dumpsys battery` reports `Supported: true` with live tracking.
+  - Quick Settings tile `extremecharging` registered in `sysui_qs_tiles`.
+  - SELinux audit: zero AVC denials for `hal_power_server` or `hal_power_default` on `sysfs_batteryinfo` / `priority_charging`.
+- **Kernel & Memory:**
+  - Espada v3 (`Linux 6.12.92-android16-6-maybe-dirty-4k`) active with CASS scheduler + Simple LMK.
+  - `lmkd` (PID 401) running stably with kernel threads `[simple_lmkd]` and `[simple_lmkd_reaper]` — zero aborts.
+- **Telephony & Root:**
+  - T-Mobile NR SA voice and data `IN_SERVICE`; IMS service `com.android.imsstack` registered.
+  - Magisk v30.7 root active (`uid=0`, `u:r:magisk:s0`); TrickyStore and PIF configs intact.
+
+### 3. Community Feedback Posted
+- **Telegram (`t.me/ExpressiveGroup`):** Posted reply to Ashray V K announcing Extreme Charging Mode implementation in-ROM for Sunday's build.
+- **XDA Kodiak / Grizzly (`4804712`):**
+  - Post #21 (Paddybecks87): Clarified locked apps in Recents is tracked upstream; noted yogi is on stock GKI while kodiak/grizzly use Espada v3.
+  - Post #22 (xerel89): Posted platform-tools and USB driver troubleshooting guide for `< waiting for any device >`.
+- **XDA Yogi (`4804826`):**
+  - Post #2 (stevecaboose): Provided fold-specific test plan (display transitions, flex mode, mic switching).
+
+### 4. Build Server Device Trees Synchronized
+- Committed Bodega patch (`0006`) and `platform.te` priority charging SELinux rules across all four device trees on Hetzner:
+  - `grizzly`: `dfad2b9`
+  - `cubs`: `b97dcef`
+  - `yogi`: `11b0c1c`
+  - `kodiak`: `f0632a5`
+- All four device trees on the build server are 100% clean and ready for Sunday's parity builds.
+
+### 5. Upstream Evolution X Parity Verified
+- Fetched latest upstream commits on `evo/cnb`:
+  - `frameworks/base`: `3c26b47ad3` (Photos Tensor detection fix for Photo Unblur), `e010b7f362` / `d3b7b82705` (typography), `f6d75bb19d` (QS tile lock-screen security).
+  - `packages/apps/Settings`: holographic About logo, ringer cycling, multi-SIM ringtones.
+  - `vendor_evolution`: uprev to 12.3, Pixel 11 bootanimation.
+- **3-way merge test:** Ran `git am --3way` test applying our complete patch queue (`build/make`, `frameworks/base` 0001–0006, `system/memory/lmkd`) against latest upstream HEAD:
+  - Result: **All patches apply cleanly with zero merge conflicts.**
 
 ## 3. Machines and access
 
