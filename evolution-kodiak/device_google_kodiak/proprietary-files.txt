@@ -83,8 +83,6 @@ product/priv-app/SatelliteGateway-Phone-v96792000/SatelliteGateway-Phone-v967920
 system_ext/priv-app/PixelSatelliteService/PixelSatelliteService.apk
 system_ext/priv-app/VendorImplSatelliteService/VendorImplSatelliteService.apk
 product/etc/permissions/android.hardware.telephony.satellite.xml
-system_ext/etc/sysconfig/android.telephony.satellite.xml
-system_ext/framework/SatelliteClient.jar
 
 # Audio HAL parameter parser (IHalAdapterVendorExtension). system_ext.prop sets
 # ro.audio.ihaladaptervendorextension_enabled=true as stock does, which makes
@@ -187,9 +185,6 @@ product/etc/sysconfig/GoogleCamera_6gb_or_more_ram.xml
 # eSIM (eUICC) and Multiple Enabled Profiles (MEP) feature declarations
 product/etc/permissions/android.hardware.telephony.euicc.xml
 product/etc/permissions/android.hardware.telephony.euicc.mep.xml
-
-# ANGLE Graphics Engine Driver feature declaration
-product/etc/permissions/android.software.angle.xml
 
 # Pixel Screenshots (Pearl) SystemUI integration overlay
 product/overlay/PearlOverlay2024.apk;MAKE_COPY_RULE_ONLY

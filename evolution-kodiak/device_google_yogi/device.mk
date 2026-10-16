@@ -26,6 +26,7 @@ PRODUCT_PACKAGES += \
     ImsStack \
     Iwlan \
     PixelImsMediaServiceOverlayYogi \
+    PixelWifiOverlay2026Yogi \
     SettingsOverlayYogi \
     SystemUIOverlayYogi \
     TeleServiceOverlayYogi \

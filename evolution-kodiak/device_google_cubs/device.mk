@@ -25,6 +25,7 @@ PRODUCT_PACKAGES += \
     ImsStack \
     Iwlan \
     PixelImsMediaServiceOverlayCubs \
+    PixelWifiOverlay2026Cubs \
     TeleServiceOverlayCubs \
     UpdaterOverlayCubs
 

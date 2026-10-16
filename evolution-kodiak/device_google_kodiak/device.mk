@@ -25,6 +25,7 @@ PRODUCT_PACKAGES += \
     ImsStack \
     Iwlan \
     PixelImsMediaServiceOverlayKodiak \
+    PixelWifiOverlay2026Kodiak \
     TeleServiceOverlayKodiak \
     UpdaterOverlayKodiak
 

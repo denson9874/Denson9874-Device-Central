@@ -25,6 +25,7 @@ PRODUCT_PACKAGES += \
     ImsStack \
     Iwlan \
     PixelImsMediaServiceOverlayGrizzly \
+    PixelWifiOverlay2026Grizzly \
     TeleServiceOverlayGrizzly \
     UpdaterOverlayGrizzly
 
