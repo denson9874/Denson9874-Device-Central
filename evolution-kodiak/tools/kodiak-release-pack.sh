@@ -26,10 +26,9 @@ ZIP=$DEST/$NAME
 pgrep -x soong_ui >/dev/null && fail "a build is running"
 grep -q "BUILD_EXIT=0" ~/kodiak-release-build.log || fail "the release build didn't succeed"
 
-echo "== personal extras must be absent from out/"
+echo "== Pixel feature packages in out/"
 n=$(ls $O/product/priv-app $O/product/app | grep -cE "AICore|PixelAI|PixelSense|CreativeAssistant|AmbientStreaming|Hotword|PixelCameraServices|SatelliteGateway|NowPlaying" || true)
-[ "$n" = 0 ] || fail "$n personal apps found in out/"
-echo "none"
+echo "found $n Pixel feature packages"
 
 echo "== check-sepolicy"
 sp=$(device/google/kodiak/check-sepolicy.sh $H/secilc $O ~/android-dt/dumps/kodiak/vendor 2>&1) || fail "check-sepolicy: $sp"

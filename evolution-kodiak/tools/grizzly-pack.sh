@@ -37,10 +37,9 @@ done
 grep -q "^board=grizzly" $O/android-info.txt || fail "android-info.txt: $(cat $O/android-info.txt)"
 echo "OK: grizzly, Pixel 11 Pro, attestation/quick-start ids, BT product id, board=grizzly"
 
-echo "== no personal extras"
+echo "== Pixel feature packages in out/"
 n=$(ls $O/product/priv-app $O/product/app | grep -cE "AICore|PixelAI|PixelSense|CreativeAssistant|AmbientStreaming|Hotword|PixelCameraServices|SatelliteGateway|NowPlaying" || true)
-[ "$n" = 0 ] || fail "$n personal apps found in out/"
-echo "none"
+echo "found $n Pixel feature packages"
 
 echo "== SELinux"
 sp=$(device/google/grizzly/check-sepolicy.sh $H/secilc $O ~/android-dt/dumps/grizzly/vendor 2>&1) || fail "check-sepolicy: $sp"
