@@ -27,7 +27,7 @@ pgrep -x soong_ui >/dev/null && fail "a build is running"
 grep -q "BUILD_EXIT=0" ~/kodiak-release-build.log || fail "the release build didn't succeed"
 
 echo "== Pixel feature packages in out/"
-n=$(ls $O/product/priv-app $O/product/app | grep -cE "AICore|PixelAI|PixelSense|CreativeAssistant|AmbientStreaming|Hotword|PixelCameraServices|SatelliteGateway|NowPlaying" || true)
+n=$(ls $O/product/priv-app $O/product/app | grep -cE "AICore|PixelAI|PixelSense|CreativeAssistant|AmbientStreaming|Hotword|PixelCameraServices|SatelliteGateway|NowPlaying|CarrierWifi" || true)
 echo "found $n Pixel feature packages"
 
 echo "== check-sepolicy"
