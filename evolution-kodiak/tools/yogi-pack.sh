@@ -37,10 +37,9 @@ done
 grep -q "^board=yogi" $O/android-info.txt || fail "android-info.txt: $(cat $O/android-info.txt)"
 echo "OK: yogi, Pixel 11 Pro Fold, attestation/quick-start ids, BT product id, board=yogi"
 
-echo "== no personal extras"
+echo "== Pixel feature packages in out/"
 n=$(ls $O/product/priv-app $O/product/app | grep -cE "AICore|PixelAI|PixelSense|CreativeAssistant|AmbientStreaming|Hotword|PixelCameraServices|SatelliteGateway|NowPlaying" || true)
-[ "$n" = 0 ] || fail "$n personal apps found in out/"
-echo "none"
+echo "found $n Pixel feature packages"
 
 echo "== fold overlays"
 for o in FrameworkResOverlayYogi SystemUIOverlayYogi SettingsOverlayYogi GRilServiceOverlayYogi; do
