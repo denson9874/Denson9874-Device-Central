@@ -19,7 +19,20 @@ OUT="$TOP/vendor/google/yogi-images"
 UNPACK_BOOTIMG="$TOP/system/tools/mkbootimg/unpack_bootimg.py"
 
 zip="$(realpath "$1")"
-work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
+# Factory image inner archives are several gigabytes; /tmp is often a small tmpfs.
+# Prefer $TMPDIR if explicitly set to a custom directory, otherwise use $TOP/out.
+if [[ -n "${TMPDIR:-}" && "${TMPDIR}" != "/tmp" && -d "${TMPDIR}" && -w "${TMPDIR}" ]]; then
+    work_dir="$TMPDIR"
+else
+    work_dir="$TOP/out"
+fi
+mkdir -p "$work_dir" 2>/dev/null || true
+if [[ -d "$work_dir" && -w "$work_dir" ]]; then
+    work="$(mktemp -d -p "$work_dir" .extract-work.XXXXXX 2>/dev/null || mktemp -d)"
+else
+    work="$(mktemp -d)"
+fi
+trap 'rm -rf "$work"' EXIT
 
 # Factory zips nest the partition images in image-<device>-<build>.zip
 if unzip -Z1 "$zip" | grep -qE '(^|/)image-yogi-.*\.zip$'; then
