@@ -3,11 +3,12 @@
 Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
-> **Current state (2026-10-16): read section 2ab first**, then 2aa, 2z, 2y, 2x, and 2w.
+> **Current state (2026-10-16): read section 2ac first**, then 2ab, 2aa, 2z, 2y, 2x, and 2w.
+> - **Pixel Features Restored Across Pixel 11 Family:** All proprietary Google apps previously omitted for official maintainership rules (SatelliteGateway, AICore, PixelAI/Screenshots, PixelSense/Magic Cue, CreativeAssistant, AmbientStreaming, Now Playing, Hotword Enrollment, Pixel Camera Services) restored to device trees and vendor blobs across `kodiak`, `grizzly`, `cubs`, and `yogi` for the Sunday (2026-10-18) parity release. All trees verified with `check-sepolicy.sh` (100% OK).
 > - **Pixel 8 Pro (`husky`) Unofficial Release Published:** Android 17 (`cnb`) build `EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip` (2.89 GB, SHA-256 `2f8b568b06d16bba312ce05b2b3471689bd3fae7ed608309491246ba712d6d78`) uploaded to SourceForge. Announcements posted live to Telegram (`@ExpressiveGroup`) and XDA ([Thread #4805239](https://xdaforums.com/t/rom-17-0-unofficial-evolution-x-12-3-for-pixel-8-pro-husky-2026-10-16.4805239/)).
 > - **All 4 Pixel 11 Devices Released & Published:** Fastboot packages and verified A/B OTA updater packages for `kodiak`, `grizzly`, `cubs`, and `yogi` uploaded to SourceForge. OTA updater manifests published to `denson9874/evolution_ota` (`cnb`).
-> - **Espada Kernel v3 & Extreme Charging:** Live verified on hardware (`kodiak`, slot `_a`), booted in ~25 s. Bodega mode (`ExtremeChargingController`), Espada v3 (`Linux 6.12.92`), `lmkd` stability (PID 401), Magisk root, and zero SELinux denials verified. `kodiak`, `grizzly`, and `cubs` ship Espada v3; `yogi` ships stock Google GKI.
 > - **Announcements:** Published live to Telegram (`@ExpressiveGroup`) and across all 3 XDA threads (Kodiak/Grizzly [#4804712](https://xdaforums.com/t/4804712/), Cubs [#4804723](https://xdaforums.com/t/4804723/), Yogi [#4804826](https://xdaforums.com/t/4804826/)).
+> - **Espada Kernel v3 & Extreme Charging:** Live verified on hardware (`kodiak`, slot `_a`), booted in ~25 s. Bodega mode (`ExtremeChargingController`), Espada v3 (`Linux 6.12.92`), `lmkd` stability (PID 401), Magisk root, and zero SELinux denials verified. `kodiak`, `grizzly`, and `cubs` ship Espada v3; `yogi` ships stock Google GKI.
 > - **Upstream Evolution X:** Parity 3-way merge test clean against latest `cnb` HEAD. Scheduled automated Sunday parity routine remains active for 2026-10-18.
 
 ## 1. Goal
@@ -1533,6 +1534,45 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
   - **Telegram (`t.me/ExpressiveGroup`):** Message broadcasted live.
   - **XDA Thread:** Published live at `https://xdaforums.com/t/rom-17-0-unofficial-evolution-x-12-3-for-pixel-8-pro-husky-2026-10-16.4805239/`.
 
+## 2ac. Pixel Features Restoration for Sunday Parity Builds (2026-10-18)
+
+- **Context & Motivation:** In commit `9480969`, several proprietary Google Pixel packages and stubs were trimmed from `proprietary-files.txt` to prepare for official Evolution X maintainership under Clause 4, Act 5 of the Maintainer Code of Conduct (prohibiting proprietary apps in device trees without approval). Because all Pixel 11 family builds (`kodiak`, `grizzly`, `cubs`, `yogi`) are released to the community as Unofficial builds, these restrictions are unnecessary. Daryl requested that all omitted Pixel features be fully integrated into the standard ROM builds for Sunday's parity cycle.
+- **Pixel Features Restored Across Family (`kodiak`, `grizzly`, `cubs`, `yogi`):**
+  1. **Satellite SOS & Messaging:** `SatelliteGateway-Phone-v96792000.apk` (PRESIGNED).
+  2. **On-Device AI & Intelligence Stubs:**
+     - `AICorePrebuilt-aicore_20260302.01_RC00.apk` (PRESIGNED)
+     - `PixelAIPrebuilt.apk` (Pixel Screenshots, PRESIGNED)
+     - `PixelSensePrebuilt.apk` (Magic Cue / Sense, PRESIGNED)
+     - `CreativeAssistant.apk` (PRESIGNED)
+     - `AmbientStreaming.apk` (PRESIGNED)
+  3. **Now Playing:**
+     - `NowPlayingPrebuilt.apk` (PRESIGNED)
+     - Ambient matching leveldb: `product/etc/ambient/matcher_tah.leveldb`
+     - Firmware descriptors & sound models: `music_detector.descriptor`, `music_detector.sound_model`, `music_detector.sound_model_tflite`
+     - Configuration: `product/etc/sysconfig/nowplaying_app_26q1.xml`
+  4. **Hotword Enrollment ("Hey Google"):**
+     - `HotwordEnrollmentOKGoogleFUSIONPro.apk` (PRESIGNED)
+     - `HotwordEnrollmentXGoogleFUSIONPro.apk` (PRESIGNED)
+     - Common util permissions: `system_ext/etc/permissions/com.android.hotwordenrollment.common.util.xml`
+     - Preinstalled packages sysconfig: `system_ext/etc/sysconfig/preinstalled-packages-hotword-google-fusion-pro.xml`
+     - Framework library: `system_ext/framework/com.android.hotwordenrollment.common.util.jar`
+  5. **Pixel Camera Services:**
+     - `PixelCameraServices.apk` (PRESIGNED)
+     - Preinstalled packages sysconfigs: `preinstalled-packages-camera-services-base.xml`, `preinstalled-packages-camera-services-common.xml`
+- **Device Trees & Vendor Blobs Synchronized:**
+  - Device trees updated and committed locally and on Hetzner:
+    - `kodiak`: `fee52bd` (Mac), `9b0f297` (Hetzner `android-dt/trees`), pulled to `~/evolution/device/google/kodiak`. Removed `ifeq ($(KODIAK_PERSONAL),true)` conditional.
+    - `grizzly`: `abe805d` (Hetzner).
+    - `cubs`: `8de9005` (Hetzner).
+    - `yogi`: `04737f5` (Hetzner).
+  - Blobs extracted via `extract-files.py` from `~/android-dt/dumps/<dev>` and committed to `vendor/google/<dev>` on Hetzner:
+    - `vendor/google/kodiak`
+    - `vendor/google/grizzly` (`957c192`)
+    - `vendor/google/cubs` (`8e64ca7`)
+    - `vendor/google/yogi` (`3a24843`)
+  - All four device trees verified with `check-sepolicy.sh` against stock vendor: 100% OK.
+- **Pack Scripts Updated:**
+  - `tools/kodiak-release-pack.sh`, `tools/grizzly-pack.sh`, `tools/cubs-pack.sh`, `tools/yogi-pack.sh` (and server `/home/build/*pack.sh`) updated to report present Pixel feature packages rather than failing.
 
 ## 3. Machines and access
 
