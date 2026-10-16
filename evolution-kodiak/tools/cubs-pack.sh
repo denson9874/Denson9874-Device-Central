@@ -38,7 +38,7 @@ grep -q "^board=cubs" $O/android-info.txt || fail "android-info.txt: $(cat $O/an
 echo "OK: cubs, Pixel 11, attestation/quick-start ids, BT product id, board=cubs"
 
 echo "== Pixel feature packages in out/"
-n=$(ls $O/product/priv-app $O/product/app | grep -cE "AICore|PixelAI|PixelSense|CreativeAssistant|AmbientStreaming|Hotword|PixelCameraServices|SatelliteGateway|NowPlaying" || true)
+n=$(ls $O/product/priv-app $O/product/app | grep -cE "AICore|PixelAI|PixelSense|CreativeAssistant|AmbientStreaming|Hotword|PixelCameraServices|SatelliteGateway|NowPlaying|CarrierWifi" || true)
 echo "found $n Pixel feature packages"
 
 echo "== SELinux"

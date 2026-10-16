@@ -4,7 +4,7 @@ Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
 > **Current state (2026-10-16): read section 2ac first**, then 2ab, 2aa, 2z, 2y, 2x, and 2w.
-> - **Pixel Features Restored Across Pixel 11 Family:** All proprietary Google apps previously omitted for official maintainership rules (SatelliteGateway, AICore, PixelAI/Screenshots, PixelSense/Magic Cue, CreativeAssistant, AmbientStreaming, Now Playing, Hotword Enrollment, Pixel Camera Services) restored to device trees and vendor blobs across `kodiak`, `grizzly`, `cubs`, and `yogi` for the Sunday (2026-10-18) parity release. All trees verified with `check-sepolicy.sh` (100% OK).
+> - **Pixel Features Restored Across Pixel 11 Family:** All proprietary Google apps and Pixel feature XMLs/overlays previously omitted for official maintainership rules (SatelliteGateway & client, AICore, PixelAI/Screenshots, PixelSense/Magic Cue, CreativeAssistant, AmbientStreaming, Now Playing, Hotword Enrollment, Pixel Camera Services, Adaptive Charging, Battery Health & 80% charge limit, Camera 6GB+ RAM power-save, CarrierWifi, eSIM MEP, and Fold dual front streaming) restored to device trees and vendor blobs across `kodiak`, `grizzly`, `cubs`, and `yogi` for the Sunday (2026-10-18) parity release. All trees verified with `check-sepolicy.sh` (100% OK).
 > - **Pixel 8 Pro (`husky`) Unofficial Release Published:** Android 17 (`cnb`) build `EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip` (2.89 GB, SHA-256 `2f8b568b06d16bba312ce05b2b3471689bd3fae7ed608309491246ba712d6d78`) uploaded to SourceForge. Announcements posted live to Telegram (`@ExpressiveGroup`) and XDA ([Thread #4805239](https://xdaforums.com/t/rom-17-0-unofficial-evolution-x-12-3-for-pixel-8-pro-husky-2026-10-16.4805239/)).
 > - **All 4 Pixel 11 Devices Released & Published:** Fastboot packages and verified A/B OTA updater packages for `kodiak`, `grizzly`, `cubs`, and `yogi` uploaded to SourceForge. OTA updater manifests published to `denson9874/evolution_ota` (`cnb`).
 > - **Announcements:** Published live to Telegram (`@ExpressiveGroup`) and across all 3 XDA threads (Kodiak/Grizzly [#4804712](https://xdaforums.com/t/4804712/), Cubs [#4804723](https://xdaforums.com/t/4804723/), Yogi [#4804826](https://xdaforums.com/t/4804826/)).
@@ -1559,20 +1559,41 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
   5. **Pixel Camera Services:**
      - `PixelCameraServices.apk` (PRESIGNED)
      - Preinstalled packages sysconfigs: `preinstalled-packages-camera-services-base.xml`, `preinstalled-packages-camera-services-common.xml`
+  6. **Adaptive Charging, Battery Health & 80% Charge Limit Discovery:**
+     - Feature declaration: `product/etc/sysconfig/adaptivecharging.xml` (`<feature name="com.google.android.feature.ADAPTIVE_CHARGING" />`), required for `TurboPrebuilt` and Settings to expose Adaptive Charging and charge limit toggles.
+     - SystemUI Overlays: `product/overlay/PixelBatteryHealthOverlay.apk` (`config_battery_index_enabled = true`) and `product/overlay/PixelBatteryLotXOverlay.apk` (`config_charge_limit_discovery_enabled = true`, `config_wireless_charging_warning_enabled = true`).
+  7. **Google Camera 6GB+ RAM Power-Save Optimization:**
+     - Sysconfig: `product/etc/sysconfig/GoogleCamera_6gb_or_more_ram.xml` (`<allow-in-power-save package="com.google.android.GoogleCamera" />`), preventing background post-processing tasks (HDR+, Night Sight, Astrophotography stacking) from getting killed by power manager.
+  8. **Telephony Satellite API & Client Library:**
+     - Client library: `system_ext/framework/SatelliteClient.jar` and `system_ext/etc/sysconfig/android.telephony.satellite.xml` (satisfies `uses-library: android.telephony.satellite` declared by `SatelliteGateway`).
+     - Feature permission: `product/etc/permissions/android.hardware.telephony.satellite.xml` (`<feature name="android.hardware.telephony.satellite" />`).
+  9. **eSIM (eUICC) & Dual eSIM Multiple Enabled Profiles (MEP):**
+     - Feature permissions: `product/etc/permissions/android.hardware.telephony.euicc.xml` and `android.hardware.telephony.euicc.mep.xml`.
+  10. **ANGLE Graphics Engine Driver:**
+     - Feature permission: `product/etc/permissions/android.software.angle.xml` (`<feature name="android.software.angle" />`).
+  11. **Pixel Screenshots (Pearl) SystemUI Integration:**
+     - Overlay: `product/overlay/PearlOverlay2024.apk;MAKE_COPY_RULE_ONLY` (links SystemUI screenshots directly to `com.google.android.apps.pixel.agent.PearlActionService`).
+  12. **Pixel Face Unlock Settings & Guidance:**
+     - Overlay: `product/overlay/TrafficLightFaceOverlay.apk;MAKE_COPY_RULE_ONLY` (Face Unlock settings string/behavior overlay for `com.android.settings`).
+  13. **Carrier Wi-Fi Hotspot Auto-Connect:**
+     - Priv-app & permissions: `product/priv-app/CarrierWifi/CarrierWifi.apk;PRESIGNED` and `product/etc/permissions/privapp-permissions_com.google.android.apps.carrier.carrierwifi.xml`.
+  14. **Fold-Specific Camera & Wallpapers (`yogi` only):**
+     - Dual Front Streaming: `vendor/etc/permissions/com.google.pixel.camera.concurrent_foldable_dual_front.xml` (enables Dual Screen Preview on Pixel 11 Pro Fold).
+     - Foldable Wallpapers: `product/app/PixelWallpapers2026Foldable/PixelWallpapers2026Foldable.apk;PRESIGNED`.
 - **Device Trees & Vendor Blobs Synchronized:**
   - Device trees updated and committed locally and on Hetzner:
-    - `kodiak`: `fee52bd` (Mac), `9b0f297` (Hetzner `android-dt/trees`), pulled to `~/evolution/device/google/kodiak`. Removed `ifeq ($(KODIAK_PERSONAL),true)` conditional.
-    - `grizzly`: `abe805d` (Hetzner).
-    - `cubs`: `8de9005` (Hetzner).
-    - `yogi`: `04737f5` (Hetzner).
+    - `kodiak`: `abab0e4` (Hetzner), `~/android-dt/trees/device_google_kodiak` (`abab0e4`). Removed `ifeq ($(KODIAK_PERSONAL),true)` conditional.
+    - `grizzly`: `d07ef79` (Hetzner).
+    - `cubs`: `82859d7` (Hetzner).
+    - `yogi`: `147c132` (Hetzner).
   - Blobs extracted via `extract-files.py` from `~/android-dt/dumps/<dev>` and committed to `vendor/google/<dev>` on Hetzner:
-    - `vendor/google/kodiak`
-    - `vendor/google/grizzly` (`957c192`)
-    - `vendor/google/cubs` (`8e64ca7`)
-    - `vendor/google/yogi` (`3a24843`)
+    - `vendor/google/kodiak`: `79cfbee`
+    - `vendor/google/grizzly`: `8a2b86e`
+    - `vendor/google/cubs`: `edc1a97`
+    - `vendor/google/yogi`: `21df4e8`
   - All four device trees verified with `check-sepolicy.sh` against stock vendor: 100% OK.
 - **Pack Scripts Updated:**
-  - `tools/kodiak-release-pack.sh`, `tools/grizzly-pack.sh`, `tools/cubs-pack.sh`, `tools/yogi-pack.sh` (and server `/home/build/*pack.sh`) updated to report present Pixel feature packages rather than failing.
+  - `tools/kodiak-release-pack.sh`, `tools/grizzly-pack.sh`, `tools/cubs-pack.sh`, `tools/yogi-pack.sh` (and server `/home/build/*pack.sh`) updated to report present Pixel feature packages (including `CarrierWifi`) rather than failing.
 
 ## 3. Machines and access
 

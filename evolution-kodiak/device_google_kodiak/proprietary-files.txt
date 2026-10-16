@@ -82,6 +82,9 @@ system_ext/priv-app/PixelQualifiedNetworksService/PixelQualifiedNetworksService.
 product/priv-app/SatelliteGateway-Phone-v96792000/SatelliteGateway-Phone-v96792000.apk;PRESIGNED
 system_ext/priv-app/PixelSatelliteService/PixelSatelliteService.apk
 system_ext/priv-app/VendorImplSatelliteService/VendorImplSatelliteService.apk
+product/etc/permissions/android.hardware.telephony.satellite.xml
+system_ext/etc/sysconfig/android.telephony.satellite.xml
+system_ext/framework/SatelliteClient.jar
 
 # Audio HAL parameter parser (IHalAdapterVendorExtension). system_ext.prop sets
 # ro.audio.ihaladaptervendorextension_enabled=true as stock does, which makes
@@ -172,3 +175,28 @@ system_ext/priv-app/PixelDisplayService/PixelDisplayService.apk
 # Policy: vendor_pbcs_app.te.
 system_ext/app/PersistentBackgroundCameraServices/PersistentBackgroundCameraServices.apk
 system_ext/etc/vintf/manifest/com.google.pixel.camera.services@1.0-service-google.xml
+
+# Adaptive Charging, Battery Health & 80% Charge Limit Discovery
+product/etc/sysconfig/adaptivecharging.xml
+product/overlay/PixelBatteryHealthOverlay.apk;MAKE_COPY_RULE_ONLY
+product/overlay/PixelBatteryLotXOverlay.apk;MAKE_COPY_RULE_ONLY
+
+# Google Camera power-save allowlist for HDR+ / background processing
+product/etc/sysconfig/GoogleCamera_6gb_or_more_ram.xml
+
+# eSIM (eUICC) and Multiple Enabled Profiles (MEP) feature declarations
+product/etc/permissions/android.hardware.telephony.euicc.xml
+product/etc/permissions/android.hardware.telephony.euicc.mep.xml
+
+# ANGLE Graphics Engine Driver feature declaration
+product/etc/permissions/android.software.angle.xml
+
+# Pixel Screenshots (Pearl) SystemUI integration overlay
+product/overlay/PearlOverlay2024.apk;MAKE_COPY_RULE_ONLY
+
+# Pixel Face Unlock Settings and guidance overlay
+product/overlay/TrafficLightFaceOverlay.apk;MAKE_COPY_RULE_ONLY
+
+# Carrier Wi-Fi Hotspot auto-connect service and permissions
+product/priv-app/CarrierWifi/CarrierWifi.apk;PRESIGNED
+product/etc/permissions/privapp-permissions_com.google.android.apps.carrier.carrierwifi.xml
