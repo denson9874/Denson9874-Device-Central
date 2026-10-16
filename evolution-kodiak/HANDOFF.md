@@ -3,10 +3,10 @@
 Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
-> **Current state (2026-10-16): read section 2aa (especially subsection 6) first**, then 2z, 2y, 2x, and 2w.
+> **Current state (2026-10-16): read section 2ab first**, then 2aa, 2z, 2y, 2x, and 2w.
+> - **Pixel 8 Pro (`husky`) Unofficial Release Published:** Android 17 (`cnb`) build `EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip` (2.89 GB, SHA-256 `2f8b568b06d16bba312ce05b2b3471689bd3fae7ed608309491246ba712d6d78`) uploaded to SourceForge. Announcements posted live to Telegram (`@ExpressiveGroup`) and XDA ([Thread #4805239](https://xdaforums.com/t/rom-17-0-unofficial-evolution-x-12-3-for-pixel-8-pro-husky-2026-10-16.4805239/)).
 > - **All 4 Pixel 11 Devices Released & Published:** Fastboot packages and verified A/B OTA updater packages for `kodiak`, `grizzly`, `cubs`, and `yogi` uploaded to SourceForge. OTA updater manifests published to `denson9874/evolution_ota` (`cnb`).
 > - **Espada Kernel v3 & Extreme Charging:** Live verified on hardware (`kodiak`, slot `_a`), booted in ~25 s. Bodega mode (`ExtremeChargingController`), Espada v3 (`Linux 6.12.92`), `lmkd` stability (PID 401), Magisk root, and zero SELinux denials verified. `kodiak`, `grizzly`, and `cubs` ship Espada v3; `yogi` ships stock Google GKI.
-> - **Announcements:** Telegram and XDA announcement drafts updated with all verified SHA-256 hashes (`TELEGRAM_UPDATE_20261016.md`, `XDA_UPDATE_20261016.bbcode`, `XDA_FIRSTPOST_EDITS_20261016.bbcode`).
 > - **Upstream Evolution X:** Parity 3-way merge test clean against latest `cnb` HEAD. Scheduled automated Sunday parity routine remains active for 2026-10-18.
 
 ## 1. Goal
@@ -1502,6 +1502,30 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
      - OTA Manifest: `builds/yogi.json` committed (`4d78aeb`) and published to `denson9874/evolution_ota` (branch `cnb`).
 - **Fix in `p11-ota.sh`:** Added automatic creation of `$OUT/builds` and `$OUT/changelogs` so new checkouts/clones without these directories don't crash the JSON updater generator.
 - **Schedule:** Automated Sunday parity routine remains configured to run upstream sync on Sunday, 2026-10-18.
+
+## 2ab. Pixel 8 Pro (husky) Android 17 Unofficial Parity Release (2026-10-16)
+
+- **Target Device:** Google Pixel 8 Pro (`husky`, Tensor G3 `zuma`, Shannon 5300 modem).
+- **Maintainer Status:** Unofficial Maintainer (Daryl Denson). Official Android 16 maintainer is Giovanni (TechPanelGM); this build brings Android 17 (`cnb`) to the community.
+- **Build Output:**
+  - `EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip` (3,106,951,124 bytes, 2.89 GB)
+  - SHA-256: `2f8b568b06d16bba312ce05b2b3471689bd3fae7ed608309491246ba712d6d78`
+  - Uploaded to SourceForge: `https://sourceforge.net/projects/denson9874-s-user-builds/files/husky/17/`
+- **Upstream cnb Parity:**
+  - Google Photos Tensor G3 detection fix for Photo Unblur, Magic Eraser, and Ultra HDR.
+  - Upstream PIF hardening for Play Integrity passing.
+  - Lockscreen QS tile authentication protection.
+  - Evolution X 12.3 uprev, typography, and Pixel-style system overlays.
+- **Device Tree & Patches:**
+  - `0001-husky-allow-Evolution-X-system-additions.patch` (artifact path rules).
+  - `0002-husky-set-unofficial-maintainer-overlay.patch` (Settings > About maintainer string set to "Daryl Denson (Unofficial)").
+  - `device/google/zuma`: `0001` (pixel config overlays) and `0002` (default permissions).
+  - `vendor/google/husky`: `0001` (defer GMS files to vendor/gms).
+  - Firmware: CP3A.261005.005 baseline unpacked into `vendor/google/husky/radio/`.
+- **Community Announcements Published Live:**
+  - **Telegram (`t.me/ExpressiveGroup`):** Message broadcasted live.
+  - **XDA Thread:** Published live at `https://xdaforums.com/t/rom-17-0-unofficial-evolution-x-12-3-for-pixel-8-pro-husky-2026-10-16.4805239/`.
+
 
 ## 3. Machines and access
 
