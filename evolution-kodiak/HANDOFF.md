@@ -3,7 +3,8 @@
 Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
-> **Current state (2026-10-16): read section 2ac first**, then 2ab, 2aa, 2z, 2y, 2x, and 2w.
+> **Current state (2026-10-16): read section 2ad first**, then 2ac, 2ab, 2aa, 2z, 2y, 2x, and 2w.
+> - **Wi-Fi MAC Randomization & Capabilities Parity Restored:** Generated `PixelWifiOverlay2026` static runtime resource overlays across all 4 Pixel 11 devices (`kodiak`, `grizzly`, `cubs`, `yogi`), targeting `com.android.wifi.resources`. Enabled `config_wifi_connected_mac_randomization_supported = true` (unblocking "Use device MAC" in network details and Wi-Fi connect dialogs for MAC-filtered networks), SoftAP/P2P randomization, and full stock 2026 Wi-Fi capabilities (including BCM4383 specifics for cubs). Resolved Soong build conflicts by dropping duplicate prebuilt targets already built by AOSP (`android.software.angle.xml`, `SatelliteClient`, `android.telephony.satellite.xml`). Verified Soong compilation and 100% OK offline sepolicy compilation.
 > - **Pixel Features Restored Across Pixel 11 Family:** All proprietary Google apps and Pixel feature XMLs/overlays previously omitted for official maintainership rules (SatelliteGateway & client, AICore, PixelAI/Screenshots, PixelSense/Magic Cue, CreativeAssistant, AmbientStreaming, Now Playing, Hotword Enrollment, Pixel Camera Services, Adaptive Charging, Battery Health & 80% charge limit, Camera 6GB+ RAM power-save, CarrierWifi, eSIM MEP, and Fold dual front streaming) restored to device trees and vendor blobs across `kodiak`, `grizzly`, `cubs`, and `yogi` for the Sunday (2026-10-18) parity release. All trees verified with `check-sepolicy.sh` (100% OK).
 > - **Pixel 8 Pro (`husky`) Unofficial Release Published:** Android 17 (`cnb`) build `EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip` (2.89 GB, SHA-256 `2f8b568b06d16bba312ce05b2b3471689bd3fae7ed608309491246ba712d6d78`) uploaded to SourceForge. Announcements posted live to Telegram (`@ExpressiveGroup`) and XDA ([Thread #4805239](https://xdaforums.com/t/rom-17-0-unofficial-evolution-x-12-3-for-pixel-8-pro-husky-2026-10-16.4805239/)).
 > - **All 4 Pixel 11 Devices Released & Published:** Fastboot packages and verified A/B OTA updater packages for `kodiak`, `grizzly`, `cubs`, and `yogi` uploaded to SourceForge. OTA updater manifests published to `denson9874/evolution_ota` (`cnb`).
@@ -1594,6 +1595,42 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
   - All four device trees verified with `check-sepolicy.sh` against stock vendor: 100% OK.
 - **Pack Scripts Updated:**
   - `tools/kodiak-release-pack.sh`, `tools/grizzly-pack.sh`, `tools/cubs-pack.sh`, `tools/yogi-pack.sh` (and server `/home/build/*pack.sh`) updated to report present Pixel feature packages (including `CarrierWifi`) rather than failing.
+
+## 2ad. Wi-Fi MAC Randomization & Capabilities Parity (PixelWifiOverlay2026)
+
+- **Issue Reported:** When attempting to connect to MAC-filtered Wi-Fi networks, the device could not connect because the option to disable randomized MAC ("Use device MAC") was completely missing / unavailable in the ROM.
+- **Root Cause Analysis:**
+  1. In AOSP / Evolution X's Wi-Fi mainline module (`packages/modules/Wifi/service/ServiceWifiResources/res/values/config.xml`), `config_wifi_connected_mac_randomization_supported` is set to `false` by default.
+  2. Because this config boolean was `false`, `ActiveModeWarden` never added `WifiManager.WIFI_FEATURE_CONNECTED_RAND_MAC` to supported features.
+  3. Consequently, `WifiManager.isConnectedMacRandomizationSupported()` evaluated to `false`.
+  4. In `WifiConfigController.java`, the layout `R.id.privacy_settings_fields` (the dropdown for "Use randomized MAC" vs "Use device MAC") was kept hidden (`setVisibility(View.GONE)`).
+  5. In `WifiPrivacyPreferenceController2.java` and `WifiPrivacyPreferenceController.kt`, the Privacy setting preference returned `CONDITIONALLY_UNAVAILABLE`, completely hiding the preference from the Wi-Fi network details screen.
+  6. While stock Google Pixel 11 factory images ship `PixelWifiOverlay2026.apk` (and `PixelWifiOverlay2026_4383.apk` on `cubs`), stock overlays target `com.google.android.wifi.resources`. Evolution X / AOSP builds use package `com.android.wifi.resources`. None of the Pixel 11 family device trees had an RRO targeting `com.android.wifi.resources` (whereas Zuma/Shusky had `PixelWifiOverlay2024_midyearZuma` / `PixelWifiOverlay2023Shusky`).
+- **Resolution & Implementation:**
+  1. **RRO Overlays Created Across All 4 Devices:**
+     - `device/google/kodiak/rro_overlays/PixelWifiOverlay2026Kodiak/`
+     - `device/google/grizzly/rro_overlays/PixelWifiOverlay2026Grizzly/`
+     - `device/google/yogi/rro_overlays/PixelWifiOverlay2026Yogi/`
+     - `device/google/cubs/rro_overlays/PixelWifiOverlay2026Cubs/`
+  2. **Overlay Target & Manifest:**
+     - Target package: `com.android.wifi.resources`
+     - Target name: `WifiCustomization` (matches `ServiceWifiResources/res/values/overlayable.xml`)
+     - `isStatic="true"`, `priority="0"`, `product_specific: true`.
+  3. **Configurations (`res/values/config.xml`):**
+     - `config_wifi_connected_mac_randomization_supported = true` (enables connected MAC randomization and unlocks "Use device MAC" in Settings/Dialogs).
+     - `config_wifi_p2p_mac_randomization_supported = true` and `config_wifi_ap_mac_randomization_supported = true`.
+     - `config_wifiAllowNonPersistentMacRandomizationOnOpenSsids = true`.
+     - Full stock Pixel 11 Wi-Fi capabilities: 11ax override, 5GHz/6GHz bands, bridged soft AP, multi-STA concurrency, SAE upgrade & offload, fast BSS transition (802.11r), background scan, RSSI thresholds, TCP buffers.
+     - `cubs` includes exact BCM4383 hardware flags from stock `PixelWifiOverlay2026_4383.apk`.
+  4. **Device Makefiles Updated:**
+     - Added `PixelWifiOverlay2026<Dev>` to `PRODUCT_PACKAGES` in `device.mk` across `kodiak`, `grizzly`, `cubs`, and `yogi`.
+  5. **Soong Duplicate Build Target Cleanup:**
+     - Removed `android.software.angle.xml`, `SatelliteClient.jar`, and `android.telephony.satellite.xml` from `proprietary-files.txt` across all 4 devices. These modules are already compiled and installed from source by AOSP/Soong (`external/angle` and `frameworks/libs/gsma_services/satellite_client/` in `base_system_ext.mk`); having duplicate copy rules in vendor makefiles caused Kati overriding command errors.
+  6. **Verification:**
+     - Compiled all 4 overlay modules (`PixelWifiOverlay2026Kodiak`, `PixelWifiOverlay2026Grizzly`, `PixelWifiOverlay2026Cubs`, `PixelWifiOverlay2026Yogi`) with Soong/ninja (100% clean, `aapt2` linked and signed).
+     - Inspected badging and resources with `aapt2 dump`: `config_wifi_connected_mac_randomization_supported` confirmed `true` and `targetPackage='com.android.wifi.resources'`.
+     - Verified split SELinux policy against stock vendor (`check-sepolicy.sh`) across all 4 devices: 100% OK.
+
 
 ## 3. Machines and access
 
