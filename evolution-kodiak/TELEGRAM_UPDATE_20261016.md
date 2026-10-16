@@ -14,16 +14,16 @@ New official test builds for the **Pixel 11 Pro XL (kodiak)**, **Pixel 11 Pro (g
 Thanks to Kevtrejo37 for the Espada kernel, Sultan Alsawaf for CASS/Simple LMK, GrapheneOS for the zram read-ahead fix, and Ashray V K for the logs.
 
 📱 **Pixel 11 Pro XL (kodiak)**: `EvolutionX-17.0-20261016-kodiak-12.3-Unofficial-fastboot.zip`
-SHA-256: `{KODIAK_SHA}`
+SHA-256: `540e495e33c868bfa030e87b5f05cdcdc972deb49f7031528918984ded6312fc`
 
 📱 **Pixel 11 Pro (grizzly)**, untested: `EvolutionX-17.0-20261016-grizzly-12.3-Unofficial-UNTESTED-fastboot.zip`
-SHA-256: `{GRIZZLY_SHA}`
+SHA-256: `20fa44b0494a15ae48884b1e3853dd541fcac4328aea93dc68f818f5d1992609`
 
 📱 **Pixel 11 (cubs)**, untested: `EvolutionX-17.0-20261016-cubs-12.3-Unofficial-UNTESTED-fastboot.zip`
-SHA-256: `{CUBS_SHA}`
+SHA-256: `d8ad87979601d36d4f7eb8e3f94be66b26d3ca01f114631313e65ee7be1ffec3`
 
 📱 **Pixel 11 Pro Fold (yogi)**, untested: `EvolutionX-17.0-20261016-yogi-12.3-Unofficial-UNTESTED-fastboot.zip`
-SHA-256: `{YOGI_SHA}`
+SHA-256: `772f8ba673abcb8c9ce7b220d016cb8949c795154836bad56fc83c7819ff6ccb`
 
 ⬇️ SourceForge: https://sourceforge.net/projects/denson9874-s-user-builds/files/
 💬 XDA: kodiak/grizzly https://xdaforums.com/t/4804712/ · cubs https://xdaforums.com/t/4804723/ · yogi https://xdaforums.com/t/4804826/
