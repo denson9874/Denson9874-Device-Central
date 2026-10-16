@@ -3,13 +3,11 @@
 Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
-> **Current state (late 2026-10-15): read section 2aa first**, then 2z, 2y, 2x, and 2w.
-> - **Live Hardware Verification:** Fastboot zip flashed to Daryl's `kodiak` (slot `_a`), booted in ~25 s. Bodega mode (`ExtremeChargingController`), Espada kernel v3 (`Linux 6.12.92`), `lmkd` stability (PID 401), Magisk root, and zero SELinux denials on `sysfs_batteryinfo` verified live.
-> - **Community:** All community replies posted to Telegram (Ashray V K) and XDA (#21, #22, Yogi #2).
-> - **Device Trees:** `grizzly`, `cubs`, and `yogi` synchronized and committed on the Hetzner build server (`dfad2b9`, `b97dcef`, `11b0c1c`). All trees clean.
-> - **Upstream Evolution X:** Checked latest `cnb` commits (Photos Tensor chip detection fix, PIF hardening, typography). Tested 3-way patch queue merge against upstream HEAD with 100% success (`OK`).
-> - **Upstream PR:** Opened PR #2 on `Evolution-X/vendor_gms` for Pixel 11 Dreamliner support.
-> - **Local Restoration:** Mac fully restored and operational post-wipe.
+> **Current state (2026-10-16): read section 2aa (especially subsection 6) first**, then 2z, 2y, 2x, and 2w.
+> - **All 4 Pixel 11 Devices Released & Published:** Fastboot packages and verified A/B OTA updater packages for `kodiak`, `grizzly`, `cubs`, and `yogi` uploaded to SourceForge. OTA updater manifests published to `denson9874/evolution_ota` (`cnb`).
+> - **Espada Kernel v3 & Extreme Charging:** Live verified on hardware (`kodiak`, slot `_a`), booted in ~25 s. Bodega mode (`ExtremeChargingController`), Espada v3 (`Linux 6.12.92`), `lmkd` stability (PID 401), Magisk root, and zero SELinux denials verified. `kodiak`, `grizzly`, and `cubs` ship Espada v3; `yogi` ships stock Google GKI.
+> - **Announcements:** Telegram and XDA announcement drafts updated with all verified SHA-256 hashes (`TELEGRAM_UPDATE_20261016.md`, `XDA_UPDATE_20261016.bbcode`, `XDA_FIRSTPOST_EDITS_20261016.bbcode`).
+> - **Upstream Evolution X:** Parity 3-way merge test clean against latest `cnb` HEAD. Scheduled automated Sunday parity routine remains active for 2026-10-18.
 
 ## 1. Goal
 
@@ -1474,6 +1472,36 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
   - `vendor_evolution`: uprev to 12.3, Pixel 11 bootanimation.
 - **3-way merge test:** Ran `git am --3way` test applying our complete patch queue (`build/make`, `frameworks/base` 0001–0006, `system/memory/lmkd`) against latest upstream HEAD:
   - Result: **All patches apply cleanly with zero merge conflicts.**
+
+### 6. Full 2026-10-16 Release Execution (All 4 Devices Published)
+- **Release Chain:** `~/release-chain-20261015.sh` executed on Hetzner build server (`157.180.50.152`) and concluded successfully at `2026-10-16 08:31:58 CEST`.
+- **Devices & Artifacts Published:**
+  1. **Pixel 11 Pro XL (`kodiak`):**
+     - Fastboot: `EvolutionX-17.0-20261016-kodiak-12.3-Unofficial-fastboot.zip` (5.0 GB)
+       - SHA-256: `540e495e33c868bfa030e87b5f05cdcdc972deb49f7031528918984ded6312fc`
+     - OTA: `EvolutionX-17.0-20261016-kodiak-12.3-Unofficial-r2.zip` (3.3 GB)
+       - SHA-256: `6bac8dd2a20dbe0503c09c6c6c37e4a6972417bc2f090e1db62e6b4555ee1bf3`
+     - OTA Manifest: `builds/kodiak.json` committed (`208cd11`) and published to `denson9874/evolution_ota` (branch `cnb`).
+  2. **Pixel 11 Pro (`grizzly`):**
+     - Fastboot: `EvolutionX-17.0-20261016-grizzly-12.3-Unofficial-UNTESTED-fastboot.zip` (5.0 GB)
+       - SHA-256: `20fa44b0494a15ae48884b1e3853dd541fcac4328aea93dc68f818f5d1992609`
+     - OTA: `EvolutionX-17.0-20261016-grizzly-12.3-Unofficial-UNTESTED-r2.zip` (3.3 GB)
+       - SHA-256: `81575a3ca90fc8590df313350f49e4b39956d6c66fe2eb527c901bc95bcb209a`
+     - OTA Manifest: `builds/grizzly.json` committed (`9c6f987`) and published to `denson9874/evolution_ota` (branch `cnb`).
+  3. **Pixel 11 (`cubs`):**
+     - Fastboot: `EvolutionX-17.0-20261016-cubs-12.3-Unofficial-UNTESTED-fastboot.zip` (5.0 GB)
+       - SHA-256: `d8ad87979601d36d4f7eb8e3f94be66b26d3ca01f114631313e65ee7be1ffec3`
+     - OTA: `EvolutionX-17.0-20261016-cubs-12.3-Unofficial-UNTESTED.zip` (3.3 GB)
+       - SHA-256: `4b44589d9cba91bfbe9e6c4667ca8d26df3b8655866fa049bfe9d1eb82d3e071`
+     - OTA Manifest: `builds/cubs.json` committed (`6aafbd1`) and published to `denson9874/evolution_ota` (branch `cnb`).
+  4. **Pixel 11 Pro Fold (`yogi`):**
+     - Fastboot: `EvolutionX-17.0-20261016-yogi-12.3-Unofficial-UNTESTED-fastboot.zip` (4.9 GB)
+       - SHA-256: `772f8ba673abcb8c9ce7b220d016cb8949c795154836bad56fc83c7819ff6ccb`
+     - OTA: `EvolutionX-17.0-20261016-yogi-12.3-Unofficial-UNTESTED.zip` (3.1 GB)
+       - SHA-256: `993d0f0d2ebbc46bfa332b70f031bb9faeec9c501f787e9154ae928926eb3907`
+     - OTA Manifest: `builds/yogi.json` committed (`4d78aeb`) and published to `denson9874/evolution_ota` (branch `cnb`).
+- **Fix in `p11-ota.sh`:** Added automatic creation of `$OUT/builds` and `$OUT/changelogs` so new checkouts/clones without these directories don't crash the JSON updater generator.
+- **Schedule:** Automated Sunday parity routine remains configured to run upstream sync on Sunday, 2026-10-18.
 
 ## 3. Machines and access
 
