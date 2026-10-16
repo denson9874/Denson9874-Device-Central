@@ -1,0 +1,98 @@
+[CENTER]
+[IMG width="180px"]https://raw.githubusercontent.com/Evolution-X/manifest/cnb/evolution.png[/IMG]
+[SIZE=6][FONT=sans-serif][B]Evolution X 12.3 for Google Pixel 8 Pro [husky][/B][/FONT][/SIZE]
+[SIZE=4][B]Android 17.0 (Platform 37) | Material 3 Expressive | Pixel Parity[/B][/SIZE]
+
+[SIZE=3][COLOR=rgb(184, 49, 47)][B]*** UNOFFICIAL COMMUNITY RELEASE ***[/B][/COLOR][/SIZE]
+[SIZE=2][B]Maintained & Hosted by [USER=daryldenson0405]Daryl Denson[/B][/SIZE]
+[/CENTER]
+
+[HR][/HR]
+
+[SIZE=4][B]📌 Maintainer & Release Notice[/B][/SIZE]
+[QUOTE]
+Because there is an active official maintainer for Android 16 Evolution X ([B]Giovanni / TechPanelGM[/B]), this build is [B]not and will never be an official Evolution X build[/B]. 
+
+I am hosting and maintaining this [B]Android 17 (cnb)[/B] build as the [B]Unofficial Maintainer[/B] for the Pixel 8 Pro community, ensuring full upstream source parity with Evolution X's Android 17 codebase, latest security patches, and Tensor G3 hardware optimizations.
+[/QUOTE]
+
+[HR][/HR]
+
+[SIZE=4][B]✨ What's New & Upstream `cnb` Parity[/B][/SIZE]
+[LIST]
+[*][B]Upstream Evolution X 12.3 Parity:[/B] Synced with the latest Evolution X Android 17 [ICODE]cnb[/ICODE] sources.
+[*][B]Google Photos Tensor G3 Detection:[/B] Fixed Google Photos Tensor platform identification for Photo Unblur, Magic Eraser, and Ultra HDR processing.
+[*][B]Play Integrity Hardening:[/B] Built-in PIF framework updates ensuring passing Play Integrity (MEETS_DEVICE_INTEGRITY) and CTS out-of-the-box.
+[*][B]Quick Settings Security:[/B] Sensitive QS tiles (Mobile Data, Wi-Fi, Hotspot) require authentication when locked.
+[*][B]Pixel-Style Framework Overlays:[/B] Integrated Pixel overlay configurations, default permissions, and AppDataBackup compatibility.
+[*][B]Firmware Requirement:[/B] Built for and packaged against stock [B]CP3A.261005.005[/B] (October 2026) firmware (ripcurrent bootloader & modem).
+[/LIST]
+
+[HR][/HR]
+
+[SIZE=4][B]📱 Working Hardware Status (Verified on Physical Device)[/B][/SIZE]
+[LIST]
+[*][COLOR=rgb(65, 168, 95)][B]✔ Boot & AVB:[/B][/COLOR] Boots cleanly on slot [ICODE]_b[/ICODE], Verified Boot green state, Linux 6.1.157 kernel.
+[*][COLOR=rgb(65, 168, 95)][B]✔ Display & Touch:[/B][/COLOR] Dynamic 120 Hz / 60 Hz LTPO refresh rate, smooth touch sampling.
+[*][COLOR=rgb(65, 168, 95)][B]✔ Biometrics:[/B][/COLOR] Optical under-display fingerprint sensor and Face Unlock operational.
+[*][COLOR=rgb(65, 168, 95)][B]✔ Cameras:[/B][/COLOR] Dual physical camera sensors, Google Camera (Pixel Camera) with HDR+, 4K/60fps video.
+[*][COLOR=rgb(65, 168, 95)][B]✔ Audio & Microphones:[/B][/COLOR] Stereo speaker output, earpiece, mic array.
+[*][COLOR=rgb(65, 168, 95)][B]✔ Connectivity:[/B][/COLOR] Wi-Fi 6E/7, Bluetooth audio & LE, NFC payments (Google Wallet), GPS/GNSS.
+[*][COLOR=rgb(65, 168, 95)][B]✔ Sensors:[/B][/COLOR] All 43 physical sensors active.
+[*][COLOR=rgb(65, 168, 95)][B]✔ Google Services:[/B][/COLOR] Clean GMS integration with Google Play Store preinstalled.
+[*][COLOR=rgb(243, 156, 18)][B]⚠ SELinux:[/B][/COLOR] Enforcing build with minor non-blocking audit logging.
+[/LIST]
+
+[HR][/HR]
+
+[SIZE=4][B]📥 Download Links[/B][/SIZE]
+[LIST]
+[*][B]ROM Zip:[/B] [ICODE]EvolutionX-17.0-{DATE}-husky-12.3-Unofficial.zip[/ICODE]
+[*][B]MD5 / SHA-256:[/B] [ICODE]{HUSKY_SHA}[/ICODE]
+[*][B]SourceForge Release Folder:[/B] [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/husky/17/]https://sourceforge.net/projects/denson9874-s-user-builds/files/husky/17/[/URL]
+[/LIST]
+
+[HR][/HR]
+
+[SIZE=4][B]📖 Installation Instructions[/B][/SIZE]
+
+[B]First Time Install / Clean Flash (Coming from Stock or Another Custom ROM):[/B]
+[CODE]
+1. Verify device firmware is on CP3A.261005.005 (October 2026).
+2. Reboot into bootloader:
+   adb reboot bootloader
+3. Flash the recovery images:
+   fastboot flash boot boot.img
+   fastboot flash vendor_boot vendor_boot.img
+4. Reboot to Recovery:
+   fastboot reboot recovery
+5. In Recovery: select "Factory Reset" -> "Format data/factory reset".
+6. Select "Apply update" -> "Apply from ADB":
+   adb sideload EvolutionX-17.0-{DATE}-husky-12.3-Unofficial.zip
+7. Reboot system!
+[/CODE]
+
+[B]Dirty Flash / Updating from Previous Unofficial Build:[/B]
+[CODE]
+1. Reboot to Recovery.
+2. Select "Apply update" -> "Apply from ADB":
+   adb sideload EvolutionX-17.0-{DATE}-husky-12.3-Unofficial.zip
+3. (Optional) Re-install Magisk / KernelSU if previously rooted.
+4. Reboot system. (No data wipe required).
+[/CODE]
+
+[HR][/HR]
+
+[SIZE=4][B]🌐 Sources & Acknowledgments[/B][/SIZE]
+[LIST]
+[*][B]ROM Source:[/B] [URL=https://github.com/Evolution-X]https://github.com/Evolution-X[/URL] (Branch [ICODE]cnb[/ICODE])
+[*][B]Device Trees:[/B] LineageOS [ICODE]lineage-24.0[/ICODE] + Evolution X patches
+[*][B]Kernel Prebuilts:[/B] [ICODE]device/google/shusky-kernels[/ICODE] (Linux 6.1.157)
+[*][B]Vendor Blobs:[/B] TheMuppets [ICODE]lineage-24.0[/ICODE]
+[*][B]Special Thanks:[/B]
+  [LIST]
+  [*]The Evolution X team ([B]Joey Huab[/B], [B]RealAkito[/B], [B]AnierinB[/B])
+  [*][B]Giovanni (TechPanelGM)[/B] for his maintenance of the official Android 16 husky trees
+  [*]The LineageOS & TheMuppets teams
+  [/LIST]
+[/LIST]
