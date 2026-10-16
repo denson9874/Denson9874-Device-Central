@@ -27,9 +27,9 @@ New unofficial build of **Evolution X 17 (Android 17)** for the **Google Pixel 8
 ---
 
 ### 📦 Download & Package Details
-* **Build Target:** `EvolutionX-17.0-{DATE}-husky-12.3-Unofficial.zip`
-* **File Size:** ~3.1 GB
-* **SHA-256 Checksum:** `{HUSKY_SHA}`
+* **Build Target:** `EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip`
+* **File Size:** 2.89 GB (3,106,951,124 bytes)
+* **SHA-256 Checksum:** `2f8b568b06d16bba312ce05b2b3471689bd3fae7ed608309491246ba712d6d78`
 * **Download Directory:** https://sourceforge.net/projects/denson9874-s-user-builds/files/husky/17/
 
 ---
@@ -47,13 +47,13 @@ New unofficial build of **Evolution X 17 (Android 17)** for the **Google Pixel 8
    `fastboot reboot recovery`
 5. In Recovery: select **Factory Reset** > **Format data/factory reset**.
 6. Select **Apply update** > **Apply from ADB**:
-   `adb sideload EvolutionX-17.0-{DATE}-husky-12.3-Unofficial.zip`
+   `adb sideload EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip`
 7. Once installation completes, select **Reboot system now**.
 
 #### Dirty Flash / Update (Coming from Previous Unofficial Evo X 17 Build)
 1. Reboot to recovery.
 2. Select **Apply update** > **Apply from ADB**:
-   `adb sideload EvolutionX-17.0-{DATE}-husky-12.3-Unofficial.zip`
+   `adb sideload EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip`
 3. (Optional) If rooted, re-flash your root solution (Magisk / KernelSU).
 4. Reboot system. Your data and settings are preserved!
 
