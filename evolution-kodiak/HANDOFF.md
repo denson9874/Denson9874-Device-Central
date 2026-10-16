@@ -7,6 +7,7 @@ Claude is available again. Read all of it before running anything.
 > - **Pixel 8 Pro (`husky`) Unofficial Release Published:** Android 17 (`cnb`) build `EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip` (2.89 GB, SHA-256 `2f8b568b06d16bba312ce05b2b3471689bd3fae7ed608309491246ba712d6d78`) uploaded to SourceForge. Announcements posted live to Telegram (`@ExpressiveGroup`) and XDA ([Thread #4805239](https://xdaforums.com/t/rom-17-0-unofficial-evolution-x-12-3-for-pixel-8-pro-husky-2026-10-16.4805239/)).
 > - **All 4 Pixel 11 Devices Released & Published:** Fastboot packages and verified A/B OTA updater packages for `kodiak`, `grizzly`, `cubs`, and `yogi` uploaded to SourceForge. OTA updater manifests published to `denson9874/evolution_ota` (`cnb`).
 > - **Espada Kernel v3 & Extreme Charging:** Live verified on hardware (`kodiak`, slot `_a`), booted in ~25 s. Bodega mode (`ExtremeChargingController`), Espada v3 (`Linux 6.12.92`), `lmkd` stability (PID 401), Magisk root, and zero SELinux denials verified. `kodiak`, `grizzly`, and `cubs` ship Espada v3; `yogi` ships stock Google GKI.
+> - **Announcements:** Published live to Telegram (`@ExpressiveGroup`) and across all 3 XDA threads (Kodiak/Grizzly [#4804712](https://xdaforums.com/t/4804712/), Cubs [#4804723](https://xdaforums.com/t/4804723/), Yogi [#4804826](https://xdaforums.com/t/4804826/)).
 > - **Upstream Evolution X:** Parity 3-way merge test clean against latest `cnb` HEAD. Scheduled automated Sunday parity routine remains active for 2026-10-18.
 
 ## 1. Goal
@@ -1501,6 +1502,12 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
        - SHA-256: `993d0f0d2ebbc46bfa332b70f031bb9faeec9c501f787e9154ae928926eb3907`
      - OTA Manifest: `builds/yogi.json` committed (`4d78aeb`) and published to `denson9874/evolution_ota` (branch `cnb`).
 - **Fix in `p11-ota.sh`:** Added automatic creation of `$OUT/builds` and `$OUT/changelogs` so new checkouts/clones without these directories don't crash the JSON updater generator.
+- **Community Announcements Published Live:**
+  - **Telegram (`t.me/ExpressiveGroup`):** Broadcasted live with verified fastboot package filenames, formatted inline code, and SHA-256 hashes.
+  - **XDA Forums:** Published update posts across all three active device threads:
+    - Kodiak & Grizzly: [Post #23](https://xdaforums.com/t/rom-unofficial-17-kodiak-grizzly-evolution-x-12-3-android-17-for-the-pixel-11-pro-xl-and-11-pro-grizzly-testers-wanted.4804712/page-2)
+    - Cubs: [Post #5](https://xdaforums.com/t/rom-unofficial-17-cubs-evolution-x-12-3-android-17-for-the-pixel-11-testers-wanted.4804723/)
+    - Yogi: [Post #5](https://xdaforums.com/t/rom-unofficial-17-yogi-evolution-x-12-3-android-17-for-the-pixel-11-pro-fold-testers-wanted.4804826/)
 - **Schedule:** Automated Sunday parity routine remains configured to run upstream sync on Sunday, 2026-10-18.
 
 ## 2ab. Pixel 8 Pro (husky) Android 17 Unofficial Parity Release (2026-10-16)
