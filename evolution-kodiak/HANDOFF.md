@@ -3,7 +3,7 @@
 Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
-> **Current state (2026-10-16): read section 2ad first**, then 2ac, 2ab, 2aa, 2z, 2y, 2x, and 2w.
+> **Current state (2026-10-16): read section 2ae first**, then 2ad, 2ac, 2ab, 2aa, 2z, 2y, 2x, and 2w.
 > - **Wi-Fi MAC Randomization & Capabilities Parity Restored:** Generated `PixelWifiOverlay2026` static runtime resource overlays across all 4 Pixel 11 devices (`kodiak`, `grizzly`, `cubs`, `yogi`), targeting `com.android.wifi.resources`. Enabled `config_wifi_connected_mac_randomization_supported = true` (unblocking "Use device MAC" in network details and Wi-Fi connect dialogs for MAC-filtered networks), SoftAP/P2P randomization, and full stock 2026 Wi-Fi capabilities (including BCM4383 specifics for cubs). Resolved Soong build conflicts by dropping duplicate prebuilt targets already built by AOSP (`android.software.angle.xml`, `SatelliteClient`, `android.telephony.satellite.xml`). Verified Soong compilation and 100% OK offline sepolicy compilation.
 > - **Pixel Features Restored Across Pixel 11 Family:** All proprietary Google apps and Pixel feature XMLs/overlays previously omitted for official maintainership rules (SatelliteGateway & client, AICore, PixelAI/Screenshots, PixelSense/Magic Cue, CreativeAssistant, AmbientStreaming, Now Playing, Hotword Enrollment, Pixel Camera Services, Adaptive Charging, Battery Health & 80% charge limit, Camera 6GB+ RAM power-save, CarrierWifi, eSIM MEP, and Fold dual front streaming) restored to device trees and vendor blobs across `kodiak`, `grizzly`, `cubs`, and `yogi` for the Sunday (2026-10-18) parity release. All trees verified with `check-sepolicy.sh` (100% OK).
 > - **Pixel 8 Pro (`husky`) Unofficial Release Published:** Android 17 (`cnb`) build `EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip` (2.89 GB, SHA-256 `2f8b568b06d16bba312ce05b2b3471689bd3fae7ed608309491246ba712d6d78`) uploaded to SourceForge. Announcements posted live to Telegram (`@ExpressiveGroup`) and XDA ([Thread #4805239](https://xdaforums.com/t/rom-17-0-unofficial-evolution-x-12-3-for-pixel-8-pro-husky-2026-10-16.4805239/)).
@@ -754,13 +754,15 @@ Also seen: the CSR has `fused: 0`. Not investigated yet.
   - Untick **Wipe device** to keep data, and leave **Lock bootloader** unticked.
   - Going from our build back to stock without a wipe may still need a wipe to boot.
 
-## 2f. Public repos (2026-10-11)
+## 2f. Public repos (2026-10-11, updated 2026-10-16)
 
-- **Device tree:** https://github.com/denson9874/device_google_kodiak (public, branch `cnb`).
-  - It was published as one fresh commit from `evolution-kodiak/device_google_kodiak` (63 files), author
-    `9751141+denson9874@users.noreply.github.com`. The patch header uses the noreply address too.
-  - **It's a mirror, not the source of truth.** Keep editing `evolution-kodiak/device_google_kodiak` here, then push
-    the same changes to the public repo with the noreply author.
+- **Device trees (public, branch `cnb`):**
+  - **Kodiak (Pixel 11 Pro XL):** https://github.com/denson9874/device_google_kodiak
+  - **Grizzly (Pixel 11 Pro):** https://github.com/denson9874/device_google_grizzly
+  - **Cubs (Pixel 11):** https://github.com/denson9874/device_google_cubs
+  - **Yogi (Pixel 11 Pro Fold):** https://github.com/denson9874/device_google_yogi
+  - Published from `evolution-kodiak/device_google_<dev>`, author `9751141+denson9874@users.noreply.github.com`.
+  - **They are mirrors for the community and downstream ROM maintainers (e.g. RisingOS dev DoubtTM).** Keep editing `evolution-kodiak/device_google_<dev>` here and server `~/evolution/device/google/<dev>`, then push all fixes to the public repos with the noreply author so downstreams stay reliable and up-to-date.
 - **Upstream PR:** https://github.com/Evolution-X/build/pull/5, from fork `denson9874/build`, branch
   `releasetools-prebuilt-partitions`. It's our `patches/build_make` fix, rebased on upstream `cnb` (`5b95f1f`).
   When it merges, remove `patches/` and `apply-patches.sh`.
@@ -1630,6 +1632,26 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
      - Compiled all 4 overlay modules (`PixelWifiOverlay2026Kodiak`, `PixelWifiOverlay2026Grizzly`, `PixelWifiOverlay2026Cubs`, `PixelWifiOverlay2026Yogi`) with Soong/ninja (100% clean, `aapt2` linked and signed).
      - Inspected badging and resources with `aapt2 dump`: `config_wifi_connected_mac_randomization_supported` confirmed `true` and `targetPackage='com.android.wifi.resources'`.
      - Verified split SELinux policy against stock vendor (`check-sepolicy.sh`) across all 4 devices: 100% OK.
+
+
+## 2ae. Family-Wide Public Trees & Connected Wi-Fi Fix Release (2026-10-16)
+
+- **Public Device Trees Created & Published Across Family:**
+  In addition to [`device_google_kodiak`](https://github.com/denson9874/device_google_kodiak), created and published public repositories on GitHub for the entire Pixel 11 family under `denson9874` on branch `cnb`:
+  - [`device_google_grizzly`](https://github.com/denson9874/device_google_grizzly) (Pixel 11 Pro)
+  - [`device_google_cubs`](https://github.com/denson9874/device_google_cubs) (Pixel 11, BCM4383 flags)
+  - [`device_google_yogi`](https://github.com/denson9874/device_google_yogi) (Pixel 11 Pro Fold)
+  All repositories mirror our local trees and server trees, containing:
+  - `PixelWifiOverlay2026<Dev>` for connected MAC randomization (fixes MAC-filtered Wi-Fi networks).
+  - Simple LMK stability patch (`patches/system_memory_lmkd`) for in-kernel LMK.
+  - Extreme Charging ("Bodega" mode) and charging screensaver data server patches.
+  - Restored Pixel proprietary features suite.
+  - Dropped duplicate AOSP prebuilts from `proprietary-files.txt`.
+- **Release Chain (`release-chain-20261016.sh`):**
+  - **kodiak:** Built cleanly (`BUILD_EXIT=0`), verified, packaged `EvolutionX-17.0-20261016-kodiak-12.3-Unofficial-r2-fastboot.zip` and signed A/B OTA, uploaded to SourceForge, OTA manifest published to `evolution_ota`. `ROUTINE_RESULT=PUBLISHED`.
+  - **grizzly:** Built cleanly (`BUILD_EXIT=0`), verified, packaged `EvolutionX-17.0-20261016-grizzly-12.3-Unofficial-UNTESTED-r2-fastboot.zip` and signed A/B OTA, uploaded to SourceForge, OTA manifest published to `evolution_ota`. `ROUTINE_RESULT=PUBLISHED`.
+  - **cubs:** Built cleanly (`BUILD_EXIT=0`), verified, packaged `EvolutionX-17.0-20261016-cubs-12.3-Unofficial-UNTESTED-r2-fastboot.zip` and signed A/B OTA, uploaded to SourceForge, OTA manifest publishing in progress.
+  - **yogi:** Queued next in chain.
 
 
 ## 3. Machines and access
