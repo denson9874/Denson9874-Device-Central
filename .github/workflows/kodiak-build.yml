@@ -10,6 +10,12 @@
 # the weekly-routine scripts. They take ~/.evolution-tree.lock, like the weekly
 # routines, and never upload anything (publishing is p11-routine.sh's job).
 #
+# bp-check and bp-repair deal with an Android.bp that doesn't parse: Soong reads
+# every Android.bp in the tree, so one bad file (a hand edit in a vendor tree, say)
+# stops every device's build. bp-check shows it and its git state (build-file
+# text only: the lines around the error and that file's diff, never blobs);
+# bp-repair fixes one named file in a narrow, checked way and keeps a backup.
+#
 # Never add an upload-artifact step: build output contains Google's
 # proprietary images, which must not leave the server. Logs only. `inspect`
 # prints policy excerpts, manifests and library lists, never file contents
@@ -46,6 +52,9 @@ on:
           cheetah-build: full build. cheetah-verify: cheetah-pack.sh and p11-ota.sh
           without uploading. cheetah-install-routine: install tree_ref's
           p11-routine.sh and p11-ota.sh (backups kept), then dry-run them.
+          bp-check: read-only: Android.bp files under device/ and vendor/ (and any
+          named in the last build logs) that don't parse, with context and git
+          state. bp-repair: fix the one Android.bp named in query (see query).
         type: choice
         default: status
         options:
@@ -65,6 +74,8 @@ on:
           - cheetah-build
           - cheetah-verify
           - cheetah-install-routine
+          - bp-check
+          - bp-repair
       tree_ref:
         description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak (sync, round) or evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, cheetah-install-routine) from
         type: string
@@ -75,7 +86,10 @@ on:
           is grepped in the stock system_ext/product/vendor policy and contexts; a
           path relative to the dump (e.g. system_ext/priv-app/Foo) lists it and
           describes its APKs (manifest), libraries and binaries (NEEDED), rc and
-          xml files.
+          xml files. bp-repair: 'restore <path>' (drop the file's uncommitted
+          changes, when its committed version parses) or 'drop-comma <path>'
+          (delete lone ',' lines the parser stops at); path relative to
+          ~/evolution, e.g. vendor/google/kodiak/Android.bp.
         type: string
         default: ''
 
@@ -109,7 +123,7 @@ jobs:
           # this job, and the husky build too. Don't start on top of one.
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ "$ACTION" != status && "$ACTION" != inspect && "$ACTION" != cheetah-status ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -130,6 +144,7 @@ jobs:
           for v in vendor/google/kodiak vendor/google/kodiak-images; do
             echo "== ~/evolution/$v"
             git -C ~/evolution/$v log --oneline -1 2>/dev/null || echo "(not a git tree)"
+            git -C ~/evolution/$v status --short 2>/dev/null | head -20 || true
           done
           echo "== scripts"; ls -l ~/kodiak-images.sh ~/kodiak-build.sh ~/kodiak-imgzip.sh 2>&1
           echo "== last build log"; grep -E 'BUILD_EXIT|#### |FAILED:' ~/kodiak-build.log 2>/dev/null | tail -5 || true
@@ -379,3 +394,151 @@ jobs:
             echo "== dry run: $d"
             ~/p11-routine.sh $d --dry-run 2>&1 | tail -8
           done
+
+      # ---- Android.bp syntax: one file that doesn't parse stops every build ----
+
+      - name: Android.bp check
+        if: inputs.action == 'bp-check'
+        run: |
+          cd ~/evolution
+          bpfmt=""
+          for c in prebuilts/build-tools/linux-x86/bin/bpfmt out/host/linux-x86/bin/bpfmt; do
+            [[ -x "$c" ]] && { bpfmt="$PWD/$c"; break; }
+          done
+          [[ -n "$bpfmt" ]] || { echo "::error::no bpfmt in prebuilts/build-tools or out/host"; exit 1; }
+          echo "== blueprint errors in the last build logs"
+          for l in ~/*-build.log; do
+            [[ -f "$l" ]] || continue
+            e="$(grep -E '^error: .*\.bp:[0-9]+:[0-9]+:' "$l" | tail -3 || true)"
+            if [[ -n "$e" ]]; then echo "--- $l ($(date -r "$l" '+%F %T'))"; echo "$e"; fi
+          done
+          # Every Android.bp under device/ and vendor/, plus any other one a build log names
+          list=$(mktemp); trap 'rm -f "$list"' EXIT
+          find device vendor -name .git -prune -o -name Android.bp -type f -print > "$list" || echo "(find reported errors)"
+          { grep -ohE '^error: [A-Za-z0-9._+/-]+\.bp:' ~/*-build.log 2>/dev/null || true; } | sed -E 's/^error: //; s/:$//' \
+            | { grep -vE '^(device|vendor)/|^/|\.\.' || true; } | sort -u | while read -r f; do
+                [[ -f "$f" ]] && echo "$f" || true
+              done >> "$list"
+          echo "== checking $(wc -l < "$list") Android.bp files"
+          bad="$(tr '\n' '\0' < "$list" | xargs -0 -r "$bpfmt" -l 2>&1 > /dev/null | grep -E '^[^ :]+\.bp:[0-9]+:[0-9]+: ' || true)"
+          if [[ -z "$bad" ]]; then
+            echo "bp-check: every Android.bp checked parses" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "$bad"
+          while IFS=: read -r f line _; do
+            echo; echo "===== $f (first error: line $line)"
+            awk -v l="$line" 'NR >= l - 12 && NR <= l + 8 { printf "%s%6d  %s\n", (NR == l ? ">" : " "), NR, $0 }' "$f"
+            if [[ "$(sed -n "${line}p" "$f")" =~ ^[[:space:]]*,[[:space:]]*$ ]]; then
+              echo "line $line is a lone ',': bp-repair 'drop-comma $f' removes it"
+            fi
+            top="$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null || true)"
+            if [[ -z "$top" ]]; then echo "(not in a git tree)"; continue; fi
+            rel="$(realpath --relative-to="$top" "$f")"
+            echo "--- project ${top#"$PWD"/}, HEAD $(git -C "$top" log --oneline -1)"
+            echo "--- commits touching $rel"
+            git -C "$top" log -3 --format='%h %ad %an  %s' --date=iso -- "$rel"
+            echo "--- uncommitted changes in the project"
+            git -C "$top" status --short | head -30 || true
+            if ! git -C "$top" ls-files --error-unmatch -- "$rel" > /dev/null 2>&1; then
+              echo "$rel isn't tracked by git"
+            elif git -C "$top" diff --quiet HEAD -- "$rel"; then
+              echo "--- $rel matches HEAD, so the error is committed. The last commit's change to it:"
+              git -C "$top" log -1 -p --format='%h %s' -- "$rel" | head -150 || true
+            else
+              echo "--- uncommitted changes to $rel"
+              git -C "$top" diff --stat HEAD -- "$rel"
+              git -C "$top" diff -U3 HEAD -- "$rel" | head -150 || true
+              tmp=$(mktemp -d)
+              git -C "$top" show "HEAD:$rel" > "$tmp/Android.bp"
+              if "$bpfmt" -l "$tmp/Android.bp" > /dev/null 2>&1; then
+                echo "HEAD's version parses: bp-repair 'restore $f' puts it back (dropping the changes above)"
+              else
+                echo "HEAD's version doesn't parse either"
+              fi
+              rm -rf "$tmp"
+            fi
+          done < <(awk -F: '!seen[$1]++' <<< "$bad")
+          echo "::error::$(awk -F: '!seen[$1]++' <<< "$bad" | wc -l) Android.bp file(s) don't parse; every build stops until they do"
+          exit 1
+
+      - name: Android.bp repair
+        if: inputs.action == 'bp-repair'
+        run: |
+          exec 9>~/.evolution-tree.lock
+          flock -n 9 || { echo "::error::the tree lock is held (a routine or build is running)"; exit 1; }
+          fail() { echo "::error::$*"; exit 1; }
+          cd ~/evolution
+          read -r mode f extra <<< "$QUERY"
+          [[ "${mode:-}" =~ ^(restore|drop-comma)$ && -z "${extra:-}" ]] || fail "query must be 'restore <path>' or 'drop-comma <path>'"
+          [[ "${f:-}" =~ ^(device|vendor)/[A-Za-z0-9._/-]+/Android\.bp$ && "$f" != *..* ]] || fail "bad path '${f:-}': an Android.bp under device/ or vendor/"
+          [[ -f "$f" && ! -L "$f" ]] || fail "no such file: $f"
+          [[ "$(realpath "$f")" == "$(pwd -P)"/* ]] || fail "$f resolves outside ~/evolution"
+          bpfmt=""
+          for c in prebuilts/build-tools/linux-x86/bin/bpfmt out/host/linux-x86/bin/bpfmt; do
+            [[ -x "$c" ]] && { bpfmt="$PWD/$c"; break; }
+          done
+          [[ -n "$bpfmt" ]] || fail "no bpfmt in prebuilts/build-tools or out/host"
+          parses() { "$bpfmt" -l "$1" > /dev/null 2>&1; }
+          if parses "$f"; then echo "$f already parses; nothing to do"; exit 0; fi
+          top="$(git -C "$(dirname "$f")" rev-parse --show-toplevel)"
+          rel="$(realpath --relative-to="$top" "$f")"
+          tracked=0; git -C "$top" ls-files --error-unmatch -- "$rel" > /dev/null 2>&1 && tracked=1
+          clean=0; (( tracked )) && git -C "$top" diff --quiet HEAD -- "$rel" && clean=1
+          if [[ "$mode" == restore ]]; then
+            # Only when the damage is uncommitted and the committed version is good
+            (( tracked )) || fail "$rel isn't tracked by git: there's no committed version to restore"
+            (( ! clean )) || fail "$rel has no uncommitted changes: the error is committed (see bp-check)"
+            tmp=$(mktemp -d)
+            git -C "$top" show "HEAD:$rel" > "$tmp/Android.bp"
+            if ! parses "$tmp/Android.bp"; then rm -rf "$tmp"; fail "HEAD's version of $rel doesn't parse either"; fi
+            rm -rf "$tmp"
+          fi
+          # Keep the file as it was, and the project's state, before touching anything
+          mkdir -p ~/bp-repair-backups
+          bak=$(mktemp -d ~/bp-repair-backups/"$(date +%Y%m%d-%H%M%S)"-XXXX)
+          cp -p "$f" "$bak/Android.bp"
+          git -C "$top" status --short > "$bak/git-status.txt"
+          git -C "$top" diff HEAD -- "$rel" > "$bak/uncommitted.patch"
+          echo "$f, project ${top#"$PWD"/} at $(git -C "$top" rev-parse --short HEAD), mode $mode" > "$bak/SOURCE"
+          echo "backup of the file as it was: $bak/Android.bp"
+          "$bpfmt" -l "$f" 2>&1 > /dev/null | grep -E '\.bp:[0-9]+:[0-9]+: ' || true
+          case "$mode" in
+            restore)
+              echo "== dropping these uncommitted changes (kept in $bak/uncommitted.patch)"
+              git -C "$top" diff --stat HEAD -- "$rel"
+              git -C "$top" checkout HEAD -- "$rel"
+              ;;
+            drop-comma)
+              # Only lines that hold nothing but a ',' and are exactly where the parser stops
+              for _ in $(seq 20); do
+                err="$("$bpfmt" -l "$f" 2>&1 > /dev/null | grep -m1 -E '\.bp:[0-9]+:[0-9]+: ' || true)"
+                [[ -n "$err" ]] || break
+                line="$(sed -E 's/^.*\.bp:([0-9]+):[0-9]+: .*/\1/' <<< "$err")"
+                text="$(sed -n "${line}p" "$f")"
+                if [[ "$err" != *'found ","'* || ! "$text" =~ ^[[:space:]]*,[[:space:]]*$ ]]; then
+                  cp -p "$bak/Android.bp" "$f"
+                  fail "not a lone ',': $err (line $line is '$text'); $f left as it was"
+                fi
+                sed -i "${line}d" "$f"
+                echo "removed line $line (a lone ',')"
+              done
+              if ! parses "$f"; then cp -p "$bak/Android.bp" "$f"; fail "$f still doesn't parse; left as it was"; fi
+              echo "== change"; diff -u "$bak/Android.bp" "$f" || true
+              if (( clean )); then
+                # The comma was committed: commit the fix the same way (never pushed anywhere)
+                ident=()
+                git -C "$top" config user.email > /dev/null || ident=(-c user.name=kodiak-runner -c user.email=build@kodiak-build-server)
+                git -C "$top" ${ident[@]+"${ident[@]}"} commit -q -m "Android.bp: drop a stray ',' that stopped Soong's blueprint parse" -- "$rel"
+                git -C "$top" log --oneline -1
+              elif (( tracked )); then
+                echo "left uncommitted: $rel had other uncommitted changes, kept as they were"
+              else
+                echo "left uncommitted: $rel isn't tracked by git"
+              fi
+              ;;
+          esac
+          if ! parses "$f"; then cp -p "$bak/Android.bp" "$f"; fail "$f doesn't parse after the repair; left as it was"; fi
+          git -C "$top" status --short -- "$rel"
+          echo "bp-repair: $mode $f done, it parses now; the file as it was is in $bak on the server" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "next: bp-check, to confirm no other Android.bp blocks the build"
