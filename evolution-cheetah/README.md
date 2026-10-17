@@ -64,8 +64,20 @@ The weekly routine runs all of that: `~/p11-routine.sh cheetah` (see "Release sc
    vendor repo already ships.
 
 `repo sync` drops the local commits; `prepare.sh` puts them back. Run `fetch-firmware.sh` when Google
-ships a monthly release (`--check` only reports the newest one). Google's page is fetched from the
-build server, not from a cloud session.
+ships a monthly release (`--check` only reports the newest one).
+
+**Where the factory image link comes from:** Google now shows the per-device tables only after a visitor
+accepts its terms of use, so the script can't read them unattended. A person opens
+https://developers.google.com/android/images#cheetah, accepts the terms, and copies the newest generic
+Android 17 release (no carrier suffix) into `firmware.conf`:
+
+```
+url=https://dl.google.com/dl/android/aosp/cheetah-<build>-factory-<8 hex>.zip
+sha256=<the 64-hex SHA-256 from the same row>
+```
+
+Commit it, run the runner's `cheetah-setup` (installs the kit) and `cheetah-firmware`. Without
+`firmware.conf` the script still tries Google's page, and says what it saw if that fails.
 
 ## Shared patches
 

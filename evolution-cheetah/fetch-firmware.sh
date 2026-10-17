@@ -10,12 +10,21 @@
 set -euo pipefail
 dev=cheetah
 dir=~/android-dt/firmware/$dev; mkdir -p "$dir"
+here="$(cd "$(dirname "$0")" && pwd)"
+conf="$here/firmware.conf"
 # Newest generic (not carrier-specific) Android 17 release. Rows look like
 #   <tr id="cheetahcp3a.261005.005"><td>17.0.0 (CP3A.261005.005, Oct 2026)</td>
 #   <td><a href="https://dl.google.com/.../cheetah-cp3a.261005.005-factory-1a2b3c4d.zip">Link</a></td><td>sha256</td>
 # The build id comes from the URL; carrier builds have a suffix (.a1) or a third
 # field in the description ("..., Oct 2026, Verizon"). The device tables may sit on
 # the main page or on a per-device page it links to; both are tried.
+if [[ -f "$conf" ]]; then
+    # Copied by a person from https://developers.google.com/android/images#cheetah after
+    # accepting Google's terms there: the newest generic Android 17 release's link and SHA-256.
+    url=$(sed -n 's/^url=//p' "$conf" | head -1); sha=$(sed -n 's/^sha256=//p' "$conf" | head -1)
+    build=$(sed -E -n "s#^https://dl\.google\.com/dl/android/aosp/$dev-([a-z0-9]{4}\.[0-9]{6}\.[0-9]{3})-factory-[0-9a-f]{8}\.zip\$#\1#p" <<<"$url")
+    [[ -n "$build" && "$sha" =~ ^[0-9a-f]{64}$ ]] || { echo "firmware.conf needs url=<generic $dev factory zip link> and sha256=<64 hex>" >&2; exit 1; }
+else
 read -r url sha build < <(python3 -I - "$dev" <<'PY'
 import html as H, re, sys, urllib.parse, urllib.request
 dev = sys.argv[1]
@@ -61,6 +70,7 @@ if i >= 0:
 sys.exit(1)
 PY
 )
+fi
 [[ -n "${url:-}" && -n "${sha:-}" && -n "${build:-}" ]] || { echo "couldn't find the newest $dev factory image on Google's page" >&2; exit 1; }
 echo "newest $dev factory image: $build ($url)"
 [[ ${1:-} == --check ]] && { echo "cached: $(cat "$dir/CURRENT" 2>/dev/null || echo none)"; exit 0; }
@@ -70,7 +80,7 @@ fi
 zip="$dir/$(basename "$url")"
 curl -sSfL --retry 5 -C - -o "$zip" "$url"
 echo "$sha  $zip" | sha256sum -c --quiet || { rm -f "$zip"; echo "SHA-256 mismatch for $zip" >&2; exit 1; }
-work=$(mktemp -d -p "$dir"); trap 'rm -rf "$work" "$page"' EXIT
+work=$(mktemp -d -p "$dir"); trap 'rm -rf "$work"' EXIT
 unzip -q -j -o "$zip" "*/bootloader-$dev-*.img" "*/radio-$dev-*.img" -d "$work"
 ls "$work"/bootloader-$dev-*.img "$work"/radio-$dev-*.img >/dev/null
 rm -f "$dir"/bootloader-$dev-*.img "$dir"/radio-$dev-*.img
