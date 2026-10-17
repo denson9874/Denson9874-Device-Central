@@ -15,14 +15,15 @@ conf="$here/firmware.conf"
 # Newest generic (not carrier-specific) Android 17 release. Rows look like
 #   <tr id="cheetahcp3a.261005.005"><td>17.0.0 (CP3A.261005.005, Oct 2026)</td>
 #   <td><a href="https://dl.google.com/.../cheetah-cp3a.261005.005-factory-1a2b3c4d.zip">Link</a></td><td>sha256</td>
-# The build id comes from the URL; carrier builds have a suffix (.a1) or a third
-# field in the description ("..., Oct 2026, Verizon"). The device tables may sit on
+# The build id comes from the URL (it may carry a suffix such as .a1, as cheetah's
+# generic CP3A.261005.002.A1 does); carrier builds have a third field in the
+# description ("..., Oct 2026, Verizon"). The device tables may sit on
 # the main page or on a per-device page it links to; both are tried.
 if [[ -f "$conf" ]]; then
     # Copied by a person from https://developers.google.com/android/images#cheetah after
     # accepting Google's terms there: the newest generic Android 17 release's link and SHA-256.
     url=$(sed -n 's/^url=//p' "$conf" | head -1); sha=$(sed -n 's/^sha256=//p' "$conf" | head -1)
-    build=$(sed -E -n "s#^https://dl\.google\.com/dl/android/aosp/$dev-([a-z0-9]{4}\.[0-9]{6}\.[0-9]{3})-factory-[0-9a-f]{8}\.zip\$#\1#p" <<<"$url")
+    build=$(sed -E -n "s#^https://dl\.google\.com/dl/android/aosp/$dev-([a-z0-9]{4}\.[0-9]{6}\.[0-9]{3}(\.[a-z0-9]+)?)-factory-[0-9a-f]{8}\.zip\$#\1#p" <<<"$url")
     [[ -n "$build" && "$sha" =~ ^[0-9a-f]{64}$ ]] || { echo "firmware.conf needs url=<generic $dev factory zip link> and sha256=<64 hex>" >&2; exit 1; }
 else
 read -r url sha build < <(python3 -I - "$dev" <<'PY'
@@ -39,7 +40,7 @@ def parse(page):
         url = re.search(r'href="(https://dl\.google\.com/dl/android/aosp/%s-([a-z0-9.]+)-factory-[0-9a-f]{8}\.zip)"' % re.escape(dev), row)
         sha = re.search(r"\b[0-9a-f]{64}\b", row)
         desc = " ".join(H.unescape(re.sub(r"<[^>]+>", " ", row.split("</td>")[0])).split())
-        if not (url and sha) or not re.fullmatch(r"[a-z0-9]{4}\.\d{6}\.\d{3}", url.group(2)):
+        if not (url and sha) or not re.fullmatch(r"[a-z0-9]{4}\.\d{6}\.\d{3}(\.[a-z0-9]+)?", url.group(2)):
             continue
         paren = re.search(r"\(([^)]*)\)", desc)
         if not re.match(r"17(\.\d+)*\b", desc) or not paren or len(paren.group(1).split(",")) != 2:
