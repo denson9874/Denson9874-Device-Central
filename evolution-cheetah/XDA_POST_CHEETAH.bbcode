@@ -1,0 +1,100 @@
+DRAFT, not posted. Fill the {PLACEHOLDERS} from the first published build (~/releases/cheetah/*.sha256,
+vendor/google/cheetah/FIRMWARE_SOURCE, the build's patch levels), show Daryl, and only he posts it.
+Forum: Google Pixel 7 Pro (XDA's Pixel 7 Pro forum), prefix Development
+Title: [ROM][UNOFFICIAL][17][cheetah] Evolution X 12.3 (Android 17) for the Pixel 7 Pro - testers wanted
+After posting: set cheetah's FORUM in evolution-kodiak/tools/p11-ota.sh to the thread URL (server copy too).
+
+[CENTER][SIZE=6][B]Evolution X 12.3 — Android 17[/B][/SIZE]
+[SIZE=4]Google Pixel 7 Pro (cheetah) | UNOFFICIAL | TEST BUILD[/SIZE][/CENTER]
+
+[CODE]
+/*
+ * Your warranty is now void. You flash this at your own risk.
+ * I'm not responsible for bricked devices, lost data, or anything else.
+ */
+[/CODE]
+
+[SIZE=5][B]Testers wanted: this build has never been booted[/B][/SIZE]
+I build Evolution X for the Pixel 11 series and run it daily on a Pixel 11 Pro XL. This is [B]Evolution X 12.3 on Android 17 for the Pixel 7 Pro (cheetah)[/B], built from Evolution X's own Pixel 7 device trees. It passes every check I can run without the phone, but [B]it has never been booted.[/B] Only try it if you're comfortable restoring stock with the Android Flash Tool if it doesn't boot.
+
+If you try it, please reply in this thread with:
+[LIST]
+[*]Whether it boots, and whether it still boots after a couple of reboots
+[*]Your carrier, and whether calls, SMS, VoLTE, mobile data and Wi-Fi calling work
+[*]Wi-Fi, Bluetooth, cameras, fingerprint and face unlock
+[*]Play Integrity and Google Wallet
+[*]If something fails: what you saw, and a log if you can get one ([ICODE]adb logcat -d > logcat.txt[/ICODE])
+[/LIST]
+
+[SIZE=5][B]About[/B][/SIZE]
+An [B]unofficial[/B] build of Evolution X 12.3 on Android 17 for the Pixel 7 Pro. The Pixel 7 Pro has an official Evolution X maintainer for Android 16 (nhansp); Evolution X hasn't released official Android 17 builds for it yet. When it does, switch to the official builds. Ours are signed with different keys, so moving between the two needs a clean flash.
+
+[B]For the Pixel 7 Pro (cheetah) only.[/B] Don't flash it on the Pixel 7 (panther) or any other model.
+
+This is [B]not[/B] an official Evolution X build. Please don't report its bugs to the Evolution X team; report them in this thread.
+
+[SIZE=5][B]Build info[/B][/SIZE]
+[LIST]
+[*]Evolution X 12.3, Android 17, security patch {SYSTEM_SPL} (system), {VENDOR_SPL} (vendor)
+[*]Build type: user, signed with private release keys
+[*]Google apps included
+[*]Device trees and blobs: Evolution X's own (device_google_pantah, device_google_gs201, vendor_google_cheetah)
+[*]Kernel: LineageOS's gs201 kernel (Linux 6.1), built from source with the ROM
+[*]Over-the-air updates through the built-in Updater; they include Google's firmware {FIRMWARE}
+[*]Not rooted
+[/LIST]
+
+[SIZE=5][B]What should work[/B][/SIZE]
+Evolution X's Pixel 7 trees have a long record on Android 16, but none of this is confirmed on this Android 17 build yet:
+[LIST]
+[*]Calls and SMS, including VoLTE, mobile data, eSIM
+[*]Wi-Fi, Bluetooth, NFC
+[*]Cameras, fingerprint (under-display), face unlock
+[*]Google Play; Play Integrity and Google Wallet tap-to-pay
+[/LIST]
+
+[SIZE=5][B]Known issues[/B][/SIZE]
+[LIST]
+[*]Untested on real hardware (see above).
+[*]Gemini Nano and the features built on it don't work. Google only serves the on-device AI models to phones with a locked bootloader, so this applies to any custom ROM.
+[/LIST]
+
+[SIZE=5][B]Requirements[/B][/SIZE]
+[LIST]
+[*]Unlocked bootloader (unlocking wipes your phone)
+[*]Google's stock firmware [B]{FIRMWARE}[/B] or newer. The zip doesn't flash a bootloader or radio, so install the latest Android 17 factory image for the Pixel 7 Pro with the Android Flash Tool first. Later updates through the Updater keep the firmware current.
+[*]Latest platform-tools (adb/fastboot)
+[/LIST]
+
+[SIZE=5][B]Installation (clean flash)[/B][/SIZE]
+Download the ROM zip and check its SHA-256, then:
+[CODE]
+adb reboot bootloader
+fastboot -w update {FASTBOOT_ZIP}
+[/CODE]
+[B]-w wipes all your data.[/B] fastboot switches to fastbootd partway through to flash the dynamic partitions; leave the phone plugged in until it reboots by itself (a few minutes). The first boot takes a few minutes more.
+
+[SIZE=5][B]Downloads[/B][/SIZE]
+[LIST]
+[*]ROM zip and OTA package: [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/cheetah/17/]SourceForge: cheetah/17[/URL]
+[*]SHA-256 checksums: in the same folder ({FASTBOOT_SHA256})
+[/LIST]
+
+[SIZE=5][B]Source code[/B][/SIZE]
+[LIST]
+[*]ROM: [URL=https://github.com/Evolution-X/manifest/tree/cnb]Evolution-X/manifest (cnb)[/URL]
+[*]Device trees: [URL=https://github.com/Evolution-X-Devices/device_google_pantah/tree/cnb]Evolution-X-Devices/device_google_pantah (cnb)[/URL], [URL=https://github.com/Evolution-X-Devices/device_google_gs201/tree/cnb]device_google_gs201 (cnb)[/URL]
+[*]Kernel: built by LineageOS's build_kernel from [URL=https://github.com/LineageOS/android_kernel_google_gs201_manifest]LineageOS's gs201 kernel manifest[/URL]
+[*]Unofficial changes on top (maintainer name and update server only): ExpressiveOS evolution-cheetah
+[/LIST]
+
+[SIZE=5][B]Credits[/B][/SIZE]
+The Evolution X team, nhansp and Lunia (Evolution X's Pixel 7 trees), and the LineageOS team (device trees and kernel).
+
+[SIZE=5][B]Reporting bugs[/B][/SIZE]
+Include your build date, your carrier, steps to reproduce, and a log:
+[CODE]adb logcat -d > logcat.txt[/CODE]
+
+[B]ROM OS version:[/B] Android 17
+[B]Based on:[/B] Evolution X / LineageOS
+[B]Status:[/B] Testing
