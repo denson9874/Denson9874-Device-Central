@@ -1662,25 +1662,37 @@ weekly release schedule. Everything is in `evolution-cheetah/` (README there has
 - **Trees:** Evolution X's own `cnb` trees build it as-is: `device_google_pantah`, `device_google_gs201`,
   `vendor_google_cheetah` (Git LFS from git.evolution-x.org), and LineageOS `pantah-kernels`.
   - The kernel (6.1) is built by `build_kernel`.
-  - Our patches only set the unofficial maintainer and the Updater URL. `prepare.sh` reapplies them on every build,
-    along with the newest Google firmware.
+  - Our patches set the unofficial maintainer and the Updater URL, and allow-list AppDataBackup's /system files
+    (0003, the same artifact-path fix as husky). `prepare.sh` reapplies them on every build, along with the newest
+    Google firmware.
 - **Unofficial:** official Android 16 maintainer nhansp; no official `cnb` cheetah builds yet. Same stance as husky
   (2ab). If official cnb builds appear, drop patch 0002 and talk to the maintainer before publishing more.
 - **Release schedule:** `p11-routine.sh cheetah` and `p11-ota.sh cheetah` (Pixel 11 paths unchanged; a kodiak
   `--preview` mock gives byte-identical output), plus a fifth Mac task, `evox-parity-cheetah`
   (`evolution-cheetah/evox-parity-cheetah.SKILL.md`), scheduled after the four Pixel 11 tasks.
-- **PRs:** #6 (runner actions into `main`) and #7 (this port into `evolution/kodiak-port`), both drafts.
+- **PRs:** #6 (runner actions into `main`), #7 (this port into `evolution/kodiak-port`) and #8 (runner `bp-check` /
+  `bp-repair`), all merged.
+- **First build attempts (2026-10-17):** setup, firmware (CP3A.261005.002.A1) and the kernel went through. The ROM
+  build then stopped twice:
+  1. At blueprint bootstrap, on `vendor/google/kodiak/Android.bp:245`. An uncommitted, half-finished hand edit
+     removing the AICore module (`AICorePrebuilt-aicore_20260302.01_RC00`) had left a `,` and the module's last
+     three lines. Soong parses every Android.bp, so it broke every device's build, the Pixel 11s included.
+     `bp-repair restore` put back the committed file (`4833f69`). The edit is in
+     `~/bp-repair-backups/20261017-232750-TStk/uncommitted.patch`. The uncommitted `kodiak-vendor.mk` change next
+     to it was left alone: whether kodiak ships AICore is Daryl's call.
+  2. In soong_build: generic_system.mk's artifact-path check rejected AppDataBackup in /system. Fixed by patch
+     0003.
 - **Next, in order:**
-  1. Daryl merges #6.
-  2. The runner does `cheetah-setup`, `cheetah-firmware`, `cheetah-kernel`, `cheetah-build`, then `cheetah-verify`
-     (no upload).
+  1. Done: Daryl merged #6.
+  2. The runner does `cheetah-setup` (installs 0003), `cheetah-build`, then `cheetah-verify` (no upload).
   3. After Sunday's Pixel 11 release has finished: `cheetah-install-routine`, which installs the shared scripts
      (backups kept) and dry-runs them.
   4. Daryl adds the Mac task, approves the first upload, and creates the XDA thread in the Pixel 7 Pro forum. Then
      set cheetah's `FORUM` in `p11-ota.sh` to that thread.
 - **Not done on purpose:**
-  - Nothing has been installed on the server before Sunday's Pixel 11 release. The cheetah projects stay out of the
-    Pixel 11 runs' checkout and state.
+  - The shared routine scripts aren't installed before Sunday's Pixel 11 release. `cheetah-setup` did add the local
+    manifest, so Sunday's runs (still the old `p11-routine.sh`) also fetch and check out cheetah's four projects and
+    count them in their state. That's harmless: no Pixel 11 product reads them, and the new script leaves them out.
   - Nothing has been published.
 
 ## 3. Machines and access
@@ -1830,6 +1842,9 @@ Write multi-step logic to a script file instead.
   Use `~/android-dt/bin/aospdtgen-vendorfirst.py`.
 
 **Packaging and build config**
+- Never hand-edit a generated vendor `Android.bp`. Change `proprietary-files.txt` and re-run `extract-files.py`.
+  Soong parses every Android.bp in the tree, so one broken file stops every device's build (2af). The runner's
+  `bp-check` finds such a file; `bp-repair` fixes the common cases.
 - releasetools crashed with `KeyError: 'vendor'` on prebuilt vendor. The fix is in `patches/build_make`.
 - `BOARD_PREBUILT_PVMFWIMAGE` is obsolete; pvmfw is built from AOSP.
 - vintffm needed `hwservicemanager` and `android.hidl.allocator@1.0-service`.

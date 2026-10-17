@@ -53,6 +53,7 @@ The weekly routine runs all of that: `~/p11-routine.sh cheetah` (see "Release sc
    |---|---|---|
    | device/google/pantah | `0001` | Settings > About maintainer: "Daryl Denson (Unofficial)" instead of the official Android 16 maintainer |
    | device/google/pantah | `0002` | `UpdaterOverlayCheetah`: the Updater reads `denson9874/evolution_ota` (as the Pixel 11 trees' `UpdaterOverlay<Dev>`) |
+   | device/google/pantah | `0003` | `lineage_cheetah.mk` allow-lists Evolution X's AppDataBackup in /system, which generic_system.mk's artifact-path check otherwise rejects (soong_build stops). Same fix as husky's shusky `0001` |
 
 3. Firmware: Pixels refuse bootloader downgrades, and the OTA flashes the bootloader and radio. So the
    OTA must never carry firmware older than what users run. `fetch-firmware.sh` downloads the newest
