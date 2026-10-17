@@ -5,13 +5,14 @@
 # denson9874/evolution_ota (the repo the device tree's UpdaterOverlay points at). The JSON
 # goes out last, so it never points at a file that isn't downloadable yet.
 #
-#   p11-ota.sh <kodiak|grizzly|cubs|yogi> [--upload | --preview] [--changes <file>]
+#   p11-ota.sh <kodiak|grizzly|cubs|yogi|cheetah> [--upload | --preview] [--changes <file>]
 #
 # --preview prints the JSON and changelog an upload would publish, without uploading.
 #
 # Checks: the package is A/B, for this device and from this build; its zip and payload
 # signatures verify against the build's own otacerts.zip; the payload carries every
-# partition the device tree lists (ROM plus firmware.txt); its vbmeta has the same boot and
+# partition the device tree lists (ROM plus firmware.txt; for cheetah, the build's own
+# AB_OTA_PARTITIONS list); its vbmeta has the same boot and
 # system patch levels as the build's vbmeta.img.
 # Prints OTA_VERIFIED, and OTA_PUBLISHED <json url> after a successful --upload.
 set -euo pipefail
@@ -32,10 +33,15 @@ case $dev in
     grizzly) MODEL="Pixel 11 Pro";      FORUM=https://xdaforums.com/t/4804712/; TAG=-UNTESTED ;;
     cubs)    MODEL="Pixel 11";          FORUM=https://xdaforums.com/t/4804723/; TAG=-UNTESTED ;;
     yogi)    MODEL="Pixel 11 Pro Fold"; FORUM=https://xdaforums.com/t/4804826/; TAG=-UNTESTED ;;
-    *) echo "usage: p11-ota.sh <kodiak|grizzly|cubs|yogi> [--upload | --preview] [--changes <file>]" >&2; exit 2 ;;
+    # Evolution X's own trees (evolution-cheetah/). FORUM: replace with the XDA thread once it exists.
+    cheetah) MODEL="Pixel 7 Pro";       FORUM=https://sourceforge.net/projects/denson9874-s-user-builds/files/cheetah/17/; TAG=-UNTESTED ;;
+    *) echo "usage: p11-ota.sh <kodiak|grizzly|cubs|yogi|cheetah> [--upload | --preview] [--changes <file>]" >&2; exit 2 ;;
 esac
 
 TOP=~/evolution; O=$TOP/out/target/product/$dev; H=$TOP/out/host/linux-x86/bin
+# The device tree whose commits the changelog lists
+DEVTREE=$TOP/device/google/$dev
+if [ "$dev" = cheetah ]; then DEVTREE=$TOP/device/google/pantah; fi
 DEST=~/releases/$dev; mkdir -p "$DEST"
 SF_USER=daryldenson0405; SF_PROJECT=denson9874-s-user-builds; SF_DIR=/home/frs/project/$SF_PROJECT/$dev/17
 REPO=~/evolution_ota; RAW=https://raw.githubusercontent.com/denson9874/evolution_ota/cnb
@@ -85,21 +91,41 @@ names = {m.group(2).decode() for m in re.finditer(rb"\x0a([\x02-\x20])([a-z0-9_]
          if len(m.group(2)) == m.group(1)[0]}
 print("\n".join(sorted(names)))
 EOF
+if [ "$dev" = cheetah ]; then
+    # The build's own list (gs201 BoardConfig plus the vendor repo's firmware partitions)
+    ab=$(ls -t $O/obj/PACKAGING/target_files_intermediates/*/META/ab_partitions.txt 2>/dev/null | head -1 || true)
+    [ -n "$ab" ] || fail "no META/ab_partitions.txt in $O"
+    want=$(cat "$ab")
+    for p in abl bl1 bl2 bl31 gsa ldfw modem pbl tzsw boot init_boot vendor_boot vendor_kernel_boot dtbo vbmeta vbmeta_system vbmeta_vendor system system_ext product vendor; do
+        grep -qx "$p" <<<"$want" || fail "AB_OTA_PARTITIONS lacks $p"
+    done
+else
 want=$(grep -v '^#' $TOP/device/google/$dev/firmware.txt | sed '/^$/d')
 want+=$'\n'"boot init_boot vendor_kernel_boot vendor_boot dtbo vbmeta vbmeta_system vbmeta_vendor system system_ext product vendor vendor_dlkm system_dlkm"
+fi
 missing=$(for p in $want; do grep -qx "$p" $T/partitions || echo "$p"; done)
 [ -z "$missing" ] || fail "the payload lacks: $(echo $missing)"
 
 # 4. vbmeta keeps the patch levels (KeyMint must never see them go missing or backwards)
 mkdir $T/x
-$H/ota_extractor -payload "$OTA" -payload_offset "$off" -output_dir $T/x -partitions vbmeta > $T/x.log 2>&1 \
-    || { tail -3 $T/x.log; fail "couldn't extract vbmeta"; }
-props() { $H/avbtool info_image --image "$1" | grep -oE "com\.android\.build\.(boot|system)\.security_patch -> '[0-9-]+'" | sort; }
-[ "$(props $T/x/vbmeta.img | wc -l)" = 2 ] || fail "the OTA vbmeta lacks the boot or system patch level"
-[ "$(props $T/x/vbmeta.img)" = "$(props $O/vbmeta.img)" ] || fail "the OTA vbmeta's patch levels differ from vbmeta.img"
-boot_spl=$(props $T/x/vbmeta.img | sed -n "s/.*boot.security_patch -> '\(.*\)'/\1/p")
-system_spl=$(props $T/x/vbmeta.img | sed -n "s/.*system.security_patch -> '\(.*\)'/\1/p")
+# Where the boot and system patch levels live: vbmeta.img, or for gs201, whose boot and
+# system partitions are chained, boot.img's footer and vbmeta_system.img.
+AVB=vbmeta
+if [ "$dev" = cheetah ]; then AVB="vbmeta vbmeta_system boot"; fi
+$H/ota_extractor -payload "$OTA" -payload_offset "$off" -output_dir $T/x -partitions "${AVB// /,}" > $T/x.log 2>&1 \
+    || { tail -3 $T/x.log; fail "couldn't extract $AVB"; }
+props() { local d=$1 i; for i in $AVB; do $H/avbtool info_image --image "$d/$i.img"; done | grep -oE "com\.android\.build\.(boot|system)\.security_patch -> '[0-9-]+'" | sort -u; }
+[ "$(props $T/x | wc -l)" = 2 ] || fail "the OTA's $AVB lack the boot or system patch level"
+[ "$(props $T/x)" = "$(props $O)" ] || fail "the OTA's patch levels differ from the build's $AVB images"
+boot_spl=$(props $T/x | sed -n "s/.*boot.security_patch -> '\(.*\)'/\1/p")
+system_spl=$(props $T/x | sed -n "s/.*system.security_patch -> '\(.*\)'/\1/p")
+if [ "$dev" = cheetah ]; then
+    # prepare.sh records the factory release it took the firmware from
+    firmware=$(tr a-z A-Z 2>/dev/null < $TOP/vendor/google/cheetah/FIRMWARE_SOURCE ||
+               grep -oE 'cheetah:17/[A-Z0-9]{4}\.[0-9]{6}\.[0-9]{3}' $DEVTREE/lineage_cheetah.mk | cut -d/ -f2)
+else
 firmware=$(grep -oE '^[a-z0-9]+\.[0-9]+\.[0-9]+' $TOP/vendor/google/$dev-images/SOURCE | tr a-z A-Z)
+fi
 echo "OTA_VERIFIED $OTA (patch levels: system $system_spl, vendor/boot $boot_spl; firmware $firmware)"
 [ $UPLOAD = 1 ] || [ $PREVIEW = 1 ] || exit 0
 
@@ -158,6 +184,12 @@ with open(sys.argv[1], "w") as f:
     json.dump({"response": [entry]}, f, indent=2)
     f.write("\n")
 EOF
+# cheetah's HEAD carries our patches, re-applied (new hashes) on every run: list and record
+# Evolution's own commits (the manifest revision repo checked out) instead.
+DEVHEAD=HEAD
+if [ "$dev" = cheetah ]; then
+    DEVHEAD=$(git -C $DEVTREE rev-parse --verify -q refs/remotes/m/cnb || git -C $DEVTREE rev-parse --verify -q refs/remotes/evox-devices/cnb || echo HEAD)
+fi
 {
     echo "Evolution X $(cut -d- -f5 <<<"$ver") (Android 17) for the $MODEL ($dev), build $(cut -d- -f3 <<<"$ver")"
     echo "Security patch: $system_spl (system), $boot_spl (vendor). Stock Pixel firmware $firmware."
@@ -169,6 +201,8 @@ EOF
     echo "- Rooted? Before rebooting, install Magisk (or KernelSU) to the inactive slot, or root is gone after the update."
     if [ "$dev" = "yogi" ]; then
         echo "- Kernel: stock Google GKI (Linux 6.12)."
+    elif [ "$dev" = "cheetah" ]; then
+        echo "- Kernel: LineageOS's gs201 kernel (Linux 6.1), built from source with the ROM."
     else
         echo "- Kernel: Espada v3 (Linux 6.12.92) by Kevtrejo37 (CASS scheduler, Simple LMK, GrapheneOS zram fix; source: https://github.com/atrejokm301/espada-kernel)."
     fi
@@ -177,10 +211,10 @@ EOF
     echo "Device changes:"
     echo "=============================="
     last=$(cat "$DEST/LAST_DEVICE_COMMIT" 2>/dev/null || true)
-    if [ -n "$last" ] && git -C $TOP/device/google/$dev cat-file -e "$last" 2>/dev/null; then
-        git -C $TOP/device/google/$dev log --no-merges --format='%s' "$last..HEAD" | sed "s/^$dev: //; s/^/- /"
+    if [ -n "$last" ] && git -C $DEVTREE cat-file -e "$last" 2>/dev/null; then
+        git -C $DEVTREE log --no-merges --format='%s' "$last..$DEVHEAD" | sed "s/^$dev: //; s/^/- /"
     else
-        git -C $TOP/device/google/$dev log --no-merges --format='%s' -10 | sed "s/^$dev: //; s/^/- /"
+        git -C $DEVTREE log --no-merges --format='%s' -10 $DEVHEAD | sed "s/^$dev: //; s/^/- /"
     fi
     echo
     echo "ROM changes since the last build:"
@@ -196,5 +230,5 @@ export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME" GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EM
 git -C "$REPO" add "builds/$dev.json" "changelogs/$dev.txt"
 git -C "$REPO" commit -q -m "$dev: $NAME" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 git -C "$REPO" push -q origin cnb || fail "pushing the JSON failed"
-git -C $TOP/device/google/$dev rev-parse HEAD > "$DEST/LAST_DEVICE_COMMIT"
+git -C $DEVTREE rev-parse $DEVHEAD > "$DEST/LAST_DEVICE_COMMIT"
 echo "OTA_PUBLISHED $RAW/builds/$dev.json"
