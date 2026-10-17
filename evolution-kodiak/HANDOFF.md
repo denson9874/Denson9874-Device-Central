@@ -1654,6 +1654,35 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
   - **yogi:** Queued next in chain.
 
 
+## 2af. Pixel 7 Pro (cheetah) port and its place in the release schedule (2026-10-17)
+
+Daryl asked for Evolution X 17 on the Pixel 7 Pro from Evolution-X-Devices' `device_google_pantah`, added to the
+weekly release schedule. Everything is in `evolution-cheetah/` (README there has the details).
+
+- **Trees:** Evolution X's own `cnb` trees build it as-is: `device_google_pantah`, `device_google_gs201`,
+  `vendor_google_cheetah` (Git LFS from git.evolution-x.org), and LineageOS `pantah-kernels`.
+  - The kernel (6.1) is built by `build_kernel`.
+  - Our patches only set the unofficial maintainer and the Updater URL. `prepare.sh` reapplies them on every build,
+    along with the newest Google firmware.
+- **Unofficial:** official Android 16 maintainer nhansp; no official `cnb` cheetah builds yet. Same stance as husky
+  (2ab). If official cnb builds appear, drop patch 0002 and talk to the maintainer before publishing more.
+- **Release schedule:** `p11-routine.sh cheetah` and `p11-ota.sh cheetah` (Pixel 11 paths unchanged; a kodiak
+  `--preview` mock gives byte-identical output), plus a fifth Mac task, `evox-parity-cheetah`
+  (`evolution-cheetah/evox-parity-cheetah.SKILL.md`), scheduled after the four Pixel 11 tasks.
+- **PRs:** #6 (runner actions into `main`) and #7 (this port into `evolution/kodiak-port`), both drafts.
+- **Next, in order:**
+  1. Daryl merges #6.
+  2. The runner does `cheetah-setup`, `cheetah-firmware`, `cheetah-kernel`, `cheetah-build`, then `cheetah-verify`
+     (no upload).
+  3. After Sunday's Pixel 11 release has finished: `cheetah-install-routine`, which installs the shared scripts
+     (backups kept) and dry-runs them.
+  4. Daryl adds the Mac task, approves the first upload, and creates the XDA thread in the Pixel 7 Pro forum. Then
+     set cheetah's `FORUM` in `p11-ota.sh` to that thread.
+- **Not done on purpose:**
+  - Nothing has been installed on the server before Sunday's Pixel 11 release. The cheetah projects stay out of the
+    Pixel 11 runs' checkout and state.
+  - Nothing has been published.
+
 ## 3. Machines and access
 
 | What | Where |
