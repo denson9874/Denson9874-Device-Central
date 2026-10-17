@@ -16,6 +16,11 @@
 # text only: the lines around the error and that file's diff, never blobs);
 # bp-repair fixes one named file in a narrow, checked way and keeps a backup.
 #
+# local-commits prints the commits made on the server on top of repo projects
+# (cheetah's by default) as patches, so fixes made there by hand can go into
+# evolution-cheetah/patches before a repo sync drops them. Binary changes are
+# listed by name, never included.
+#
 # Never add an upload-artifact step: build output contains Google's
 # proprietary images, which must not leave the server. Logs only. `inspect`
 # prints policy excerpts, manifests and library lists, never file contents
@@ -55,6 +60,8 @@ on:
           bp-check: read-only: Android.bp files under device/ and vendor/ (and any
           named in the last build logs) that don't parse, with context and git
           state. bp-repair: fix the one Android.bp named in query (see query).
+          local-commits: read-only: commits on top of the manifest revision in the
+          repo projects named in query (default: cheetah's four), as patches.
         type: choice
         default: status
         options:
@@ -76,6 +83,7 @@ on:
           - cheetah-install-routine
           - bp-check
           - bp-repair
+          - local-commits
       tree_ref:
         description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak (sync, round) or evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, cheetah-install-routine) from
         type: string
@@ -89,7 +97,9 @@ on:
           xml files. bp-repair: 'restore <path>' (drop the file's uncommitted
           changes, when its committed version parses) or 'drop-comma <path>'
           (delete lone ',' lines the parser stops at); path relative to
-          ~/evolution, e.g. vendor/google/kodiak/Android.bp.
+          ~/evolution, e.g. vendor/google/kodiak/Android.bp. local-commits:
+          space-separated project paths under device/ or vendor/ (default:
+          cheetah's four projects).
         type: string
         default: ''
 
@@ -123,7 +133,7 @@ jobs:
           # this job, and the husky build too. Don't start on top of one.
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -542,3 +552,37 @@ jobs:
           git -C "$top" status --short -- "$rel"
           echo "bp-repair: $mode $f done, it parses now; the file as it was is in $bak on the server" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "next: bp-check, to confirm no other Android.bp blocks the build"
+
+      - name: Local commits
+        if: inputs.action == 'local-commits'
+        run: |
+          cd ~/evolution
+          read -r -a projects <<< "${QUERY:-device/google/pantah device/google/gs201 device/google/pantah-kernels vendor/google/cheetah}"
+          (( ${#projects[@]} > 0 && ${#projects[@]} <= 10 )) || { echo "::error::query needs 1-10 project paths"; exit 1; }
+          for p in "${projects[@]}"; do
+            if [[ ! "$p" =~ ^(device|vendor)/[A-Za-z0-9._/-]+$ || "$p" == *..* || ! -e "$p/.git" ]] \
+               || [[ "$(realpath "$p")" != "$(pwd -P)"/* ]]; then
+              echo "::error::bad project path: $p (a git project under device/ or vendor/)"; exit 1
+            fi
+          done
+          for p in "${projects[@]}"; do
+            # repo keeps the manifest revision of each project in refs/remotes/m/<branch>
+            base="$(git -C "$p" for-each-ref --count=1 --format='%(refname)' refs/remotes/m/)"
+            echo; echo "=================== $p"
+            if [[ -z "$base" ]]; then
+              echo "(not a repo project: no refs/remotes/m/; last commits)"
+              git -C "$p" log -5 --format='%h %ad %an  %s' --date=iso
+              continue
+            fi
+            echo "--- commits on HEAD that aren't in ${base#refs/remotes/} ($(git -C "$p" rev-parse --short "$base"))"
+            git -C "$p" log --format='%h %ad %an  %s' --date=iso "$base..HEAD"
+            echo "--- uncommitted changes"
+            git -C "$p" status --short | head -30 || true
+            n="$(git -C "$p" rev-list --count "$base..HEAD")"
+            (( n > 0 )) || continue
+            echo "--- the $n commit(s) as patches (binary changes are named, not included)"
+            git -C "$p" format-patch --stdout --no-binary "$base..HEAD" > "$RUNNER_TEMP/lc.patch"
+            lines=$(wc -l < "$RUNNER_TEMP/lc.patch")
+            head -6000 "$RUNNER_TEMP/lc.patch"
+            (( lines <= 6000 )) || echo "(cut after 6000 of $lines lines)"
+          done
