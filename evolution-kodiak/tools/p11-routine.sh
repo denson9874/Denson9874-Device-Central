@@ -1,8 +1,8 @@
 #!/bin/bash
-# Weekly parity routine for one Pixel 11 device: keep its build in step with
-# official Evolution X (cnb).
+# Weekly parity routine for one device (the Pixel 11 family, and the Pixel 7 Pro
+# from evolution-cheetah/): keep its build in step with official Evolution X (cnb).
 #
-#   p11-routine.sh <kodiak|grizzly|cubs|yogi> [--dry-run] [--force] [--no-upload] [--mark-current]
+#   p11-routine.sh <kodiak|grizzly|cubs|yogi|cheetah> [--dry-run] [--force] [--no-upload] [--mark-current]
 #
 #   1. Takes the tree lock, so the three weekly routines (and anything else using
 #      the lock) run one at a time, and waits for any build started by hand.
@@ -43,7 +43,8 @@ case $dev in
     grizzly) BUILD=~/grizzly-images.sh;        BLOG=~/grizzly-build.log;        PACK=~/grizzly-pack.sh ;;
     cubs)    BUILD=~/cubs-images.sh;           BLOG=~/cubs-build.log;           PACK=~/cubs-pack.sh ;;
     yogi)    BUILD=~/yogi-images.sh;           BLOG=~/yogi-build.log;           PACK=~/yogi-pack.sh ;;
-    *) echo "usage: p11-routine.sh <kodiak|grizzly|cubs|yogi> [--dry-run] [--force] [--no-upload] [--mark-current]" >&2; exit 2 ;;
+    cheetah) BUILD=~/cheetah-images.sh;        BLOG=~/cheetah-build.log;        PACK=~/cheetah-pack.sh ;;
+    *) echo "usage: p11-routine.sh <kodiak|grizzly|cubs|yogi|cheetah> [--dry-run] [--force] [--no-upload] [--mark-current]" >&2; exit 2 ;;
 esac
 
 TOP=~/evolution
@@ -52,8 +53,16 @@ LOG=~/routine-logs/$dev-$(date +%Y%m%d-%H%M%S).log
 exec > >(tee -a "$LOG") 2>&1
 finish() { echo "ROUTINE_RESULT=$1 device=$dev log=$LOG"; exit "${2:-0}"; }
 fail() { echo "FAIL: $*"; finish FAILED 1; }
-# Projects that don't go into a Pixel 11 build (the husky port's local manifest)
-SKIP='^(device/google/(husky|shusky|shusky-kernels|zuma)|vendor/google/husky)( |$)'
+# Projects outside this device's build: the husky port's local manifest, and for the
+# Pixel 11 devices the cheetah port's (evolution-cheetah/local_manifests/cheetah.xml), whose
+# projects only cheetah runs check out (they carry its locally committed patches and firmware).
+HUSKY='device/google/(husky|shusky|shusky-kernels|zuma)|vendor/google/husky'
+CHEETAH_PROJECTS='device/google/pantah device/google/gs201 device/google/pantah-kernels vendor/google/cheetah'
+if [ "$dev" = cheetah ]; then
+    SKIP="^($HUSKY)( |\$)"
+else
+    SKIP="^($HUSKY|device/google/(pantah|gs201|pantah-kernels)|vendor/google/cheetah)( |\$)"
+fi
 
 echo "== $(date '+%F %T %Z') $dev routine (dry-run=$DRY force=$FORCE upload=$UPLOAD mark=$MARK no-sync=$NOSYNC)"
 
@@ -94,10 +103,20 @@ else
     repo sync -c -l -j8 --fail-fast "${projects[@]}" 9>&- || fail "repo sync (checkout) failed"
     date +%s > ~/.evolution-last-sync
 fi
+# The Pixel 11 runs don't check out cheetah's projects: do it here, from the last fetch,
+# whether or not this run fetched. That also drops the previous run's local commits.
+if [ "$dev" = cheetah ] && [ $DRY = 0 ] && [ $MARK = 0 ] && [ $NOSYNC = 0 ]; then
+    echo "== repo sync: check out the cheetah projects"
+    repo sync -c -l -j4 $CHEETAH_PROJECTS 9>&- || fail "repo sync (cheetah checkout) failed"
+fi
 # Our patches (build/make, frameworks/base) go into every build, whether or not this
 # run synced. A sync drops them; apply-patches.sh skips the ones already applied.
 if [ $DRY = 0 ] && [ $MARK = 0 ]; then
     device/google/kodiak/apply-patches.sh "$TOP" 9>&- || fail "apply-patches.sh failed: upstream may conflict with device/google/kodiak/patches"
+    if [ "$dev" = cheetah ]; then
+        # Our pantah patches and the newest cached Google firmware (local commits)
+        ~/evolution-cheetah/prepare.sh "$TOP" 9>&- || fail "evolution-cheetah/prepare.sh failed"
+    fi
 fi
 
 # 3. State: content of every project that goes into the build, plus our trees
@@ -105,7 +124,14 @@ echo "== computing the source state"
 trees=$(mktemp); trap 'rm -f "$trees"' EXIT
 repo forall -c 'echo "$REPO_PATH $(git rev-parse HEAD^{tree})"' 2>/dev/null | grep -Ev "$SKIP" | sort > "$trees"
 [ -s "$trees" ] || fail "repo forall listed no projects"
-for p in device/google/$dev vendor/google/$dev vendor/google/$dev-images vendor/evolution-priv/keys; do
+if [ "$dev" = cheetah ]; then
+    # Evolution's device and vendor trees are repo projects (listed above); our part is the kit
+    ours="vendor/evolution-priv/keys"
+    echo "evolution-cheetah $(cd ~/evolution-cheetah && find . -type f ! -path './.git/*' -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16)" >> "$trees"
+else
+    ours="device/google/$dev vendor/google/$dev vendor/google/$dev-images vendor/evolution-priv/keys"
+fi
+for p in $ours; do
     [ -d "$p/.git" ] || fail "$p is not a git tree"
     echo "$p $(git -C "$p" rev-parse 'HEAD^{tree}') dirty:$(git -C "$p" status --porcelain | sha256sum | cut -c1-12)" >> "$trees"
 done
@@ -131,7 +157,7 @@ fi
 [ $DRY = 1 ] && { echo "== would build $dev, verify, and $([ $UPLOAD = 1 ] && echo upload || echo "not upload")"; finish DRYRUN; }
 
 # 4. Kernel and build
-if [ "$dev" != "yogi" ] && [ -x ~/espada-fetch.sh ]; then
+if [[ $dev =~ ^(kodiak|grizzly|cubs)$ ]] && [ -x ~/espada-fetch.sh ]; then
     echo "== espada kernel: fetch & verify"
     ~/espada-fetch.sh "$dev" || echo "== espada fetch failed or unavailable, falling back to stock kernel"
 fi
