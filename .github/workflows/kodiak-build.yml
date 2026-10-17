@@ -5,6 +5,11 @@
 # blobs, build images, check the SELinux policy against the stock vendor and
 # pack the fastboot zip. Flashing stays manual, on the Mac.
 #
+# The cheetah-* actions do the same for the Pixel 7 Pro (evolution-cheetah/ in
+# tree_ref): set up its trees, fetch Google's firmware, build, verify, and install
+# the weekly-routine scripts. They take ~/.evolution-tree.lock, like the weekly
+# routines, and never upload anything (publishing is p11-routine.sh's job).
+#
 # Never add an upload-artifact step: build output contains Google's
 # proprietary images, which must not leave the server. Logs only. `inspect`
 # prints policy excerpts, manifests and library lists, never file contents
@@ -35,6 +40,12 @@ on:
           check-sepolicy: policy check only. imgzip: fastboot zip.
           round: sync, extract, images, check-sepolicy, imgzip. ota: m evolution.
           inspect: read-only lookups in the stock dump (see query).
+          cheetah-status: read-only. cheetah-setup: kit, scripts, local manifest,
+          repo sync of cheetah's projects, prepare.sh. cheetah-firmware: newest
+          Google factory bootloader/radio. cheetah-kernel: build_kernel only.
+          cheetah-build: full build. cheetah-verify: cheetah-pack.sh and p11-ota.sh
+          without uploading. cheetah-install-routine: install tree_ref's
+          p11-routine.sh and p11-ota.sh (backups kept), then dry-run them.
         type: choice
         default: status
         options:
@@ -47,8 +58,15 @@ on:
           - round
           - ota
           - inspect
+          - cheetah-status
+          - cheetah-setup
+          - cheetah-firmware
+          - cheetah-kernel
+          - cheetah-build
+          - cheetah-verify
+          - cheetah-install-routine
       tree_ref:
-        description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak from (sync and round)
+        description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak (sync, round) or evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, cheetah-install-routine) from
         type: string
         default: evolution/kodiak-port
       query:
@@ -91,7 +109,7 @@ jobs:
           # this job, and the husky build too. Don't start on top of one.
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ "$ACTION" != status && "$ACTION" != inspect ]]; then
+            if [[ "$ACTION" != status && "$ACTION" != inspect && "$ACTION" != cheetah-status ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -264,3 +282,100 @@ jobs:
           ~/kodiak-imgzip.sh ~/evolution/out/target/product/kodiak \
             ~/android-dt/firmware/image-kodiak-cd1a.261005.003.zip "$zip"
           echo "Image zip on the server: \`$zip\` (sha256 in \`$zip.sha256\`). Copy it to the Mac with scp; it never leaves the server otherwise." | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # ---- Pixel 7 Pro (cheetah): evolution-cheetah/README.md -------------------
+
+      - name: Cheetah status
+        if: inputs.action == 'cheetah-status'
+        run: |
+          cd ~/evolution
+          echo "== tree lock"; if flock -n ~/.evolution-tree.lock true; then echo free; else echo "held (a routine or build is running)"; fi
+          echo "== kit"; ls -l ~/evolution-cheetah/prepare.sh ~/cheetah-images.sh ~/cheetah-pack.sh 2>&1 || true
+          echo "== local manifest"; ls -l .repo/local_manifests/ 2>&1
+          for p in device/google/pantah device/google/gs201 device/google/pantah-kernels vendor/google/cheetah; do
+            echo "== $p"; git -C $p log --oneline -4 2>/dev/null || echo "(not synced)"
+          done
+          echo "== firmware"; echo "cached: $(cat ~/android-dt/firmware/cheetah/CURRENT 2>/dev/null || echo none)"
+          echo "in vendor tree: $(cat vendor/google/cheetah/FIRMWARE_SOURCE 2>/dev/null || echo "vendor repo default")"
+          echo "== kernel"; ls -la device/google/pantah-kernels/6.1 2>/dev/null | head -8 || true
+          echo "== last build log"; grep -E 'BUILD_EXIT|#### |FAILED:' ~/cheetah-build.log 2>/dev/null | tail -5 || true
+          echo "== releases"; ls -lh ~/releases/cheetah 2>/dev/null || echo none
+          echo "== routine logs"; ls -t ~/routine-logs/cheetah-* 2>/dev/null | head -3 || true
+
+      - name: Check out evolution-cheetah and the routine scripts
+        if: contains(fromJSON('["cheetah-setup","cheetah-verify","cheetah-install-routine"]'), inputs.action)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tree_ref }}
+          sparse-checkout: |
+            evolution-cheetah
+            evolution-kodiak/tools
+          fetch-depth: 1
+
+      - name: Cheetah setup
+        if: inputs.action == 'cheetah-setup'
+        run: |
+          exec 9>~/.evolution-tree.lock
+          flock -n 9 || { echo "::error::the tree lock is held (a routine or build is running)"; exit 1; }
+          git lfs version || { echo "::error::git-lfs isn't installed (vendor_google_cheetah needs it)"; exit 1; }
+          sha="$(git -C "$GITHUB_WORKSPACE" rev-parse --short HEAD)"
+          rsync -a --delete --exclude .git "$GITHUB_WORKSPACE/evolution-cheetah/" ~/evolution-cheetah/
+          echo "$TREE_REF@$sha" > ~/evolution-cheetah/INSTALLED_FROM
+          install -m 755 ~/evolution-cheetah/tools/cheetah-images.sh ~/evolution-cheetah/tools/cheetah-pack.sh ~/
+          mkdir -p ~/evolution/.repo/local_manifests
+          install -m 644 ~/evolution-cheetah/local_manifests/cheetah.xml ~/evolution/.repo/local_manifests/cheetah.xml
+          cd ~/evolution
+          projects="device/google/pantah device/google/gs201 device/google/pantah-kernels vendor/google/cheetah"
+          # Only cheetah's projects; leave the manifest checkout (when repo allows) and everything else alone.
+          nmu=; help="$(repo sync --help 2>/dev/null || true)"; [[ "$help" == *--nmu* ]] && nmu=--nmu
+          repo sync -c -j4 --no-tags --no-clone-bundle $nmu $projects 9>&- \
+            || repo sync -c -j2 --no-tags --no-clone-bundle $nmu $projects 9>&-
+          ~/evolution-cheetah/prepare.sh ~/evolution 9>&-
+          for p in $projects; do echo "== $p"; git -C $p log --oneline -3; done
+          ls -la vendor/google/cheetah/radio; du -sh vendor/google/cheetah
+          echo "cheetah kit $TREE_REF@$sha installed; projects synced" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Cheetah firmware
+        if: inputs.action == 'cheetah-firmware'
+        run: |
+          exec 9>~/.evolution-tree.lock
+          flock -n 9 || { echo "::error::the tree lock is held (a routine or build is running)"; exit 1; }
+          ~/evolution-cheetah/fetch-firmware.sh 9>&-
+          ~/evolution-cheetah/prepare.sh ~/evolution 9>&-
+
+      - name: Cheetah build
+        if: inputs.action == 'cheetah-kernel' || inputs.action == 'cheetah-build'
+        run: |
+          exec 9>~/.evolution-tree.lock
+          flock -n 9 || { echo "::error::the tree lock is held (a routine or build is running)"; exit 1; }
+          k=0; [[ "$ACTION" == cheetah-kernel ]] && k=1
+          KERNEL_ONLY=$k ~/cheetah-images.sh > ~/cheetah-build.log 2>&1 9>&- || true
+          grep -E 'FAILED:|error:|build_kernel failed|prepare.sh failed' ~/cheetah-build.log | head -40 || true
+          tail -40 ~/cheetah-build.log
+          grep -q '^BUILD_EXIT=0$' ~/cheetah-build.log || { echo "::error::build failed (log: ~/cheetah-build.log)"; exit 1; }
+          ls -lh ~/evolution/out/target/product/cheetah/EvolutionX-*.zip 2>/dev/null | tail -2 || true
+
+      - name: Cheetah verify (no upload)
+        if: inputs.action == 'cheetah-verify'
+        run: |
+          ~/cheetah-pack.sh
+          bash "$GITHUB_WORKSPACE/evolution-kodiak/tools/p11-ota.sh" cheetah --preview
+
+      - name: Install the routine scripts
+        if: inputs.action == 'cheetah-install-routine'
+        run: |
+          exec 9>~/.evolution-tree.lock
+          flock -n 9 || { echo "::error::the tree lock is held (a routine or build is running)"; exit 1; }
+          src="$GITHUB_WORKSPACE/evolution-kodiak/tools"
+          for f in p11-routine.sh p11-ota.sh; do bash -n "$src/$f"; done
+          stamp=$(date +%Y%m%d-%H%M%S)
+          for f in p11-routine.sh p11-ota.sh; do
+            cp -p ~/$f ~/$f.bak-$stamp
+            install -m 755 "$src/$f" ~/$f
+            echo "installed ~/$f (previous: ~/$f.bak-$stamp)"
+          done
+          exec 9>&-   # the dry runs take the lock themselves
+          for d in kodiak cheetah; do
+            echo "== dry run: $d"
+            ~/p11-routine.sh $d --dry-run 2>&1 | tail -8
+          done
