@@ -10,41 +10,54 @@
 set -euo pipefail
 dev=cheetah
 dir=~/android-dt/firmware/$dev; mkdir -p "$dir"
-page=$(mktemp); trap 'rm -f "$page"' EXIT
-final=$(curl -sSfL --retry 3 -o "$page" -w '%{url_effective}' https://developers.google.com/android/images)
 # Newest generic (not carrier-specific) Android 17 release. Rows look like
 #   <tr id="cheetahcp3a.261005.005"><td>17.0.0 (CP3A.261005.005, Oct 2026)</td>
 #   <td><a href="https://dl.google.com/.../cheetah-cp3a.261005.005-factory-1a2b3c4d.zip">Link</a></td><td>sha256</td>
 # The build id comes from the URL; carrier builds have a suffix (.a1) or a third
-# field in the description ("..., Oct 2026, Verizon").
-read -r url sha build < <(python3 -I - "$page" "$dev" "$final" <<'PY'
-import html as H, re, sys
-page, dev, final = open(sys.argv[1], encoding="utf-8", errors="replace").read(), sys.argv[2], sys.argv[3]
-best = None
-rows = re.findall(r'<tr[^>]*id="%s[^"]*"[^>]*>(.*?)</tr>' % re.escape(dev), page, re.S | re.I)
-for row in rows:
-    url = re.search(r'href="(https://dl\.google\.com/dl/android/aosp/%s-([a-z0-9.]+)-factory-[0-9a-f]{8}\.zip)"' % re.escape(dev), row)
-    sha = re.search(r"\b[0-9a-f]{64}\b", row)
-    desc = " ".join(H.unescape(re.sub(r"<[^>]+>", " ", row.split("</td>")[0])).split())
-    if not (url and sha) or not re.fullmatch(r"[a-z0-9]{4}\.\d{6}\.\d{3}", url.group(2)):
-        continue
-    paren = re.search(r"\(([^)]*)\)", desc)
-    if not re.match(r"17(\.\d+)*\b", desc) or not paren or len(paren.group(1).split(",")) != 2:
-        continue
-    best = (url.group(1), sha.group(0), url.group(2))   # the page lists oldest first
+# field in the description ("..., Oct 2026, Verizon"). The device tables may sit on
+# the main page or on a per-device page it links to; both are tried.
+read -r url sha build < <(python3 -I - "$dev" <<'PY'
+import html as H, re, sys, urllib.parse, urllib.request
+dev = sys.argv[1]
+MAIN = "https://developers.google.com/android/images"
+def get(u):
+    req = urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return r.geturl(), r.read().decode("utf-8", "replace")
+def parse(page):
+    best, rows = None, re.findall(r'<tr[^>]*id="%s[^"]*"[^>]*>(.*?)</tr>' % re.escape(dev), page, re.S | re.I)
+    for row in rows:
+        url = re.search(r'href="(https://dl\.google\.com/dl/android/aosp/%s-([a-z0-9.]+)-factory-[0-9a-f]{8}\.zip)"' % re.escape(dev), row)
+        sha = re.search(r"\b[0-9a-f]{64}\b", row)
+        desc = " ".join(H.unescape(re.sub(r"<[^>]+>", " ", row.split("</td>")[0])).split())
+        if not (url and sha) or not re.fullmatch(r"[a-z0-9]{4}\.\d{6}\.\d{3}", url.group(2)):
+            continue
+        paren = re.search(r"\(([^)]*)\)", desc)
+        if not re.match(r"17(\.\d+)*\b", desc) or not paren or len(paren.group(1).split(",")) != 2:
+            continue
+        best = (url.group(1), sha.group(0), url.group(2))   # oldest first
+    return best, rows
+tried = []
+final, page = get(MAIN); tried.append((final, page))
+best, rows = parse(page)
+links = sorted({urllib.parse.urljoin(final, h) for h in re.findall(r'href="([^"#]+)"', page) if "/android/images" in h})
+if not best:
+    for link in [l for l in links if re.search(r"%s|pixel-?7-?pro|pantah" % dev, l, re.I)][:4]:
+        u, p = get(link); tried.append((u, p))
+        best, rows = parse(p)
+        if best:
+            break
 if best:
     print(*best)
     sys.exit(0)
-# Say what the page was, so a layout change or a consent redirect is easy to see
-title = re.search(r"<title>(.*?)</title>", page, re.S | re.I)
 print("no generic Android 17 %s factory image found" % dev, file=sys.stderr)
-print("  fetched %s (%d bytes), title: %s" % (final, len(page), title.group(1).strip()[:80] if title else "-"), file=sys.stderr)
-print("  %d rows with id=%s*, %d mentions of %s-" % (len(rows), dev, page.count(dev + "-"), dev), file=sys.stderr)
-for row in rows[-2:]:
-    print("  last rows: " + " ".join(row.split())[:400], file=sys.stderr)
-if not rows:
-    i = page.find(dev)
-    print("  first mention: " + (" ".join(page[max(0, i - 200):i + 300].split()) if i >= 0 else "none"), file=sys.stderr)
+for u, p in tried:
+    t = re.search(r"<title>(.*?)</title>", p, re.S | re.I)
+    print("  %s: %d bytes, title %r, %d mentions of %s" % (u, len(p), H.unescape(t.group(1)).strip()[:60] if t else "-", p.count(dev), dev), file=sys.stderr)
+print("  /android/images links on the main page (%d): %s" % (len(links), " ".join(links[:40])), file=sys.stderr)
+last = tried[-1][1]; i = last.find(dev)
+if i >= 0:
+    print("  first mention: " + " ".join(last[max(0, i - 300):i + 500].split()), file=sys.stderr)
 sys.exit(1)
 PY
 )
