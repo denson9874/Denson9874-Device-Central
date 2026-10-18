@@ -1,0 +1,20 @@
+// Basic Call Recorder (GPL-3.0-only), https://github.com/chenxiaolong/BCR
+// BCR.apk is the unmodified upstream release APK, fetched and verified by tools/bcr-fetch.sh.
+android_app_import {
+    name: "BCR",
+    apk: "BCR.apk",
+    // targetSdkVersion 37: the build requires preprocessed for presigned APKs targeting 30+, and then keeps
+    // the APK byte-for-byte (its v2/v3 signature stays valid).
+    preprocessed: true,
+    presigned: true,
+    privileged: true,
+    system_ext_specific: true,
+    required: ["privapp-permissions-com.chiller3.bcr.xml"],
+}
+
+prebuilt_etc {
+    name: "privapp-permissions-com.chiller3.bcr.xml",
+    src: "privapp-permissions-com.chiller3.bcr.xml",
+    sub_dir: "permissions",
+    system_ext_specific: true,
+}
