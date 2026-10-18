@@ -14,6 +14,8 @@ What's new upstream:
 • Emergency information: picking a photo works without a crop app
 • Translation updates across Evolution X and LineageOS apps
 
+⚠️ **Known issue:** a user has reported that Now Playing won't turn on in this build. It's being looked into.
+
 Unchanged: Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 on kodiak, grizzly and cubs (yogi stays on stock Google GKI), Extreme Charging, the charging screensaver, "Use device MAC" for Wi-Fi networks that filter by MAC address (since the 10-16 build), and stock CD1A.261005.003 firmware (security patch 2026-10-05).
 
 📱 **Pixel 11 Pro XL (kodiak)**: `EvolutionX-17.0-20261018-kodiak-12.3-Unofficial-fastboot.zip`
