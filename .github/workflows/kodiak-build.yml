@@ -54,8 +54,8 @@ on:
           cheetah-status: read-only. cheetah-setup: kit, scripts, local manifest,
           repo sync of cheetah's projects, prepare.sh. cheetah-firmware: newest
           Google factory bootloader/radio. cheetah-kernel: build_kernel only.
-          cheetah-build: full build. cheetah-verify: cheetah-pack.sh and p11-ota.sh
-          without uploading. cheetah-install-routine: install tree_ref's
+          cheetah-build: full build. cheetah-verify: tree_ref's cheetah-pack.sh and
+          p11-ota.sh, without uploading. cheetah-install-routine: install tree_ref's
           p11-routine.sh and p11-ota.sh (backups kept), then dry-run them.
           bp-check: read-only: Android.bp files under device/ and vendor/ (and any
           named in the last build logs) that don't parse, with context and git
@@ -383,7 +383,8 @@ jobs:
       - name: Cheetah verify (no upload)
         if: inputs.action == 'cheetah-verify'
         run: |
-          ~/cheetah-pack.sh
+          # tree_ref's copies, so a fixed check can run without cheetah-setup's repo sync
+          bash "$GITHUB_WORKSPACE/evolution-cheetah/tools/cheetah-pack.sh"
           bash "$GITHUB_WORKSPACE/evolution-kodiak/tools/p11-ota.sh" cheetah --preview
 
       - name: Install the routine scripts
