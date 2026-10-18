@@ -8,7 +8,7 @@
 #      the lock) run one at a time, and waits for any build started by hand.
 #   2. Runs `repo sync` unless the tree was synced in the last 6 hours (the first
 #      routine of the day syncs; the others build from the same sync), skipping
-#      the husky port's projects. Then (synced or not) applies our build/make and
+#      the husky and cheetah ports' projects. Then (synced or not) applies our build/make and
 #      frameworks/base patches (apply-patches.sh, idempotent).
 #   3. Skips the build when nothing the device depends on changed since its last
 #      published build. The state is the content (git tree hash) of every repo
@@ -56,8 +56,8 @@ LOG=~/routine-logs/$dev-$(date +%Y%m%d-%H%M%S).log
 exec > >(tee -a "$LOG") 2>&1
 finish() { echo "ROUTINE_RESULT=$1 device=$dev log=$LOG"; exit "${2:-0}"; }
 fail() { echo "FAIL: $*"; finish FAILED 1; }
-# Projects that don't go into a Pixel 11 build (the husky port's local manifest)
-SKIP='^(device/google/(husky|shusky|shusky-kernels|zuma)|vendor/google/husky)( |$)'
+# Projects that don't go into a Pixel 11 build (the husky and cheetah ports' local manifests)
+SKIP='^(device/google/(husky|shusky|shusky-kernels|zuma|pantah|pantah-kernels|gs201)|vendor/google/(husky|cheetah))( |$)'
 
 echo "== $(date '+%F %T %Z') $dev routine (dry-run=$DRY force=$FORCE upload=$UPLOAD mark=$MARK no-sync=$NOSYNC)"
 
@@ -90,8 +90,9 @@ else
     repo sync -c -n -j8 --no-tags --no-clone-bundle --optimized-fetch 9>&- \
         || { echo "== fetch failed; retrying with -j4"; repo sync -c -n -j4 --no-tags --no-clone-bundle 9>&-; } \
         || fail "repo sync (fetch) failed"
-    # Then check out every project except the husky port's, which has local work
-    # in progress (uncommitted radio images) that a checkout would refuse to touch.
+    # Then check out every project except the husky and cheetah ports', which have local
+    # work in progress (husky's uncommitted radio images, a half-applied `git am` in
+    # cheetah's gs201) that a checkout would refuse to touch.
     mapfile -t projects < <(repo list -p 2>/dev/null | grep -Ev "$SKIP")
     [ ${#projects[@]} -gt 1000 ] || fail "repo list returned only ${#projects[@]} projects"
     echo "== repo sync: check out ${#projects[@]} projects"
