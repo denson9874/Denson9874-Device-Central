@@ -1707,15 +1707,33 @@ weekly release schedule. Everything is in `evolution-cheetah/` (README there has
      14 XMLs, and gs201's `default-permissions.xml`. Fixed by vendor 0001 and gs201 0002; the check then found none.
 - **First good build (2026-10-18, by hand, `~/cheetah-images.sh`):** `BUILD_EXIT=0` in 1:29:08.
   `out/target/product/cheetah/EvolutionX-17.0-20261018-cheetah-12.3-Unofficial.zip` (3.5 GB, SHA-256
-  `29a81cc6f5dff57bf0eb51939112e31d3189f5ee0ea33c2bd0234976a085b3c9`). Not packed, verified, uploaded or booted.
+  `29a81cc6f5dff57bf0eb51939112e31d3189f5ee0ea33c2bd0234976a085b3c9`).
+- **Verified (2026-10-18 04:31 UTC, `cheetah-verify` with `tree_ref` = this branch, no upload):**
+  - `cheetah-pack.sh`: cheetah / Pixel 7 Pro / `board=cheetah`; maintainer and Updater patches in, the overlay points
+    at `denson9874/evolution_ota`; the radio images match firmware CP3A.261005.002.A1; the fastboot zip has 19 files,
+    all identical to out/, unrooted; system patch level 2026-10-01.
+  - `p11-ota.sh cheetah --preview`: `OTA_VERIFIED` (built by this build, signed with our key, payload carries every
+    firmware and ROM partition); patch levels system 2026-10-01, vendor/boot 2026-07-05 (the vendor repo's
+    CP2A.260705.006 blobs); firmware CP3A.261005.002.A1. Updater JSON and changelog previews look right (forum
+    still the SourceForge folder).
+  - Two script fixes it took: `cheetah-pack.sh` looked for the overlay in a module-named folder (an RRO installs as
+    `product/overlay/<name>.apk`), and `p11-ota.sh` required target-files `META/ab_partitions.txt`, which this tree
+    doesn't leave extracted (now: the required firmware + ROM list, plus the build's list when it's there).
+  - Not booted, not uploaded.
+- **Unreleased zips to delete:** the two verify runs before `cheetah-pack.sh` learned `check/` left
+  `~/releases/cheetah/EvolutionX-17.0-20261018-cheetah-12.3-Unofficial-UNTESTED{,-r2}-fastboot.zip` (+ `.sha256`,
+  7.5 GB each) in the release folder. Delete them before the first release, or it is named `-r3` and the Mac task
+  lists them. Checks now write one copy to `~/releases/cheetah/check/`; only `--upload` writes to the release folder.
 - **Hand builds under the tree lock:** use `flock -o ~/.evolution-tree.lock ~/cheetah-images.sh`. Without `-o`,
   `build_kernel`'s Bazel server inherits the lock's file descriptor and keeps holding it after the build exits,
   so the next build or `p11-routine.sh` waits on it. (`p11-routine.sh` already closes it for children with `9>&-`.)
 - **Next, in order:**
   1. Done: Daryl merged #6.
-  2. Build done by hand (above). Still to run: `cheetah-verify` (no upload). The server's `~/evolution-cheetah` patches
-     and README were copied by hand to match this branch; its `INSTALLED_FROM` still says `a821da4` and `~/cheetah-pack.sh`
-     predates `f31e0cb`. `cheetah-setup` with `tree_ref` = this branch reinstalls all of it, all six patches included.
+  2. Done: build (by hand) and `cheetah-verify` (above). Still to run: `cheetah-setup` with `tree_ref` = this branch.
+     The server's `~/evolution-cheetah` patches and README were copied by hand; its `INSTALLED_FROM` still says
+     `a821da4` and `~/cheetah-pack.sh` predates the fixes above. Setup reinstalls the kit and syncs cheetah's projects,
+     which drops the hand-made commits; `prepare.sh` then applies the six kit patches (same content: the kit's
+     patches reproduce the server commits' result blobs exactly) and the firmware again.
   3. After Sunday's Pixel 11 release has finished: `cheetah-install-routine`, which installs the shared scripts
      (backups kept) and dry-runs them.
   4. Daryl adds the Mac task, approves the first upload, and creates the XDA thread in the Pixel 7 Pro forum. Then

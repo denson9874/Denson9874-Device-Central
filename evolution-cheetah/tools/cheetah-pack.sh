@@ -2,8 +2,8 @@
 # Verify a cheetah build (cheetah-images.sh) offline and pack it as a
 # `fastboot update` zip. Refuses to upload if any check fails.
 #
-#   cheetah-pack.sh            # verify + pack
-#   cheetah-pack.sh --upload   # verify + pack + upload to SourceForge (cheetah/17)
+#   cheetah-pack.sh            # verify + pack into ~/releases/cheetah/check (replaced each time)
+#   cheetah-pack.sh --upload   # verify + pack into ~/releases/cheetah + upload to SourceForge (cheetah/17)
 #
 # The zip holds what out/fastboot-info.txt flashes (ROM partitions and
 # super_empty), not the bootloader and radio: like the Pixel 11 zips, users
@@ -17,15 +17,22 @@ H=out/host/linux-x86/bin
 V=vendor/google/cheetah
 # The build's own name, e.g. EvolutionX-17.0-20261018-cheetah-12.3-Unofficial
 NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)-UNTESTED-fastboot.zip
-DEST=~/releases/cheetah; mkdir -p $DEST
+DEST=~/releases/cheetah
+# A check (no --upload) isn't a release: keep one copy aside, out of the release folder
+[ "$MODE" = "--upload" ] || DEST=~/releases/cheetah/check
+mkdir -p $DEST
 SF_USER=daryldenson0405
 SF_DIR=/home/frs/project/denson9874-s-user-builds/cheetah/17
 fail() { echo "FAIL: $*" >&2; exit 1; }
 [[ $NAME == EvolutionX-*-cheetah-* ]] || fail "can't read ro.evolution.build.version from $O"
-# A second build on the same day gets -r2, -r3...: a released file name (and
+# A second release on the same day gets -r2, -r3...: a released file name (and
 # its posted SHA-256) must never be overwritten.
-base=${NAME%-fastboot.zip}; r=2
-while [ -e "$DEST/$NAME" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
+if [ "$MODE" = "--upload" ]; then
+    base=${NAME%-fastboot.zip}; r=2
+    while [ -e "$DEST/$NAME" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
+else
+    rm -f "$DEST"/*-fastboot.zip "$DEST"/*-fastboot.zip.sha256
+fi
 ZIP=$DEST/$NAME
 
 pgrep -x soong_ui >/dev/null && fail "a build is running"
