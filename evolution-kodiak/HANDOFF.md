@@ -4,7 +4,7 @@ Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
 > **Current state (2026-10-16): read section 2af first**, then 2ae, 2ad, 2ac, 2ab, 2aa, 2z, 2y, 2x, and 2w.
-> - **Daily Community Review & Sunday Release Pipeline:** Community review suite (`tools/community_monitor/`) reads Telegram feedback (`@ExpressiveLauncherFeedback`, `@ExpressiveGroup`) via Bot API or the desktop bridge and the XDA threads (#4804712, #4804723, #4804826, #4805239) via Playwright or Chrome Canary. Backlog in `COMMUNITY_TRIAGE.md`, reply drafts in `evolution-kodiak/community/replies/`, and community fixes go into the Sunday changelog (`evolution-kodiak/tools/community_release_notes.py`, called by `p11-routine.sh`). **Not deployed to the server and not scheduled yet** (see 2af).
+> - **Daily Community Review & Sunday Release Pipeline:** Community review suite (`tools/community_monitor/`) reads Telegram feedback (`@ExpressiveLauncherFeedback`, `@ExpressiveGroup`) via Bot API or the desktop bridge and the XDA threads (#4804712, #4804723, #4804826, #4805239) via Playwright or Chrome Canary. Backlog in `COMMUNITY_TRIAGE.md`, reply drafts in `evolution-kodiak/community/replies/`, and community fixes go into the Sunday changelog (`evolution-kodiak/tools/community_release_notes.py`, called by `p11-routine.sh`). Deployed to the server 2026-10-18; the daily review isn't scheduled yet (see 2af).
 > - **Wi-Fi MAC Randomization & Capabilities Parity Restored:** Generated `PixelWifiOverlay2026` static runtime resource overlays across all 4 Pixel 11 devices (`kodiak`, `grizzly`, `cubs`, `yogi`), targeting `com.android.wifi.resources`. Enabled `config_wifi_connected_mac_randomization_supported = true` (unblocking "Use device MAC" in network details and Wi-Fi connect dialogs for MAC-filtered networks), SoftAP/P2P randomization, and full stock 2026 Wi-Fi capabilities (including BCM4383 specifics for cubs). Resolved Soong build conflicts by dropping duplicate prebuilt targets already built by AOSP (`android.software.angle.xml`, `SatelliteClient`, `android.telephony.satellite.xml`). Verified Soong compilation and 100% OK offline sepolicy compilation.
 > - **Pixel Features Restored Across Pixel 11 Family:** All proprietary Google apps and Pixel feature XMLs/overlays previously omitted for official maintainership rules (SatelliteGateway & client, AICore, PixelAI/Screenshots, PixelSense/Magic Cue, CreativeAssistant, AmbientStreaming, Now Playing, Hotword Enrollment, Pixel Camera Services, Adaptive Charging, Battery Health & 80% charge limit, Camera 6GB+ RAM power-save, CarrierWifi, eSIM MEP, and Fold dual front streaming) restored to device trees and vendor blobs across `kodiak`, `grizzly`, `cubs`, and `yogi` for the Sunday (2026-10-18) parity release. All trees verified with `check-sepolicy.sh` (100% OK).
 > - **Pixel 8 Pro (`husky`) Unofficial Release Published:** Android 17 (`cnb`) build `EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip` (2.89 GB, SHA-256 `2f8b568b06d16bba312ce05b2b3471689bd3fae7ed608309491246ba712d6d78`) uploaded to SourceForge. Announcements posted live to Telegram (`@ExpressiveGroup`) and XDA ([Thread #4805239](https://xdaforums.com/t/rom-17-0-unofficial-evolution-x-12-3-for-pixel-8-pro-husky-2026-10-16.4805239/)).
@@ -1704,10 +1704,11 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
     the chat id, or the group's handle from `config.json`.
   - The runner also copied each day's drafts to the repo root; the drafts live only in `community/replies/`.
   - `keybox.xml` (attestation private keys) and `custom.pif.prop` at the repo root are gitignored.
-- **To make it live (not done):**
-  1. Copy `evolution-kodiak/tools/p11-routine.sh` and `community_release_notes.py` to `~` on the server, and copy
-     `COMMUNITY_TRIAGE.md` to `~/COMMUNITY_TRIAGE.md` before each Sunday run (the server has no copy of this repo).
-  2. Schedule the daily review, drafts only (the cron line in the README).
+- **Deployed 2026-10-18 20:48 CEST:** `p11-routine.sh`, `community_release_notes.py` and `COMMUNITY_TRIAGE.md` are
+  in `~` on the server (previous routine in `~/p11-routine.sh.bak-20261018`). The server has no copy of this repo,
+  so copy `COMMUNITY_TRIAGE.md` to `~/COMMUNITY_TRIAGE.md` again before each Sunday run, or the changelog gets
+  last week's items.
+- **Not done:** schedule the daily review, drafts only (the cron line in the README).
 
 ## 3. Machines and access
 
