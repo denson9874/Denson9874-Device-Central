@@ -1748,9 +1748,18 @@ with its allowlist (`CAPTURE_AUDIO_OUTPUT`, `CONTROL_INCALL_EXPERIENCE`) in `/sy
 4. Draft the announcement for Daryl, without posting:
    `python3 tools/community_monitor/release_publisher.py --device kodiak --rom DerpFest --changelog-extra-file evolution-kodiak/community/notes/DerpFest_kodiak_BCR.txt --dry-run`
 
-**Status (2026-10-18):** files, scripts and release-notes support are committed. The server steps (deploying
-`vendor/extra`, fetching BCR, the first build with it) were waiting for the Evolution X release chain to finish.
-Nothing has been tested on a phone yet.
+**Status (2026-10-19, 01:30 CEST):**
+- `~/derpfest/vendor/extra` is deployed (local git `fc47452`), with BCR 3.11 fetched and checked by `bcr-fetch.sh`
+  (`BCR.apk` sha256 `3c937c0c27361e5a692fe22cf484b12f9fbfd94bece304615221ac9d8bd072da`). `~/derp-build.sh` is the new
+  version (old one: `~/derp-build.sh.bak-20261019`).
+- The first build needed `optional_uses_libs` for BCR's two Jetpack WindowManager libraries (the uses-library check).
+- Test build `~/derp-build.sh --no-upload`: `BCR_CHECK=OK version=3.11`, `EXIT=0`, `check-sepolicy.sh` OK. The
+  shipped `system_ext.img` holds the byte-identical `BCR.apk` and allowlist. **Not uploaded to Drive.**
+  - `DerpFest-v17-20261019-kodiak-Unofficial-fastboot.zip`, sha256 `c9b87cc1dd07914a3bcddc598fb457860540455d3ef5ed7ce3603d6a7cde7b9a`
+  - `DerpFest-v17-20261019-kodiak-Unofficial-Stable.zip` (OTA), sha256 `40ad2eb6c92d66d68d94c9864df43a3775f6c3cf64df9f17b9a44cf63852ddb0`
+- **Not tested on a phone.** Waiting for Daryl to choose the device (`DERP_BCR_PLAN.md`, open question 1).
+- Rollback: delete the `BCR` line in `vendor/extra/product.mk` and rebuild; `derp-build.sh` then prints
+  `BCR_CHECK=SKIPPED` and packs as before.
 
 ## 3. Machines and access
 
