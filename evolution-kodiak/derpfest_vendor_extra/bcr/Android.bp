@@ -9,6 +9,9 @@ android_app_import {
     presigned: true,
     privileged: true,
     system_ext_specific: true,
+    // The manifest's uses-library-not-required tags (Jetpack WindowManager), in the same order, as the
+    // build's uses-library check requires; vendor/pixel/gms declares them the same way for its prebuilts.
+    optional_uses_libs: ["androidx.window.extensions", "androidx.window.sidecar"],
     required: ["privapp-permissions-com.chiller3.bcr.xml"],
 }
 
