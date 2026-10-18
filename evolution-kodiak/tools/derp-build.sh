@@ -8,8 +8,9 @@
 #   --check-only  only run check_extras on the existing out/; no lunch, no build
 #
 # check_extras makes sure the vendor/extra apps (BCR, see DERP_BCR_PLAN.md) are in the image and unmodified.
-# If they aren't, nothing is packed or uploaded and the exit status is 3. The fastboot zip and the upload use the
-# date in this build's OTA zip name. The last line of a build is "=== DerpFest Build Finished: <date> (EXIT=<n>) ===".
+# If they aren't, nothing is packed or uploaded and the exit status is 3 (4: no OTA zip after the build). The
+# fastboot zip and the upload use the date in this build's OTA zip name. The last line of a build is
+# "=== DerpFest Build Finished: <date> (EXIT=<n>) ===".
 set -uo pipefail
 
 NOUPLOAD=0; CHECKONLY=0
@@ -27,9 +28,13 @@ O=$TREE/out/target/product/kodiak
 BCR=$TREE/vendor/extra/bcr
 
 # BCR must be installed exactly as bcr-fetch.sh checked it (presigned: any change would break its signature).
+# Taking BCR out of vendor/extra/product.mk (a deliberate rollback) turns the check off; a missing vendor/extra doesn't.
 check_extras() {
+    local mk=$TREE/vendor/extra/product.mk
     local apk=$O/system_ext/priv-app/BCR/BCR.apk
     local xml=$O/system_ext/etc/permissions/privapp-permissions-com.chiller3.bcr.xml
+    [ -f "$mk" ] || { echo "BCR_CHECK=MISSING $mk (vendor/extra isn't set up)"; return 3; }
+    grep -v '^[[:space:]]*#' "$mk" | grep -qw BCR || { echo "BCR_CHECK=SKIPPED (BCR isn't in $mk)"; return 0; }
     [ -f "$BCR/BCR.apk.sha256" ] || { echo "BCR_CHECK=MISSING $BCR/BCR.apk.sha256 (vendor/extra isn't set up)"; return 3; }
     [ -f "$apk" ] || { echo "BCR_CHECK=MISSING $apk"; return 3; }
     [ -f "$xml" ] || { echo "BCR_CHECK=MISSING $xml"; return 3; }

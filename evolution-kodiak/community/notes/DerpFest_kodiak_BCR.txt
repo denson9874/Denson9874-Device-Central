@@ -3,5 +3,5 @@ Basic Call Recorder (BCR) 3.11 by chenxiaolong is built in as a system app (GPL-
 BCR is off until you open it and turn on Call recording. It asks for microphone and notification access
 BCR plays no announcement or beep: the other party is not told that the call is being recorded
 Many places require every party's consent to record a call. You are responsible for following the law where you and the other party are
-While BCR records, don't use Google Phone's own Record button, and turn off Call Screen and the other call AI features listed in the notes
+While BCR records, don't use Google Phone's own Record button, and turn off features that listen to calls (Call Screen, Call Notes, Scam Detection, Voice Translate): two recorders on one call can fail
 Newer BCR releases from GitHub install over the built-in copy (same signature)

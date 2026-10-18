@@ -603,8 +603,9 @@ items. Daryl posts it himself.
 
 ## Rollback
 
-- Remove BCR from the next build: delete the `BCR` line in `~/derpfest/vendor/extra/product.mk` (or move
-  `vendor/extra` away) and rebuild. An update to a build without BCR removes the system app. Its data stays in
+- Remove BCR from the next build: delete the `BCR` line in `~/derpfest/vendor/extra/product.mk` and rebuild.
+  `derp-build.sh` then prints `BCR_CHECK=SKIPPED` and still packs and uploads. (Moving `vendor/extra` away makes
+  the check fail instead, on purpose: a missing `vendor/extra` looks like an accident.) An update to a build without BCR removes the system app. Its data stays in
   `/data/data/com.chiller3.bcr` until the user clears it, and recordings stay in the user's output directory.
 - `~/derp-build.sh.bak-<date>` restores the old build script.
 
