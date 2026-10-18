@@ -3,7 +3,8 @@
 Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
-> **Current state (2026-10-16): read section 2af first**, then 2ae, 2ad, 2ac, 2ab, 2aa, 2z, 2y, 2x, and 2w.
+> **Current state (2026-10-19): read section 2ah first**, then 2ag, 2af, 2ae, 2ad, 2ac, 2ab, 2aa, 2z, 2y, 2x, and 2w.
+> - **Evolution X weekly release 2026-10-18 (section 2ah):** all four Pixel 11 builds published after the first upstream sync since 10-09. Announcements are drafted but NOT posted; Now Playing may not turn on in these builds (suspected `vendor/gms` `nowplaying.xml`, waiting for the reporter's logs; the trial fix is reverted).
 > - **DerpFest for kodiak and BCR (2026-10-18):** section 2ag describes the DerpFest tree (`~/derpfest`) and its build script, and BCR (Basic Call Recorder) shipped in DerpFest builds only, through `~/derpfest/vendor/extra`. Plan: `DERP_BCR_PLAN.md`.
 > - **Daily Community Review & Sunday Release Pipeline:** Community review suite (`tools/community_monitor/`) reads Telegram feedback (`@ExpressiveLauncherFeedback`, `@ExpressiveGroup`) via Bot API or the desktop bridge and the XDA threads (#4804712, #4804723, #4804826, #4805239) via Playwright or Chrome Canary. Backlog in `COMMUNITY_TRIAGE.md`, reply drafts in `evolution-kodiak/community/replies/`, and community fixes go into the Sunday changelog (`evolution-kodiak/tools/community_release_notes.py`, called by `p11-routine.sh`). Deployed to the server 2026-10-18; the daily review isn't scheduled yet (see 2af).
 > - **Wi-Fi MAC Randomization & Capabilities Parity Restored:** Generated `PixelWifiOverlay2026` static runtime resource overlays across all 4 Pixel 11 devices (`kodiak`, `grizzly`, `cubs`, `yogi`), targeting `com.android.wifi.resources`. Enabled `config_wifi_connected_mac_randomization_supported = true` (unblocking "Use device MAC" in network details and Wi-Fi connect dialogs for MAC-filtered networks), SoftAP/P2P randomization, and full stock 2026 Wi-Fi capabilities (including BCM4383 specifics for cubs). Resolved Soong build conflicts by dropping duplicate prebuilt targets already built by AOSP (`android.software.angle.xml`, `SatelliteClient`, `android.telephony.satellite.xml`). Verified Soong compilation and 100% OK offline sepolicy compilation.
@@ -1760,6 +1761,48 @@ with its allowlist (`CAPTURE_AUDIO_OUTPUT`, `CONTROL_INCALL_EXPERIENCE`) in `/sy
 - **Not tested on a phone.** Waiting for Daryl to choose the device (`DERP_BCR_PLAN.md`, open question 1).
 - Rollback: delete the `BCR` line in `vendor/extra/product.mk` and rebuild; `derp-build.sh` then prints
   `BCR_CHECK=SKIPPED` and packs as before.
+
+## 2ah. Evolution X weekly release 2026-10-18 (published; announcements held)
+
+- **Published** (SourceForge, OTA manifest in `denson9874/evolution_ota`, Google Drive), all from the 2026-10-18 21:07
+  CEST sync (upstream 10-09 to 10-18) with the device trees unchanged since 10-16 except the `nowplaying_app_26q1` fix below:
+  - kodiak `EvolutionX-17.0-20261018-kodiak-12.3-Unofficial-fastboot.zip` `0dd2e184a1a61518e3b333c3072d8ca48d7fb724366e2505f75e09a567656156`, OTA `20d046f801fc2f27f439085ef56ac1090240ddd1bfbe02d52ee174220853bf94`
+  - grizzly `EvolutionX-17.0-20261018-grizzly-12.3-Unofficial-fastboot.zip` `5e971deabeb379bf25408d12489aa07eed1b0d1dd33261b2b76b09c91ca276ac`, OTA `708e0016406d3ca1afeb86df1248f6b35bc8404aae312b1d0dff27ef32722e12`
+  - cubs `EvolutionX-17.0-20261018-cubs-12.3-Unofficial-fastboot.zip` `91386eb6c524a88712611a87307652b255ce6d3734e8b25b059471727b7ed929`, OTA `8716d83b842d0da97018c3c7431b4497c710b0686dc047e98bdc78ce237aa856`
+  - yogi `EvolutionX-17.0-20261019-yogi-12.3-Unofficial-fastboot.zip` (built after midnight CEST) `db05f6075dab75304b636e9cc02c45a90fcfebc79f487c5b638bf85ed6d57abd`, OTA `31f87332bdc60fd40940be84e8d91e65062063c27ebaafb27782386606e3d90a`
+  - Espada v3 on kodiak, grizzly and cubs; yogi stock GKI. No `UNTESTED` in any name from now on (Daryl): the pack
+    scripts and `p11-ota.sh` no longer add it (`db734ff`).
+- **What it took to get the sync to build:**
+  - Upstream moved `frameworks/hardware/interfaces`, `hardware/google/interfaces` and `system/usb` from AOSP to
+    `LineageOS/android_*`; repo refuses to repoint a checkout without `--force-sync`. All three were clean at the published
+    revision, so `repo sync --force-sync` was run for just those three.
+  - The cheetah (Pixel 7 Pro) local manifest's `device/google/gs201` has a half-applied `git am` from 2026-10-18 06:36
+    ("gs201: use Evolution X's Pixel config overlays", 114 staged changes). Left alone; `p11-routine.sh` now skips the
+    cheetah port's projects like husky's (`89b5b46`).
+  - The new `vendor/gms` (`d5490a1`, "Update from grizzly CD1A.261005.003") installs `nowplaying_app_26q1.xml`, which our
+    vendor trees also copied (byte-identical): Kati "overriding commands". Removed from all four `vendor/google/<dev>`
+    makefiles and `device/google/<dev>/proprietary-files.txt` (kodiak `828b388`/`8ea61d5`, grizzly `661745f`/`dfdfe44`,
+    cubs `1f2b7e3`/`e35a4ca`, yogi `72bc602`/`58eb784`).
+  - The sync dropped our local `vendor/gms` commit `d63c25d` (Dreamliner for the Pixel 11 series); upstream now lists
+    cubs, grizzly, kodiak and yogi itself, so `patches/vendor_gms/0001` is a no-op ("applied" every run, no commit).
+- **Open: Now Playing can't be turned on** (a user's video after updating: "Setting up Now Playing… connect to the
+  Internet", then "Now Playing is off"; the switch stays off). Suspected, not confirmed: the new `vendor/gms` also
+  installs `product/etc/sysconfig/nowplaying.xml`, which stock Pixel 11 firmware doesn't ship. Its `allow-association`
+  lines are the only difference from stock's association rules, and `target="com.google.android.as.oss"
+  allowed="…nowplaying"` gives Private Compute Services an allow-list for the first time, which would cut ASI off from
+  PCS. A trial fix (`vendor/gms` `b188635` + `patches/vendor_gms/0002` in kodiak `a2220d5`) was reverted (kodiak
+  `e858083`, `vendor/gms` back on `d5490a1`) until the reporter's logs arrive; look for "Association not allowed" in
+  them. A dry run of all four routines then reported NOCHANGE (tree identical to the published builds).
+- **Announcements are NOT posted.** Drafts: `TELEGRAM_UPDATE_20261018.md`, `XDA_UPDATE_20261018.bbcode` (all four file names
+  and hashes filled in, changes from upstream only, the Now Playing lyrics line removed). The DerpFest STRONG integrity
+  PSA drafts (`TELEGRAM_PSA_DERPFEST_STRONG_INTEGRITY.md`, `XDA_PSA_…`) are for Daryl to post.
+- **Next routine run:** `espada-fetch.sh` takes the newest Espada release, which is now **v3.5** (already staged in
+  `vendor/google/espada-kernel/kodiak`); the routine has no way to pin a tag yet. Also, `CHANGES-<date>.txt` lists our
+  re-applied `frameworks/base` patches 0001-0006 after every sync as if they were new; they shipped on 10-16.
+- **Users and custom kernels:** on kodiak, grizzly and cubs, Espada's `vendor_kernel_boot` (vh_sched's PELT table) must
+  match its kernel, so a generic AnyKernel3 GKI kernel (WildKernel etc.) is expected to bootloop. Restore with `boot.img`
+  and `vendor_kernel_boot.img` from the same fastboot zip. For SuSFS, Espada's non-magisk zip (KSU-Next + SuSFS) writes
+  both partitions; it must be the same Espada version as the build.
 
 ## 3. Machines and access
 
