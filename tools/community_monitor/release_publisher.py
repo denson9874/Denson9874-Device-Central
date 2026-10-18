@@ -36,6 +36,18 @@ DEVICE_NAMES = {
 }
 
 
+def format_changelog_items(items: List[str], style: str) -> str:
+    """Formats extra changelog lines as list items: "bbcode" for XDA, "telegram" for Telegram."""
+    bullet = "[*]" if style == "bbcode" else "•"
+    return "\n".join(f"{bullet} {item}" for item in items)
+
+
+def read_changelog_items(path: Path) -> List[str]:
+    """Reads one changelog item per line, skipping blank lines and lines starting with #."""
+    lines = (line.strip() for line in path.read_text(encoding="utf-8").splitlines())
+    return [line for line in lines if line and not line.startswith("#")]
+
+
 class ReleasePublisher:
     def __init__(self, triage_path: Optional[str] = None, out_dir: Optional[str] = None):
         if triage_path is None:
@@ -254,20 +266,25 @@ fastboot update {artifacts['fastboot_file']}
         device: str,
         version: str = "v17",
         dry_run: bool = False,
-        mark_released: bool = True
+        mark_released: bool = True,
+        changelog_items: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Orchestrates building, formatting, and live posting across XDA and Telegram.
 
         Live posting needs both zips to be found. Items are marked RELEASED only after both
         posts succeed, and only when mark_released (a run over several devices marks once, at the end).
+        changelog_items are extra highlight lines for this release (e.g. a new built-in app).
         """
         print(f"=== Publishing {rom} {version} Release for {device.upper()} ===")
         artifacts = self.inspect_build_artifacts(rom, device)
         fixes = self.get_resolved_community_fixes(device)
         print(f"• Found {len(fixes)} resolved community items in backlog.")
 
-        xda_text = self.format_xda_announcement(rom, device, version, artifacts, fixes)
-        tg_text = self.format_telegram_announcement(rom, device, version, artifacts, fixes)
+        items = changelog_items or []
+        xda_text = self.format_xda_announcement(rom, device, version, artifacts, fixes,
+                                                format_changelog_items(items, "bbcode"))
+        tg_text = self.format_telegram_announcement(rom, device, version, artifacts, fixes,
+                                                    format_changelog_items(items, "telegram"))
 
         # Save copy to replies directory
         date_compact = datetime.now(timezone.utc).strftime("%Y%m%d")
@@ -316,14 +333,19 @@ def main():
     parser.add_argument("--rom", default="DerpFest", choices=["DerpFest", "EvolutionX"])
     parser.add_argument("--version", default="v17", help="ROM release version")
     parser.add_argument("--dry-run", action="store_true", help="Format and save announcement without live posting")
+    parser.add_argument("--changelog-extra-file", type=Path,
+                        help="Extra highlight lines, one per line (blank lines and lines starting with # are skipped)")
     args = parser.parse_args()
+
+    changelog_items = read_changelog_items(args.changelog_extra_file) if args.changelog_extra_file else []
 
     publisher = ReleasePublisher()
     res = publisher.publish_release(
         rom=args.rom,
         device=args.device,
         version=args.version,
-        dry_run=args.dry_run
+        dry_run=args.dry_run,
+        changelog_items=changelog_items
     )
     print("\nPublish Results:")
     print(json.dumps(res, indent=2))

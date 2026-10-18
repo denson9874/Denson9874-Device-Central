@@ -12,7 +12,7 @@ import sys
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from release_publisher import ReleasePublisher
+from release_publisher import ReleasePublisher, format_changelog_items, read_changelog_items
 
 
 class TestReleasePublisher(unittest.TestCase):
@@ -81,6 +81,23 @@ class TestReleasePublisher(unittest.TestCase):
         self.assertTrue(res.get("telegram", {}).get("dry_run"))
         self.assertTrue(Path(res.get("draft_file")).exists())
         self.assertEqual(Path(res.get("draft_file")).parent, Path(self.tmp.name))
+
+    def test_format_changelog_items(self):
+        self.assertEqual(format_changelog_items(["A", "B"], "bbcode"), "[*] A\n[*] B")
+        self.assertEqual(format_changelog_items(["A"], "telegram"), "• A")
+        self.assertEqual(format_changelog_items([], "bbcode"), "")
+
+    def test_read_changelog_items_skips_comments_and_blank_lines(self):
+        notes = Path(self.tmp.name) / "notes.txt"
+        notes.write_text("# header\nFirst item\n\n  Second item  \n   # indented comment\n", encoding="utf-8")
+        self.assertEqual(read_changelog_items(notes), ["First item", "Second item"])
+
+    def test_dry_run_includes_changelog_items(self):
+        res = self.publisher.publish_release(rom="DerpFest", device="kodiak", dry_run=True,
+                                             changelog_items=["Basic Call Recorder (BCR) 3.11 built in"])
+        draft = Path(res["draft_file"]).read_text(encoding="utf-8")
+        self.assertIn("[*] Basic Call Recorder (BCR) 3.11 built in", draft)
+        self.assertIn("• Basic Call Recorder (BCR) 3.11 built in", draft)
 
     def test_live_publish_refused_without_build_zips(self):
         missing = {"complete": False, "ota_file": "NOT FOUND", "ota_size_mb": "?", "ota_sha256": "NOT FOUND",

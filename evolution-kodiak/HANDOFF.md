@@ -4,6 +4,7 @@ Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
 > **Current state (2026-10-16): read section 2af first**, then 2ae, 2ad, 2ac, 2ab, 2aa, 2z, 2y, 2x, and 2w.
+> - **DerpFest for kodiak and BCR (2026-10-18):** section 2ag describes the DerpFest tree (`~/derpfest`) and its build script, and BCR (Basic Call Recorder) shipped in DerpFest builds only, through `~/derpfest/vendor/extra`. Plan: `DERP_BCR_PLAN.md`.
 > - **Daily Community Review & Sunday Release Pipeline:** Community review suite (`tools/community_monitor/`) reads Telegram feedback (`@ExpressiveLauncherFeedback`, `@ExpressiveGroup`) via Bot API or the desktop bridge and the XDA threads (#4804712, #4804723, #4804826, #4805239) via Playwright or Chrome Canary. Backlog in `COMMUNITY_TRIAGE.md`, reply drafts in `evolution-kodiak/community/replies/`, and community fixes go into the Sunday changelog (`evolution-kodiak/tools/community_release_notes.py`, called by `p11-routine.sh`). Deployed to the server 2026-10-18; the daily review isn't scheduled yet (see 2af).
 > - **Wi-Fi MAC Randomization & Capabilities Parity Restored:** Generated `PixelWifiOverlay2026` static runtime resource overlays across all 4 Pixel 11 devices (`kodiak`, `grizzly`, `cubs`, `yogi`), targeting `com.android.wifi.resources`. Enabled `config_wifi_connected_mac_randomization_supported = true` (unblocking "Use device MAC" in network details and Wi-Fi connect dialogs for MAC-filtered networks), SoftAP/P2P randomization, and full stock 2026 Wi-Fi capabilities (including BCM4383 specifics for cubs). Resolved Soong build conflicts by dropping duplicate prebuilt targets already built by AOSP (`android.software.angle.xml`, `SatelliteClient`, `android.telephony.satellite.xml`). Verified Soong compilation and 100% OK offline sepolicy compilation.
 > - **Pixel Features Restored Across Pixel 11 Family:** All proprietary Google apps and Pixel feature XMLs/overlays previously omitted for official maintainership rules (SatelliteGateway & client, AICore, PixelAI/Screenshots, PixelSense/Magic Cue, CreativeAssistant, AmbientStreaming, Now Playing, Hotword Enrollment, Pixel Camera Services, Adaptive Charging, Battery Health & 80% charge limit, Camera 6GB+ RAM power-save, CarrierWifi, eSIM MEP, and Fold dual front streaming) restored to device trees and vendor blobs across `kodiak`, `grizzly`, `cubs`, and `yogi` for the Sunday (2026-10-18) parity release. All trees verified with `check-sepolicy.sh` (100% OK).
@@ -1709,6 +1710,47 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
   so copy `COMMUNITY_TRIAGE.md` to `~/COMMUNITY_TRIAGE.md` again before each Sunday run, or the changelog gets
   last week's items.
 - **Not done:** schedule the daily review, drafts only (the cron line in the README).
+
+## 2ag. DerpFest for kodiak, and BCR (2026-10-18)
+
+DerpFest wasn't described anywhere in this file. Plan, findings and reasons for BCR: `DERP_BCR_PLAN.md`.
+
+**The DerpFest tree (`~/derpfest`)**, next to `~/evolution` and separate from it:
+
+| What | Where |
+|---|---|
+| Manifest | `DerpFest-AOSP/android_manifest`, branch `17` (LineageOS 24.0-based, uses `vendor/lineage`). No local manifests |
+| Sync | `~/derp-sync.sh` (backup: `tools/derp-sync.sh`). Ask Daryl first, like any full sync |
+| Build | `~/derp-build.sh [--no-upload] [--check-only]` (backup: `tools/derp-build.sh`): `lunch lineage_kodiak-cp2a-user`, `m derp`, fastboot zip through `~/kodiak-imgzip.sh` (`KODIAK_ROOT=none`), then `~/upload-to-drive.sh DerpFest kodiak` (`gdrive:DerpFest/kodiak`). Last line `=== DerpFest Build Finished: … (EXIT=<n>) ===`; 3 = BCR missing or modified, nothing packed or uploaded |
+| Device tree | `device/google/kodiak`: a clone of `~/android-dt/trees/device_google_kodiak` (the same tree as Evolution), plus 3 uncommitted DerpFest-only edits that exist only there (`BoardConfig.mk` vbmeta_system/vendor `--flags 3`, `lineage_kodiak.mk` `PRODUCT_BUILD_IGNORE_APEX_CONTRIBUTION_CONTENTS`, `proprietary-files.txt` `TrafficLightFaceOverlay` commented out). Don't `git reset` it |
+| Vendor trees | own copies of `vendor/google/kodiak`, `kodiak-images` (local git, no remote) and `espada-kernel` |
+| GMS, keys | `vendor/pixel/gms` (PixelOS); `vendor/lineage-priv` (`vendor/evolution-priv` is a symlink to it) |
+| DerpFest-only additions | `vendor/extra/` (backup: `derpfest_vendor_extra/`), inherited by `vendor/lineage/config/common.mk` when present. Not a repo project, so `repo sync` leaves it alone; Evolution X and the public trees don't have it |
+
+**BCR (Basic Call Recorder, chenxiaolong/BCR).** DerpFest builds ship BCR 3.11 as `/system_ext/priv-app/BCR/BCR.apk`,
+with its allowlist (`CAPTURE_AUDIO_OUTPUT`, `CONTROL_INCALL_EXPERIENCE`) in `/system_ext/etc/permissions/`.
+- The APK is upstream's, unmodified and still signed by its author (`preprocessed` + `presigned`), so users can
+  update it from GitHub releases. `tools/bcr-fetch.sh` downloads the pinned release and checks the zip's SHA-256,
+  chenxiaolong's SSH signature, alignment and uncompressed dex, the certificate digest, and that upstream's
+  allowlist matches ours. Bumping the version: `derpfest_vendor_extra/README.md`.
+- No sepolicy (it runs as `priv_app`) and no pre-granted runtime permissions: BCR is off until the user turns it on.
+- `ro.control_privapp_permissions` is `log` in DerpFest, so a missing allowlist entry is only logged. The fetch
+  script refuses a release whose privileged permissions differ from ours.
+- It doesn't play an announcement tone. The release notes say so and carry the consent warning:
+  `community/notes/DerpFest_kodiak_BCR.txt`, passed to `release_publisher.py --changelog-extra-file`.
+
+**Release steps (DerpFest kodiak):**
+1. `~/derp-build.sh --no-upload` (only when no other build runs; `p11-routine.sh` waits for a hand-started build).
+   Check `BCR_CHECK=OK version=…` and `(EXIT=0)`.
+2. Test on a phone (ask Daryl first: going from Evolution X to DerpFest is a ROM switch). Checks: `DERP_BCR_PLAN.md`, Task 5.
+3. Upload this build only:
+   `~/upload-to-drive.sh DerpFest kodiak ~/derpfest/out/target/product/kodiak/DerpFest-v17-<date>-* ~/derpfest/out/target/product/kodiak/kodiak.json`
+4. Draft the announcement for Daryl, without posting:
+   `python3 tools/community_monitor/release_publisher.py --device kodiak --rom DerpFest --changelog-extra-file evolution-kodiak/community/notes/DerpFest_kodiak_BCR.txt --dry-run`
+
+**Status (2026-10-18):** files, scripts and release-notes support are committed. The server steps (deploying
+`vendor/extra`, fetching BCR, the first build with it) were waiting for the Evolution X release chain to finish.
+Nothing has been tested on a phone yet.
 
 ## 3. Machines and access
 
