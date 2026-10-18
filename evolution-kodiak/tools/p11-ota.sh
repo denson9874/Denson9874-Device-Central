@@ -29,9 +29,9 @@ while [ $# -gt 0 ]; do
 done
 case $dev in
     kodiak)  MODEL="Pixel 11 Pro XL";   FORUM=https://xdaforums.com/t/4804712/; TAG= ;;
-    grizzly) MODEL="Pixel 11 Pro";      FORUM=https://xdaforums.com/t/4804712/; TAG=-UNTESTED ;;
-    cubs)    MODEL="Pixel 11";          FORUM=https://xdaforums.com/t/4804723/; TAG=-UNTESTED ;;
-    yogi)    MODEL="Pixel 11 Pro Fold"; FORUM=https://xdaforums.com/t/4804826/; TAG=-UNTESTED ;;
+    grizzly) MODEL="Pixel 11 Pro";      FORUM=https://xdaforums.com/t/4804712/; TAG= ;;
+    cubs)    MODEL="Pixel 11";          FORUM=https://xdaforums.com/t/4804723/; TAG= ;;
+    yogi)    MODEL="Pixel 11 Pro Fold"; FORUM=https://xdaforums.com/t/4804826/; TAG= ;;
     *) echo "usage: p11-ota.sh <kodiak|grizzly|cubs|yogi> [--upload | --preview] [--changes <file>]" >&2; exit 2 ;;
 esac
 
@@ -113,7 +113,7 @@ sha256=$(sha256sum "$OTA" | cut -d' ' -f1)
 if [ $PREVIEW = 1 ]; then
     OUT=$T/preview; mkdir -p $OUT/builds $OUT/changelogs
 else
-OUT=$REPO
+OUT=$REPO; mkdir -p "$OUT/builds" "$OUT/changelogs"
 cp "$OTA" "$DEST/$NAME"
 (cd "$DEST" && echo "$sha256  $NAME" > "$NAME.sha256")
 echo "== upload $NAME to SourceForge: $SF_DIR"
@@ -121,6 +121,8 @@ printf -- "-mkdir /home/frs/project/%s/%s\n-mkdir %s\nput %s %s/%s\nput %s %s/%s
     "$SF_PROJECT" "$dev" "$SF_DIR" "$DEST/$NAME" "$SF_DIR" "$NAME" "$DEST/$NAME.sha256" "$SF_DIR" "$NAME.sha256" \
     | sftp -b - -o BatchMode=yes -i ~/.ssh/sourceforge_ed25519 $SF_USER@frs.sourceforge.net > $T/sftp.log 2>&1 \
     || { tail -5 $T/sftp.log; fail "SourceForge upload failed"; }
+echo "== upload OTA to Google Drive: EvolutionX/$dev"
+~/upload-to-drive.sh EvolutionX "$dev" "$DEST/$NAME" "$DEST/$NAME.sha256" || true
 echo "== waiting for SourceForge to serve $URL"
 for i in $(seq 1 60); do
     len=$(curl -sIL --max-time 60 "$URL" | tr -d '\r' | awk 'tolower($1)=="content-length:" {l=$2} END {print l}')
