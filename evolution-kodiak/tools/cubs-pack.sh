@@ -11,7 +11,7 @@ O=out/target/product/cubs
 H=out/host/linux-x86/bin
 IMG=vendor/google/cubs-images/images
 # The build's own name, e.g. EvolutionX-17.0-20261012-cubs-12.3-Unofficial
-NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)-UNTESTED-fastboot.zip
+NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)-fastboot.zip
 DEST=~/releases/cubs; mkdir -p $DEST
 ZIP=$DEST/$NAME
 SF_USER=daryldenson0405
@@ -93,6 +93,9 @@ echo "OK: unrooted, vbmeta flags 3 + boot patch level 2026-10-05, stock cubs ker
 ls -la $ZIP; cat $DEST/$NAME.sha256
 
 if [ "${1:-}" = "--upload" ]; then
+    echo "== upload to Google Drive: EvolutionX/cubs"
+    ~/upload-to-drive.sh EvolutionX cubs "$ZIP" "$DEST/$NAME.sha256" || true
+
     echo "== upload to SourceForge: $SF_DIR"
     printf -- "-mkdir /home/frs/project/denson9874-s-user-builds/cubs\n-mkdir $SF_DIR\nput $ZIP $SF_DIR/$NAME\nput $DEST/$NAME.sha256 $SF_DIR/$NAME.sha256\nls -l $SF_DIR\nbye\n" \
         | sftp -o BatchMode=yes -i ~/.ssh/sourceforge_ed25519 $SF_USER@frs.sourceforge.net
