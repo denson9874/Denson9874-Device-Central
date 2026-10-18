@@ -10,11 +10,11 @@ It is updated daily at **09:00 AM ET** by the automated Community Monitor and re
 
 | Issue ID | Date Logged | Source & Reporter | Device | Category | Severity | Status | Summary & Technical Details | Target Release |
 |:---|:---|:---|:---|:---|:---|:---|:---|:---|
-| `ISS-20261012-01` | 2026-10-12 | TG: Ashray V K | `kodiak` | Bug | Medium | `RESOLVED` | Screen timeout to AOD flashes ~121 nits before dimming to 0.5 nits | 2026-10-18 |
+| `ISS-20261012-01` | 2026-10-12 | TG: Ashray V K | `kodiak` | Bug | Medium | `RELEASED` | Screen timeout to AOD flashes ~121 nits before dimming to 0.5 nits | 2026-10-13 |
 | `ISS-20261012-02` | 2026-10-12 | TG: Ashray V K | `kodiak` | Support | Low | `RESOLVED` | PIN prompt appears twice after reboot; diagnosed as Play Services update arming "resume on reboot" | 2026-10-18 |
 | `ISS-20261012-03` | 2026-10-12 | TG: Ashray V K | `kodiak` | Feature | Low | `TRIAGED` | HiLight settings and animation triggers for Gemini, calls, contacts | Backlog |
 | `ISS-20261013-01` | 2026-10-13 | TG: Ashray V K | `kodiak` | Bug / Mod | Low | `RESOLVED` | Morphe patcher fails with ENOENT looking for `/system/framework/org.lineageos.platform-res.apk` due to SuSFS hiding | Documented workaround / ROM tolerance |
-| `ISS-20261015-01` | 2026-10-15 | TG: Ashray V K | `kodiak` | Feature | High | `RESOLVED` | Extreme Charging Mode ("Bodega") with Quick Settings tile for 30W+ fast charging | 2026-10-18 |
+| `ISS-20261015-01` | 2026-10-15 | TG: Ashray V K | `kodiak` | Feature | High | `RELEASED` | Extreme Charging Mode ("Bodega") with Quick Settings tile for 30W+ fast charging | 2026-10-16 |
 | `ISS-20261015-02` | 2026-10-15 | XDA: Paddybecks87 (Post #21) | `kodiak` | Bug | Low | `TRIAGED` | App previews of locked apps visible in Launcher3 Quickstep Recents overview | Upstream EvoX / Launcher3 |
 | `ISS-20261015-03` | 2026-10-15 | XDA: xerel89 (Post #22) | `kodiak` | Support | Medium | `RESOLVED` | Flashing stuck on `< waiting for any device >` due to missing fastboot driver / USB-C hub | Reply posted |
 | `ISS-20261015-04` | 2026-10-15 | XDA: stevecaboose (Post #2) | `yogi` | Testing | Medium | `IN_PROGRESS` | Yogi (Fold) test coverage: fold/unfold transitions, hinge angle, and telephony audio | 2026-10-18 |
