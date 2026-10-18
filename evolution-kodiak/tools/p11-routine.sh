@@ -20,6 +20,9 @@
 #   5. Writes a changelog of upstream commits, then p11-ota.sh verifies the OTA
 #      package, uploads it and publishes builds/<dev>.json in denson9874/evolution_ota
 #      for the Updater (last). Only then is the published state recorded.
+#   6. Copies this run's zips, their .sha256 and the changelog to Google Drive,
+#      gdrive:EvolutionX/<dev> (evox-to-drive.sh, as derp-build.sh does for DerpFest),
+#      with or without --no-upload. A failed copy is reported but doesn't fail the routine.
 #
 #   --dry-run       report what would happen; no sync, build or upload
 #   --force         build even if nothing changed
@@ -136,6 +139,8 @@ if [ "$dev" != "yogi" ] && [ -x ~/espada-fetch.sh ]; then
     ~/espada-fetch.sh "$dev" || echo "== espada fetch failed or unavailable, falling back to stock kernel"
 fi
 
+# Everything the pack script and p11-ota.sh write to $STATE from here on is this run's (step 6)
+started=$(mktemp); trap 'rm -f "$trees" "$started"' EXIT
 echo "== build ($BUILD, log $BLOG)"
 $BUILD > "$BLOG" 2>&1 9>&-
 if ! grep -q "BUILD_EXIT=0" "$BLOG"; then
@@ -183,6 +188,11 @@ if [ $UPLOAD = 1 ]; then
     echo "$cur" > "$STATE/LAST_STATE"; cp "$trees" "$STATE/LAST_TREES"; cp "$snap" "$STATE/LAST_MANIFEST.xml"
 fi
 rm -f "$snap"
+# 6. A copy on Google Drive
+if [ -x ~/evox-to-drive.sh ]; then
+    ~/evox-to-drive.sh "$dev" --newer "$started" 9>&- \
+        || echo "== the Google Drive copy failed; the build is unaffected (retry: ~/evox-to-drive.sh $dev)"
+fi
 # Keep the newest two builds' zips (fastboot and OTA) on the server (the uploads stay on SourceForge)
 ls -t "$STATE"/EvolutionX-*.zip 2>/dev/null | tail -n +5 | while read -r z; do rm -f "$z" "$z.sha256"; done
 [ $UPLOAD = 1 ] && finish PUBLISHED || finish BUILT
