@@ -1677,6 +1677,10 @@ weekly release schedule. Everything is in `evolution-cheetah/` (README there has
 - **Release schedule:** `p11-routine.sh cheetah` and `p11-ota.sh cheetah` (Pixel 11 paths unchanged; a kodiak
   `--preview` mock gives byte-identical output), plus a fifth Mac task, `evox-parity-cheetah`
   (`evolution-cheetah/evox-parity-cheetah.SKILL.md`), scheduled after the four Pixel 11 tasks.
+  - Google Drive (2026-10-18): the routine copies each successful build to `gdrive:EvolutionX/<dev>` with
+    `~/evox-to-drive.sh` (section 5). The server's current four-device `p11-routine.sh` already does it; cheetah's
+    copies start once `cheetah-install-routine` installs this branch's routine, which carries the same step. Until
+    then, after a hand build and `cheetah-pack.sh`: `~/evox-to-drive.sh cheetah`.
 - **PRs:** #6 (runner actions into `main`), #7 (this port into `evolution/kodiak-port`) and #8 (runner `bp-check` /
   `bp-repair`), all merged.
 - **First build attempts (2026-10-17):** setup, firmware (CP3A.261005.002.A1) and the kernel went through. The ROM
@@ -1807,6 +1811,7 @@ Key device-tree files:
 | `~/kodiak-build.sh` | Full `m evolution` (OTA zip). About 1 h. Release builds |
 | `~/kodiak-test-build.sh` | Images, `WITH_DEXPREOPT=false`. Faster later, but the first run rebuilds a lot (config change). Not used yet |
 | `~/kodiak-imgzip.sh <out> <image zip> <output>` | Packs images for `fastboot update` |
+| `~/evox-to-drive.sh <dev> [--dry-run]` | Copies a device's newest fastboot and OTA zips (with `.sha256`) and changelog from `~/releases/<dev>` to Google Drive, `gdrive:EvolutionX/<dev>`, through `~/upload-to-drive.sh` (DerpFest's goes to `gdrive:DerpFest/kodiak`). `p11-routine.sh` runs it after every successful build for kodiak, grizzly, cubs, yogi and cheetah; a failed copy is reported (`DRIVE_UPLOAD=FAILED`) but doesn't fail the routine. rclone log: `~/routine-logs/drive-<dev>-*.log` |
 
 Run builds detached and wait for `BUILD_EXIT=` in the log:
 ```bash
