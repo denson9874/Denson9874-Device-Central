@@ -344,6 +344,8 @@ android_app_import {
     presigned: true,
     privileged: true,
     system_ext_specific: true,
+    // Added during implementation: the first build failed the uses-library check without it.
+    optional_uses_libs: ["androidx.window.extensions", "androidx.window.sidecar"],
     required: ["privapp-permissions-com.chiller3.bcr.xml"],
 }
 
