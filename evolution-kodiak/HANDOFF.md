@@ -3,7 +3,8 @@
 Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
-> **Current state (2026-10-16): read section 2ae first**, then 2ad, 2ac, 2ab, 2aa, 2z, 2y, 2x, and 2w.
+> **Current state (2026-10-16): read section 2af first**, then 2ae, 2ad, 2ac, 2ab, 2aa, 2z, 2y, 2x, and 2w.
+> - **Daily Community Review & Sunday Release Pipeline:** Community review suite (`tools/community_monitor/`) reads Telegram feedback (`@ExpressiveLauncherFeedback`, `@ExpressiveGroup`) via Bot API or the desktop bridge and the XDA threads (#4804712, #4804723, #4804826, #4805239) via Playwright or Chrome Canary. Backlog in `COMMUNITY_TRIAGE.md`, reply drafts in `evolution-kodiak/community/replies/`, and community fixes go into the Sunday changelog (`evolution-kodiak/tools/community_release_notes.py`, called by `p11-routine.sh`). **Not deployed to the server and not scheduled yet** (see 2af).
 > - **Wi-Fi MAC Randomization & Capabilities Parity Restored:** Generated `PixelWifiOverlay2026` static runtime resource overlays across all 4 Pixel 11 devices (`kodiak`, `grizzly`, `cubs`, `yogi`), targeting `com.android.wifi.resources`. Enabled `config_wifi_connected_mac_randomization_supported = true` (unblocking "Use device MAC" in network details and Wi-Fi connect dialogs for MAC-filtered networks), SoftAP/P2P randomization, and full stock 2026 Wi-Fi capabilities (including BCM4383 specifics for cubs). Resolved Soong build conflicts by dropping duplicate prebuilt targets already built by AOSP (`android.software.angle.xml`, `SatelliteClient`, `android.telephony.satellite.xml`). Verified Soong compilation and 100% OK offline sepolicy compilation.
 > - **Pixel Features Restored Across Pixel 11 Family:** All proprietary Google apps and Pixel feature XMLs/overlays previously omitted for official maintainership rules (SatelliteGateway & client, AICore, PixelAI/Screenshots, PixelSense/Magic Cue, CreativeAssistant, AmbientStreaming, Now Playing, Hotword Enrollment, Pixel Camera Services, Adaptive Charging, Battery Health & 80% charge limit, Camera 6GB+ RAM power-save, CarrierWifi, eSIM MEP, and Fold dual front streaming) restored to device trees and vendor blobs across `kodiak`, `grizzly`, `cubs`, and `yogi` for the Sunday (2026-10-18) parity release. All trees verified with `check-sepolicy.sh` (100% OK).
 > - **Pixel 8 Pro (`husky`) Unofficial Release Published:** Android 17 (`cnb`) build `EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip` (2.89 GB, SHA-256 `2f8b568b06d16bba312ce05b2b3471689bd3fae7ed608309491246ba712d6d78`) uploaded to SourceForge. Announcements posted live to Telegram (`@ExpressiveGroup`) and XDA ([Thread #4805239](https://xdaforums.com/t/rom-17-0-unofficial-evolution-x-12-3-for-pixel-8-pro-husky-2026-10-16.4805239/)).
@@ -1653,6 +1654,60 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
   - **cubs:** Built cleanly (`BUILD_EXIT=0`), verified, packaged `EvolutionX-17.0-20261016-cubs-12.3-Unofficial-UNTESTED-r2-fastboot.zip` and signed A/B OTA, uploaded to SourceForge, OTA manifest publishing in progress.
   - **yogi:** Queued next in chain.
 
+
+## 2af. Daily Community Review & Sunday Release Pipeline (2026-10-16, fixed 2026-10-18)
+
+- **Purpose:** a daily review of community feedback on Telegram (`@ExpressiveLauncherFeedback`, `@ExpressiveGroup`)
+  and the XDA threads (`kodiak`/`grizzly`, `cubs`, `yogi`, `husky`): triage into a backlog, draft replies, and put
+  the fixes that ship into the Sunday changelog.
+- **`tools/community_monitor/`** (README there; tests: `./venv/bin/python -m unittest discover -s tools/community_monitor/tests`):
+  - `config.json`: channels, XDA thread URLs, state and output paths.
+  - `tg_reader.py`: Bot API (token in `$TELEGRAM_TRIAGE_BOT_TOKEN` or `~/.telegram_triage_bot_token`) or the
+    Telegram Desktop bridge; tracks the `update_id` high-water mark and downloads `.txt`/`.log`/`.zip` attachments
+    to `evolution-kodiak/community/attachments/` (gitignored: user logs).
+  - `xda_reader.py`: Playwright (clears the BunnyCDN Shield challenge, `errorcode: 112`) or the logged-in Chrome
+    Canary session; last post id per thread in `evolution-kodiak/community/state.json`.
+  - `triage_processor.py`: noise filter, device and category classifier, severity guess, `COMMUNITY_TRIAGE.md`
+    rows (`ISS-<YYYYMMDD>-<XX>`), reply drafts. Severities and summaries are heuristic (the summary is the post's
+    first ~120 characters); review the new rows.
+  - `run_daily_review.py`: the runner (`--dry-run`, `--mock-feed`, `--date`, `--skip-tg`, `--skip-xda`,
+    `--auto-reply`, `--publish-release`). Raw posts are archived in `evolution-kodiak/community/daily_raw/`.
+  - `tg_poster.py`, `xda_poster.py`, `release_publisher.py`: post replies and release announcements as Daryl
+    (Bot API / Telegram Desktop, and Chrome Canary's logged-in `denson9874` session). **Only with `--auto-reply`
+    or a publisher run without `--dry-run`.** The rule stands: nothing posts without Daryl reviewing it, and no
+    scheduled run posts (2j). `release_publisher.py` refuses to post when either build zip isn't found, and its
+    highlights and credits are fixed text in the script: check them against the build before posting.
+  - `setup_monitor.sh`: venv (`tools/community_monitor/venv/`, gitignored), Playwright Chromium, bot token check.
+- **Backlog (`COMMUNITY_TRIAGE.md`, repo root):** ID, reporter, device (`All P11` = the four Pixel 11s, `All` =
+  those plus husky), category, severity, status, summary, target release. Statuses: `NEW`, `TRIAGED`,
+  `NEEDS_LOGS`, `IN_PROGRESS`, `VERIFIED`, `RESOLVED`, `RELEASED`, `UPSTREAM`. Release items are `VERIFIED`
+  rows, and `RESOLVED` rows with a release date and a category other than `Support`; support answers and
+  workarounds are closed without appearing in release notes.
+- **Sunday changelog (`evolution-kodiak/tools/community_release_notes.py`):** `p11-routine.sh` (step 5) appends the
+  device's release items from `~/COMMUNITY_TRIAGE.md` to `CHANGES-<date>.txt` before `p11-ota.sh`. A missing
+  script or triage file only skips this. After the published runs, on the Mac:
+  `python3 evolution-kodiak/tools/community_release_notes.py kodiak grizzly cubs yogi --mark-released` (list only
+  the devices that published). An `All P11` row moves to `RELEASED` only when all four are in the list.
+- **Fixed on 2026-10-18** (from the first version):
+  - A `--mock-feed` test run on 2026-10-16 had written its made-up posts into the real backlog as
+    `ISS-20261016-02`..`04` (Ashray battery icon, stevecaboose dual-screen camera, AndroidTinkerer 5G tile). They
+    were removed with their raw feed and drafts; `--mock-feed` now implies `--dry-run`.
+  - The release notes listed every `RESOLVED` row (support answers too), matched `All P11` rows to husky, and
+    marked a multi-device row `RELEASED` after the first device, so the other devices' changelogs missed it.
+  - The routine's hook resolved the triage file relative to the script (`/` for `~/community_release_notes.py`),
+    so it never found it, and hid errors with `2>/dev/null`. It also marked items `RELEASED` on the server, in
+    a copy nothing synced back, before the OTA was published.
+  - `release_publisher.py` filled in made-up zip names, sizes and "Pending Verification" hashes when no build was
+    found, marked items `RELEASED` even when posting failed, and said "Vanilla Ice Cream" for Android 17. Its test
+    wrote a draft into the repo on every run.
+  - Telegram replies were addressed to the group's display title, which the Bot API can't address; they now go to
+    the chat id, or the group's handle from `config.json`.
+  - The runner also copied each day's drafts to the repo root; the drafts live only in `community/replies/`.
+  - `keybox.xml` (attestation private keys) and `custom.pif.prop` at the repo root are gitignored.
+- **To make it live (not done):**
+  1. Copy `evolution-kodiak/tools/p11-routine.sh` and `community_release_notes.py` to `~` on the server, and copy
+     `COMMUNITY_TRIAGE.md` to `~/COMMUNITY_TRIAGE.md` before each Sunday run (the server has no copy of this repo).
+  2. Schedule the daily review, drafts only (the cron line in the README).
 
 ## 3. Machines and access
 

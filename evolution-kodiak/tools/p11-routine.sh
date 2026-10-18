@@ -17,7 +17,8 @@
 #   4. Builds (images plus the signed A/B OTA package), then runs the device's pack
 #      script, which verifies the build and uploads the fastboot zip to SourceForge
 #      only if every check passes.
-#   5. Writes a changelog of upstream commits, then p11-ota.sh verifies the OTA
+#   5. Writes a changelog of upstream commits plus the device's community fixes from
+#      ~/COMMUNITY_TRIAGE.md (community_release_notes.py), then p11-ota.sh verifies the OTA
 #      package, uploads it and publishes builds/<dev>.json in denson9874/evolution_ota
 #      for the Updater (last). Only then is the published state recorded.
 #   6. Copies this run's zips, their .sha256 and the changelog to Google Drive,
@@ -176,6 +177,13 @@ for path in sorted(new):
 EOF
     echo "== changelog since the last published build: $changes ($(grep -c '^[^ ]' "$changes") projects)"
 fi
+# Community fixes for this device from ~/COMMUNITY_TRIAGE.md (a copy of the Mac repo's) go into the
+# changelog. They're marked RELEASED in the repo on the Mac after the publish, not here (HANDOFF 2af).
+if [ -f ~/community_release_notes.py ]; then
+    python3 ~/community_release_notes.py "$dev" --triage ~/COMMUNITY_TRIAGE.md --changes-file "$changes" \
+        || echo "== community release notes skipped; the build is unaffected"
+fi
+
 # The OTA package for the Updater: verified always, uploaded and announced with an upload
 echo "== OTA package (p11-ota.sh)"
 if [ $UPLOAD = 1 ]; then out=$(~/p11-ota.sh "$dev" --upload --changes "$changes" 2>&1 9>&-); else out=$(~/p11-ota.sh "$dev" 2>&1 9>&-); fi
