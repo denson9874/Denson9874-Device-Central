@@ -37,7 +37,7 @@ Each build:
 
 ```bash
 ~/cheetah-images.sh > ~/cheetah-build.log 2>&1   # prepare.sh, lunch lineage_cheetah-cp2a-user, build_kernel, m evolution
-~/cheetah-pack.sh                                # verify + fastboot zip in ~/releases/cheetah (add --upload to publish)
+~/cheetah-pack.sh                                # verify + fastboot zip in ~/releases/cheetah/check (--upload: in ~/releases/cheetah, and published)
 ~/p11-ota.sh cheetah                             # verify the signed A/B OTA (add --upload to publish it and the Updater JSON)
 ```
 
