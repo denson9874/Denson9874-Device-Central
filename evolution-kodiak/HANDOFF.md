@@ -4,7 +4,7 @@ Written 2026-10-10 for an agent (Google Antigravity) continuing this work until
 Claude is available again. Read all of it before running anything.
 
 > **Current state (2026-10-19): read section 2ah first**, then 2ag, 2af, 2ae, 2ad, 2ac, 2ab, 2aa, 2z, 2y, 2x, and 2w.
-> - **Evolution X weekly release 2026-10-18 (section 2ah):** all four Pixel 11 builds published after the first upstream sync since 10-09. Announcements are drafted but NOT posted; Now Playing may not turn on in these builds (suspected `vendor/gms` `nowplaying.xml`, waiting for the reporter's logs; the trial fix is reverted).
+> - **Evolution X weekly release 2026-10-18 (section 2ah):** all four Pixel 11 builds published after the first upstream sync since 10-09, and announced on Telegram and XDA with a known-issue note: Now Playing may not turn on (suspected `vendor/gms` `nowplaying.xml`; waiting for the reporter's logs, trial fix reverted).
 > - **DerpFest for kodiak and BCR (2026-10-18):** section 2ag describes the DerpFest tree (`~/derpfest`) and its build script, and BCR (Basic Call Recorder) shipped in DerpFest builds only, through `~/derpfest/vendor/extra`. Plan: `DERP_BCR_PLAN.md`.
 > - **Daily Community Review & Sunday Release Pipeline:** Community review suite (`tools/community_monitor/`) reads Telegram feedback (`@ExpressiveLauncherFeedback`, `@ExpressiveGroup`) via Bot API or the desktop bridge and the XDA threads (#4804712, #4804723, #4804826, #4805239) via Playwright or Chrome Canary. Backlog in `COMMUNITY_TRIAGE.md`, reply drafts in `evolution-kodiak/community/replies/`, and community fixes go into the Sunday changelog (`evolution-kodiak/tools/community_release_notes.py`, called by `p11-routine.sh`). Deployed to the server 2026-10-18; the daily review isn't scheduled yet (see 2af).
 > - **Wi-Fi MAC Randomization & Capabilities Parity Restored:** Generated `PixelWifiOverlay2026` static runtime resource overlays across all 4 Pixel 11 devices (`kodiak`, `grizzly`, `cubs`, `yogi`), targeting `com.android.wifi.resources`. Enabled `config_wifi_connected_mac_randomization_supported = true` (unblocking "Use device MAC" in network details and Wi-Fi connect dialogs for MAC-filtered networks), SoftAP/P2P randomization, and full stock 2026 Wi-Fi capabilities (including BCM4383 specifics for cubs). Resolved Soong build conflicts by dropping duplicate prebuilt targets already built by AOSP (`android.software.angle.xml`, `SatelliteClient`, `android.telephony.satellite.xml`). Verified Soong compilation and 100% OK offline sepolicy compilation.
@@ -1762,7 +1762,7 @@ with its allowlist (`CAPTURE_AUDIO_OUTPUT`, `CONTROL_INCALL_EXPERIENCE`) in `/sy
 - Rollback: delete the `BCR` line in `vendor/extra/product.mk` and rebuild; `derp-build.sh` then prints
   `BCR_CHECK=SKIPPED` and packs as before.
 
-## 2ah. Evolution X weekly release 2026-10-18 (published; announcements held)
+## 2ah. Evolution X weekly release 2026-10-18 (published and announced)
 
 - **Published** (SourceForge, OTA manifest in `denson9874/evolution_ota`, Google Drive), all from the 2026-10-18 21:07
   CEST sync (upstream 10-09 to 10-18) with the device trees unchanged since 10-16 except the `nowplaying_app_26q1` fix below:
@@ -1793,9 +1793,13 @@ with its allowlist (`CAPTURE_AUDIO_OUTPUT`, `CONTROL_INCALL_EXPERIENCE`) in `/sy
   PCS. A trial fix (`vendor/gms` `b188635` + `patches/vendor_gms/0002` in kodiak `a2220d5`) was reverted (kodiak
   `e858083`, `vendor/gms` back on `d5490a1`) until the reporter's logs arrive; look for "Association not allowed" in
   them. A dry run of all four routines then reported NOCHANGE (tree identical to the published builds).
-- **Announcements are NOT posted.** Drafts: `TELEGRAM_UPDATE_20261018.md`, `XDA_UPDATE_20261018.bbcode` (all four file names
-  and hashes filled in, changes from upstream only, the Now Playing lyrics line removed). The DerpFest STRONG integrity
-  PSA drafts (`TELEGRAM_PSA_DERPFEST_STRONG_INTEGRITY.md`, `XDA_PSA_…`) are for Daryl to post.
+- **Announced 2026-10-19 ~01:40 CEST** (Daryl's go-ahead, Now Playing as a known issue, no Now Playing feature line):
+  Telegram `@ExpressiveGroup` (7:37 PM ET, from `TELEGRAM_UPDATE_20261018.md`, pasted as formatted HTML so file names
+  are monospace) and XDA replies kodiak/grizzly post 90782859, cubs 90782860, yogi 90782862 (from
+  `XDA_UPDATE_20261018.bbcode`). First posts were not edited. Daryl's unsent Telegram draft in the Expressive Group box
+  was saved to `community/replies/TG_DRAFT_SAVED_20261019.txt` and put back after sending. XDA's flood control rejects a
+  second post within a few seconds ("You must wait at least 3 seconds"); nothing posts, wait and click again.
+  The DerpFest STRONG integrity PSA drafts (`TELEGRAM_PSA_DERPFEST_STRONG_INTEGRITY.md`, `XDA_PSA_…`) are for Daryl to post.
 - **Next routine run:** `espada-fetch.sh` takes the newest Espada release, which is now **v3.5** (already staged in
   `vendor/google/espada-kernel/kodiak`); the routine has no way to pin a tag yet. Also, `CHANGES-<date>.txt` lists our
   re-applied `frameworks/base` patches 0001-0006 after every sync as if they were new; they shipped on 10-16.
