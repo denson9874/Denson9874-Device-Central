@@ -1829,8 +1829,16 @@ with its allowlist (`CAPTURE_AUDIO_OUTPUT`, `CONTROL_INCALL_EXPERIENCE`) in `/sy
 - **Flashed 2026-10-19** to Daryl's Pixel 7 Pro (serial `28231FDH3005GR`; bootloader **unlocked**, although Android
   reports locked/green because of Evolution's spoofing): `fastboot update`, no `-w`, slot b, 242 s. Booted in 37 s,
   SELinux enforcing, `magiskd` running as `u:r:magisk:s0`, Magisk app 30.7 installed with `adb install`.
-  **Pending:** the app's "Requires Additional Setup" step (needs Daryl on the phone); until then `su` is denied.
-  The Zygisk/DenyList/hidden-app setup from kodiak is not done yet.
+  Daryl ran the app's "Additional setup" and allowed Shell (Superuser access "Apps and ADB"; before that,
+  logcat showed `Magisk: su: request rejected (2000)`). Root: `su -c id` gives `uid=0 … u:r:magisk:s0`.
+- **Zygisk and DenyList (kodiak's current policy, 2e and 2k):** `zygisk=1` (loaded: zygote64 maps it), DenyList
+  enforced with 22 entries, every declared process of Wallet (2), Play Store (6), GMS (11, including
+  `gms.persistent`, `gms.unstable`, `gms.ui`, `:snet`) and GSF (3, including `com.google.process.gapps`). ASI and
+  PCS are left off as on kodiak (Vector/PCS needs them hookable); AICore, PixelSense and `pixel.psi` aren't
+  installed on cheetah. Process names come from each APK's manifest (`android:process`, string resources resolved
+  through `resources.arsc`), because `magisk --denylist add PKG` alone only adds the main process. Checked: the
+  denylisted GMS process sees 0 Magisk mounts, SystemUI and Settings see 7. Evolution's TrickyStore service runs.
+- **Not done:** hiding the Magisk app (app UI), a Play Integrity check and Wallet tap-to-pay test, Vector/PCS.
 - **Downloads to the Mac:** single-stream scp from the server runs at ~0.4 MB/s; 16 parallel ranged `dd` streams
   over ssh gave ~27 MB/s (7.1 GB in 6 min), checked against the server's SHA-256.
 - **Undo:** root: `fastboot flash init_boot_b init_boot-…-stock.img`. Build: re-flash the 10-18 cheetah zip from
