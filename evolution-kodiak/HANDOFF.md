@@ -1792,8 +1792,11 @@ with its allowlist (`CAPTURE_AUDIO_OUTPUT`, `CONTROL_INCALL_EXPERIENCE`) in `/sy
   lines are the only difference from stock's association rules, and `target="com.google.android.as.oss"
   allowed="…nowplaying"` gives Private Compute Services an allow-list for the first time, which would cut ASI off from
   PCS. A trial fix (`vendor/gms` `b188635` + `patches/vendor_gms/0002` in kodiak `a2220d5`) was reverted (kodiak
-  `e858083`, `vendor/gms` back on `d5490a1`) until the reporter's logs arrive; look for "Association not allowed" in
-  them. A dry run of all four routines then reported NOCHANGE (tree identical to the published builds).
+  `e858083`, `vendor/gms` back on `d5490a1`) until a log confirmed it.
+  **Confirmed 2026-10-19** by another user's kodiak logcat on the 10-18 build: `ActivityManager: Service lookup
+  failed: association not allowed between packages com.google.android.as (uid=10317) and com.google.android.as.oss
+  (uid=10316)`, eight times in 45 s. The fix is back in the tree (kodiak `0f60690` reverts the revert; `vendor/gms`
+  `1d69071`, same tree as `b188635`), so the next routine run builds it. Not built or published yet (Daryl).
 - **Announced 2026-10-19 ~01:40 CEST** (Daryl's go-ahead, Now Playing as a known issue, no Now Playing feature line):
   Telegram `@ExpressiveGroup` (7:37 PM ET, from `TELEGRAM_UPDATE_20261018.md`, pasted as formatted HTML so file names
   are monospace) and XDA replies kodiak/grizzly post 90782859, cubs 90782860, yogi 90782862 (from
