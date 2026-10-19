@@ -37,7 +37,7 @@ Each build:
 
 ```bash
 ~/cheetah-images.sh > ~/cheetah-build.log 2>&1   # prepare.sh, lunch lineage_cheetah-cp2a-user, build_kernel, m evolution
-~/cheetah-pack.sh                                # verify + fastboot zip in ~/releases/cheetah (add --upload to publish)
+~/cheetah-pack.sh                                # verify + fastboot zip in ~/releases/cheetah/check (--upload: in ~/releases/cheetah, and published)
 ~/p11-ota.sh cheetah                             # verify the signed A/B OTA (add --upload to publish it and the Updater JSON)
 ```
 
@@ -53,6 +53,10 @@ The weekly routine runs all of that: `~/p11-routine.sh cheetah` (see "Release sc
    |---|---|---|
    | device/google/pantah | `0001` | Settings > About maintainer: "Daryl Denson (Unofficial)" instead of the official Android 16 maintainer |
    | device/google/pantah | `0002` | `UpdaterOverlayCheetah`: the Updater reads `denson9874/evolution_ota` (as the Pixel 11 trees' `UpdaterOverlay<Dev>`) |
+   | device/google/pantah | `0003` | `lineage_cheetah.mk` allow-lists Evolution X's AppDataBackup in /system, which generic_system.mk's artifact-path check otherwise rejects (soong_build stops). Same fix as husky's shusky `0001` |
+   | device/google/gs201 | `0001` | Drop gs201's nine Pixel config overlays that `vendor/pixel-style` also defines (GlanceableHub*, GoogleConfigOverlay, PixelConfigOverlay*, ...); Kati fails on the duplicate module names. Same as husky's zuma `0001` |
+   | device/google/gs201 | `0002` | Install gs201's `default-permissions.xml` as `default-permissions-gs201.xml`; vendor/gms installs its own (different) `default-permissions.xml`. Same as husky's zuma `0002` |
+   | vendor/google/cheetah | `0001` | Defer `DeviceIntelligenceNetworkPrebuiltAstrea` (vendor/gms's is newer) and 14 byte-identical Pixel sysconfig/default-permission XMLs to vendor/gms. Same as husky's vendor `0001` |
 
 3. Firmware: Pixels refuse bootloader downgrades, and the OTA flashes the bootloader and radio. So the
    OTA must never carry firmware older than what users run. `fetch-firmware.sh` downloads the newest

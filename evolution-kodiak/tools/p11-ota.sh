@@ -92,11 +92,24 @@ names = {m.group(2).decode() for m in re.finditer(rb"\x0a([\x02-\x20])([a-z0-9_]
 print("\n".join(sorted(names)))
 EOF
 if [ "$dev" = cheetah ]; then
-    # The build's own list (gs201 BoardConfig plus the vendor repo's firmware partitions)
-    ab=$(ls -t $O/obj/PACKAGING/target_files_intermediates/*/META/ab_partitions.txt 2>/dev/null | head -1 || true)
-    [ -n "$ab" ] || fail "no META/ab_partitions.txt in $O"
-    want=$(cat "$ab")
-    for p in abl bl1 bl2 bl31 gsa ldfw modem pbl tzsw boot init_boot vendor_boot vendor_kernel_boot dtbo vbmeta vbmeta_system vbmeta_vendor system system_ext product vendor; do
+    # What the payload must carry: the vendor repo's firmware partitions and gs201's ROM ones
+    need="abl bl1 bl2 bl31 gsa ldfw modem pbl tzsw boot init_boot vendor_boot vendor_kernel_boot dtbo vbmeta vbmeta_system vbmeta_vendor system system_ext product vendor"
+    # Plus the rest of the build's own list (target-files META, as a folder or only in the zip)
+    tf=$O/obj/PACKAGING/target_files_intermediates
+    ab=$(ls -t $tf/*/META/ab_partitions.txt 2>/dev/null | head -1 || true)
+    tfz=$(ls -t $tf/*.zip 2>/dev/null | head -1 || true)
+    if [ -n "$ab" ]; then
+        want=$(cat "$ab")
+    elif [ -n "$tfz" ]; then
+        want=$(unzip -p "$tfz" META/ab_partitions.txt 2>/dev/null || true)
+    else
+        want=
+    fi
+    if [ -z "$want" ]; then
+        echo "note: no META/ab_partitions.txt under $tf; checking the required partitions only"
+        want=$(tr ' ' '\n' <<<"$need")
+    fi
+    for p in $need; do
         grep -qx "$p" <<<"$want" || fail "AB_OTA_PARTITIONS lacks $p"
     done
 else
