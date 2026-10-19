@@ -1804,8 +1804,16 @@ with its allowlist (`CAPTURE_AUDIO_OUTPUT`, `CONTROL_INCALL_EXPERIENCE`) in `/sy
   was saved to `community/replies/TG_DRAFT_SAVED_20261019.txt` and put back after sending. XDA's flood control rejects a
   second post within a few seconds ("You must wait at least 3 seconds"); nothing posts, wait and click again.
   The DerpFest STRONG integrity PSA drafts (`TELEGRAM_PSA_DERPFEST_STRONG_INTEGRITY.md`, `XDA_PSA_…`) are for Daryl to post.
-- **Next routine run:** `espada-fetch.sh` takes the newest Espada release, which is now **v3.5** (already staged in
-  `vendor/google/espada-kernel/kodiak`); the routine has no way to pin a tag yet. Also, `CHANGES-<date>.txt` lists our
+- **Next routine run: Espada v3.5.** `espada-fetch.sh` takes the newest release, so the next build ships v3.5
+  (stable, 2026-10-18; Linux 6.12.96 from `android16-6.12-lts`, reworked Simple LMK that also fixes the lmkd crash,
+  CASS little/mid core choice from measured power, per-app uname spoof, USB OTG in recovery; full notes in
+  `espada/RELEASE_NOTES_v3.5.md`). On 2026-10-19 `espada-fetch.sh <dev> v3.5` passed every check for kodiak, grizzly
+  and cubs (plain zip `0e6ba7a2…` matches the release body, October firmware, 64 MiB images, boot patch level
+  2026-10-05, no KSU/SuSFS symbols, the 198 first-stage modules match stock) and v3.5 is staged for all three.
+  **Not booted by anyone on our devices:** the author ran only the KSU zip, on grizzly, and says he hasn't booted the
+  plain (Magisk) zip we ship, nor cubs or kodiak. Boot-test a v3.5 build before it goes out by OTA. The routine has
+  no way to pin a tag (`espada-fetch.sh` takes one; `p11-routine.sh` doesn't pass it), so a newer release before the
+  run would be picked up instead. Also, `CHANGES-<date>.txt` lists our
   re-applied `frameworks/base` patches 0001-0006 after every sync as if they were new; they shipped on 10-16.
 - **Users and custom kernels:** on kodiak, grizzly and cubs, Espada's `vendor_kernel_boot` (vh_sched's PELT table) must
   match its kernel, so a generic AnyKernel3 GKI kernel (WildKernel etc.) is expected to bootloop. Restore with `boot.img`
