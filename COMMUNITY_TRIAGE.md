@@ -24,6 +24,8 @@ It is updated daily at **09:00 AM ET** by the automated Community Monitor and re
 | `ISS-20261017-03` | 2026-10-17 | XDA: mcflyrk01 (Post #90779478) | `kodiak` | Bug | Critical | `TRIAGED` | Turns out this is only in the setup wizard, WiFi does connect fine once I skip through all of that. Tried rooting wit... | Next Sunday |
 | `ISS-20261017-04` | 2026-10-17 | XDA: anthonnyb98 (Post #90779690) | `kodiak` | Feature | Medium | `TRIAGED` | Greetings @denson9874, and thanks for the great work. I was wondering whether the facial unlock feature implemented i... | Next Sunday |
 | `ISS-20261017-05` | 2026-10-17 | XDA: wreq5 (Post #90779551) | `cubs` | Bug | High | `NEEDS_LOGS` | Alright alright alriiiight, flashed EvoX onto my Pixel 11 cubs and it was smooth as butter, Everything seems to check... | Next Sunday |
+| `ISS-20261019-01` | 2026-10-19 | Community report (video, logcat) | All P11 | Bug | High | `IN_PROGRESS` | Now Playing stuck at "Setting up Now Playing" and can't be turned on: vendor/gms nowplaying.xml blocks ASI from PCS ("association not allowed"); fix in tree (kodiak 0f60690, vendor/gms 1d69071), not built yet | Next build |
+| `ISS-20261019-02` | 2026-10-19 | Community report (logcat) | `kodiak` | Bug | Medium | `NEEDS_LOGS` | Gmail and Google account issues after a clean flash; the log covers only setup (Gmail never opens). Asked for symptoms, a logcat right after reproducing, and root/SuSFS details | Next Sunday |
 
 ---
 
