@@ -1758,7 +1758,8 @@ with its allowlist (`CAPTURE_AUDIO_OUTPUT`, `CONTROL_INCALL_EXPERIENCE`) in `/sy
   shipped `system_ext.img` holds the byte-identical `BCR.apk` and allowlist. **Not uploaded to Drive.**
   - `DerpFest-v17-20261019-kodiak-Unofficial-fastboot.zip`, sha256 `c9b87cc1dd07914a3bcddc598fb457860540455d3ef5ed7ce3603d6a7cde7b9a`
   - `DerpFest-v17-20261019-kodiak-Unofficial-Stable.zip` (OTA), sha256 `40ad2eb6c92d66d68d94c9864df43a3775f6c3cf64df9f17b9a44cf63852ddb0`
-- **Not tested on a phone.** Waiting for Daryl to choose the device (`DERP_BCR_PLAN.md`, open question 1).
+- **Not tested on a phone, and on hold:** on 2026-10-19 Daryl's kodiak didn't boot, so there was no device to test
+  on. Don't upload or announce this build until `DERP_BCR_PLAN.md` Task 5 has passed on a phone.
 - Rollback: delete the `BCR` line in `vendor/extra/product.mk` and rebuild; `derp-build.sh` then prints
   `BCR_CHECK=SKIPPED` and packs as before.
 
