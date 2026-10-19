@@ -1809,6 +1809,33 @@ with its allowlist (`CAPTURE_AUDIO_OUTPUT`, `CONTROL_INCALL_EXPERIENCE`) in `/sy
   and `vendor_kernel_boot.img` from the same fastboot zip. For SuSFS, Espada's non-magisk zip (KSU-Next + SuSFS) writes
   both partitions; it must be the same Espada version as the build.
 
+## 2ai. Pixel 7 Pro (cheetah): updated personal build with Magisk on Daryl's phone (2026-10-19)
+
+- **Build:** `EvolutionX-17.0-20261019-cheetah-12.3-Unofficial` from the tree as synced on 2026-10-18 (hand build,
+  `flock -o ~/.evolution-tree.lock ~/cheetah-images.sh`, `BUILD_EXIT=0` in 48:39), firmware CP3A.261005.002.A1.
+  `cheetah-pack.sh` (check mode) passed: `~/releases/cheetah/check/EvolutionX-17.0-20261019-cheetah-12.3-Unofficial-fastboot.zip`
+  (`efbe8a19…`). Not uploaded or published. `cheetah-pack.sh` no longer adds `-UNTESTED` (Daryl; backup `.bak-20261019-untested`).
+- **gs201 fix:** the kit's gs201 0001 (delete the nine Pixel config overlay modules) expected
+  `overlay/GoogleConfigOverlay/res/values/config.xml` at `c52908f`; upstream `88c602a` has `6e1c50b`, so
+  `cheetah-setup` on 10-18 06:36 stopped mid `git am`. Resolved as the deletion the patch intends (server gs201
+  `c7cdb89`, exactly the patch's 114 files). The kit patch was regenerated from it (applies cleanly to 88c602a, same
+  tree): server `~/evolution-cheetah/patches` (old one in `~/evolution-cheetah/0001-gs201-overlays.patch.bak-20261019`)
+  and branch `claude/wizardly-hopper-gnqtlx` `196e78a` (not pushed).
+- **Magisk (same recipe as kodiak, 2e "Root (Magisk)"):** Magisk v30.7 (`e0d32d21…`), `~/kodiak-magisk-patch.sh` with
+  `PREINITDEVICE=sda8` (cheetah's `/metadata`, from `magisk --preinit-device` run as the shell user),
+  `KEEPVERITY=true`, `KEEPFORCEENCRYPT=true`. Files in `~/releases/cheetah/personal/` and `~/Downloads/cheetah-evox/`:
+  `init_boot-…-magisk.img` (`1f20178c…`), `init_boot-…-stock.img` (`06e8e6ae…`, to undo root), and
+  `…-personal-magisk-fastboot.zip` (`dec7c6e3…`, the check zip with only init_boot replaced).
+- **Flashed 2026-10-19** to Daryl's Pixel 7 Pro (serial `28231FDH3005GR`; bootloader **unlocked**, although Android
+  reports locked/green because of Evolution's spoofing): `fastboot update`, no `-w`, slot b, 242 s. Booted in 37 s,
+  SELinux enforcing, `magiskd` running as `u:r:magisk:s0`, Magisk app 30.7 installed with `adb install`.
+  **Pending:** the app's "Requires Additional Setup" step (needs Daryl on the phone); until then `su` is denied.
+  The Zygisk/DenyList/hidden-app setup from kodiak is not done yet.
+- **Downloads to the Mac:** single-stream scp from the server runs at ~0.4 MB/s; 16 parallel ranged `dd` streams
+  over ssh gave ~27 MB/s (7.1 GB in 6 min), checked against the server's SHA-256.
+- **Undo:** root: `fastboot flash init_boot_b init_boot-…-stock.img`. Build: re-flash the 10-18 cheetah zip from
+  `~/releases/cheetah/` with `fastboot update` (no `-w`).
+
 ## 3. Machines and access
 
 | What | Where |
