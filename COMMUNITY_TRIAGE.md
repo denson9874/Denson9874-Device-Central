@@ -25,7 +25,13 @@ It is updated daily at **09:00 AM ET** by the automated Community Monitor and re
 | `ISS-20261017-04` | 2026-10-17 | XDA: anthonnyb98 (Post #90779690) | `kodiak` | Feature | Medium | `TRIAGED` | Greetings @denson9874, and thanks for the great work. I was wondering whether the facial unlock feature implemented i... | Next Sunday |
 | `ISS-20261017-05` | 2026-10-17 | XDA: wreq5 (Post #90779551) | `cubs` | Bug | High | `NEEDS_LOGS` | Alright alright alriiiight, flashed EvoX onto my Pixel 11 cubs and it was smooth as butter, Everything seems to check... | Next Sunday |
 | `ISS-20261019-01` | 2026-10-19 | Community report (video, logcat) | All P11 | Bug | High | `IN_PROGRESS` | Now Playing stuck at "Setting up Now Playing" and can't be turned on: vendor/gms nowplaying.xml blocks ASI from PCS ("association not allowed"); fix in tree (kodiak 0f60690, vendor/gms 1d69071), not built yet | Next build |
-| `ISS-20261019-02` | 2026-10-19 | Community report (logcat) | `kodiak` | Bug | Medium | `NEEDS_LOGS` | Gmail and Google account issues after a clean flash; the log covers only setup (Gmail never opens). Asked for symptoms, a logcat right after reproducing, and root/SuSFS details | Next Sunday |
+| `ISS-20261019-02` | 2026-10-19 | XDA: mcflyrk01 (Post #90782939) | `kodiak` | Bug | High | `TRIAGED` | Google Fi eSIM fails (T120 error, Keystore errors in logcat) & SIM settings won't launch; setup loop bypassed via Gmail | Next Sunday |
+| `ISS-20261020-01` | 2026-10-20 | TG: Igor (+ Ashray V K) | `kodiak` | Bug | High | `NEEDS_LOGS` | SystemUI restarts (back to lock screen) on the 10-18 build: unlock and immediately open QS, or screen off then instant FOD unlock. Reproducible per Igor; asked for `adb logcat -b crash -d` | Next build |
+| `ISS-20261020-02` | 2026-10-20 | TG: Loic | `kodiak` | Bug | Medium | `NEEDS_LOGS` | Chrome (Play update 10-15) hangs on open then crashes, 10-18 build; rooted (KSU-Next, Zygisk Next, SuSFS, LSPosed). Also confirms Now Playing (ISS-20261019-01) | Next build |
+| `ISS-20261019-03` | 2026-10-19 | TG: Masterdex | `kodiak` | Support | Low | `RESOLVED` | MEETS_STRONG_INTEGRITY not supported on DerpFest due to Tensor G6 boot failure risks; use Evolution X | Documented / Support |
+| `ISS-20261019-04` | 2026-10-19 | TG: Christoph 🇮🇱 | `kodiak` | Support / Mod | Low | `RESOLVED` | Third-party AnyKernel3 distributions (WildKernel) bootloop; Espada kernel v3 is the only supported kernel | Documented / Support |
+| `ISS-20261019-05` | 2026-10-19 | XDA: xerel89 (Post #90782948) / TG: Christoph, Igor | `kodiak` | Bug | Medium | `TRIAGED` | At a Glance / Live Display granular sub-settings cannot be disabled from widget settings (master Home setting works) | Next Sunday |
+| `ISS-20261019-06` | 2026-10-19 | XDA: kingpeppermint (Post #90783314) | `husky` | Support | Low | `RESOLVED` | Clarified that Evolution X Husky does not enforce stock Google 24-hour sideloading lockout restrictions | Reply posted |
 
 ---
 
