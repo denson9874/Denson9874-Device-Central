@@ -1,0 +1,178 @@
+[
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2172,
+    "update_id": 2172,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-20T13:21:43.073747+00:00",
+    "text": "All Three",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2174,
+    "update_id": 2174,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-20T13:21:43.073774+00:00",
+    "text": "I will try again",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2175,
+    "update_id": 2175,
+    "author": "Igor",
+    "timestamp": "2026-10-20T13:21:43.073779+00:00",
+    "text": "Interesting, that doesn't work for me either, turning the whole thing off does tho\nReceived edited at 10:52\u202fAM",
+    "reply_to": {
+      "text": "In reply to Daryl: Video"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2177,
+    "update_id": 2177,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-20T13:21:43.073783+00:00",
+    "text": "Video, Downloaded, 00:22, 576\u00d71280, 3.0 MB",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2178,
+    "update_id": 2178,
+    "author": "Igor",
+    "timestamp": "2026-10-20T13:21:43.073786+00:00",
+    "text": "Just for some reason I keep getting system ui restarts sometimes after unlocking phone, probably hard to get logs for that tho",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2179,
+    "update_id": 2179,
+    "author": "Igor",
+    "timestamp": "2026-10-20T13:21:43.073790+00:00",
+    "text": "Ok seems to be consistently happen when I unlock phone, and instantly try to open qs\nAnd when turning screen off and instantly unlocking with fod again",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2180,
+    "update_id": 2180,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-20T13:21:43.073794+00:00",
+    "text": "I noticed this too, happens right after unlocking the screen sometimes you go back to the lockacreen. \n\n(Cant get logs rn since moved to stock for a few days of travel)",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2181,
+    "update_id": 2181,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-20T13:21:43.073797+00:00",
+    "text": "Thought it was just me.",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2182,
+    "update_id": 2182,
+    "author": "Loic",
+    "timestamp": "2026-10-20T13:21:43.073834+00:00",
+    "text": "New builds for the Pixel 11 Pro XL (kodiak), Pixel 11 Pro (grizzly), Pixel 11 (cubs) and Pixel 11 Pro Fold (yogi), synced with this week's Evolution X source.\n\n\ud83d\udd04 Already on the October 16 build? Settings > System > System updates has this one; it installs in the background, then restart. Rooted? Use Magisk > Install > Install to inactive slot (after OTA) instead of restarting, or root is gone.\n\nWhat's new upstream:\n\u2022 Google apps updated from Pixel 11 Pro firmware CD1A.261005.003\n\u2022 Android System WebView 155.0.8059.39\n\u2022 Evolver: spoofing settings redesigned in Material 3 Expressive\n\u2022 Bluetooth no longer turns itself back on by default\n\u2022 Mobile network: falls back to visible cells when a network scan is rejected\n\u2022 Bug reports include the full kernel log\n\u2022 Emergency information: picking a photo works without a crop app\n\u2022 Translation updates across Evolution X and LineageOS apps\n\n\u26a0\ufe0f Known issue: a user has reported that Now Playing won't turn on in this build. It's being looked into.\n\nUnchanged: Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 on kodiak, grizzly and cubs (yogi stays on stock Google GKI), Extreme Charging, the charging screensaver, \"Use device MAC\" for Wi-Fi networks that filter by MAC address (since the 10-16 build), and stock CD1A.261005.003 firmware (security patch 2026-10-05).\n\n\ud83d\udcf1 Pixel 11 Pro XL (kodiak): EvolutionX-17.0-20261018-kodiak-12.3-Unofficial-fastboot.zip\nSHA-256: 0dd2e184a1a61518e3b333c3072d8ca48d7fb724366e2505f75e09a567656156\n\n\ud83d\udcf1 Pixel 11 Pro (grizzly): EvolutionX-17.0-20261018-grizzly-12.3-Unofficial-fastboot.zip\nSHA-256: 5e971deabeb379bf25408d12489aa07eed1b0d1dd33261b2b76b09c91ca276ac\n\n\ud83d\udcf1 Pixel 11 (cubs): EvolutionX-17.0-20261018-cubs-12.3-Unofficial-fastboot.zip\nSHA-256: 91386eb6c524a88712611a87307652b255ce6d3734e8b25b059471727b7ed929\n\n\ud83d\udcf1 Pixel 11 Pro Fold (yogi): EvolutionX-17.0-20261019-yogi-12.3-Unofficial-fastboot.zip\nSHA-256: db05f6075dab75304b636e9cc02c45a90fcfebc79f487c5b638bf85ed6d57abd\n\n\u2b07\ufe0f SourceForge: https://sourceforge.net/projects/denson9874-s-user-builds/files/\n\ud83d\udcac XDA: kodiak/grizzly https://xdaforums.com/t/4804712/ \u00b7 cubs https://xdaforums.com/t/4804723/ \u00b7 yogi https://xdaforums.com/t/4804826/\nPixel 11 pro xl \nKsuNext \nZygisk Next\nBrene SuSFS\nLSPosed \nTout fonctionne hormis New Playing et Chrome (update 15/10) qui bloque a l'ouverture puis Crash \nLe reste est parfait merci pour tout \ud83d\ude09",
+    "reply_to": {
+      "text": "In reply to Expressive Group: \ud83d\udee0 Evolution X for the Pixel 11 series: October 18 update"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2185,
+    "update_id": 2185,
+    "author": "Pratik",
+    "timestamp": "2026-10-20T13:21:43.073845+00:00",
+    "text": "Hi @denson9874 thanks for the launcher update. It's smooth!\n\nFew feedback:\n1. The app drawer top search bar covers the top icon bar\n2. In app drawer hide apps, the work profile apps do not have a work profile bagde.. So i see 2 apps for apps in my work and personal profile.. Just a work profile badge in hide apps list.\n3. Can you see if appsfolder can have a icon (not cover)? So for 2 email apps in a folder I can set its icon to a email app icon..\n4. App icon size issue still persists. For e. g 90% app size in home screen is smaller than 90% app size in app drawer\n5. Icons within the folder are also not same in size \n\nMore when I find out.. Thanks always",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90783707",
+    "author": "LoganDeveloper",
+    "timestamp": "2026-10-19T13:13:21-0400",
+    "text": "I installed October 18 update on my grizzly.\nIt works great, except I can't limit charging up to 80%, it turns off by itself.\n\nAlso, I can't find the option to charge my phone up to 100% right before I normally unplug it",
+    "quotes": [],
+    "url": "https://xdaforums.com/t/4804712/post-90783707"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90783719",
+    "author": "xerel89",
+    "timestamp": "2026-10-19T13:23:46-0400",
+    "text": "Search in the settings for that, this feature is also in stock available",
+    "quotes": [
+      "LoganDeveloper said:\nI installed October 18 update on my grizzly.\nIt works great, except I can't limit charging up to 80%, it turns off by itself.\n\nAlso, I can't find the option to charge my phone up to 100% right before I normally unplug it"
+    ],
+    "url": "https://xdaforums.com/t/4804712/post-90783719"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90783876",
+    "author": "DoubtTM",
+    "timestamp": "2026-10-19T15:34:38-0400",
+    "text": "Not the first error, but the thing u talked about in edit2",
+    "quotes": [
+      "mcflyrk01 said:\ndo you mean for the Google Fi error? that doesn't fix it unfortunately \n\nI do see keystore errors related to the Fi app in the logs so I'm wondering if this will work if I set up the eSIM on stock and then flash EvoX. Will try that later today."
+    ],
+    "url": "https://xdaforums.com/t/4804712/post-90783876"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90784537",
+    "author": "bs3pro",
+    "timestamp": "2026-10-20T08:04:26-0400",
+    "text": "I'm assuming rcs is broken in the US with this rom? And any custom room for that matter?",
+    "quotes": [],
+    "url": "https://xdaforums.com/t/4804712/post-90784537"
+  }
+]

@@ -32,6 +32,9 @@ It is updated daily at **09:00 AM ET** by the automated Community Monitor and re
 | `ISS-20261019-04` | 2026-10-19 | TG: Christoph 🇮🇱 | `kodiak` | Support / Mod | Low | `RESOLVED` | Third-party AnyKernel3 distributions (WildKernel) bootloop; Espada kernel v3 is the only supported kernel | Documented / Support |
 | `ISS-20261019-05` | 2026-10-19 | XDA: xerel89 (Post #90782948) / TG: Christoph, Igor | `kodiak` | Bug | Medium | `TRIAGED` | At a Glance / Live Display granular sub-settings cannot be disabled from widget settings (master Home setting works) | Next Sunday |
 | `ISS-20261019-06` | 2026-10-19 | XDA: kingpeppermint (Post #90783314) | `husky` | Support | Low | `RESOLVED` | Clarified that Evolution X Husky does not enforce stock Google 24-hour sideloading lockout restrictions | Reply posted |
+| `ISS-20261020-03` | 2026-10-20 | TG: Pratik | `kodiak` | Bug / UI | Medium | `TRIAGED` | Expressive Launcher: app drawer search bar overlaps top row, missing work profile badge in hide apps, icon sizing disparity | Next Sunday |
+| `ISS-20261020-04` | 2026-10-20 | XDA: LoganDeveloper (Post #90783707) | `grizzly` | Bug | Medium | `TRIAGED` | 80% charging limit toggle unexpectedly turns off / resets on grizzly; inquiry regarding adaptive charging | Next Sunday |
+| `ISS-20261020-05` | 2026-10-20 | XDA: bs3pro (Post #90784537) | `kodiak` | Support | Low | `RESOLVED` | Clarified RCS messaging support in US: requires passing Play Integrity (MEETS_DEVICE) and carrier provisioning | Reply posted |
 
 ---
 
