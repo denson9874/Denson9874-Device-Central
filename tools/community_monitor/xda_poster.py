@@ -61,6 +61,8 @@ class XDAPoster:
 
         # Escape bbcode_content for embedding in JS
         js_escaped_content = json.dumps(bbcode_content)
+        # The JS sits inside an AppleScript string literal: escape it for AppleScript too
+        js_escaped_content = js_escaped_content.replace("\\", "\\\\").replace('"', '\\"')
 
         apple_script = f"""
         tell application "Google Chrome Canary"
@@ -136,7 +138,7 @@ class XDAPoster:
             delay 3
             set finalUrl to URL of active tab of front window
             close active tab of front window
-            return "{{\\"success\\": true, \\"final_url\\": \\"" & finalUrl & "\\"\"}}"
+            return "{{\\"success\\": true, \\"final_url\\": \\"" & finalUrl & "\\"}}"
         end tell
         """
 
