@@ -40,7 +40,12 @@ LineageOS's husky trees build unchanged on LineageOS; Evolution X adds Pixel-sty
 | device/google/shusky | `0002` | Adds `overlay-evolution` to `DEVICE_PACKAGE_OVERLAYS` and provides `evolution_strings.xml` configuring `build_maintainer_summary` to "Daryl Denson (Unofficial)" |
 | device/google/zuma | `0001` | Drops nine RRO overlays whose names vendor/pixel-style also defines (Evolution's copies are supersets); common.mk installs them by name |
 | device/google/zuma | `0002` | Installs the Pixel default permissions as `default-permissions-zuma.xml` so they don't collide with vendor/gms's `default-permissions.xml` |
+| device/google/shusky | `0003` | Keeps app odex on /system: zip/OTA installs never write `system_other`, so SystemUIGoogle and Settings otherwise lose their AOT code after every update ([plan](HUSKY_PERF_CHARGING_PLAN.md) F1; needs on-device confirmation) |
 | vendor/google/husky | `0001` | Defers `DeviceIntelligenceNetworkPrebuiltAstrea` (vendor/gms ships a newer one) and 16 byte-identical Pixel sysconfig/default-permission XMLs to vendor/gms |
+| vendor/google/husky | `0003` | Defers `nowplaying_app_26q1.xml` to vendor/gms, which installs the byte-identical file since its CD1A update (the duplicate stopped the build) |
+| vendor/google/husky | `0002` | Adds a `BODEGA` power hint and a conservative `bodega` charge-thermal profile so the shared Extreme Charging tile works on husky ([plan](HUSKY_PERF_CHARGING_PLAN.md) workstream A) |
+
+Stability, fluidity and charging capture: `tools/husky-audit.sh {baseline|fluidity|charge}` (see the plan).
 
 ## Upstream `cnb` Parity Highlights (2026-10-16)
 
