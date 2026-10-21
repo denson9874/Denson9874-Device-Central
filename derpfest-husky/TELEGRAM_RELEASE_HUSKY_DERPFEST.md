@@ -15,7 +15,7 @@ Unofficial build. husky's official DerpFest maintainer is Adrian Szymański (@Ad
 
 **Download**
 • `DerpFest-v17-20261021-husky-Unofficial-Stable.zip` (2.87 GB)
-• SHA-256: `c2df9952802f89fb42e316d8126c51fb741083910de3227fd5d1699125ba635c`
+• SHA-256: `7ab1b0c5e04fb9c3279df8d319e4cad8442244f526fad8062425c3bbd674b94b`
 • Recovery images: `boot-20261021.img`, `vendor_boot-20261021.img` (checksums in `recovery-20261021.sha256`)
 • https://sourceforge.net/projects/denson9874-s-user-builds/files/derpfest/husky/
 

@@ -11,7 +11,7 @@
 #
 # Checks: the package is A/B, for this device and from this build; its zip and payload signatures verify against the
 # build's own otacerts.zip, which holds DerpFest's release key and not Evolution X's; the payload carries the ROM and
-# firmware partitions; its vbmeta has the build's boot and system patch levels.
+# firmware partitions; its boot and system patch levels (boot footer, vbmeta_system) are the build's.
 # Prints OTA_VERIFIED, and OTA_PUBLISHED <json url> after a successful --upload.
 set -euo pipefail
 
@@ -91,13 +91,15 @@ want+=" $(for f in $TOP/vendor/google/$dev/radio/*.img; do basename "$f" .img; d
 missing=$(for p in $want; do grep -qx "$p" $T/partitions || echo "$p"; done)
 [ -z "$missing" ] || fail "the payload lacks: $(echo $missing)"
 
-# 4. vbmeta keeps the patch levels (KeyMint must never see them go missing or backwards)
+# 4. The patch levels stay as built (KeyMint must never see them go missing or backwards). zuma chains boot and
+# system from vbmeta, so they're in boot.img's footer and vbmeta_system.img, as on Evolution X's gs201.
+AVB="vbmeta_system boot"
 mkdir $T/x
-$H/ota_extractor -payload "$OTA" -payload_offset "$off" -output_dir $T/x -partitions vbmeta > $T/x.log 2>&1 \
-    || { tail -3 $T/x.log; fail "couldn't extract vbmeta"; }
-props() { $H/avbtool info_image --image "$1/vbmeta.img" | grep -oE "com\.android\.build\.(boot|system)\.security_patch -> '[0-9-]+'" | sort -u; }
-[ "$(props $T/x | wc -l)" = 2 ] || fail "the OTA's vbmeta lacks the boot or system patch level"
-[ "$(props $T/x)" = "$(props $O)" ] || fail "the OTA's patch levels differ from the build's vbmeta.img"
+$H/ota_extractor -payload "$OTA" -payload_offset "$off" -output_dir $T/x -partitions "${AVB// /,}" > $T/x.log 2>&1 \
+    || { tail -3 $T/x.log; fail "couldn't extract $AVB"; }
+props() { local d=$1 i; for i in $AVB; do $H/avbtool info_image --image "$d/$i.img"; done | grep -oE "com\.android\.build\.(boot|system)\.security_patch -> '[0-9-]+'" | sort -u; }
+[ "$(props $T/x | wc -l)" = 2 ] || fail "the OTA's $AVB lack the boot or system patch level"
+[ "$(props $T/x)" = "$(props $O)" ] || fail "the OTA's patch levels differ from the build's $AVB images"
 boot_spl=$(props $T/x | sed -n "s/.*boot.security_patch -> '\(.*\)'/\1/p")
 system_spl=$(props $T/x | sed -n "s/.*system.security_patch -> '\(.*\)'/\1/p")
 firmware=$(cat $TOP/vendor/google/$dev/radio/SOURCE)
