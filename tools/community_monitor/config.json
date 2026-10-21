@@ -40,6 +40,13 @@
         "name": "Pixel 8 Pro (husky)",
         "device": "husky",
         "url": "https://xdaforums.com/t/rom-17-0-unofficial-evolution-x-12-3-for-pixel-8-pro-husky-2026-10-16.4805239/"
+      },
+      {
+        "id": "4805779",
+        "name": "Pixel 8 Pro (husky) DerpFest",
+        "device": "husky",
+        "rom": "DerpFest",
+        "url": "https://xdaforums.com/t/rom-17-0-unofficial-derpfest-v17-for-pixel-8-pro-husky-2026-10-21.4805779/"
       }
     ]
   },
