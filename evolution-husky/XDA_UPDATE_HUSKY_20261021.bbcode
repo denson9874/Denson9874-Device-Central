@@ -1,0 +1,31 @@
+[SIZE=5][B]Update: 2026-10-21 build[/B][/SIZE]
+
+New build of Evolution X 12.3 (Android 17) for the Pixel 8 Pro, synced with upstream Evolution X cnb and LineageOS on 2026-10-21.
+
+[B]What's new[/B]
+[LIST]
+[*][B]Extreme Charging on husky:[/B] the Quick Settings tile now works on the Pixel 8 Pro. Below 50% on a wired charger it relaxes the charge-temperature throttling, so the phone keeps charging faster while you use it. It turns itself off when you unplug or reach 100%. The 47 °C and 55 °C charging cut-offs, USB-port protection and the battery's own temperature limits are unchanged; expect the phone to run warmer while it's on.
+[*][B]Pixel face unlock:[/B] face unlock now uses the Pixel 8 Pro's own face unlock (LineageOS device tree update). [B]If you used face unlock before, set it up again[/B] in Settings > Security & privacy > Device unlock.
+[*][B]Faster first boot after updates:[/B] SystemUI and Settings now ship precompiled, so they're fully optimized from the first boot instead of recompiling.
+[*][B]User build[/B], like the Pixel 11 releases.
+[*][B]Upstream Evolution X:[/B] SystemUI no longer polls lockscreen widgets in the background, and the Wi-Fi icon updates on events instead of polling; DynamicBar redesign; torch fixes for long-press power; App Lock, Settings and Evolver updates; latest LineageOS changes.
+[/LIST]
+
+[B]Known issues[/B]
+[LIST]
+[*]Notification shade animations can still drop frames. I traced it to SystemUI's notification list layout and I'm working on it.
+[*]Gemini Nano features don't work (Google serves the models only to phones with a locked bootloader).
+[/LIST]
+
+[B]Downloads[/B] ([URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/husky/17/]SourceForge: husky/17[/URL])
+[LIST]
+[*]ROM: [ICODE]EvolutionX-17.0-20261021-husky-12.3-Unofficial.zip[/ICODE]
+[*]SHA-256: [ICODE]3fcd713310bb9b1d1947fec588bef98931676f9edfc8e9fe6e746c85faa8f69b[/ICODE]
+[*]Recovery images for clean installs: [ICODE]boot-20261021.img[/ICODE] and [ICODE]vendor_boot-20261021.img[/ICODE] (SHA-256 in [ICODE]recovery-20261021.sha256[/ICODE])
+[/LIST]
+
+[B]Updating[/B] from an earlier build keeps your data: reboot to recovery, [B]Apply update[/B] > [B]Apply from ADB[/B], then
+[CODE]adb sideload EvolutionX-17.0-20261021-husky-12.3-Unofficial.zip[/CODE]
+and reboot. For a clean install, follow the first post using the dated recovery images.
+
+Tested on my Pixel 8 Pro (October CP3A firmware) as an update from the 10-16 build: verified boot green, SELinux enforcing, Wi-Fi, Bluetooth, NFC, mobile data, both cameras, fingerprint, 43 sensors, 120/60 Hz.

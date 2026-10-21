@@ -1,4 +1,4 @@
-From 64a83886ddd7d7f308bce6310d57945bf0e0d330 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <daryldenson0405@gmail.com>
 Date: Sat, 10 Oct 2026 01:40:46 +0200
 Subject: [PATCH] zuma: use Evolution X's Pixel config overlays
@@ -110,7 +110,7 @@ differ in wording) plus more. common.mk still installs them by name.
  overlay/GoogleConfigOverlay/Android.bp        |   9 -
  .../GoogleConfigOverlay/AndroidManifest.xml   |  11 -
  .../res/raw/fallback_categories.csv           | 387 ------------------
- .../GoogleConfigOverlay/res/values/config.xml |  22 -
+ .../GoogleConfigOverlay/res/values/config.xml |  68 ---
  .../Android.bp                                |   9 -
  .../AndroidManifest.xml                       |  12 -
  .../res/values/bools.xml                      |  10 -
@@ -123,7 +123,7 @@ differ in wording) plus more. common.mk still installs them by name.
  overlay/PixelConfigOverlayCommon/Android.bp   |   9 -
  .../AndroidManifest.xml                       |  11 -
  .../res/values/config.xml                     |  70 ----
- 114 files changed, 2640 deletions(-)
+ 114 files changed, 2686 deletions(-)
  delete mode 100644 overlay/GlanceableHubConfigOverlay/Android.bp
  delete mode 100644 overlay/GlanceableHubConfigOverlay/AndroidManifest.xml
  delete mode 100644 overlay/GlanceableHubConfigOverlay/res/values/config.xml
@@ -241,7 +241,7 @@ differ in wording) plus more. common.mk still installs them by name.
 
 diff --git a/overlay/GlanceableHubConfigOverlay/Android.bp b/overlay/GlanceableHubConfigOverlay/Android.bp
 deleted file mode 100644
-index 514c968..0000000
+index 514c968f..00000000
 --- a/overlay/GlanceableHubConfigOverlay/Android.bp
 +++ /dev/null
 @@ -1,9 +0,0 @@
@@ -256,7 +256,7 @@ index 514c968..0000000
 -}
 diff --git a/overlay/GlanceableHubConfigOverlay/AndroidManifest.xml b/overlay/GlanceableHubConfigOverlay/AndroidManifest.xml
 deleted file mode 100644
-index 4dded5e..0000000
+index 4dded5e2..00000000
 --- a/overlay/GlanceableHubConfigOverlay/AndroidManifest.xml
 +++ /dev/null
 @@ -1,11 +0,0 @@
@@ -273,7 +273,7 @@ index 4dded5e..0000000
 -</manifest>
 diff --git a/overlay/GlanceableHubConfigOverlay/res/values/config.xml b/overlay/GlanceableHubConfigOverlay/res/values/config.xml
 deleted file mode 100644
-index 6863252..0000000
+index 68632522..00000000
 --- a/overlay/GlanceableHubConfigOverlay/res/values/config.xml
 +++ /dev/null
 @@ -1,51 +0,0 @@
@@ -330,7 +330,7 @@ index 6863252..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/Android.bp b/overlay/GlanceableHubSettingsConfigOverlay/Android.bp
 deleted file mode 100644
-index f35b180..0000000
+index f35b180a..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/Android.bp
 +++ /dev/null
 @@ -1,9 +0,0 @@
@@ -345,7 +345,7 @@ index f35b180..0000000
 -}
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/AndroidManifest.xml b/overlay/GlanceableHubSettingsConfigOverlay/AndroidManifest.xml
 deleted file mode 100644
-index c12e928..0000000
+index c12e928d..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/AndroidManifest.xml
 +++ /dev/null
 @@ -1,11 +0,0 @@
@@ -362,7 +362,7 @@ index c12e928..0000000
 -</manifest>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-af/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-af/strings.xml
 deleted file mode 100644
-index a7b5560..0000000
+index a7b55608..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-af/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -389,7 +389,7 @@ index a7b5560..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-am/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-am/strings.xml
 deleted file mode 100644
-index d62091e..0000000
+index d62091ee..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-am/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -416,7 +416,7 @@ index d62091e..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ar/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ar/strings.xml
 deleted file mode 100644
-index 3057150..0000000
+index 3057150f..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ar/strings.xml
 +++ /dev/null
 @@ -1,24 +0,0 @@
@@ -446,7 +446,7 @@ index 3057150..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-as/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-as/strings.xml
 deleted file mode 100644
-index 3c97f97..0000000
+index 3c97f979..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-as/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -473,7 +473,7 @@ index 3c97f97..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-az/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-az/strings.xml
 deleted file mode 100644
-index 46568b2..0000000
+index 46568b2d..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-az/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -500,7 +500,7 @@ index 46568b2..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-b+sr+Latn/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-b+sr+Latn/strings.xml
 deleted file mode 100644
-index bf535ed..0000000
+index bf535ede..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-b+sr+Latn/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -527,7 +527,7 @@ index bf535ed..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-be/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-be/strings.xml
 deleted file mode 100644
-index 6b1a32e..0000000
+index 6b1a32ea..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-be/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -554,7 +554,7 @@ index 6b1a32e..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-bg/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-bg/strings.xml
 deleted file mode 100644
-index fa0f3d5..0000000
+index fa0f3d57..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-bg/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -581,7 +581,7 @@ index fa0f3d5..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-bn/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-bn/strings.xml
 deleted file mode 100644
-index 8d9466d..0000000
+index 8d9466da..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-bn/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -608,7 +608,7 @@ index 8d9466d..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-bs/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-bs/strings.xml
 deleted file mode 100644
-index fc59457..0000000
+index fc59457a..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-bs/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -635,7 +635,7 @@ index fc59457..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ca/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ca/strings.xml
 deleted file mode 100644
-index 9e2a5a2..0000000
+index 9e2a5a2c..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ca/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -662,7 +662,7 @@ index 9e2a5a2..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-cs/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-cs/strings.xml
 deleted file mode 100644
-index 77bf3a4..0000000
+index 77bf3a47..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-cs/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -689,7 +689,7 @@ index 77bf3a4..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-da/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-da/strings.xml
 deleted file mode 100644
-index 801f7d1..0000000
+index 801f7d1b..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-da/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -716,7 +716,7 @@ index 801f7d1..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-de/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-de/strings.xml
 deleted file mode 100644
-index 91a9d4c..0000000
+index 91a9d4cc..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-de/strings.xml
 +++ /dev/null
 @@ -1,24 +0,0 @@
@@ -746,7 +746,7 @@ index 91a9d4c..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-el/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-el/strings.xml
 deleted file mode 100644
-index b1f365a..0000000
+index b1f365ab..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-el/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -773,7 +773,7 @@ index b1f365a..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rAU/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rAU/strings.xml
 deleted file mode 100644
-index 1378fd2..0000000
+index 1378fd2e..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rAU/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -800,7 +800,7 @@ index 1378fd2..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rCA/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rCA/strings.xml
 deleted file mode 100644
-index 1378fd2..0000000
+index 1378fd2e..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rCA/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -827,7 +827,7 @@ index 1378fd2..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rGB/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rGB/strings.xml
 deleted file mode 100644
-index 1378fd2..0000000
+index 1378fd2e..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rGB/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -854,7 +854,7 @@ index 1378fd2..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rIN/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rIN/strings.xml
 deleted file mode 100644
-index 1378fd2..0000000
+index 1378fd2e..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rIN/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -881,7 +881,7 @@ index 1378fd2..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-es-rUS/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-es-rUS/strings.xml
 deleted file mode 100644
-index 810377c..0000000
+index 810377c1..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-es-rUS/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -908,7 +908,7 @@ index 810377c..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-es/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-es/strings.xml
 deleted file mode 100644
-index 04586a8..0000000
+index 04586a8f..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-es/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -935,7 +935,7 @@ index 04586a8..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-et/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-et/strings.xml
 deleted file mode 100644
-index 6192725..0000000
+index 61927253..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-et/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -962,7 +962,7 @@ index 6192725..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-eu/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-eu/strings.xml
 deleted file mode 100644
-index 27ccd1c..0000000
+index 27ccd1c7..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-eu/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -989,7 +989,7 @@ index 27ccd1c..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fa/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-fa/strings.xml
 deleted file mode 100644
-index e4f095c..0000000
+index e4f095cf..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fa/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1016,7 +1016,7 @@ index e4f095c..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fi/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-fi/strings.xml
 deleted file mode 100644
-index 74f0648..0000000
+index 74f0648b..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fi/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1043,7 +1043,7 @@ index 74f0648..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fr-rCA/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-fr-rCA/strings.xml
 deleted file mode 100644
-index 87eb118..0000000
+index 87eb1189..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fr-rCA/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1070,7 +1070,7 @@ index 87eb118..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fr/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-fr/strings.xml
 deleted file mode 100644
-index d193464..0000000
+index d1934643..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fr/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1097,7 +1097,7 @@ index d193464..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-gl/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-gl/strings.xml
 deleted file mode 100644
-index dad2371..0000000
+index dad23712..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-gl/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1124,7 +1124,7 @@ index dad2371..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-gu/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-gu/strings.xml
 deleted file mode 100644
-index 9e4d60f..0000000
+index 9e4d60f5..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-gu/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1151,7 +1151,7 @@ index 9e4d60f..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hi/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-hi/strings.xml
 deleted file mode 100644
-index 5a4c0dc..0000000
+index 5a4c0dc1..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hi/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1178,7 +1178,7 @@ index 5a4c0dc..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hr/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-hr/strings.xml
 deleted file mode 100644
-index 963a710..0000000
+index 963a710e..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hr/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1205,7 +1205,7 @@ index 963a710..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hu/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-hu/strings.xml
 deleted file mode 100644
-index 48575c3..0000000
+index 48575c36..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hu/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1232,7 +1232,7 @@ index 48575c3..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hy/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-hy/strings.xml
 deleted file mode 100644
-index d70818b..0000000
+index d70818b2..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hy/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1259,7 +1259,7 @@ index d70818b..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-in/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-in/strings.xml
 deleted file mode 100644
-index d218404..0000000
+index d2184048..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-in/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1286,7 +1286,7 @@ index d218404..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-is/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-is/strings.xml
 deleted file mode 100644
-index aaae10b..0000000
+index aaae10bb..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-is/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1313,7 +1313,7 @@ index aaae10b..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-it/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-it/strings.xml
 deleted file mode 100644
-index 0ceef15..0000000
+index 0ceef158..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-it/strings.xml
 +++ /dev/null
 @@ -1,24 +0,0 @@
@@ -1343,7 +1343,7 @@ index 0ceef15..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-iw/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-iw/strings.xml
 deleted file mode 100644
-index 0a88a05..0000000
+index 0a88a05c..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-iw/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1370,7 +1370,7 @@ index 0a88a05..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ja/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ja/strings.xml
 deleted file mode 100644
-index e338f21..0000000
+index e338f214..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ja/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1397,7 +1397,7 @@ index e338f21..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ka/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ka/strings.xml
 deleted file mode 100644
-index a286eca..0000000
+index a286eca8..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ka/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1424,7 +1424,7 @@ index a286eca..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-kk/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-kk/strings.xml
 deleted file mode 100644
-index c1bee30..0000000
+index c1bee30e..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-kk/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1451,7 +1451,7 @@ index c1bee30..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-km/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-km/strings.xml
 deleted file mode 100644
-index fa861f9..0000000
+index fa861f9e..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-km/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1478,7 +1478,7 @@ index fa861f9..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-kn/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-kn/strings.xml
 deleted file mode 100644
-index a16d939..0000000
+index a16d9392..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-kn/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1505,7 +1505,7 @@ index a16d939..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ko/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ko/strings.xml
 deleted file mode 100644
-index 513a42a..0000000
+index 513a42a1..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ko/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1532,7 +1532,7 @@ index 513a42a..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ky/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ky/strings.xml
 deleted file mode 100644
-index eba7fb4..0000000
+index eba7fb46..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ky/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1559,7 +1559,7 @@ index eba7fb4..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-lo/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-lo/strings.xml
 deleted file mode 100644
-index 3172f6e..0000000
+index 3172f6eb..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-lo/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1586,7 +1586,7 @@ index 3172f6e..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-lt/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-lt/strings.xml
 deleted file mode 100644
-index 5170526..0000000
+index 5170526e..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-lt/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1613,7 +1613,7 @@ index 5170526..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-lv/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-lv/strings.xml
 deleted file mode 100644
-index 84f97b6..0000000
+index 84f97b67..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-lv/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1640,7 +1640,7 @@ index 84f97b6..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-mk/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-mk/strings.xml
 deleted file mode 100644
-index f8debd9..0000000
+index f8debd99..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-mk/strings.xml
 +++ /dev/null
 @@ -1,24 +0,0 @@
@@ -1670,7 +1670,7 @@ index f8debd9..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ml/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ml/strings.xml
 deleted file mode 100644
-index 0c735d3..0000000
+index 0c735d31..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ml/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1697,7 +1697,7 @@ index 0c735d3..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-mn/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-mn/strings.xml
 deleted file mode 100644
-index b53472a..0000000
+index b53472af..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-mn/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1724,7 +1724,7 @@ index b53472a..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-mr/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-mr/strings.xml
 deleted file mode 100644
-index 8cd7f31..0000000
+index 8cd7f312..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-mr/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1751,7 +1751,7 @@ index 8cd7f31..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ms/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ms/strings.xml
 deleted file mode 100644
-index 4f64f72..0000000
+index 4f64f72b..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ms/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1778,7 +1778,7 @@ index 4f64f72..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-my/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-my/strings.xml
 deleted file mode 100644
-index 2ffba7a..0000000
+index 2ffba7a8..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-my/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1805,7 +1805,7 @@ index 2ffba7a..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-nb/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-nb/strings.xml
 deleted file mode 100644
-index 3020b30..0000000
+index 3020b300..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-nb/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1832,7 +1832,7 @@ index 3020b30..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ne/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ne/strings.xml
 deleted file mode 100644
-index f18be8f..0000000
+index f18be8fa..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ne/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1859,7 +1859,7 @@ index f18be8f..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-nl/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-nl/strings.xml
 deleted file mode 100644
-index abd5880..0000000
+index abd5880a..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-nl/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1886,7 +1886,7 @@ index abd5880..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-or/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-or/strings.xml
 deleted file mode 100644
-index 8e82774..0000000
+index 8e82774d..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-or/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1913,7 +1913,7 @@ index 8e82774..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pa/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-pa/strings.xml
 deleted file mode 100644
-index 11f7296..0000000
+index 11f72966..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pa/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1940,7 +1940,7 @@ index 11f7296..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pl/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-pl/strings.xml
 deleted file mode 100644
-index fdfe261..0000000
+index fdfe2610..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pl/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -1967,7 +1967,7 @@ index fdfe261..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rBR/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rBR/strings.xml
 deleted file mode 100644
-index c033c88..0000000
+index c033c88b..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rBR/strings.xml
 +++ /dev/null
 @@ -1,24 +0,0 @@
@@ -1997,7 +1997,7 @@ index c033c88..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rPT/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rPT/strings.xml
 deleted file mode 100644
-index b299386..0000000
+index b2993866..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rPT/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2024,7 +2024,7 @@ index b299386..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt/strings.xml
 deleted file mode 100644
-index c033c88..0000000
+index c033c88b..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt/strings.xml
 +++ /dev/null
 @@ -1,24 +0,0 @@
@@ -2054,7 +2054,7 @@ index c033c88..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ro/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ro/strings.xml
 deleted file mode 100644
-index 15372df..0000000
+index 15372df6..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ro/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2081,7 +2081,7 @@ index 15372df..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ru/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ru/strings.xml
 deleted file mode 100644
-index 2af2e05..0000000
+index 2af2e05e..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ru/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2108,7 +2108,7 @@ index 2af2e05..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-si/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-si/strings.xml
 deleted file mode 100644
-index 5ca6b7a..0000000
+index 5ca6b7a2..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-si/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2135,7 +2135,7 @@ index 5ca6b7a..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sk/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-sk/strings.xml
 deleted file mode 100644
-index 05cc54a..0000000
+index 05cc54aa..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sk/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2162,7 +2162,7 @@ index 05cc54a..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sl/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-sl/strings.xml
 deleted file mode 100644
-index f8bda63..0000000
+index f8bda632..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sl/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2189,7 +2189,7 @@ index f8bda63..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sq/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-sq/strings.xml
 deleted file mode 100644
-index a9bd441..0000000
+index a9bd441e..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sq/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2216,7 +2216,7 @@ index a9bd441..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sr/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-sr/strings.xml
 deleted file mode 100644
-index d1bc52b..0000000
+index d1bc52b5..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sr/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2243,7 +2243,7 @@ index d1bc52b..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sv/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-sv/strings.xml
 deleted file mode 100644
-index c913c13..0000000
+index c913c13b..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sv/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2270,7 +2270,7 @@ index c913c13..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sw/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-sw/strings.xml
 deleted file mode 100644
-index 43c9e86..0000000
+index 43c9e864..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sw/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2297,7 +2297,7 @@ index 43c9e86..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ta/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ta/strings.xml
 deleted file mode 100644
-index 967b70e..0000000
+index 967b70ef..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ta/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2324,7 +2324,7 @@ index 967b70e..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-te/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-te/strings.xml
 deleted file mode 100644
-index cdad162..0000000
+index cdad1621..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-te/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2351,7 +2351,7 @@ index cdad162..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-th/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-th/strings.xml
 deleted file mode 100644
-index dc849ad..0000000
+index dc849adc..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-th/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2378,7 +2378,7 @@ index dc849ad..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-tl/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-tl/strings.xml
 deleted file mode 100644
-index 5b8b350..0000000
+index 5b8b350d..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-tl/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2405,7 +2405,7 @@ index 5b8b350..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-tr/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-tr/strings.xml
 deleted file mode 100644
-index 904a36c..0000000
+index 904a36c4..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-tr/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2432,7 +2432,7 @@ index 904a36c..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-uk/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-uk/strings.xml
 deleted file mode 100644
-index fe217d3..0000000
+index fe217d3a..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-uk/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2459,7 +2459,7 @@ index fe217d3..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ur/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ur/strings.xml
 deleted file mode 100644
-index fa66943..0000000
+index fa66943c..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ur/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2486,7 +2486,7 @@ index fa66943..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-uz/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-uz/strings.xml
 deleted file mode 100644
-index 1890d1f..0000000
+index 1890d1fe..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-uz/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2513,7 +2513,7 @@ index 1890d1f..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-vi/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-vi/strings.xml
 deleted file mode 100644
-index e6c96a0..0000000
+index e6c96a02..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-vi/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2540,7 +2540,7 @@ index e6c96a0..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rCN/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rCN/strings.xml
 deleted file mode 100644
-index 16ce6b8..0000000
+index 16ce6b8d..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rCN/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2567,7 +2567,7 @@ index 16ce6b8..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rHK/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rHK/strings.xml
 deleted file mode 100644
-index c161ab3..0000000
+index c161ab39..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rHK/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2594,7 +2594,7 @@ index c161ab3..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rTW/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rTW/strings.xml
 deleted file mode 100644
-index 207f00b..0000000
+index 207f00bc..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rTW/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2621,7 +2621,7 @@ index 207f00b..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zu/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-zu/strings.xml
 deleted file mode 100644
-index 8ca556c..0000000
+index 8ca556cb..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zu/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2648,7 +2648,7 @@ index 8ca556c..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values/arrays.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values/arrays.xml
 deleted file mode 100644
-index 5b4d8f4..0000000
+index 5b4d8f40..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values/arrays.xml
 +++ /dev/null
 @@ -1,32 +0,0 @@
@@ -2686,7 +2686,7 @@ index 5b4d8f4..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values/config.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values/config.xml
 deleted file mode 100644
-index aecbd4d..0000000
+index aecbd4d3..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values/config.xml
 +++ /dev/null
 @@ -1,9 +0,0 @@
@@ -2701,7 +2701,7 @@ index aecbd4d..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values/strings.xml
 deleted file mode 100644
-index 1378fd2..0000000
+index 1378fd2e..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay/res/values/strings.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -2728,7 +2728,7 @@ index 1378fd2..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay2022/Android.bp b/overlay/GlanceableHubSettingsConfigOverlay2022/Android.bp
 deleted file mode 100644
-index d93d50b..0000000
+index d93d50bb..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay2022/Android.bp
 +++ /dev/null
 @@ -1,9 +0,0 @@
@@ -2743,7 +2743,7 @@ index d93d50b..0000000
 -}
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay2022/AndroidManifest.xml b/overlay/GlanceableHubSettingsConfigOverlay2022/AndroidManifest.xml
 deleted file mode 100644
-index 5ba0efc..0000000
+index 5ba0efc1..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay2022/AndroidManifest.xml
 +++ /dev/null
 @@ -1,11 +0,0 @@
@@ -2760,7 +2760,7 @@ index 5ba0efc..0000000
 -</manifest>
 diff --git a/overlay/GlanceableHubSettingsConfigOverlay2022/res/values/config.xml b/overlay/GlanceableHubSettingsConfigOverlay2022/res/values/config.xml
 deleted file mode 100644
-index ad3f72a..0000000
+index ad3f72a6..00000000
 --- a/overlay/GlanceableHubSettingsConfigOverlay2022/res/values/config.xml
 +++ /dev/null
 @@ -1,9 +0,0 @@
@@ -2775,7 +2775,7 @@ index ad3f72a..0000000
 -</resources>
 diff --git a/overlay/GlanceableHubSysuiConfigOverlay/Android.bp b/overlay/GlanceableHubSysuiConfigOverlay/Android.bp
 deleted file mode 100644
-index b0a38d1..0000000
+index b0a38d1a..00000000
 --- a/overlay/GlanceableHubSysuiConfigOverlay/Android.bp
 +++ /dev/null
 @@ -1,9 +0,0 @@
@@ -2790,7 +2790,7 @@ index b0a38d1..0000000
 -}
 diff --git a/overlay/GlanceableHubSysuiConfigOverlay/AndroidManifest.xml b/overlay/GlanceableHubSysuiConfigOverlay/AndroidManifest.xml
 deleted file mode 100644
-index bda90fe..0000000
+index bda90fe9..00000000
 --- a/overlay/GlanceableHubSysuiConfigOverlay/AndroidManifest.xml
 +++ /dev/null
 @@ -1,11 +0,0 @@
@@ -2807,7 +2807,7 @@ index bda90fe..0000000
 -</manifest>
 diff --git a/overlay/GlanceableHubSysuiConfigOverlay/res/values/config.xml b/overlay/GlanceableHubSysuiConfigOverlay/res/values/config.xml
 deleted file mode 100644
-index 514a8cb..0000000
+index 514a8cbd..00000000
 --- a/overlay/GlanceableHubSysuiConfigOverlay/res/values/config.xml
 +++ /dev/null
 @@ -1,24 +0,0 @@
@@ -2837,7 +2837,7 @@ index 514a8cb..0000000
 -</resources>
 diff --git a/overlay/GoogleConfigOverlay/Android.bp b/overlay/GoogleConfigOverlay/Android.bp
 deleted file mode 100644
-index ee88915..0000000
+index ee889152..00000000
 --- a/overlay/GoogleConfigOverlay/Android.bp
 +++ /dev/null
 @@ -1,9 +0,0 @@
@@ -2852,7 +2852,7 @@ index ee88915..0000000
 -}
 diff --git a/overlay/GoogleConfigOverlay/AndroidManifest.xml b/overlay/GoogleConfigOverlay/AndroidManifest.xml
 deleted file mode 100644
-index f76f646..0000000
+index f76f646a..00000000
 --- a/overlay/GoogleConfigOverlay/AndroidManifest.xml
 +++ /dev/null
 @@ -1,11 +0,0 @@
@@ -2869,7 +2869,7 @@ index f76f646..0000000
 -</manifest>
 diff --git a/overlay/GoogleConfigOverlay/res/raw/fallback_categories.csv b/overlay/GoogleConfigOverlay/res/raw/fallback_categories.csv
 deleted file mode 100644
-index 2185faf..0000000
+index 2185faf4..00000000
 --- a/overlay/GoogleConfigOverlay/res/raw/fallback_categories.csv
 +++ /dev/null
 @@ -1,387 +0,0 @@
@@ -3262,10 +3262,10 @@ index 2185faf..0000000
 -tv.twitch.android.app,2
 diff --git a/overlay/GoogleConfigOverlay/res/values/config.xml b/overlay/GoogleConfigOverlay/res/values/config.xml
 deleted file mode 100644
-index c52908f..0000000
+index 6e1c50b5..00000000
 --- a/overlay/GoogleConfigOverlay/res/values/config.xml
 +++ /dev/null
-@@ -1,22 +0,0 @@
+@@ -1,68 +0,0 @@
 -<?xml version="1.0" encoding="utf-8"?>
 -<!--
 -     SPDX-FileCopyrightText: The LineageOS Project
@@ -3287,10 +3287,56 @@ index c52908f..0000000
 -        <item>fr.vinted</item>
 -        <item>org.telegram.messenger</item>
 -    </string-array>
+-
+-    <!-- Messages that should not be shown to the user during face auth enrollment. This should be
+-         used to hide messages that may be too chatty or messages that the user can't do much about.
+-         Entries are defined in android.hardware.biometrics.face@1.0 types.hal -->
+-    <integer-array name="config_face_acquire_enroll_ignorelist">
+-        <item>13</item>
+-    </integer-array>
+-
+-    <!-- Same as the above, but are defined by vendorCodes -->
+-    <integer-array name="config_face_acquire_vendor_enroll_ignorelist"/>
+-
+-    <!-- Messages that should not be shown to the user during face authentication, on keyguard.
+-         This includes both lockscreen and bouncer. This should be used to hide messages that may be
+-         too chatty or messages that the user can't do much about. Entries are defined in
+-         android.hardware.biometrics.face@1.0 types.hal -->
+-    <integer-array name="config_face_acquire_keyguard_ignorelist"/>
+-
+-    <!-- Same as the above, but are defined by vendorCodes -->
+-    <integer-array name="config_face_acquire_vendor_keyguard_ignorelist"/>
+-
+-    <!-- Messages that should not be shown to the user during face authentication, on
+-         BiometricPrompt. This should be used to hide messages that may be too chatty or messages
+-         that the user can't do much about. Entries are defined in
+-         android.hardware.biometrics.face@1.0 types.hal -->
+-    <integer-array name="config_face_acquire_biometricprompt_ignorelist">
+-        <item>1</item>
+-        <item>2</item>
+-        <item>4</item>
+-        <item>5</item>
+-        <item>6</item>
+-        <item>7</item>
+-        <item>8</item>
+-        <item>9</item>
+-        <item>11</item>
+-        <item>12</item>
+-        <item>13</item>
+-        <item>14</item>
+-        <item>15</item>
+-        <item>16</item>
+-        <item>17</item>
+-        <item>18</item>
+-        <item>19</item>
+-    </integer-array>
+-
+-    <!-- Same as the above, but are defined by vendorCodes -->
+-    <integer-array name="config_face_acquire_vendor_biometricprompt_ignorelist"/>
 -</resources>
 diff --git a/overlay/GooglePermissionControllerSafetyCenterOverlay/Android.bp b/overlay/GooglePermissionControllerSafetyCenterOverlay/Android.bp
 deleted file mode 100644
-index 11708ca..0000000
+index 11708ca0..00000000
 --- a/overlay/GooglePermissionControllerSafetyCenterOverlay/Android.bp
 +++ /dev/null
 @@ -1,9 +0,0 @@
@@ -3305,7 +3351,7 @@ index 11708ca..0000000
 -}
 diff --git a/overlay/GooglePermissionControllerSafetyCenterOverlay/AndroidManifest.xml b/overlay/GooglePermissionControllerSafetyCenterOverlay/AndroidManifest.xml
 deleted file mode 100644
-index 1eb2957..0000000
+index 1eb29576..00000000
 --- a/overlay/GooglePermissionControllerSafetyCenterOverlay/AndroidManifest.xml
 +++ /dev/null
 @@ -1,12 +0,0 @@
@@ -3323,7 +3369,7 @@ index 1eb2957..0000000
 -</manifest>
 diff --git a/overlay/GooglePermissionControllerSafetyCenterOverlay/res/values/bools.xml b/overlay/GooglePermissionControllerSafetyCenterOverlay/res/values/bools.xml
 deleted file mode 100644
-index f1f95ce..0000000
+index f1f95cec..00000000
 --- a/overlay/GooglePermissionControllerSafetyCenterOverlay/res/values/bools.xml
 +++ /dev/null
 @@ -1,10 +0,0 @@
@@ -3339,7 +3385,7 @@ index f1f95ce..0000000
 -</resources>
 diff --git a/overlay/PixelConfigOverlay2019/Android.bp b/overlay/PixelConfigOverlay2019/Android.bp
 deleted file mode 100644
-index 481ed70..0000000
+index 481ed70d..00000000
 --- a/overlay/PixelConfigOverlay2019/Android.bp
 +++ /dev/null
 @@ -1,9 +0,0 @@
@@ -3354,7 +3400,7 @@ index 481ed70..0000000
 -}
 diff --git a/overlay/PixelConfigOverlay2019/AndroidManifest.xml b/overlay/PixelConfigOverlay2019/AndroidManifest.xml
 deleted file mode 100644
-index 4b88f06..0000000
+index 4b88f06e..00000000
 --- a/overlay/PixelConfigOverlay2019/AndroidManifest.xml
 +++ /dev/null
 @@ -1,11 +0,0 @@
@@ -3371,7 +3417,7 @@ index 4b88f06..0000000
 -</manifest>
 diff --git a/overlay/PixelConfigOverlay2019/res/values/config.xml b/overlay/PixelConfigOverlay2019/res/values/config.xml
 deleted file mode 100644
-index 537151c..0000000
+index 537151c0..00000000
 --- a/overlay/PixelConfigOverlay2019/res/values/config.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -3398,7 +3444,7 @@ index 537151c..0000000
 -</resources>
 diff --git a/overlay/PixelConfigOverlay2021/Android.bp b/overlay/PixelConfigOverlay2021/Android.bp
 deleted file mode 100644
-index 71de0c7..0000000
+index 71de0c77..00000000
 --- a/overlay/PixelConfigOverlay2021/Android.bp
 +++ /dev/null
 @@ -1,9 +0,0 @@
@@ -3413,7 +3459,7 @@ index 71de0c7..0000000
 -}
 diff --git a/overlay/PixelConfigOverlay2021/AndroidManifest.xml b/overlay/PixelConfigOverlay2021/AndroidManifest.xml
 deleted file mode 100644
-index 8734d8d..0000000
+index 8734d8d5..00000000
 --- a/overlay/PixelConfigOverlay2021/AndroidManifest.xml
 +++ /dev/null
 @@ -1,11 +0,0 @@
@@ -3430,7 +3476,7 @@ index 8734d8d..0000000
 -</manifest>
 diff --git a/overlay/PixelConfigOverlay2021/res/values/config.xml b/overlay/PixelConfigOverlay2021/res/values/config.xml
 deleted file mode 100644
-index 2308a42..0000000
+index 2308a42d..00000000
 --- a/overlay/PixelConfigOverlay2021/res/values/config.xml
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -3457,7 +3503,7 @@ index 2308a42..0000000
 -</resources>
 diff --git a/overlay/PixelConfigOverlayCommon/Android.bp b/overlay/PixelConfigOverlayCommon/Android.bp
 deleted file mode 100644
-index aacc2f3..0000000
+index aacc2f32..00000000
 --- a/overlay/PixelConfigOverlayCommon/Android.bp
 +++ /dev/null
 @@ -1,9 +0,0 @@
@@ -3472,7 +3518,7 @@ index aacc2f3..0000000
 -}
 diff --git a/overlay/PixelConfigOverlayCommon/AndroidManifest.xml b/overlay/PixelConfigOverlayCommon/AndroidManifest.xml
 deleted file mode 100644
-index de2717f..0000000
+index de2717f0..00000000
 --- a/overlay/PixelConfigOverlayCommon/AndroidManifest.xml
 +++ /dev/null
 @@ -1,11 +0,0 @@
@@ -3489,7 +3535,7 @@ index de2717f..0000000
 -</manifest>
 diff --git a/overlay/PixelConfigOverlayCommon/res/values/config.xml b/overlay/PixelConfigOverlayCommon/res/values/config.xml
 deleted file mode 100644
-index c32d082..0000000
+index c32d0828..00000000
 --- a/overlay/PixelConfigOverlayCommon/res/values/config.xml
 +++ /dev/null
 @@ -1,70 +0,0 @@

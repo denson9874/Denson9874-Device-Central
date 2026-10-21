@@ -1,0 +1,47 @@
+# Perfetto config for husky-audit.sh fluidity: scheduling, frequency, frame
+# timeline, power HAL/ADPF and thermal throttling in one 25 s trace.
+duration_ms: 25000
+buffers { size_kb: 131072 fill_policy: RING_BUFFER }
+buffers { size_kb: 4096 fill_policy: RING_BUFFER }
+
+data_sources {
+  config {
+    name: "linux.ftrace"
+    ftrace_config {
+      ftrace_events: "sched/sched_switch"
+      ftrace_events: "sched/sched_waking"
+      ftrace_events: "sched/sched_wakeup_new"
+      ftrace_events: "sched/sched_blocked_reason"
+      ftrace_events: "power/cpu_frequency"
+      ftrace_events: "power/cpu_idle"
+      ftrace_events: "power/suspend_resume"
+      ftrace_events: "thermal/thermal_temperature"
+      ftrace_events: "thermal/cdev_update"
+      ftrace_events: "mm_event/mm_event_record"
+      ftrace_events: "lowmemorykiller/lowmemory_kill"
+      ftrace_events: "oom/oom_score_adj_update"
+      atrace_categories: "gfx"
+      atrace_categories: "view"
+      atrace_categories: "input"
+      atrace_categories: "wm"
+      atrace_categories: "am"
+      atrace_categories: "sched"
+      atrace_categories: "freq"
+      atrace_categories: "power"
+      atrace_categories: "hal"
+      atrace_categories: "dalvik"
+      atrace_categories: "binder_driver"
+      atrace_categories: "thermal"
+      atrace_apps: "com.android.systemui"
+      atrace_apps: "com.android.launcher3"
+      atrace_apps: "com.google.android.apps.nexuslauncher"
+      atrace_apps: "system_server"
+      symbolize_ksyms: true
+      compact_sched { enabled: true }
+    }
+  }
+}
+data_sources { config { name: "android.surfaceflinger.frametimeline" } }
+data_sources { config { name: "linux.process_stats" target_buffer: 1 process_stats_config { scan_all_processes_on_start: true proc_stats_poll_ms: 1000 } } }
+data_sources { config { name: "android.power" target_buffer: 1 android_power_config { battery_poll_ms: 250 collect_power_rails: true battery_counters: BATTERY_COUNTER_CURRENT battery_counters: BATTERY_COUNTER_CAPACITY_PERCENT } } }
+data_sources { config { name: "linux.sys_stats" target_buffer: 1 sys_stats_config { cpufreq_period_ms: 100 } } }
