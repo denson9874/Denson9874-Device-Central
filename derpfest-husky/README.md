@@ -15,6 +15,7 @@ husky trees are used, with TheMuppets blobs. Research behind every choice here: 
 cp derpfest-husky/local_manifests/husky.xml .repo/local_manifests/
 repo sync -c -j4 --no-tags --no-clone-bundle --force-sync \
     device/google/husky device/google/shusky device/google/zuma device/google/shusky-kernels vendor/google/husky
+git -C vendor/google/husky lfs install --local && git -C vendor/google/husky lfs pull   # blobs are git-lfs
 derpfest-husky/update-firmware.sh . bootloader-husky-ripcurrent-17.0-15681527.img radio-husky-g5300i-260604-260807-b-16036236.img
 derpfest-husky/apply.sh .
 # kernel prebuilts into device/google/shusky-kernels/6.1 (build_kernel, or the ones Evolution X husky ships)

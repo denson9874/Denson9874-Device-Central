@@ -1,0 +1,4 @@
+2026-10-21: First DerpFest v17 (Android 17) build for husky
+- LineageOS 24.0 device trees, kernel 6.1.157
+- October 2026 firmware (CP3A.261005.005)
+- Built-in call recorder: BCR 3.11 (off until you turn it on; no announcement tone)
