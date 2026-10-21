@@ -1,0 +1,6 @@
+# Google's TPU app service, the system_ext daemon that apps and the vendor TPU
+# servers reach the Tensor TPU through. Public because the stock vendor policy
+# names both types (edgetpu_*_server and hal_audio_default talk to it). Its
+# exec type stays private: nothing shows the stock vendor naming it.
+type edgetpu_app_server, domain;
+type edgetpu_app_service, app_api_service, isolated_compute_allowed_service, service_manager_type;

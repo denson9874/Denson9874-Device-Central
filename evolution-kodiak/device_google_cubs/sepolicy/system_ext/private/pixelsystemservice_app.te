@@ -1,0 +1,18 @@
+# PixelSystemService (com.google.android.pixelsystemservice), stock's
+# system_ext rules (gs-common pixelsystemservice). Most of what it does
+# (wireless charging, battery, display and camera coex, touch, Bluetooth,
+# statsd) is granted by the stock vendor policy.
+typeattribute pixelsystemservice_app coredomain;
+app_domain(pixelsystemservice_app)
+
+allow pixelsystemservice_app {
+    app_api_service
+    audioserver_service
+    mediaextractor_service
+    mediametrics_service
+    mediaserver_service
+    radio_service
+    statsmanager_service
+}:service_manager find;
+
+set_prop(pixelsystemservice_app, pixelsystemservice_contextualawareness_prop)

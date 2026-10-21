@@ -1,0 +1,22 @@
+# TurboAdapter (com.google.android.turboadapter, installed by vendor/gms with
+# libpowerstatshaldataprovider), stock's system_ext rules
+# (pixel-sepolicy turbo_adapter). The stock vendor policy grants it
+# hal_googlebattery access.
+typeattribute turbo_adapter coredomain, system_suspend_internal_server;
+app_domain(turbo_adapter)
+
+hal_client_domain(turbo_adapter, hal_power)
+allow turbo_adapter hal_power:memfd_file { read write getattr map };
+allow hal_power turbo_adapter:memfd_file { read write getattr map };
+
+hal_client_domain(turbo_adapter, hal_power_stats)
+allow turbo_adapter hal_power_stats:memfd_file { read write getattr map };
+allow hal_power_stats turbo_adapter:memfd_file { read write getattr map };
+
+allow turbo_adapter app_api_service:service_manager find;
+
+r_dir_file(turbo_adapter, proc_uid_cputime_showstat)
+
+binder_call(turbo_adapter, system_suspend_internal_server)
+get_prop(turbo_adapter, suspend_prop)
+set_prop(turbo_adapter, debug_prop)

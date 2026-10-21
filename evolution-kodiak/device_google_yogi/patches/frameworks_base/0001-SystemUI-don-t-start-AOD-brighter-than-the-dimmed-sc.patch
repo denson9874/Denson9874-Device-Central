@@ -1,0 +1,47 @@
+From 4fc91b56280c1411a2bea66dc114d84dc3f85905 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 13 Oct 2026 00:39:38 +0200
+Subject: [PATCH] SystemUI: don't start AOD brighter than the dimmed screen
+
+When the screen times out, DisplayPowerController dims it to
+min(brightness - minimum dim amount, dim brightness).
+DozeScreenBrightness applies the same formula to the doze brightness so
+that AOD doesn't start brighter than the dimmed screen, but it starts
+from the doze brightness, not the screen brightness. In auto-brightness
+mode nothing clamps the doze brightness to the screen brightness, so in
+a dark room AOD starts at the full dim brightness (0.05, about 120 nits
+on the Pixel 11 Pro XL) right after the screen was dimmed to the minimum
+(0.5 nits). The screen flashes bright for about half a second, until
+the AOD light sensor reports and the brightness ramps down.
+
+Take the lower of the doze brightness and the current screen brightness
+before applying the dim formula, so AOD starts at or below the
+brightness the screen was dimmed to.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../com/android/systemui/doze/DozeScreenBrightness.java   | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/doze/DozeScreenBrightness.java b/packages/SystemUI/src/com/android/systemui/doze/DozeScreenBrightness.java
+index b7ca7351e..8fe948e77 100644
+--- a/packages/SystemUI/src/com/android/systemui/doze/DozeScreenBrightness.java
++++ b/packages/SystemUI/src/com/android/systemui/doze/DozeScreenBrightness.java
+@@ -429,6 +429,14 @@ public class DozeScreenBrightness extends BroadcastReceiver implements DozeMachi
+                 && mState == DozeMachine.State.INITIALIZED;
+         if (screenTurningOff
+                 && mWakefulnessLifecycle.getLastSleepReason() == GO_TO_SLEEP_REASON_TIMEOUT) {
++            // DisplayPowerController dimmed the current screen brightness, not the doze
++            // brightness. In auto-brightness mode the doze brightness isn't clamped to the screen
++            // brightness, and in the dark the screen can be far below mScreenBrightnessDim, so
++            // AOD would start brighter than the dimmed screen until the light sensor reports.
++            final float screenBrightness = getScreenBrightness();
++            if (!Float.isNaN(screenBrightness)) {
++                brightness = Math.min(brightness, screenBrightness);
++            }
+             return Math.max(
+                     PowerManager.BRIGHTNESS_MIN,
+                     // Use the lower of either the dim brightness, or the current brightness reduced
+-- 
+2.43.0
+

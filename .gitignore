@@ -8,3 +8,12 @@ rom_build/
 *~
 build_output/
 build_frames/
+__pycache__/
+
+# Play Integrity material: keybox.xml holds attestation private keys. Never commit.
+keybox.xml
+custom.pif.prop
+
+# Community monitor: local venv and downloaded user logs/bugreports
+tools/community_monitor/venv/
+evolution-kodiak/community/attachments/

@@ -1,0 +1,7 @@
+# HiLight's build flag values. Added to the product with PRODUCT_RELEASE_CONFIG_MAPS
+# (device.mk), so they only apply to this device; a map at device/*/*/release
+# would be picked up for every product in the tree.
+default_containers: "product"
+default_containers: "system"
+default_containers: "system_ext"
+default_containers: "vendor"

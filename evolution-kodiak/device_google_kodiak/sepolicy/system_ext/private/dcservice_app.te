@@ -1,0 +1,23 @@
+# Device Connectivity Service (com.google.android.apps.pixel.dcservice,
+# installed by vendor/gms as DeviceConnectivityServicePrebuilt_26.01.00),
+# stock's system_ext rules (gs-common dcservice). The stock vendor policy
+# grants it display, audio extension, Bluetooth coexistence, TPU, AOC and
+# touch context access.
+typeattribute dcservice_app coredomain;
+app_domain(dcservice_app)
+net_domain(dcservice_app)
+
+allow dcservice_app {
+    app_api_service
+    audioserver_service
+    mediametrics_service
+    mediaserver_service
+    nfc_service
+    radio_service
+}:service_manager find;
+
+allow dcservice_app privapp_data_file:lnk_file r_file_perms;
+allow dcservice_app privapp_data_file:file execute;
+
+get_prop(dcservice_app, bluetooth_lea_prop)
+set_prop(dcservice_app, ctl_start_prop)

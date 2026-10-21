@@ -1,0 +1,7 @@
+# Services com.google.pixel.camera.services (vendor_pbcs_app) publishes. The
+# stock camera HAL looks up camera_binder_service and
+# camera_lyricconfigprovider_service, so the types are public. Stock declares
+# them in its product policy with these attributes.
+type camera_binder_service, hal_service_type, protected_service, service_manager_type;
+type camera_cameraidremapper_service, hal_service_type, protected_service, service_manager_type;
+type camera_lyricconfigprovider_service, hal_service_type, protected_service, service_manager_type;

@@ -1,0 +1,53 @@
+{
+  "telegram": {
+    "bot_token_env": "TELEGRAM_TRIAGE_BOT_TOKEN",
+    "bot_token_file": "~/.telegram_triage_bot_token",
+    "groups": [
+      {
+        "name": "Expressive Group Feedback",
+        "chat_identifier": "ExpressiveLauncherFeedback",
+        "chat_id": null
+      },
+      {
+        "name": "Expressive Group Announcements",
+        "chat_identifier": "ExpressiveGroup",
+        "chat_id": null
+      }
+    ]
+  },
+  "xda": {
+    "threads": [
+      {
+        "id": "4804712",
+        "name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+        "device": "kodiak",
+        "url": "https://xdaforums.com/t/rom-unofficial-17-kodiak-grizzly-evolution-x-12-3-android-17-for-the-pixel-11-pro-xl-and-11-pro-grizzly-testers-wanted.4804712/"
+      },
+      {
+        "id": "4804723",
+        "name": "Pixel 11 (cubs)",
+        "device": "cubs",
+        "url": "https://xdaforums.com/t/rom-unofficial-17-cubs-evolution-x-12-3-android-17-for-the-pixel-11-testers-wanted.4804723/"
+      },
+      {
+        "id": "4804826",
+        "name": "Pixel 11 Pro Fold (yogi)",
+        "device": "yogi",
+        "url": "https://xdaforums.com/t/rom-unofficial-17-yogi-evolution-x-12-3-android-17-for-the-pixel-11-pro-fold-testers-wanted.4804826/"
+      },
+      {
+        "id": "4805239",
+        "name": "Pixel 8 Pro (husky)",
+        "device": "husky",
+        "url": "https://xdaforums.com/t/rom-17-0-unofficial-evolution-x-12-3-for-pixel-8-pro-husky-2026-10-16.4805239/"
+      }
+    ]
+  },
+  "paths": {
+    "state_file": "evolution-kodiak/community/state.json",
+    "raw_dir": "evolution-kodiak/community/daily_raw",
+    "replies_dir": "evolution-kodiak/community/replies",
+    "attachments_dir": "evolution-kodiak/community/attachments",
+    "triage_file": "COMMUNITY_TRIAGE.md"
+  }
+}

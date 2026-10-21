@@ -1,0 +1,74 @@
+From 225f8b6d7c4ffe844ae154f6c7cf54ba168b195c Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Thu, 15 Oct 2026 01:26:53 +0200
+Subject: [PATCH] lmkd: skip LMK_START_MONITORING when using in-kernel
+ interface; safely destruct Reaper
+
+When using an in-kernel LMK driver (such as Simple LMK), userspace PSI
+monitors are not initialized. When system_server sends LMK_START_MONITORING
+after boot completed, skip PSI monitor initialization if in-kernel
+interface is active instead of attempting to write unsupported PSI
+stall triggers to /proc/pressure/memory and crashing.
+
+Additionally, define an explicit destructor for Reaper that detaches
+active worker threads instead of triggering std::terminate() on exit.
+
+Co-Authored-By: Gemini 3.8 Flash (High) <noreply@google.com>
+Change-Id: Ic4218c05d6b09a5e80cc8e5890ea6d6f26b45f15
+---
+ lmkd.cpp   |  2 +-
+ reaper.cpp | 12 ++++++++++++
+ reaper.h   |  1 +
+ 3 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/lmkd.cpp b/lmkd.cpp
+index 4bac215..364f683 100644
+--- a/lmkd.cpp
++++ b/lmkd.cpp
+@@ -1625,7 +1625,7 @@ static void ctrl_command_handler(int dsock_idx) {
+         if (nargs != 0)
+             goto wronglen;
+         // Registration is needed only if it was skipped earlier.
+-        if (monitors_initialized)
++        if (use_inkernel_interface || monitors_initialized)
+             return;
+         if (!property_get_bool("sys.boot_completed", false)) {
+             ALOGE("LMK_START_MONITORING cannot be handled before boot completed");
+diff --git a/reaper.cpp b/reaper.cpp
+index 69b6a5e..90b3f05 100644
+--- a/reaper.cpp
++++ b/reaper.cpp
+@@ -37,6 +37,18 @@
+ 
+ #include "reaper.h"
+ 
++Reaper::~Reaper() {
++    for (auto& t : thread_pool_) {
++        if (t.joinable()) {
++            t.detach();
++        }
++    }
++    if (setprio_thread_.joinable()) {
++        setprio_thread_.detach();
++    }
++}
++
++
+ #define NS_PER_MS (NS_PER_SEC / MS_PER_SEC)
+ 
+ #ifndef __NR_process_mrelease
+diff --git a/reaper.h b/reaper.h
+index 3dd1ba7..c13c88c 100644
+--- a/reaper.h
++++ b/reaper.h
+@@ -60,6 +60,7 @@ private:
+     bool debug_enabled() const { return debug_enabled_; }
+ public:
+     Reaper() : reap_queue_(THREAD_POOL_SIZE) {}
++    ~Reaper();
+     static bool is_reaping_supported();
+ 
+     bool init(int comm_fd);
+-- 
+2.43.0
+

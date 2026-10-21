@@ -1,0 +1,3614 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <daryldenson0405@gmail.com>
+Date: Sat, 10 Oct 2026 01:40:46 +0200
+Subject: [PATCH] zuma: use Evolution X's Pixel config overlays
+
+vendor/pixel-style defines RRO modules with the same names as nine of
+zuma's overlays (GlanceableHub*, GoogleConfigOverlay,
+GooglePermissionControllerSafetyCenterOverlay, PixelConfigOverlay*), so both
+cannot exist. Evolution's copies carry every value zuma's do (two translations
+differ in wording) plus more. common.mk still installs them by name.
+---
+ overlay/GlanceableHubConfigOverlay/Android.bp |   9 -
+ .../AndroidManifest.xml                       |  11 -
+ .../res/values/config.xml                     |  51 ---
+ .../Android.bp                                |   9 -
+ .../AndroidManifest.xml                       |  11 -
+ .../res/values-af/strings.xml                 |  21 -
+ .../res/values-am/strings.xml                 |  21 -
+ .../res/values-ar/strings.xml                 |  24 --
+ .../res/values-as/strings.xml                 |  21 -
+ .../res/values-az/strings.xml                 |  21 -
+ .../res/values-b+sr+Latn/strings.xml          |  21 -
+ .../res/values-be/strings.xml                 |  21 -
+ .../res/values-bg/strings.xml                 |  21 -
+ .../res/values-bn/strings.xml                 |  21 -
+ .../res/values-bs/strings.xml                 |  21 -
+ .../res/values-ca/strings.xml                 |  21 -
+ .../res/values-cs/strings.xml                 |  21 -
+ .../res/values-da/strings.xml                 |  21 -
+ .../res/values-de/strings.xml                 |  24 --
+ .../res/values-el/strings.xml                 |  21 -
+ .../res/values-en-rAU/strings.xml             |  21 -
+ .../res/values-en-rCA/strings.xml             |  21 -
+ .../res/values-en-rGB/strings.xml             |  21 -
+ .../res/values-en-rIN/strings.xml             |  21 -
+ .../res/values-es-rUS/strings.xml             |  21 -
+ .../res/values-es/strings.xml                 |  21 -
+ .../res/values-et/strings.xml                 |  21 -
+ .../res/values-eu/strings.xml                 |  21 -
+ .../res/values-fa/strings.xml                 |  21 -
+ .../res/values-fi/strings.xml                 |  21 -
+ .../res/values-fr-rCA/strings.xml             |  21 -
+ .../res/values-fr/strings.xml                 |  21 -
+ .../res/values-gl/strings.xml                 |  21 -
+ .../res/values-gu/strings.xml                 |  21 -
+ .../res/values-hi/strings.xml                 |  21 -
+ .../res/values-hr/strings.xml                 |  21 -
+ .../res/values-hu/strings.xml                 |  21 -
+ .../res/values-hy/strings.xml                 |  21 -
+ .../res/values-in/strings.xml                 |  21 -
+ .../res/values-is/strings.xml                 |  21 -
+ .../res/values-it/strings.xml                 |  24 --
+ .../res/values-iw/strings.xml                 |  21 -
+ .../res/values-ja/strings.xml                 |  21 -
+ .../res/values-ka/strings.xml                 |  21 -
+ .../res/values-kk/strings.xml                 |  21 -
+ .../res/values-km/strings.xml                 |  21 -
+ .../res/values-kn/strings.xml                 |  21 -
+ .../res/values-ko/strings.xml                 |  21 -
+ .../res/values-ky/strings.xml                 |  21 -
+ .../res/values-lo/strings.xml                 |  21 -
+ .../res/values-lt/strings.xml                 |  21 -
+ .../res/values-lv/strings.xml                 |  21 -
+ .../res/values-mk/strings.xml                 |  24 --
+ .../res/values-ml/strings.xml                 |  21 -
+ .../res/values-mn/strings.xml                 |  21 -
+ .../res/values-mr/strings.xml                 |  21 -
+ .../res/values-ms/strings.xml                 |  21 -
+ .../res/values-my/strings.xml                 |  21 -
+ .../res/values-nb/strings.xml                 |  21 -
+ .../res/values-ne/strings.xml                 |  21 -
+ .../res/values-nl/strings.xml                 |  21 -
+ .../res/values-or/strings.xml                 |  21 -
+ .../res/values-pa/strings.xml                 |  21 -
+ .../res/values-pl/strings.xml                 |  21 -
+ .../res/values-pt-rBR/strings.xml             |  24 --
+ .../res/values-pt-rPT/strings.xml             |  21 -
+ .../res/values-pt/strings.xml                 |  24 --
+ .../res/values-ro/strings.xml                 |  21 -
+ .../res/values-ru/strings.xml                 |  21 -
+ .../res/values-si/strings.xml                 |  21 -
+ .../res/values-sk/strings.xml                 |  21 -
+ .../res/values-sl/strings.xml                 |  21 -
+ .../res/values-sq/strings.xml                 |  21 -
+ .../res/values-sr/strings.xml                 |  21 -
+ .../res/values-sv/strings.xml                 |  21 -
+ .../res/values-sw/strings.xml                 |  21 -
+ .../res/values-ta/strings.xml                 |  21 -
+ .../res/values-te/strings.xml                 |  21 -
+ .../res/values-th/strings.xml                 |  21 -
+ .../res/values-tl/strings.xml                 |  21 -
+ .../res/values-tr/strings.xml                 |  21 -
+ .../res/values-uk/strings.xml                 |  21 -
+ .../res/values-ur/strings.xml                 |  21 -
+ .../res/values-uz/strings.xml                 |  21 -
+ .../res/values-vi/strings.xml                 |  21 -
+ .../res/values-zh-rCN/strings.xml             |  21 -
+ .../res/values-zh-rHK/strings.xml             |  21 -
+ .../res/values-zh-rTW/strings.xml             |  21 -
+ .../res/values-zu/strings.xml                 |  21 -
+ .../res/values/arrays.xml                     |  32 --
+ .../res/values/config.xml                     |   9 -
+ .../res/values/strings.xml                    |  21 -
+ .../Android.bp                                |   9 -
+ .../AndroidManifest.xml                       |  11 -
+ .../res/values/config.xml                     |   9 -
+ .../Android.bp                                |   9 -
+ .../AndroidManifest.xml                       |  11 -
+ .../res/values/config.xml                     |  24 --
+ overlay/GoogleConfigOverlay/Android.bp        |   9 -
+ .../GoogleConfigOverlay/AndroidManifest.xml   |  11 -
+ .../res/raw/fallback_categories.csv           | 387 ------------------
+ .../GoogleConfigOverlay/res/values/config.xml |  68 ---
+ .../Android.bp                                |   9 -
+ .../AndroidManifest.xml                       |  12 -
+ .../res/values/bools.xml                      |  10 -
+ overlay/PixelConfigOverlay2019/Android.bp     |   9 -
+ .../AndroidManifest.xml                       |  11 -
+ .../res/values/config.xml                     |  21 -
+ overlay/PixelConfigOverlay2021/Android.bp     |   9 -
+ .../AndroidManifest.xml                       |  11 -
+ .../res/values/config.xml                     |  21 -
+ overlay/PixelConfigOverlayCommon/Android.bp   |   9 -
+ .../AndroidManifest.xml                       |  11 -
+ .../res/values/config.xml                     |  70 ----
+ 114 files changed, 2686 deletions(-)
+ delete mode 100644 overlay/GlanceableHubConfigOverlay/Android.bp
+ delete mode 100644 overlay/GlanceableHubConfigOverlay/AndroidManifest.xml
+ delete mode 100644 overlay/GlanceableHubConfigOverlay/res/values/config.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/Android.bp
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/AndroidManifest.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-af/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-am/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-ar/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-as/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-az/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-b+sr+Latn/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-be/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-bg/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-bn/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-bs/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-ca/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-cs/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-da/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-de/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-el/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rAU/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rCA/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rGB/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rIN/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-es-rUS/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-es/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-et/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-eu/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-fa/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-fi/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-fr-rCA/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-fr/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-gl/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-gu/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-hi/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-hr/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-hu/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-hy/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-in/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-is/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-it/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-iw/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-ja/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-ka/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-kk/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-km/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-kn/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-ko/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-ky/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-lo/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-lt/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-lv/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-mk/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-ml/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-mn/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-mr/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-ms/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-my/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-nb/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-ne/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-nl/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-or/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-pa/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-pl/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rBR/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rPT/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-pt/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-ro/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-ru/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-si/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-sk/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-sl/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-sq/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-sr/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-sv/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-sw/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-ta/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-te/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-th/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-tl/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-tr/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-uk/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-ur/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-uz/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-vi/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rCN/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rHK/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rTW/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values-zu/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values/arrays.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values/config.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay/res/values/strings.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay2022/Android.bp
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay2022/AndroidManifest.xml
+ delete mode 100644 overlay/GlanceableHubSettingsConfigOverlay2022/res/values/config.xml
+ delete mode 100644 overlay/GlanceableHubSysuiConfigOverlay/Android.bp
+ delete mode 100644 overlay/GlanceableHubSysuiConfigOverlay/AndroidManifest.xml
+ delete mode 100644 overlay/GlanceableHubSysuiConfigOverlay/res/values/config.xml
+ delete mode 100644 overlay/GoogleConfigOverlay/Android.bp
+ delete mode 100644 overlay/GoogleConfigOverlay/AndroidManifest.xml
+ delete mode 100644 overlay/GoogleConfigOverlay/res/raw/fallback_categories.csv
+ delete mode 100644 overlay/GoogleConfigOverlay/res/values/config.xml
+ delete mode 100644 overlay/GooglePermissionControllerSafetyCenterOverlay/Android.bp
+ delete mode 100644 overlay/GooglePermissionControllerSafetyCenterOverlay/AndroidManifest.xml
+ delete mode 100644 overlay/GooglePermissionControllerSafetyCenterOverlay/res/values/bools.xml
+ delete mode 100644 overlay/PixelConfigOverlay2019/Android.bp
+ delete mode 100644 overlay/PixelConfigOverlay2019/AndroidManifest.xml
+ delete mode 100644 overlay/PixelConfigOverlay2019/res/values/config.xml
+ delete mode 100644 overlay/PixelConfigOverlay2021/Android.bp
+ delete mode 100644 overlay/PixelConfigOverlay2021/AndroidManifest.xml
+ delete mode 100644 overlay/PixelConfigOverlay2021/res/values/config.xml
+ delete mode 100644 overlay/PixelConfigOverlayCommon/Android.bp
+ delete mode 100644 overlay/PixelConfigOverlayCommon/AndroidManifest.xml
+ delete mode 100644 overlay/PixelConfigOverlayCommon/res/values/config.xml
+
+diff --git a/overlay/GlanceableHubConfigOverlay/Android.bp b/overlay/GlanceableHubConfigOverlay/Android.bp
+deleted file mode 100644
+index 514c968f..00000000
+--- a/overlay/GlanceableHubConfigOverlay/Android.bp
++++ /dev/null
+@@ -1,9 +0,0 @@
+-//
+-// SPDX-FileCopyrightText: The LineageOS Project
+-// SPDX-License-Identifier: Apache-2.0
+-//
+-
+-runtime_resource_overlay {
+-    name: "GlanceableHubConfigOverlay",
+-    product_specific: true,
+-}
+diff --git a/overlay/GlanceableHubConfigOverlay/AndroidManifest.xml b/overlay/GlanceableHubConfigOverlay/AndroidManifest.xml
+deleted file mode 100644
+index 4dded5e2..00000000
+--- a/overlay/GlanceableHubConfigOverlay/AndroidManifest.xml
++++ /dev/null
+@@ -1,11 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="com.google.android.overlay.glanceablehubconfig">
+-    <overlay android:targetPackage="android"
+-             android:isStatic="true"
+-             android:priority="8" />
+-</manifest>
+diff --git a/overlay/GlanceableHubConfigOverlay/res/values/config.xml b/overlay/GlanceableHubConfigOverlay/res/values/config.xml
+deleted file mode 100644
+index 68632522..00000000
+--- a/overlay/GlanceableHubConfigOverlay/res/values/config.xml
++++ /dev/null
+@@ -1,51 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- If this is true, then always allow auto-rotation when dreaming, regardless of the user's
+-         auto-rotation setting. -->
+-    <bool name="config_alwaysAllowDreamRotation">true</bool>
+-
+-    <!-- Specifies whether the dream switcher should be enabled. -->
+-    <bool name="config_dreamSwitcherEnabled">true</bool>
+-
+-    <!-- If supported, are dreams enabled? (by default) -->
+-    <bool name="config_dreamsEnabledByDefault">false</bool>
+-
+-    <!-- If supported and enabled, are dreams activated when docked? (by default) -->
+-    <bool name="config_dreamsActivatedOnDockByDefault">false</bool>
+-
+-    <!-- If supported and enabled, are dreams activated when asleep and charging? (by default) -->
+-    <bool name="config_dreamsActivatedOnSleepByDefault">true</bool>
+-
+-    <!-- ComponentNames of the dreams that we should hide -->
+-    <string-array name="config_disabledDreamComponents" translatable="false"/>
+-
+-    <!-- The list of supported dream complications -->
+-    <integer-array name="config_supportedDreamComplications">
+-        <item>1</item>
+-        <item>3</item>
+-    </integer-array>
+-
+-    <!-- Whether to support restricting dreams to wireless charging. -->
+-    <bool name="config_supportDreamWirelessChargingRestriction">true</bool>
+-
+-    <!-- Whether dreams are disabled when ambient mode is suppressed. -->
+-    <bool name="config_dreamsDisabledByAmbientModeSuppressionConfig">true</bool>
+-
+-    <!-- Whether to send a user activity event to PowerManager when a dream quits unexpectedly so
+-         that the screen won't immediately shut off.
+-
+-         When a dream stops unexpectedly, such as due to an app update, if the device has been
+-         inactive less than the user's screen timeout, the device goes to keyguard and times out
+-         back to dreaming after a few seconds. If the device has been inactive longer, the screen
+-         will immediately turn off. With this flag on, the device will go back to keyguard in all
+-         scenarios rather than turning off, which gives the device a chance to start dreaming
+-         again. -->
+-    <bool name="config_resetScreenTimeoutOnUnexpectedDreamExit">true</bool>
+-
+-    <!-- Whether to enable glanceable hub features on this device. -->
+-    <bool name="config_glanceableHubEnabled">true</bool>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/Android.bp b/overlay/GlanceableHubSettingsConfigOverlay/Android.bp
+deleted file mode 100644
+index f35b180a..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/Android.bp
++++ /dev/null
+@@ -1,9 +0,0 @@
+-//
+-// SPDX-FileCopyrightText: The LineageOS Project
+-// SPDX-License-Identifier: Apache-2.0
+-//
+-
+-runtime_resource_overlay {
+-    name: "GlanceableHubSettingsConfigOverlay",
+-    product_specific: true,
+-}
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/AndroidManifest.xml b/overlay/GlanceableHubSettingsConfigOverlay/AndroidManifest.xml
+deleted file mode 100644
+index c12e928d..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/AndroidManifest.xml
++++ /dev/null
+@@ -1,11 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="com.google.android.overlay.glanceablehubsettings">
+-    <overlay android:targetPackage="com.android.settings"
+-             android:isStatic="true"
+-             android:priority="1" />
+-</manifest>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-af/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-af/strings.xml
+deleted file mode 100644
+index a7b55608..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-af/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Terwyl dit laai</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Terwyl dit regop is en laai</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nooit</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Terwyl dit laai</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Terwyl dit regop is en laai</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-am/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-am/strings.xml
+deleted file mode 100644
+index d62091ee..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-am/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">ባትሪ በመሙላት ላይ ሳለ</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">ቆሞ እና ኃይል በመሙላት ላይ ሳለ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">በጭራሽ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">ባትሪ በመሙላት ላይ ሳለ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">ቆሞ እና ኃይል በመሙላት ላይ ሳለ</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ar/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ar/strings.xml
+deleted file mode 100644
+index 3057150f..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ar/strings.xml
++++ /dev/null
+@@ -1,24 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">أثناء الشحن</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">أثناء الشحن في وضع عمودي</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">أبدًا</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">أثناء الشحن</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">أثناء الشحن في وضع عمودي</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): docked and charging [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_docked">أثناء الإرساء والشحن</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-as/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-as/strings.xml
+deleted file mode 100644
+index 3c97f979..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-as/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">চাৰ্জিঙৰ সময়ত</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">ওপৰমুৱা কৰি থোৱা আৰু চাৰ্জিঙৰ সময়ত</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">কেতিয়াও নহয়</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">চাৰ্জিঙৰ সময়ত</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">ওপৰমুৱা কৰি থোৱা আৰু চাৰ্জিঙৰ সময়ত</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-az/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-az/strings.xml
+deleted file mode 100644
+index 46568b2d..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-az/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Şarj edildikdə</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Dik halda və şarj edildikdə</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Heç vaxt</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Şarj edildikdə</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Dik halda olduqda və şarj edildikdə</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-b+sr+Latn/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-b+sr+Latn/strings.xml
+deleted file mode 100644
+index bf535ede..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-b+sr+Latn/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Dok se puni</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Dok je uspravan i puni se</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nikad</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Dok se puni</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Dok je uspravan i puni se</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-be/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-be/strings.xml
+deleted file mode 100644
+index 6b1a32ea..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-be/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Падчас зарадкі</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Падчас зарадкі вертыкальна</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Ніколі</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Падчас зарадкі</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Падчас зарадкі вертыкальна</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-bg/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-bg/strings.xml
+deleted file mode 100644
+index fa0f3d57..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-bg/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">При зареждане</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">При изправено положение и зареждане</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Никога</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">При зареждане</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">При изправено положение и зареждане</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-bn/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-bn/strings.xml
+deleted file mode 100644
+index 8d9466da..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-bn/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">চার্জ করার সময়</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">সোজা রাখলে এবং চার্জ দেওয়া হলে</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">কখনই নয়</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">চার্জ করার সময়</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">সোজা রেখে চার্জ দেওয়ার সময়</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-bs/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-bs/strings.xml
+deleted file mode 100644
+index fc59457a..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-bs/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Tokom punjenja</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Tokom držanja uspravno i punjenja</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nikada</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Tokom punjenja</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Tokom držanja uspravno i punjenja</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ca/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ca/strings.xml
+deleted file mode 100644
+index 9e2a5a2c..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ca/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Mentre es carrega</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">En vertical i carregant-se</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Mai</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Mentre es carrega</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">En vertical i carregant-se</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-cs/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-cs/strings.xml
+deleted file mode 100644
+index 77bf3a47..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-cs/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Při nabíjení</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Při nabíjení ve vzpřímené poloze</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nikdy</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Při nabíjení</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Při nabíjení ve vzpřímené poloze</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-da/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-da/strings.xml
+deleted file mode 100644
+index 801f7d1b..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-da/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Under opladning</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Når den oplader i stående position</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Aldrig</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Når enheden oplades</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Når den oplader i stående position</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-de/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-de/strings.xml
+deleted file mode 100644
+index 91a9d4cc..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-de/strings.xml
++++ /dev/null
+@@ -1,24 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Beim Laden</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Wenn Gerät aufrecht steht &amp; geladen wird</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nie</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Beim Aufladen</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Wenn das Gerät aufrecht steht und geladen wird</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): docked and charging [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_docked">Wenn das Gerät angedockt ist und geladen wird</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-el/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-el/strings.xml
+deleted file mode 100644
+index b1f365ab..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-el/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Κατά τη φόρτιση</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Σε όρθια θέση κατά τη φόρτιση</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Ποτέ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Κατά τη φόρτιση</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Σε όρθια θέση κατά τη φόρτιση</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rAU/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rAU/strings.xml
+deleted file mode 100644
+index 1378fd2e..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rAU/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">While charging</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">While upright and charging</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Never</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">While charging</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">While upright and charging</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rCA/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rCA/strings.xml
+deleted file mode 100644
+index 1378fd2e..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rCA/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">While charging</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">While upright and charging</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Never</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">While charging</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">While upright and charging</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rGB/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rGB/strings.xml
+deleted file mode 100644
+index 1378fd2e..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rGB/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">While charging</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">While upright and charging</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Never</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">While charging</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">While upright and charging</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rIN/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rIN/strings.xml
+deleted file mode 100644
+index 1378fd2e..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-en-rIN/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">While charging</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">While upright and charging</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Never</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">While charging</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">While upright and charging</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-es-rUS/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-es-rUS/strings.xml
+deleted file mode 100644
+index 810377c1..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-es-rUS/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Mientras está cargándose</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Mientras está vertical y cargándose</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nunca</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Mientras se carga</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Mientras está vertical y cargándose</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-es/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-es/strings.xml
+deleted file mode 100644
+index 04586a8f..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-es/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Durante la carga</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Mientras esté vertical y cargándose</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nunca</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Durante la carga</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Cuando esté vertical y cargándose</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-et/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-et/strings.xml
+deleted file mode 100644
+index 61927253..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-et/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Laadimise ajal</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Kui on püsti ja laeb</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Mitte kunagi</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Laadimise ajal</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Kui on püsti ja laeb</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-eu/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-eu/strings.xml
+deleted file mode 100644
+index 27ccd1c7..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-eu/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Kargatzen ari denean</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Tente eta kargatzen dagoenean</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Inoiz ez</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Kargatzen ari denean</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Tente eta kargatzen dagoenean</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fa/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-fa/strings.xml
+deleted file mode 100644
+index e4f095cf..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fa/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">هنگام شارژ شدن</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">وقتی صاف و درحال شارژ است</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">هرگز</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">هنگام شارژ شدن</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">هنگام شارژ شدن و در حالت عمودی</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fi/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-fi/strings.xml
+deleted file mode 100644
+index 74f0648b..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fi/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Latauksen aikana</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Pystyasennossa ja latauksessa</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Ei koskaan</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Latauksen aikana</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Pystyasennossa ja latauksessa</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fr-rCA/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-fr-rCA/strings.xml
+deleted file mode 100644
+index 87eb1189..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fr-rCA/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Pendant la recharge</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Pendant la recharge en position verticale</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Jamais</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Pendant la recharge</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Pendant la recharge en position verticale</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fr/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-fr/strings.xml
+deleted file mode 100644
+index d1934643..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-fr/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Lorsque l\'appareil est en charge</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Lorsque l\'appareil est en position verticale et en charge</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Jamais</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Lorsque l\'appareil est en charge</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Lorsque l\'appareil est en position verticale et en charge</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-gl/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-gl/strings.xml
+deleted file mode 100644
+index dad23712..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-gl/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Mentres está cargando</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Mentres está en vertical e cargando</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nunca</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Mentres está cargando</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Mentres está en vertical e cargando</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-gu/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-gu/strings.xml
+deleted file mode 100644
+index 9e4d60f5..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-gu/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">ચાર્જ થતું હોય ત્યારે</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">સીધું હોય અને ચાર્જ થતું હોય ત્યારે</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">ક્યારેય નહીં</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">ચાર્જ થાય ત્યારે</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">સીધું હોય અને ચાર્જ થતું હોય ત્યારે</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hi/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-hi/strings.xml
+deleted file mode 100644
+index 5a4c0dc1..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hi/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">डिवाइस जब चार्ज हो रहा हो</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">डिवाइस जब सीधा रखा हो और चार्ज हो रहा हो</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">कभी नहीं</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">चार्ज करते समय</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">डिवाइस जब सीधा रखा हो और चार्ज हो रहा हो</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hr/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-hr/strings.xml
+deleted file mode 100644
+index 963a710e..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hr/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Tijekom punjenja</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Tijekom punjenja u uspravnom položaju</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nikad</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Tijekom punjenja</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Tijekom punjenja u uspravnom položaju</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hu/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-hu/strings.xml
+deleted file mode 100644
+index 48575c36..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hu/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Töltés közben</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Álló helyzetben, töltés közben</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Soha</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Töltés közben</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Álló helyzetben, töltés közben</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hy/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-hy/strings.xml
+deleted file mode 100644
+index d70818b2..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-hy/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Լիցքավորման ընթացքում</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Ուղղաձիգ դիրքով և լիցքավորվելիս</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Երբեք</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Լիցքավորման ընթացքում</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Երբ ուղղաձիգ դիրքով է և լիցքավորվում է</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-in/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-in/strings.xml
+deleted file mode 100644
+index d2184048..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-in/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Saat mengisi daya</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Saat tegak dan mengisi daya</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Tidak pernah</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Saat mengisi daya</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Saat tegak dan mengisi daya</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-is/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-is/strings.xml
+deleted file mode 100644
+index aaae10bb..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-is/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Þegar tækið er í hleðslu</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Þegar tækið er upprétt og í hleðslu</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Aldrei</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Þegar tækið er í hleðslu</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Þegar tækið er upprétt og í hleðslu</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-it/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-it/strings.xml
+deleted file mode 100644
+index 0ceef158..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-it/strings.xml
++++ /dev/null
+@@ -1,24 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Durante la ricarica</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">In verticale e in carica</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Mai</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Durante la ricarica</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">In verticale e in carica</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): docked and charging [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_docked">Agganciato alla base e in carica</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-iw/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-iw/strings.xml
+deleted file mode 100644
+index 0a88a05c..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-iw/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">בזמן טעינה</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">כשהמכשיר נטען במצב אנכי</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">אף פעם</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">בזמן טעינה</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">כשהמכשיר נטען במצב אנכי</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ja/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ja/strings.xml
+deleted file mode 100644
+index e338f214..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ja/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">充電中</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">縦置きで充電中</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">なし</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">充電中</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">縦置きで充電中</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ka/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ka/strings.xml
+deleted file mode 100644
+index a286eca8..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ka/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">დატენისას</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">ვერტიკალურ პოზიციაში და დატენისას</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">არასოდეს</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">დატენისას</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">ვერტიკალურ პოზიციაში და დატენისას</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-kk/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-kk/strings.xml
+deleted file mode 100644
+index c1bee30e..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-kk/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Зарядтау кезінде</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Тік қалыпта және зарядтау кезінде</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Ешқашан</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Зарядтау кезінде</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Тік қалыпта және зарядтау кезінде</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-km/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-km/strings.xml
+deleted file mode 100644
+index fa861f9e..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-km/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">ពេលសាកថ្ម</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">ពេលដាក់បញ្ឈរ និងសាកថ្ម</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">កុំឱ្យសោះ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">ពេលសាកថ្ម</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">ពេលដាក់បញ្ឈរ និងសាកថ្ម</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-kn/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-kn/strings.xml
+deleted file mode 100644
+index a16d9392..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-kn/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">ಚಾರ್ಜ್ ಮಾಡುವಾಗ</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">ನೇರವಾಗಿ ಇರಿಸಿ ಚಾರ್ಜ್ ಮಾಡುವಾಗ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">ಎಂದಿಗೂ ಬೇಡ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">ಚಾರ್ಜ್ ಮಾಡುವಾಗ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">ನೇರವಾಗಿರುವಾಗ ಮತ್ತು ಚಾರ್ಜ್ ಆಗುತ್ತಿರುವಾಗ</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ko/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ko/strings.xml
+deleted file mode 100644
+index 513a42a1..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ko/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">충전 중일 때</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">똑바로 세워져 있고 충전 중일 때</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">사용 안함</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">충전 중</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">똑바로 세워져 있고 충전 중일 때</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ky/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ky/strings.xml
+deleted file mode 100644
+index eba7fb46..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ky/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Кубатталып жатканда</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Өйдө карап жана кубатталып жатканда</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Эч качан</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Кубатталып жатканда</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Өйдө карап жана кубатталып жатканда</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-lo/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-lo/strings.xml
+deleted file mode 100644
+index 3172f6eb..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-lo/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">ໃນຂະນະທີ່ກຳລັງສາກໄຟຢູ່</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">ໃນຂະນະທີ່ຕັ້ງ ແລະ ກຳລັງສາກໄຟຢູ່</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">ບໍ່ໃຊ້</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">ໃນຂະນະທີ່ກຳລັງສາກໄຟຢູ່</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">ໃນຂະນະທີ່ຕັ້ງ ແລະ ກຳລັງສາກໄຟຢູ່</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-lt/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-lt/strings.xml
+deleted file mode 100644
+index 5170526e..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-lt/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Kai kraunama</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Kai kraunama stačiai</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Niekada</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Įkraunant</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Kai kraunama stačiai</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-lv/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-lv/strings.xml
+deleted file mode 100644
+index 84f97b67..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-lv/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Uzlādes laikā</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Kad ierīce ir taisni/notiek uzlāde</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nekad</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Uzlādes laikā</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Kad ierīce ir taisni/notiek uzlāde</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-mk/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-mk/strings.xml
+deleted file mode 100644
+index f8debd99..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-mk/strings.xml
++++ /dev/null
+@@ -1,24 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Додека се полни</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Додека е исправен и се полни</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Никогаш</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Додека се полни</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Додека е исправен и се полни</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): docked and charging [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_docked">Кога е приклучен на док и се полни</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ml/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ml/strings.xml
+deleted file mode 100644
+index 0c735d31..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ml/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">ചാർജ് ചെയ്യുമ്പോൾ</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">ഉയർത്തിവച്ച് ചാർജ് ചെയ്യുമ്പോൾ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">ഒരിക്കലും വേണ്ട</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">ചാർജ് ചെയ്യുമ്പോൾ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">ഉയർത്തിവച്ച് ചാർജ് ചെയ്യുമ്പോൾ</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-mn/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-mn/strings.xml
+deleted file mode 100644
+index b53472af..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-mn/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Цэнэглэж байхад</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Эгц босоо бөгөөд цэнэглэж байхад</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Хэзээ ч үгүй</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Цэнэглэж байхад</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Эгц босоо бөгөөд цэнэглэж байхад</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-mr/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-mr/strings.xml
+deleted file mode 100644
+index 8cd7f312..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-mr/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">चार्ज करताना</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">सरळ ठेवलेले असताना आणि चार्ज करताना</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">कधीही नाही</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">चार्ज करताना</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">सरळ ठेवलेले असताना आणि चार्ज करताना</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ms/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ms/strings.xml
+deleted file mode 100644
+index 4f64f72b..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ms/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Semasa mengecas</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Dalam keadaan tegak dan dicas</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Tidak sekali-kali</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Semasa mengecas</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Dalam keadaan tegak dan dicas</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-my/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-my/strings.xml
+deleted file mode 100644
+index 2ffba7a8..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-my/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">အားသွင်းနေစဉ်</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">ထောင်ထားပြီး အားသွင်းနေစဉ်</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">ဘယ်တော့မှ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">အားသွင်းနေစဉ်</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">ထောင်ထားပြီး အားသွင်းနေစဉ်</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-nb/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-nb/strings.xml
+deleted file mode 100644
+index 3020b300..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-nb/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Når enheten lades</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Når enheten er oppreist og lades</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Aldri</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Når enheten lades</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Når enheten er oppreist og lades</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ne/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ne/strings.xml
+deleted file mode 100644
+index f18be8fa..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ne/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">चार्ज गरिरहेका बेला</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">ठाडो पारेर चार्ज गरिरहेका बेला</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">कहिल्यै पनि होइन</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">चार्ज भइरहेका बेला</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">ठाडो पारेर चार्ज गरिरहेका बेला</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-nl/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-nl/strings.xml
+deleted file mode 100644
+index abd5880a..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-nl/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Tijdens opladen</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Tijdens rechtop opladen</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nooit</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Tijdens opladen</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Tijdens rechtop opladen</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-or/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-or/strings.xml
+deleted file mode 100644
+index 8e82774d..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-or/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">ଚାର୍ଜିଂ ସମୟରେ</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">ଅପରାଇଟ ଏବଂ ଚାର୍ଜିଂ ସମୟରେ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">କେବେ ବି ନୁହେଁ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">ଚାର୍ଜିଂ ସମୟରେ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">ଅପରାଇଟ ଏବଂ ଚାର୍ଜିଂ ସମୟରେ</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pa/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-pa/strings.xml
+deleted file mode 100644
+index 11f72966..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pa/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">ਚਾਰਜ ਕਰਨ ਵੇਲੇ</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">ਸਿੱਧਾ ਰੱਖਣ ਅਤੇ ਚਾਰਜ ਕਰਨ ਵੇਲੇ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">ਕਦੇ ਵੀ ਨਹੀਂ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">ਚਾਰਜ ਕਰਨ ਵੇਲੇ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">ਸਿੱਧਾ ਰੱਖਣ ਅਤੇ ਚਾਰਜ ਕਰਨ ਵੇਲੇ</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pl/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-pl/strings.xml
+deleted file mode 100644
+index fdfe2610..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pl/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Podczas ładowania</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Gdy jest w pionie i podczas ładowania</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nigdy</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Podczas ładowania</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Gdy jest w pionie i podczas ładowania</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rBR/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rBR/strings.xml
+deleted file mode 100644
+index c033c88b..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rBR/strings.xml
++++ /dev/null
+@@ -1,24 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Ao carregar</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Ao carregar na vertical</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nunca</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Ao carregar</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Ao carregar na vertical</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): docked and charging [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_docked">Na base e carregando</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rPT/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rPT/strings.xml
+deleted file mode 100644
+index b2993866..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt-rPT/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Durante o carregamento</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Durante o carregamento/na vertical</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nunca</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Durante o carregamento</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Durante o carregamento e na vertical</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt/strings.xml
+deleted file mode 100644
+index c033c88b..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-pt/strings.xml
++++ /dev/null
+@@ -1,24 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Ao carregar</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Ao carregar na vertical</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nunca</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Ao carregar</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Ao carregar na vertical</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): docked and charging [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_docked">Na base e carregando</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ro/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ro/strings.xml
+deleted file mode 100644
+index 15372df6..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ro/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">În timpul încărcării</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Când este vertical și se încarcă</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Niciodată</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">În timpul încărcării</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Când este vertical și se încarcă</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ru/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ru/strings.xml
+deleted file mode 100644
+index 2af2e05e..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ru/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Во время зарядки</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">В вертикальном положении на зарядке</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Никогда</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Во время зарядки</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">В вертикальном положении на зарядке</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-si/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-si/strings.xml
+deleted file mode 100644
+index 5ca6b7a2..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-si/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">ආරෝපණය වන අතරේ</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">කෙළින් තබා ආරෝපණය වන අතරේ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">කවදාවත් නෑ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">ආරෝපණය වන අතරේ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">කෙළින් තබා ආරෝපණය වන අතරේ</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sk/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-sk/strings.xml
+deleted file mode 100644
+index 05cc54aa..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sk/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Keď sa nabíja</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Keď je kolmo a nabíja sa</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nikdy</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Keď sa nabíja</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Keď je kolmo a nabíja sa</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sl/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-sl/strings.xml
+deleted file mode 100644
+index f8bda632..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sl/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Med polnjenjem</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">V pokončni legi in med polnjenjem</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Nikoli</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Med polnjenjem</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">V pokončni legi in med polnjenjem</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sq/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-sq/strings.xml
+deleted file mode 100644
+index a9bd441e..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sq/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Gjatë karikimit</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Kur është vertikal dhe në karikim</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Asnjëherë</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Gjatë karikimit</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Kur është vertikal dhe në karikim</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sr/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-sr/strings.xml
+deleted file mode 100644
+index d1bc52b5..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sr/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Док се пуни</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Док је усправан и пуни се</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Никад</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Док се пуни</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Док је усправан и пуни се</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sv/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-sv/strings.xml
+deleted file mode 100644
+index c913c13b..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sv/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Vid laddning</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Vid laddning i upprätt läge</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Aldrig</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Vid laddning</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Vid laddning i upprätt läge</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sw/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-sw/strings.xml
+deleted file mode 100644
+index 43c9e864..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-sw/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Wakati kinachaji</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Wakati kiko wima na kinachaji</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Usionyeshe kamwe</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Wakati inachaji</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Wakati kiko wima na kinachaji</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ta/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ta/strings.xml
+deleted file mode 100644
+index 967b70ef..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ta/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">சார்ஜிங்கின்போது</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">நேராக இருந்து சார்ஜாகும்போது</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">ஒருபோதும் காட்டாதே</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">சார்ஜிங்கின்போது</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">நேராக இருந்து சார்ஜாகும்போது</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-te/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-te/strings.xml
+deleted file mode 100644
+index cdad1621..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-te/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">ఛార్జింగ్ చేస్తున్నప్పుడు</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">నిటారుగా ఛార్జింగ్ చేస్తున్నప్పుడు</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">ఎప్పుడూ వద్దు</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">ఛార్జింగ్‌లో ఉన్నప్పుడు</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">నిటారుగా ఛార్జింగ్ చేస్తున్నప్పుడు</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-th/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-th/strings.xml
+deleted file mode 100644
+index dc849adc..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-th/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">ขณะชาร์จ</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">ขณะวางตั้งตรงและชาร์จ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">ไม่เลย</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">ขณะชาร์จ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">ขณะวางตั้งตรงและชาร์จ</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-tl/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-tl/strings.xml
+deleted file mode 100644
+index 5b8b350d..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-tl/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Habang nagcha-charge</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Habang nakatayo at nagcha-charge</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Hindi kailanman</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Habang nagcha-charge</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Habang nakatayo at nagcha-charge</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-tr/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-tr/strings.xml
+deleted file mode 100644
+index 904a36c4..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-tr/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Şarj olurken</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Dik konumdayken ve şarj olurken</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Hiçbir zaman</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Şarj olurken</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Dik konumdayken ve şarj olurken</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-uk/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-uk/strings.xml
+deleted file mode 100644
+index fe217d3a..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-uk/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Під час заряджання</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Під час заряджання у вертик. положенні</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Ніколи</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Під час заряджання</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Під час заряджання у вертикальному положенні</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ur/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-ur/strings.xml
+deleted file mode 100644
+index fa66943c..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-ur/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">چارج کرتے وقت</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">سیدھا اور چارج کرتے وقت</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">کبھی نہیں</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">چارج کرتے وقت</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">سیدھا اور چارج کرتے وقت</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-uz/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-uz/strings.xml
+deleted file mode 100644
+index 1890d1fe..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-uz/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Quvvat olayotganda</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Tik holatda quvvat olayotganda</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Hech qachon</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Quvvat olayotganda</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Tik holatda quvvat olayotganda</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-vi/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-vi/strings.xml
+deleted file mode 100644
+index e6c96a02..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-vi/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Trong khi sạc</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Khi đứng thẳng và đang sạc</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Không bao giờ</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Trong khi sạc</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Khi đứng thẳng và đang sạc</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rCN/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rCN/strings.xml
+deleted file mode 100644
+index 16ce6b8d..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rCN/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">充电时</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">直立充电时</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">永不</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">充电时</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">直立充电时</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rHK/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rHK/strings.xml
+deleted file mode 100644
+index c161ab39..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rHK/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">充電時</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">垂直充電時</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">一律不要</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">充電時</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">垂直充電時</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rTW/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rTW/strings.xml
+deleted file mode 100644
+index 207f00bc..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zh-rTW/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">充電時</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">以直立狀態充電時</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">一律不要</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">充電時</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">裝置直立充電時</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zu/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values-zu/strings.xml
+deleted file mode 100644
+index 8ca556cb..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values-zu/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">Ngenkathi ishaja</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">Ngenkathi imile futhi ishaja</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Akusoze</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">Ngenkathi ishaja</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">Ngenkathi iqondile futhi ishaja</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values/arrays.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values/arrays.xml
+deleted file mode 100644
+index 5b4d8f40..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values/arrays.xml
++++ /dev/null
+@@ -1,32 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Options for screensaver "When to start" for devices that do not support screensavers
+-         while on battery -->
+-    <string-array name="when_to_start_screensaver_entries_no_battery" translatable="false">
+-        <item>@string/screensaver_settings_summary_sleep</item>
+-        <item>@string/screensaver_settings_summary_postured_and_charging</item>
+-    </string-array>
+-
+-    <!-- Values for screensaver "When to start" for devices that do not support screensavers
+-         while on battery -->
+-    <string-array name="when_to_start_screensaver_values_no_battery" translatable="false">
+-        <item>while_charging_only</item>
+-        <item>while_postured_only</item>
+-    </string-array>
+-
+-    <string-array name="when_to_start_hubmode_entries" translatable="false">
+-        <item>@string/when_to_show_hubmode_never</item>
+-        <item>@string/when_to_show_hubmode_charging</item>
+-        <item>@string/when_to_show_hubmode_charging_and_upright</item>
+-    </string-array>
+-
+-    <string-array name="when_to_start_hubmode_values" translatable="false">
+-        <item>never</item>
+-        <item>while_charging</item>
+-        <item>while_charging_and_upright</item>
+-    </string-array>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values/config.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values/config.xml
+deleted file mode 100644
+index aecbd4d3..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values/config.xml
++++ /dev/null
+@@ -1,9 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Whether to show the "glanceable hub" settings on mobile. -->
+-    <bool name="config_show_glanceable_hub_toggle_setting_mobile">true</bool>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay/res/values/strings.xml b/overlay/GlanceableHubSettingsConfigOverlay/res/values/strings.xml
+deleted file mode 100644
+index 1378fd2e..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay/res/values/strings.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Display settings screen, summary fragment for screen saver options, activated when asleep and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_sleep">While charging</string>
+-
+-    <!-- Summary for when screensaver is enabled, only while stationary and upright and charging [CHAR LIMIT=40] -->
+-    <string name="screensaver_settings_summary_postured_and_charging">While upright and charging</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): never  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_never">Never</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging">While charging</string>
+-
+-    <!-- Summary for when to automatically show hub mode (widgets on lockscreen): upright and charging  [CHAR LIMIT=100] -->
+-    <string name="when_to_show_hubmode_charging_and_upright">While upright and charging</string>
+-</resources>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay2022/Android.bp b/overlay/GlanceableHubSettingsConfigOverlay2022/Android.bp
+deleted file mode 100644
+index d93d50bb..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay2022/Android.bp
++++ /dev/null
+@@ -1,9 +0,0 @@
+-//
+-// SPDX-FileCopyrightText: The LineageOS Project
+-// SPDX-License-Identifier: Apache-2.0
+-//
+-
+-runtime_resource_overlay {
+-    name: "GlanceableHubSettingsConfigOverlay2022",
+-    product_specific: true,
+-}
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay2022/AndroidManifest.xml b/overlay/GlanceableHubSettingsConfigOverlay2022/AndroidManifest.xml
+deleted file mode 100644
+index 5ba0efc1..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay2022/AndroidManifest.xml
++++ /dev/null
+@@ -1,11 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="com.google.android.overlay.glanceablehubsettings2022">
+-    <overlay android:targetPackage="com.android.settings"
+-             android:isStatic="true"
+-             android:priority="1" />
+-</manifest>
+diff --git a/overlay/GlanceableHubSettingsConfigOverlay2022/res/values/config.xml b/overlay/GlanceableHubSettingsConfigOverlay2022/res/values/config.xml
+deleted file mode 100644
+index ad3f72a6..00000000
+--- a/overlay/GlanceableHubSettingsConfigOverlay2022/res/values/config.xml
++++ /dev/null
+@@ -1,9 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Whether posturing detection is supported. -->
+-    <bool name="config_posturing_supported">true</bool>
+-</resources>
+diff --git a/overlay/GlanceableHubSysuiConfigOverlay/Android.bp b/overlay/GlanceableHubSysuiConfigOverlay/Android.bp
+deleted file mode 100644
+index b0a38d1a..00000000
+--- a/overlay/GlanceableHubSysuiConfigOverlay/Android.bp
++++ /dev/null
+@@ -1,9 +0,0 @@
+-//
+-// SPDX-FileCopyrightText: The LineageOS Project
+-// SPDX-License-Identifier: Apache-2.0
+-//
+-
+-runtime_resource_overlay {
+-    name: "GlanceableHubSysuiConfigOverlay",
+-    product_specific: true,
+-}
+diff --git a/overlay/GlanceableHubSysuiConfigOverlay/AndroidManifest.xml b/overlay/GlanceableHubSysuiConfigOverlay/AndroidManifest.xml
+deleted file mode 100644
+index bda90fe9..00000000
+--- a/overlay/GlanceableHubSysuiConfigOverlay/AndroidManifest.xml
++++ /dev/null
+@@ -1,11 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="com.google.android.systemui.overlay.glanceablehubconfig">
+-    <overlay android:targetPackage="com.android.systemui"
+-             android:isStatic="true"
+-             android:priority="1" />
+-</manifest>
+diff --git a/overlay/GlanceableHubSysuiConfigOverlay/res/values/config.xml b/overlay/GlanceableHubSysuiConfigOverlay/res/values/config.xml
+deleted file mode 100644
+index 514a8cbd..00000000
+--- a/overlay/GlanceableHubSysuiConfigOverlay/res/values/config.xml
++++ /dev/null
+@@ -1,24 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Component names of allowed communal widgets -->
+-    <string-array name="config_communalWidgetAllowlist" translatable="false">
+-        <item>com.google.android.apps.bard/com.google.android.apps.bard.widget.RobinToolBarAppWidgetReceiver</item>
+-        <item>com.google.android.apps.weather/com.google.android.apps.weather.widget.FullForecastWidgetReceiver</item>
+-        <item>com.google.android.googlequicksearchbox/com.google.android.apps.search.widgets.stocks.StocksWidgetReceiver</item>
+-    </string-array>
+-
+-    <!-- This value is used when calculating whether the device is in ambient light mode. It is
+-        light mode when the light sensor sample value exceeds above this value. -->
+-    <item name="config_ambientLightModeThreshold" format="float" type="dimen">12.0</item>
+-
+-    <!-- This value is used when calculating whether the device is in ambient dark mode. It is
+-        dark mode when the light sensor sample value drops below this value. -->
+-    <item name="config_ambientDarkModeThreshold" format="float" type="dimen">5.0</item>
+-
+-    <!-- Configuration to swipe to open glanceable hub -->
+-    <bool name="config_swipeToOpenGlanceableHub">true</bool>
+-</resources>
+diff --git a/overlay/GoogleConfigOverlay/Android.bp b/overlay/GoogleConfigOverlay/Android.bp
+deleted file mode 100644
+index ee889152..00000000
+--- a/overlay/GoogleConfigOverlay/Android.bp
++++ /dev/null
+@@ -1,9 +0,0 @@
+-//
+-// SPDX-FileCopyrightText: The LineageOS Project
+-// SPDX-License-Identifier: Apache-2.0
+-//
+-
+-runtime_resource_overlay {
+-    name: "GoogleConfigOverlay",
+-    product_specific: true,
+-}
+diff --git a/overlay/GoogleConfigOverlay/AndroidManifest.xml b/overlay/GoogleConfigOverlay/AndroidManifest.xml
+deleted file mode 100644
+index f76f646a..00000000
+--- a/overlay/GoogleConfigOverlay/AndroidManifest.xml
++++ /dev/null
+@@ -1,11 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="com.google.android.overlay.googleconfig">
+-    <overlay android:targetPackage="android"
+-             android:isStatic="true"
+-             android:priority="0" />
+-</manifest>
+diff --git a/overlay/GoogleConfigOverlay/res/raw/fallback_categories.csv b/overlay/GoogleConfigOverlay/res/raw/fallback_categories.csv
+deleted file mode 100644
+index 2185faf4..00000000
+--- a/overlay/GoogleConfigOverlay/res/raw/fallback_categories.csv
++++ /dev/null
+@@ -1,387 +0,0 @@
+-com.apple.android.music,1
+-com.clearchannel.iheartradio.controller,1
+-com.cynomusic.mp3downloader,1
+-com.google.android.apps.youtube.music,1
+-com.google.android.music,1
+-com.jiubang.go.music,1
+-com.madebyappolis.spinrilla,1
+-com.nextradioapp.nextradio,1
+-com.pandora.android,1
+-com.rhapsody,1
+-com.shazam.android,1
+-com.sirius,1
+-com.smule.magicpiano,1
+-com.smule.singandroid,1
+-com.songily.app,1
+-com.soundcloud.android,1
+-com.spotify.music,1
+-com.streema.simpleradio,1
+-com.zentertain.freemusic,1
+-deezer.android.app,1
+-mbinc12.mb32b,1
+-media.audioplayer.musicplayer,1
+-my.googlemusic.play,1
+-pt.ares.mp3.musica,1
+-pt.baja.mp3.musica,1
+-tunein.player,1
+-air.ECBTrumpAndroid,0
+-air.au.com.metro.DumbWaysToDie2,0
+-air.com.buffalo_studios.newflashbingo,0
+-air.com.hypah.io.slither,0
+-air.com.mobigrow.canyouescape,0
+-air.com.pixelfederation.TrainStationGame,0
+-air.com.pixelfederation.diggy,0
+-air.com.playtika.slotomania,0
+-air.com.sgn.cookiejam.gp,0
+-com.ChetanSurpur.Orbit,0
+-com.HappyDragon.TheArchers,0
+-com.Seriously.Forever,0
+-com.activision.skylanders.creator,0
+-com.aim.racing,0
+-com.arcsys.tictactoe,0
+-com.auxbrain.egginc,0
+-com.backflipstudios.android.dragonvale2,0
+-com.balysv.loop,0
+-com.bandagames.miner,0
+-com.bandainamcogames.dbzdokkanww,0
+-com.bigbluebubble.singingmonsters.full,0
+-com.bigduckgames.flow,0
+-com.bigduckgames.flowhexes,0
+-com.bitmango.go.blockhexapuzzle,0
+-com.bitmango.rolltheballunrollme,0
+-com.blacklight.klondike.patience.solitaire,0
+-com.bottleflip2k16,0
+-com.brighthouse.BlackTilesC,0
+-com.cmplay.tiles2,0
+-com.com2us.ninepb3d.normal.freefull.google.global.android.common,0
+-com.com2us.smon.normal.freefull.google.kr.android.common,0
+-com.crack.screen.prank.bfun,0
+-com.crowdstar.covetfashion,0
+-com.ddi,0
+-com.differencetenderwhite.skirt,0
+-com.dirtybit.funrun2,0
+-com.disney.disneycrossyroad_goo,0
+-com.disney.djappisodesmmchrr_goo,0
+-com.disney.emojimatch_goo,0
+-com.distinctdev.tmtlite,0
+-com.djinnworks.sb17,0
+-com.dodreams.driveahead,0
+-com.dodreams.driveaheadsports,0
+-com.doodlejoy.studio.kidsdoojoy,0
+-com.ea.bf3bl.bv,0
+-com.ea.game.maddenmobile15_row,0
+-com.ea.game.pvz2_na,0
+-com.ea.game.pvzfree_row,0
+-com.ea.game.simcitymobile_row,0
+-com.ea.game.tetris2011_na,0
+-com.ea.games.simsfreeplay_na,0
+-com.ea.gp.fifamobile,0
+-com.ea.gp.nbamobile,0
+-com.ea.gp.pvzheroes,0
+-com.epicwaronline.ms,0
+-com.episodeinteractive.android.catalog,0
+-com.etermax.preguntados.lite,0
+-com.explorationbase.ExplorationLite,0
+-com.eyeboxgames.clown,0
+-com.fgol.HungrySharkEvolution,0
+-com.fingerprinta.unlock.screen.prank,0
+-com.fingersoft.hillclimb,0
+-com.fingersoft.makemore,0
+-com.fortafygames.colorswitch,0
+-com.fruitcandy.blast,0
+-com.fullfat.blockybasketball,0
+-com.fungames.blockcraft,0
+-com.fungames.sniper3d,0
+-com.g5e.hiddencity.android,0
+-com.g6677.android.cdentist,0
+-com.gamecircus.CoinDozerHaunted,0
+-com.gamecircus.tycoon,0
+-com.gameloft.android.ANMP.GloftA8HM,0
+-com.gameloft.android.ANMP.GloftDMHM,0
+-com.gameloft.android.ANMP.GloftM5HM,0
+-com.gameloft.android.ANMP.GloftMOHM,0
+-com.gameloft.android.ANMP.GloftUOHM,0
+-com.geeker.gok,0
+-com.glu.deerhunt16,0
+-com.google.android.play.games,0
+-com.halfbrick.fruitninjafree,0
+-com.halfbrick.jetpackjoyride,0
+-com.handmark.sportcaster,5
+-com.hasbro.monopolyhereandnow,0
+-com.hcg.cok.gp,0
+-com.hotheadgames.google.free.ks2,0
+-com.huuuge.casino.slots,0
+-com.igg.android.lordsmobile,0
+-com.igg.castleclash,0
+-com.igg.clashoflords2,0
+-com.imangi.templerun,0
+-com.imangi.templerun2,0
+-com.juju.challenge,0
+-com.junerking.bottle,0
+-com.kabam.marvelbattle,0
+-com.kathleenOswald.solitaireGooglePlay,0
+-com.ketchapp.pineapplepen,0
+-com.ketchapp.stack,0
+-com.kick.army.training.school.game,0
+-com.kiloo.subwaysurf,0
+-com.king.candycrushjellysaga,0
+-com.king.candycrushsaga,0
+-com.king.candycrushsodasaga,0
+-com.king.shufflecatcards,0
+-com.kongregate.mobile.thetrail.google,0
+-com.kongregate.mobile.throwdown.google,0
+-com.lcmobileapp.thehardestquiz,0
+-com.longtech.lastwars.gp,0
+-com.machinezone.gow,0
+-com.mediocre.pinout,0
+-com.mediocre.smashhit,0
+-com.metroxylon.Bottle.Flip,0
+-com.miniclip.agar.io,0
+-com.miniclip.basketballstars,0
+-com.miniclip.dudeperfect,0
+-com.miniclip.eightballpool,0
+-com.miniclip.plagueinc,0
+-com.mobile.legends,0
+-com.mostplayed.flippybottle,0
+-com.motionvolt.flipdiving,0
+-com.msi.logogame,0
+-com.namcobandaigames.pacmantournaments,0
+-com.natenai.glowhockey,0
+-com.naturalmotion.customstreetracer2,0
+-com.nekki.shadowfight,0
+-com.netmarble.mherosgb,0
+-com.nianticlabs.pokemongo,0
+-com.ninjakiwi.bloonstdbattles,0
+-com.nordcurrent.canteenhd,0
+-com.notdoppler.earntodie2,0
+-com.onehundredpics.onehundredpicsquiz,0
+-com.orangenose.trick,0
+-com.orbital.brainiton,0
+-com.outerminds.tubular,0
+-com.outfit7.movingeye.swampattack,0
+-com.outfit7.mytalkingangelafree,0
+-com.outfit7.mytalkingtomfree,0
+-com.outfit7.talkingtomgoldrun,0
+-com.pacificinteractive.HouseOfFun,0
+-com.perblue.dragonsoul,0
+-com.pixel.gun3d,0
+-com.pixelberrystudios.choices,0
+-com.pixonic.wwr,0
+-com.placeholdercorp.TrumpyWall,0
+-com.playrix.fishdomdd.gplay,0
+-com.playrix.gardenscapes,0
+-com.playrix.township,0
+-com.playtika.wsop.gp,0
+-com.pnixgames.bowlingking,0
+-com.popreach.dumbways,0
+-com.poptacular.wordnerd,0
+-com.prettysimple.criminalcaseandroid,0
+-com.productmadness.hovmobile,0
+-com.quarterborrowresult.customer,0
+-com.racinggames.stunts.racing_bike.stunts,0
+-com.randomlogicgames.wordsearch,0
+-com.rappidstudios.simulatorbattle,0
+-com.rkgames.smashywanted,0
+-com.rlg.guesstheemoji,0
+-com.roblox.client,0
+-com.robtopx.geometrydashmeltdown,0
+-com.robtopx.geometryjumplite,0
+-com.rovio.angrybirds,0
+-com.rovio.baba,0
+-com.rs.futuristic_robot_battle,0
+-com.scopely.wheeloffortune,0
+-com.scottgames.fnaf2demo,0
+-com.scottgames.fnaf4demo,0
+-com.secondarm.taptapdash,0
+-com.secretexit.turbodismount,0
+-com.sega.sonicdash,0
+-com.sgn.geniesandgems.gp,0
+-com.sgn.pandapop.gp,0
+-com.shadowmastersgames.tapanddrag,0
+-com.skgames.trafficrider,0
+-com.solitairegame.basic2,0
+-com.spacegame.basic3,0
+-com.spacegame.solitaire.basic,0
+-com.springloaded.campaignclicker,0
+-com.supercell.clashofclans,0
+-com.supercell.clashroyale,0
+-com.supercell.hayday,0
+-com.superlamegames.smileinc,0
+-com.tabtale.teacher,0
+-com.tap4fun.reignofwar,0
+-com.teamlava.candy56,0
+-com.telltalegames.minecraft100,0
+-com.threed.bowling,0
+-com.topfreegames.bikeracefreeworld,0
+-com.turbochilli.rollingsky,0
+-com.ubisoft.hungrysharkworld,0
+-com.ubisoft.trolls,0
+-com.umonistudio.tile,0
+-com.vng.g6.a.zombie,0
+-com.wb.goog.dc.legends,0
+-com.wb.goog.mkx,0
+-com.wb.goog.suicidesquad.so,0
+-com.wb.headsup,0
+-com.withbuddies.yahtzee,0
+-com.wordmobile.waterslide,0
+-com.wordsmobile.grandfightgangsters,0
+-com.wordsmobile.nfl,0
+-com.yodo1.crossyroad,0
+-com.zeptolab.ctr.ads,0
+-com.zynga.ozmatch,0
+-com.zynga.wwf2.free,0
+-es.mamba.liedetector,0
+-es.socialpoint.DragonCity,0
+-eu.bandainamcoent.galagawars,0
+-macrostudios.truthordare,0
+-macrostudios.wouldyourather,0
+-me.pou.app,0
+-mobi.MultiCraft,0
+-net.peakgames.amy,0
+-net.peakgames.ginrummyplus,0
+-net.peakgames.mobile.spades.android,0
+-se.feomedia.pixduel.us.lite,0
+-se.maginteractive.wordalot,0
+-us.kick9.k3000000018.c3101000001,0
+-com.amazon.clouddrive.photos,3
+-com.camerasideas.instashot,3
+-com.cardinalblue.piccollage.google,3
+-com.cyberlink.youcammakeup,3
+-com.facebook.moments,3
+-com.google.android.GoogleCamera,3
+-com.google.android.apps.photos,3
+-com.instagram.boomerang,3
+-com.instagram.layout,3
+-com.jb.zcamera,3
+-com.lyrebirdstudio.montagenscolagem,3
+-com.meihillman.photocollage,3
+-com.photoaffections.freeprints,3
+-com.picsart.studio,3
+-com.roidapp.photogrid,3
+-com.shutterfly,3
+-com.steam.photoeditor,3
+-com.zentertain.photoeditor,3
+-vsin.t16_funny_photo,3
+-com.google.android.apps.maps,6
+-com.ubercab,6
+-com.ubercab.driver,6
+-com.waze,6
+-me.lyft.android,6
+-com.abc.abcnews,5
+-com.cmcm.indianews_us,5
+-com.cnn.mobile.android.phone,5
+-com.espn.score_center,5
+-com.foxnews.android,5
+-com.gmail.droidloup.electionwatch,5
+-com.ml.ElectionCentral,5
+-com.nbadigital.gametimelite,5
+-com.nbcuni.telemundo.noticiastelemundo,5
+-com.particlenews.newsbreak,5
+-com.reddit.frontpage,5
+-com.ss.android.article.master,5
+-com.treemolabs.apps.cbsnews,5
+-com.zumobi.msnbc,5
+-com.adobe.reader,7
+-com.adpmobile.android,7
+-com.android.chrome,7
+-com.dropbox.android,7
+-com.google.android.apps.cloudprint,7
+-com.google.android.apps.docs,7
+-com.google.android.apps.docs.editors.docs,7
+-com.google.android.apps.docs.editors.sheets,7
+-com.google.android.apps.docs.editors.slides,7
+-com.google.android.apps.translate,7
+-com.google.android.calculator,7
+-com.google.android.calendar,7
+-com.google.android.gm,7
+-com.google.android.keep,7
+-com.google.android.printservice.recommendation,7
+-com.hp.printercontrol,7
+-com.microsoft.office.excel,7
+-com.microsoft.office.outlook,7
+-com.microsoft.office.word,7
+-com.microsoft.skydrive,7
+-com.pixatel.apps.notepad,7
+-com.sec.cloudprint,7
+-com.yahoo.mobile.client.android.mail,7
+-org.mozilla.firefox,7
+-ru.mail,7
+-co.happybits.marcopolo,4
+-com.antivirus,4
+-com.badoo.mobile,4
+-com.callapp.contacts,4
+-com.cmcm.live,4
+-com.comcast.hsf,4
+-com.discord,4
+-com.enflick.android.TextNow,4
+-com.facebook.katana,4
+-com.facebook.orca,4
+-com.google.android.apps.fireball,4
+-com.google.android.apps.messaging,4
+-com.google.android.apps.tachyon,4
+-com.google.android.talk,4
+-com.groupme.android,4
+-com.imo.android.imoim,4
+-com.instagram.android,4
+-com.jb.gosms,4
+-com.linkedin.android,4
+-com.myyearbook.m,4
+-com.oovoo,4
+-com.pinger.textfree,4
+-com.pinterest,4
+-com.pof.android,4
+-com.sgiggle.production,4
+-com.skype.raider,4
+-com.snapchat.android,4
+-com.talkatone.android,4
+-com.tinder,4
+-com.truecaller,4
+-com.tumblr,4
+-com.twitter.android,4
+-com.viber.voip,4
+-com.whatisone.afterschool,4
+-com.whatsapp,4
+-com.zhiliaoapp.lively,4
+-com.zhiliaoapp.musically,4
+-com.zoosk.zoosk,4
+-jp.naver.line.android,4
+-kik.android,4
+-me.dingtone.app.im,4
+-tv.periscope.android,4
+-air.WatchESPN,2
+-air.com.vudu.air.DownloaderTablet,2
+-co.triller.droid,2
+-com.amctve.amcfullepisodes,2
+-com.cbs.app,2
+-com.cheerfulinc.flipagram,2
+-com.cw.fullepisodes.android,2
+-com.directv.dvrscheduler,2
+-com.disney.datg.videoplatforms.android.abc,2
+-com.disney.disneymoviesanywhere_goo,2
+-com.fox.now,2
+-com.foxsports.videogo,2
+-com.giphy.messenger,2
+-com.google.android.apps.chromecast.app,2
+-com.google.android.apps.youtube.kids,2
+-com.google.android.videos,2
+-com.google.android.youtube,2
+-com.google.earth,2
+-com.gotv.crackle.handset,2
+-com.gotv.nflgamecenter.us.lite,2
+-com.hbo.hbonow,2
+-com.hulu.plus,2
+-com.nbcuni.nbc,2
+-com.nbcuni.nbc.thevoice,2
+-com.netflix.mediaclient,2
+-com.nick.android.nickjr,2
+-com.quvideo.xiaoying,2
+-com.riffsy.FBMGIFApp,2
+-com.roku.remote,2
+-com.tubitv,2
+-com.univision.univisionnow,2
+-com.xfinity.cloudtvr,2
+-de.twokit.castbrowser,2
+-org.videolan.vlc,2
+-org.xbmc.kodi,2
+-tv.peel.app,2
+-tv.twitch.android.app,2
+diff --git a/overlay/GoogleConfigOverlay/res/values/config.xml b/overlay/GoogleConfigOverlay/res/values/config.xml
+deleted file mode 100644
+index 6e1c50b5..00000000
+--- a/overlay/GoogleConfigOverlay/res/values/config.xml
++++ /dev/null
+@@ -1,68 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Set this to true to enable the platform's auto-power-save modes like doze and
+-         app standby.  These are not enabled by default because they require a standard
+-         cloud-to-device messaging service for apps to interact correctly with the modes
+-         (such as to be able to deliver an instant message to the device even when it is
+-         dozing).  This should be enabled if you have such services and expect apps to
+-         correctly use them when installed on your device.  Otherwise, keep this disabled
+-         so that applications can still use their own mechanisms. -->
+-    <bool name="config_enableAutoPowerModes">true</bool>
+-
+-    <string-array name="config_forceInvertPackageBlocklist" translatable="false">
+-        <item>com.amazon.mShop.android.shopping</item>
+-        <item>com.google.android.apps.maps</item>
+-        <item>fr.vinted</item>
+-        <item>org.telegram.messenger</item>
+-    </string-array>
+-
+-    <!-- Messages that should not be shown to the user during face auth enrollment. This should be
+-         used to hide messages that may be too chatty or messages that the user can't do much about.
+-         Entries are defined in android.hardware.biometrics.face@1.0 types.hal -->
+-    <integer-array name="config_face_acquire_enroll_ignorelist">
+-        <item>13</item>
+-    </integer-array>
+-
+-    <!-- Same as the above, but are defined by vendorCodes -->
+-    <integer-array name="config_face_acquire_vendor_enroll_ignorelist"/>
+-
+-    <!-- Messages that should not be shown to the user during face authentication, on keyguard.
+-         This includes both lockscreen and bouncer. This should be used to hide messages that may be
+-         too chatty or messages that the user can't do much about. Entries are defined in
+-         android.hardware.biometrics.face@1.0 types.hal -->
+-    <integer-array name="config_face_acquire_keyguard_ignorelist"/>
+-
+-    <!-- Same as the above, but are defined by vendorCodes -->
+-    <integer-array name="config_face_acquire_vendor_keyguard_ignorelist"/>
+-
+-    <!-- Messages that should not be shown to the user during face authentication, on
+-         BiometricPrompt. This should be used to hide messages that may be too chatty or messages
+-         that the user can't do much about. Entries are defined in
+-         android.hardware.biometrics.face@1.0 types.hal -->
+-    <integer-array name="config_face_acquire_biometricprompt_ignorelist">
+-        <item>1</item>
+-        <item>2</item>
+-        <item>4</item>
+-        <item>5</item>
+-        <item>6</item>
+-        <item>7</item>
+-        <item>8</item>
+-        <item>9</item>
+-        <item>11</item>
+-        <item>12</item>
+-        <item>13</item>
+-        <item>14</item>
+-        <item>15</item>
+-        <item>16</item>
+-        <item>17</item>
+-        <item>18</item>
+-        <item>19</item>
+-    </integer-array>
+-
+-    <!-- Same as the above, but are defined by vendorCodes -->
+-    <integer-array name="config_face_acquire_vendor_biometricprompt_ignorelist"/>
+-</resources>
+diff --git a/overlay/GooglePermissionControllerSafetyCenterOverlay/Android.bp b/overlay/GooglePermissionControllerSafetyCenterOverlay/Android.bp
+deleted file mode 100644
+index 11708ca0..00000000
+--- a/overlay/GooglePermissionControllerSafetyCenterOverlay/Android.bp
++++ /dev/null
+@@ -1,9 +0,0 @@
+-//
+-// SPDX-FileCopyrightText: The LineageOS Project
+-// SPDX-License-Identifier: Apache-2.0
+-//
+-
+-runtime_resource_overlay {
+-    name: "GooglePermissionControllerSafetyCenterOverlay",
+-    product_specific: true,
+-}
+diff --git a/overlay/GooglePermissionControllerSafetyCenterOverlay/AndroidManifest.xml b/overlay/GooglePermissionControllerSafetyCenterOverlay/AndroidManifest.xml
+deleted file mode 100644
+index 1eb29576..00000000
+--- a/overlay/GooglePermissionControllerSafetyCenterOverlay/AndroidManifest.xml
++++ /dev/null
+@@ -1,12 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="com.google.android.overlay.permissioncontroller.safetycenter">
+-    <overlay android:targetPackage="com.android.permissioncontroller"
+-             android:targetName="SafetyCenterStyles"
+-             android:isStatic="true"
+-             android:priority="0" />
+-</manifest>
+diff --git a/overlay/GooglePermissionControllerSafetyCenterOverlay/res/values/bools.xml b/overlay/GooglePermissionControllerSafetyCenterOverlay/res/values/bools.xml
+deleted file mode 100644
+index f1f95cec..00000000
+--- a/overlay/GooglePermissionControllerSafetyCenterOverlay/res/values/bools.xml
++++ /dev/null
+@@ -1,10 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- config for opting out of expressive Safety Center. This has no effect currently
+-    but may be enabled in a subsequent release -->
+-    <bool name="config_enableExpressiveDesignInSafetyCenter">true</bool>
+-</resources>
+diff --git a/overlay/PixelConfigOverlay2019/Android.bp b/overlay/PixelConfigOverlay2019/Android.bp
+deleted file mode 100644
+index 481ed70d..00000000
+--- a/overlay/PixelConfigOverlay2019/Android.bp
++++ /dev/null
+@@ -1,9 +0,0 @@
+-//
+-// SPDX-FileCopyrightText: The LineageOS Project
+-// SPDX-License-Identifier: Apache-2.0
+-//
+-
+-runtime_resource_overlay {
+-    name: "PixelConfigOverlay2019",
+-    product_specific: true,
+-}
+diff --git a/overlay/PixelConfigOverlay2019/AndroidManifest.xml b/overlay/PixelConfigOverlay2019/AndroidManifest.xml
+deleted file mode 100644
+index 4b88f06e..00000000
+--- a/overlay/PixelConfigOverlay2019/AndroidManifest.xml
++++ /dev/null
+@@ -1,11 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="com.google.android.overlay.pixelconfig2019">
+-    <overlay android:targetPackage="android"
+-             android:isStatic="true"
+-             android:priority="6" />
+-</manifest>
+diff --git a/overlay/PixelConfigOverlay2019/res/values/config.xml b/overlay/PixelConfigOverlay2019/res/values/config.xml
+deleted file mode 100644
+index 537151c0..00000000
+--- a/overlay/PixelConfigOverlay2019/res/values/config.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- Flag indicating whether we should enable the adaptive sleep.-->
+-    <bool name="config_adaptive_sleep_available">true</bool>
+-
+-    <!-- The component name for the default system attention service.
+-         This service must be trusted, as it can be activated without explicit consent of the user.
+-         See android.attention.AttentionManagerService.
+-    -->
+-    <string name="config_defaultAttentionService" translatable="false">com.google.android.as/com.google.android.apps.miphone.aiai.attention.service.AiAiAttentionService</string>
+-
+-    <!-- The component name for the default system rotation resolver service.
+-        This service must be trusted, as it can be activated without explicit consent of the user.
+-        See android.service.rotationresolver.RotationResolverService.
+-   -->
+-    <string name="config_defaultRotationResolverService" translatable="false">com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiRotationResolverService</string>
+-</resources>
+diff --git a/overlay/PixelConfigOverlay2021/Android.bp b/overlay/PixelConfigOverlay2021/Android.bp
+deleted file mode 100644
+index 71de0c77..00000000
+--- a/overlay/PixelConfigOverlay2021/Android.bp
++++ /dev/null
+@@ -1,9 +0,0 @@
+-//
+-// SPDX-FileCopyrightText: The LineageOS Project
+-// SPDX-License-Identifier: Apache-2.0
+-//
+-
+-runtime_resource_overlay {
+-    name: "PixelConfigOverlay2021",
+-    product_specific: true,
+-}
+diff --git a/overlay/PixelConfigOverlay2021/AndroidManifest.xml b/overlay/PixelConfigOverlay2021/AndroidManifest.xml
+deleted file mode 100644
+index 8734d8d5..00000000
+--- a/overlay/PixelConfigOverlay2021/AndroidManifest.xml
++++ /dev/null
+@@ -1,11 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="com.google.android.overlay.pixelconfig2021">
+-    <overlay android:targetPackage="android"
+-             android:isStatic="true"
+-             android:priority="8" />
+-</manifest>
+diff --git a/overlay/PixelConfigOverlay2021/res/values/config.xml b/overlay/PixelConfigOverlay2021/res/values/config.xml
+deleted file mode 100644
+index 2308a42d..00000000
+--- a/overlay/PixelConfigOverlay2021/res/values/config.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- The list of packages to force slowJpegMode for Apps using Camera API1 -->
+-    <string-array name="config_forceSlowJpegModeList" translatable="false">
+-        <item>com.facebook.orca</item>
+-        <item>com.skype.raider</item>
+-        <item>com.tencent.mm</item>
+-    </string-array>
+-
+-    <!-- Enable pause wallpaper rendering upon state change such as app launch -->
+-    <bool name="config_pauseWallpaperRenderWhenStateChangeEnabled">true</bool>
+-
+-    <!-- The list of packages to pause wallpaper rendering upon state change such as app launch -->
+-    <string-array name="pause_wallpaper_render_when_state_change" translatable="false">
+-        <item>com.google.android.GoogleCamera</item>
+-    </string-array>
+-</resources>
+diff --git a/overlay/PixelConfigOverlayCommon/Android.bp b/overlay/PixelConfigOverlayCommon/Android.bp
+deleted file mode 100644
+index aacc2f32..00000000
+--- a/overlay/PixelConfigOverlayCommon/Android.bp
++++ /dev/null
+@@ -1,9 +0,0 @@
+-//
+-// SPDX-FileCopyrightText: The LineageOS Project
+-// SPDX-License-Identifier: Apache-2.0
+-//
+-
+-runtime_resource_overlay {
+-    name: "PixelConfigOverlayCommon",
+-    product_specific: true,
+-}
+diff --git a/overlay/PixelConfigOverlayCommon/AndroidManifest.xml b/overlay/PixelConfigOverlayCommon/AndroidManifest.xml
+deleted file mode 100644
+index de2717f0..00000000
+--- a/overlay/PixelConfigOverlayCommon/AndroidManifest.xml
++++ /dev/null
+@@ -1,11 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="com.google.android.overlay.pixelconfigcommon">
+-    <overlay android:targetPackage="android"
+-             android:isStatic="true"
+-             android:priority="1" />
+-</manifest>
+diff --git a/overlay/PixelConfigOverlayCommon/res/values/config.xml b/overlay/PixelConfigOverlayCommon/res/values/config.xml
+deleted file mode 100644
+index c32d0828..00000000
+--- a/overlay/PixelConfigOverlayCommon/res/values/config.xml
++++ /dev/null
+@@ -1,70 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: The LineageOS Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<resources>
+-    <!-- The amount to scale fullscreen snapshots for Overview and snapshot starting windows. -->
+-    <item name="config_highResTaskSnapshotScale" format="float" type="dimen">0.8</item>
+-
+-    <!-- Specify if the fingerprint hardware support gestures-->
+-    <bool name="config_fingerprintSupportsGestures">true</bool>
+-
+-    <!-- The component name for the system-wide captions manager service.
+-         This service must be trusted, as the system binds to it and keeps it running.
+-         Example: "com.android.captions/.SystemCaptionsManagerService"
+-    -->
+-    <string name="config_defaultSystemCaptionsManagerService" translatable="false">com.google.android.as/com.google.android.apps.miphone.aiai.captions.SystemCaptionsManagerService</string>
+-
+-    <!-- The package name for the system's app prediction service.
+-         This service must be trusted, as it can be activated without explicit consent of the user.
+-         Example: "com.android.intelligence/.AppPredictionService"
+-    -->
+-    <string name="config_defaultAppPredictionService" translatable="false">com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiPredictionService</string>
+-
+-    <!-- The package name for the system's content suggestions service.
+-         Provides suggestions for text and image selection regions in snapshots of apps and should
+-         be able to classify the type of entities in those selections.
+-
+-         This service must be trusted, as it can be activated without explicit consent of the user.
+-         If no service with the specified name exists on the device, content suggestions wil be
+-         disabled.
+-         Example: "com.android.contentsuggestions/.ContentSuggestionsService"
+-    -->
+-    <string name="config_defaultContentSuggestionsService" translatable="false">com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiContentSuggestionsService</string>
+-
+-    <!-- Package name of the on-device intelligent processor for system UI
+-         features. Examples include the search functionality or the app
+-         predictor. -->
+-    <string name="config_systemUiIntelligence" translatable="false">com.google.android.as</string>
+-
+-    <!-- Package name of the on-device intelligent processor for ambient audio.
+-         Ambient audio is the sound surrounding the device captured by the DSP
+-         or the microphone. In other words, the device is continuously
+-         processing audio data in background. -->
+-    <string name="config_systemAmbientAudioIntelligence" translatable="false">com.google.android.as</string>
+-
+-    <!-- Package name of the on-device intelligent processor for audio. The
+-         difference of 'ambient audio' and 'audio' is that in 'audio', the
+-         user intentionally and consciously aware that the device is recording
+-         or using the microphone.
+-         -->
+-    <string name="config_systemAudioIntelligence" translatable="false">com.google.android.as</string>
+-
+-    <!-- Package name of the on-device intelligent processor for notification.
+-         -->
+-    <string name="config_systemNotificationIntelligence" translatable="false">com.google.android.as</string>
+-
+-    <!-- Package name of the on-device intelligent processor for text. Examples
+-        include providing autofill functionality based on incoming text
+-        messages. -->
+-    <string name="config_systemTextIntelligence" translatable="false">com.google.android.as</string>
+-
+-    <!-- Package name of the on-device intelligent processor for visual
+-         features. Examples include the autorotate feature. -->
+-    <string name="config_systemVisualIntelligence" translatable="false">com.google.android.as</string>
+-
+-    <!-- The maximum number of call log entries for each sim card that can be stored in the call log
+-         provider on the device. -->
+-    <integer name="config_maximumCallLogEntriesPerSim">1000</integer>
+-</resources>
+-- 
+2.43.0
+

@@ -1,0 +1,4 @@
+Basic Call Recorder (BCR) by Andrew Gunnerson (chenxiaolong), licensed GPL-3.0-only, is shipped here
+unmodified: BCR.apk is the APK from the upstream release zip, still signed by its author. Corresponding
+source: https://github.com/chenxiaolong/BCR/tree/v3.11 (the tag named in VERSION). The full license text
+is in LICENSE, copied from the same release zip.

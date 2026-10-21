@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Daryl Denson
+  SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <string name="hilight_title">HiLight</string>
+    <string name="hilight_summary">Light bar on the back for Gemini and calls from favorites</string>
+    <string name="hilight_intro">The light bar on the back of your phone glows so you can tell what\'s happening even when the phone is face down.</string>
+    <string name="hilight_main_switch">Use HiLight</string>
+    <string name="hilight_category_when">Light up for</string>
+    <string name="hilight_gemini_title">Gemini</string>
+    <string name="hilight_gemini_summary">While Gemini is listening and responding</string>
+    <string name="hilight_calls_title">Calls from favorites</string>
+    <string name="hilight_calls_summary">When a starred contact calls you</string>
+    <string name="hilight_preview_title">Preview</string>
+    <string name="hilight_preview_summary">Play a short animation on the light bar</string>
+    <string name="hilight_footer">If you\'re sensitive to flashing or bright light, you may want to leave HiLight off.</string>
+</resources>

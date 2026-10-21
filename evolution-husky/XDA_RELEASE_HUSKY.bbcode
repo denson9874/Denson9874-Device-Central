@@ -1,0 +1,122 @@
+Title: [ROM][UNOFFICIAL][17][husky] Evolution X 12.3 (Android 17) for the Pixel 8 Pro
+
+[CENTER][SIZE=6][B]Evolution X 12.3 — Android 17[/B][/SIZE]
+[SIZE=4]Google Pixel 8 Pro (husky) | UNOFFICIAL[/SIZE][/CENTER]
+
+[CODE]
+/*
+ * Your warranty is now void. You flash this at your own risk.
+ * I'm not responsible for bricked devices, lost data, or anything else.
+ */
+[/CODE]
+
+[SIZE=5][B]About[/B][/SIZE]
+An unofficial build of Evolution X 12.3 on Android 17 for the Google Pixel 8 Pro (husky).
+
+Because there is an active official maintainer for Android 16 Evolution X ([B]Giovanni / TechPanelGM[/B]), this build is [B]not and will never be an official Evolution X build[/B]. I am hosting and maintaining this Android 17 (cnb) build as an unofficial maintainer to bring Android 17 to the Pixel 8 Pro community, ensuring full upstream source parity with Evolution X's Android 17 codebase, latest security patches, and Tensor G3 platform optimizations.
+
+[B]For the Google Pixel 8 Pro (husky) only.[/B] Don't flash this on the Pixel 8 (shiba), Pixel 8a (akita), or any other model.
+
+This is [B]not[/B] an official Evolution X build. Please don't report its bugs to the Evolution X team; report them in this thread or on GitHub.
+
+[SIZE=5][B]Build info[/B][/SIZE]
+[LIST]
+[*]Evolution X 12.3, Android 17, security patch 2026-10-05 (vendor and boot), 2026-10-01 (system)
+[*]Build type: user, signed with private release keys
+[*]Google apps included
+[*]Kernel: Linux 6.1.157 (Tensor G3 prebuilt)
+[*]Firmware baseline: stock CP3A.261005.005 (October 2026, ripcurrent bootloader and modem)
+[*]Not rooted
+[/LIST]
+
+[SIZE=5][B]What works[/B][/SIZE]
+[LIST]
+[*]Boot, gesture navigation, Recents
+[*]Calls and SMS, including VoLTE, mobile data (5G SA), eSIM
+[*]Wi-Fi 6E/7, Bluetooth audio and LE
+[*]Dynamic 120 Hz / 60 Hz LTPO refresh rate
+[*]Cameras, optical fingerprint unlock, face unlock
+[*]Stereo speakers, microphones, earpiece
+[*]Google Photos Tensor G3 features (Photo Unblur, Magic Eraser, Ultra HDR)
+[*]Google Play; Play Integrity (MEETS_DEVICE_INTEGRITY) and Google Wallet tap-to-pay
+[*]All hardware sensors
+[/LIST]
+
+[SIZE=5][B]Known issues[/B][/SIZE]
+[LIST]
+[*]Gemini Nano and the features built on it (Magic Cue and others) don't work. Google only serves the on-device AI models to phones with a locked bootloader, so this applies to any custom ROM.
+[*]Pixel-exclusive extras such as Pixel Screenshots and Now Playing aren't included.
+[*]Tested on real hardware. Reports from other carriers are welcome!
+[/LIST]
+
+[SIZE=5][B]Changelog[/B][/SIZE]
+[LIST]
+[*][B]2026-10-16:[/B] Initial Android 17 (Platform 37) unofficial release for husky. Upstream Evolution X 12.3 cnb source parity. Fixed Google Photos Tensor platform detection for Magic Eraser, Photo Unblur, and Ultra HDR processing. Upstream PIF hardening for Play Integrity passing out-of-the-box. Sensitive Quick Settings tiles (Mobile Data, Wi-Fi, Hotspot) require authentication when locked. Unofficial maintainer overlay configured. Packaged with October 2026 (CP3A.261005.005) ripcurrent firmware baseline.
+[/LIST]
+
+[SIZE=5][B]Requirements[/B][/SIZE]
+[LIST]
+[*]Unlocked bootloader (unlocking wipes your phone)
+[*]Stock firmware [B]CP3A.261005.005 (October 2026)[/B]. The zip includes October 2026 firmware, but your phone should be on this release. If you're coming from an older release or beta, install CP3A.261005.005 with the Android Flash Tool first.
+[*]Latest platform-tools (adb/fastboot)
+[/LIST]
+
+[SIZE=5][B]Installation (clean flash)[/B][/SIZE]
+Download the ROM zip and check its SHA-256. Download the matching [ICODE]boot.img[/ICODE] and [ICODE]vendor_boot.img[/ICODE] from the SourceForge release folder, then:
+[CODE]
+adb reboot bootloader
+fastboot flash boot boot.img
+fastboot flash vendor_boot vendor_boot.img
+fastboot reboot recovery
+[/CODE]
+In Evolution X Recovery:
+[LIST=1]
+[*]Select [B]Factory reset[/B] > [B]Format data/factory reset[/B] > [B]Format data[/B] ([B]wipes all your data[/B]).
+[*]Return to the main menu and select [B]Apply update[/B] > [B]Apply from ADB[/B].
+[*]From your computer, sideload the ROM:
+[/LIST]
+[CODE]
+adb sideload EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip
+[/CODE]
+After sideload finishes (stops around 47% with [ICODE]Total xfer: 1.00x[/ICODE]), select [B]Reboot system now[/B]. The first boot takes a few minutes.
+
+[B]Updating[/B] from an earlier build of this ROM (keeps your data):
+[LIST=1]
+[*]Reboot into Recovery.
+[*]Select [B]Apply update[/B] > [B]Apply from ADB[/B].
+[*]Sideload the update zip:
+[/LIST]
+[CODE]
+adb sideload EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip
+[/CODE]
+[LIST=1]
+[*]Reboot system.
+[/LIST]
+
+[SIZE=5][B]Downloads[/B][/SIZE]
+[LIST]
+[*]Pixel 8 Pro (husky) ROM zip: [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/husky/17/]SourceForge: husky/17[/URL]
+[*]File: [ICODE]EvolutionX-17.0-20261016-husky-12.3-Unofficial.zip[/ICODE]
+[*]SHA-256: [ICODE]2f8b568b06d16bba312ce05b2b3471689bd3fae7ed608309491246ba712d6d78[/ICODE]
+[*]Recovery images: [ICODE]boot.img[/ICODE] and [ICODE]vendor_boot.img[/ICODE] in the same SourceForge folder
+[*]SHA-256 checksums: in the same folder
+[/LIST]
+
+[SIZE=5][B]Source code[/B][/SIZE]
+[LIST]
+[*]ROM: [URL=https://github.com/Evolution-X/manifest/tree/cnb]Evolution-X/manifest (cnb)[/URL]
+[*]Device trees: [URL=https://github.com/LineageOS/android_device_google_shusky]LineageOS/android_device_google_shusky[/URL] and [URL=https://github.com/LineageOS/android_device_google_zuma]LineageOS/android_device_google_zuma[/URL]
+[*]Kernel: Google Tensor G3 prebuilt kernel ([URL=https://github.com/LineageOS/android_device_google_shusky-kernels]device/google/shusky-kernels[/URL], Linux 6.1.157). Source and build instructions: [URL=https://source.android.com/docs/setup/build/building-pixel-kernels]Building Pixel kernels[/URL]
+[*]Vendor blobs: [URL=https://github.com/TheMuppets/proprietary_vendor_google_husky]TheMuppets/proprietary_vendor_google_husky[/URL]
+[/LIST]
+
+[SIZE=5][B]Credits[/B][/SIZE]
+The Evolution X team (Joey Huab, RealAkito, AnierinB), Giovanni (TechPanelGM) for maintaining the official Android 16 husky trees, and the LineageOS team.
+
+[SIZE=5][B]Reporting bugs[/B][/SIZE]
+Include your build date, whether you clean or dirty flashed, your carrier, steps to reproduce, and a log:
+[CODE]adb logcat -d > logcat.txt[/CODE]
+
+[B]ROM OS version:[/B] Android 17
+[B]Based on:[/B] Evolution X / LineageOS
+[B]Status:[/B] Beta

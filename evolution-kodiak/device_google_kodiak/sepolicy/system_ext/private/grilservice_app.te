@@ -1,0 +1,5 @@
+# Google RIL service (com.google.android.grilservice). Its rild, audio HAL,
+# Wi-Fi and Bluetooth access comes from the stock vendor policy.
+typeattribute grilservice_app coredomain;
+app_domain(grilservice_app)
+net_domain(grilservice_app)
