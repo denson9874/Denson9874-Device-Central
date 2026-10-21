@@ -1,0 +1,51 @@
+From e573ef6789993b0372dccd971d6d37c399c8c3e8 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <daryldenson0405@gmail.com>
+Date: Wed, 21 Oct 2026 09:37:12 +0200
+Subject: [PATCH 1/2] husky: DerpFest 17 product settings
+
+vendor/pixel/gms reads TARGET_DOES_NOT_SUPPORT_GOOGLE_BATTERY (?=) and
+WITH_GMS_AICORE (ifeq) when common_full_phone.mk is inherited, so set
+them before it: husky has the Google battery HAL, and AICore now comes
+from gms (vendor/google/husky defers it). Ignore APEX contribution
+contents, as on DerpFest kodiak: gms adds extservices, which turns on
+the release config's Google APEX lists.
+
+Face unlock stays DerpFest's default (ParanoidSense), as in the official
+DerpFest 16.2 husky tree; its other branch needs SettingsGoogleFutureFaceEnroll,
+which nothing in DerpFest 17 defines.
+---
+ lineage_husky.mk | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/lineage_husky.mk b/lineage_husky.mk
+index 5f8dfc14..475c271c 100644
+--- a/lineage_husky.mk
++++ b/lineage_husky.mk
+@@ -4,6 +4,12 @@
+ # SPDX-License-Identifier: Apache-2.0
+ #
+ 
++# DerpFest: read with ?= / ifeq by vendor/pixel/gms (gms.mk) when common_full_phone.mk
++# is inherited, so set before it. husky has the Google battery HAL (TurboAdapter, not
++# _NoBatt); AICore (Gemini Nano) comes from gms, as vendor/google/husky defers it there.
++TARGET_DOES_NOT_SUPPORT_GOOGLE_BATTERY := false
++WITH_GMS_AICORE := true
++
+ # Inherit some common stuff
+ $(call inherit-product, vendor/lineage/config/common_full_phone.mk)
+ 
+@@ -19,6 +25,11 @@ PRODUCT_SYSTEM_BRAND := google
+ PRODUCT_SYSTEM_MANUFACTURER := Google
+ PRODUCT_SYSTEM_NAME := generic_system_google
+ 
++# DerpFest: vendor/pixel/gms adds com.google.android.extservices, so the build
++# no longer treats this as a plain AOSP product; without this it applies the
++# release config's Google APEX contribution lists, which this tree doesn't have.
++PRODUCT_BUILD_IGNORE_APEX_CONTRIBUTION_CONTENTS := true
++
+ # Boot animation
+ TARGET_SCREEN_HEIGHT := 2992
+ TARGET_SCREEN_WIDTH := 1344
+-- 
+2.43.0
+

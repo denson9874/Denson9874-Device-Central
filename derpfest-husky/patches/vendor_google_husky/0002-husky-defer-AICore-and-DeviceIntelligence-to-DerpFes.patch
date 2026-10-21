@@ -1,0 +1,83 @@
+From 933216c0d8c694187532f8d5804d4d2367eb622c Mon Sep 17 00:00:00 2001
+From: Daryl Denson <daryldenson0405@gmail.com>
+Date: Wed, 21 Oct 2026 09:33:03 +0200
+Subject: [PATCH 2/2] husky: defer AICore and DeviceIntelligence to DerpFest's
+ vendor/pixel/gms
+
+PixelOS gms-17 defines both modules too, and Soong refuses a module
+that's found in two namespaces for the product partition:
+  module "AICorePrebuilt-aicore_20260302.01_RC00" ... found in multiple
+  namespaces(vendor/pixel/gms/common and vendor/google/husky)
+DeviceIntelligenceNetworkPrebuiltAstrea is byte-identical in both, and
+AICore is the same version; gms installs it with WITH_GMS_AICORE.
+---
+ Android.bp      | 26 --------------------------
+ husky-vendor.mk |  2 --
+ 2 files changed, 28 deletions(-)
+
+diff --git a/Android.bp b/Android.bp
+index 8c47a156..55dfe7ae 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -287,19 +287,6 @@ android_app_import {
+     product_specific: true,
+ }
+ 
+-android_app_import {
+-    name: "AICorePrebuilt-aicore_20260302.01_RC00",
+-    owner: "google",
+-    apk: "proprietary/product/priv-app/AICorePrebuilt-aicore_20260302.01_RC00/AICorePrebuilt-aicore_20260302.01_RC00.apk",
+-    preprocessed: true,
+-    presigned: true,
+-    dex_preopt: {
+-        enabled: false,
+-    },
+-    privileged: true,
+-    product_specific: true,
+-}
+-
+ android_app_import {
+     name: "AppDirectedSMSService",
+     owner: "google",
+@@ -375,19 +362,6 @@ android_app_import {
+     product_specific: true,
+ }
+ 
+-android_app_import {
+-    name: "DeviceIntelligenceNetworkPrebuiltAstrea",
+-    owner: "google",
+-    apk: "proprietary/product/priv-app/DeviceIntelligenceNetworkPrebuiltAstrea/DeviceIntelligenceNetworkPrebuiltAstrea.apk",
+-    preprocessed: true,
+-    presigned: true,
+-    dex_preopt: {
+-        enabled: false,
+-    },
+-    privileged: true,
+-    product_specific: true,
+-}
+-
+ android_app_import {
+     name: "DevicePersonalizationAiAiPrebuiltPixel2023",
+     owner: "google",
+diff --git a/husky-vendor.mk b/husky-vendor.mk
+index ae4b5efb..8061f0a9 100644
+--- a/husky-vendor.mk
++++ b/husky-vendor.mk
+@@ -735,14 +735,12 @@ PRODUCT_PACKAGES += \
+     vendor.google.whitechapel.audio.extension-V8-ndk \
+     NowPlayingPrebuilt \
+     VZWAPNLib \
+-    AICorePrebuilt-aicore_20260302.01_RC00 \
+     AppDirectedSMSService \
+     CarrierSettings \
+     CarrierWifi \
+     ConnMO \
+     DCMO \
+     DMService \
+-    DeviceIntelligenceNetworkPrebuiltAstrea \
+     DevicePersonalizationAiAiPrebuiltPixel2023 \
+     DiagMon \
+     EuiccGoogle \
+-- 
+2.43.0
+
