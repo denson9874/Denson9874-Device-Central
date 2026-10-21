@@ -27,8 +27,7 @@ while [ $# -gt 0 ]; do
     shift
 done
 case $dev in
-    # FORUM: the XDA thread, once it exists
-    husky) MODEL="Pixel 8 Pro"; DEVTREE=device/google/shusky; FORUM=https://sourceforge.net/projects/denson9874-s-user-builds/files/derpfest/husky/ ;;
+    husky) MODEL="Pixel 8 Pro"; DEVTREE=device/google/shusky; FORUM=https://xdaforums.com/t/4805779/ ;;
     *) echo "usage: derp-ota.sh <husky> [--upload | --preview] [--changes <file>]" >&2; exit 2 ;;
 esac
 

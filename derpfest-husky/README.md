@@ -82,3 +82,13 @@ There's no husky to test on: Daryl's Pixel 8 Pro is in daily use. Builds go out 
 UNTESTED tag; users report issues on XDA or Telegram. `derp-husky-build.sh` checks offline: a `user` build,
 husky vendor props, no `gpuflag`, `default-permissions-zuma.xml` present, no `TurboAdapter_NoBatt`, the 11 firmware
 images in the target files byte-identical to the CP3A set, and BCR unmodified (DerpFest's `vendor/extra`).
+
+## Releases
+
+| Date | File | SHA-256 | Where |
+|---|---|---|---|
+| 2026-10-21 | `DerpFest-v17-20261021-husky-Unofficial-Stable.zip` (3,086,412,868 bytes) | `7ab1b0c5e04fb9c3279df8d319e4cad8442244f526fad8062425c3bbd674b94b` | [SourceForge derpfest/husky](https://sourceforge.net/projects/denson9874-s-user-builds/files/derpfest/husky/), [derpfest_ota](https://github.com/denson9874/derpfest_ota) `builds/husky.json`, [XDA thread 4805779](https://xdaforums.com/t/4805779/), Telegram @ExpressiveGroup |
+
+Recovery images `boot-20261021.img` (`54dc0bbf…8ad3`) and `vendor_boot-20261021.img` (`7d6490aa…a422`), checksums in
+`recovery-20261021.sha256`. Release steps from now on: `~/derp-husky-build.sh --clean --upload [--changes <file>]`, then
+the XDA and Telegram posts.
