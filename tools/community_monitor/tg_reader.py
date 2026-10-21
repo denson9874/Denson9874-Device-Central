@@ -72,17 +72,21 @@ class TelegramReader:
         script = '''
         tell application "System Events"
             tell process "Telegram"
-                set rList to (UI elements of list "Messages" of front window)
-                set out to ""
-                repeat with r in rList
+                if (name of front window) does not contain "Expressive Group Feedback" then
                     try
-                        set t to title of r
-                        if t is not missing value and t is not "" then
-                            set out to out & "---TG_DELIM---\n" & t & "\n"
-                        end if
+                        set chatList to UI elements of list "Chats" of front window
+                        repeat with c in chatList
+                            if title of c contains "Expressive Group Feedback" then
+                                click c
+                                delay 0.5
+                                exit repeat
+                            end if
+                        end repeat
                     end try
-                end repeat
-                return out
+                end if
+                set titleList to (title of every UI element of list "Messages" of front window)
+                set AppleScript's text item delimiters to ("---TG_DELIM---" & linefeed)
+                return titleList as text
             end tell
         end tell
         '''
