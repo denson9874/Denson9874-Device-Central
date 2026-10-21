@@ -62,11 +62,17 @@ echo "OK: system_ext mac_permissions doesn't map yogi's platform cert (signers: 
 
 echo "== blobs signed with yogi's own keys"
 AS=$H/apksigner
-for a in system_ext/priv-app/CarrierSetup/CarrierSetup.apk system_ext/priv-app/EuiccGoogleOverlay/EuiccGoogleOverlay.apk; do
+for a in system_ext/priv-app/EuiccGoogleOverlay/EuiccGoogleOverlay.apk; do
     c=$($AS verify --print-certs $O/$a | grep -m1 "SHA-256 digest" | awk '{print $NF}')
     [[ $c == f9c856a269a81e5d* ]] || fail "$a signer $c is not yogi's stock platform key"
 done
 echo "OK: PRESIGNED platform blobs carry yogi's stock platform key"
+# CarrierSetup is re-signed with our platform key: it needs the signature-only
+# MANAGE_NETWORK_POLICY, which stock's per-device key can't get on our build.
+c=$($AS verify --print-certs $O/system_ext/priv-app/CarrierSetup/CarrierSetup.apk | grep -m1 "SHA-256 digest" | awk '{print $NF}')
+p=$($AS verify --print-certs $O/system/framework/framework-res.apk | grep -m1 "SHA-256 digest" | awk '{print $NF}')
+[[ $c == "$p" ]] || fail "CarrierSetup signer $c is not our platform key $p"
+echo "OK: CarrierSetup carries our platform key"
 
 echo "== pack (unrooted)"
 KODIAK_ROOT=none ~/kodiak-imgzip.sh $O ~/android-dt/firmware/image-yogi-cd1a.261005.003.zip $ZIP >/dev/null
