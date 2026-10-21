@@ -71,6 +71,28 @@ class TestTelegramReader(unittest.TestCase):
         self.assertEqual(len(m["attachments"]), 1)
         self.assertEqual(m["attachments"][0]["file_name"], "logcat.txt")
 
+    @patch.object(TelegramReader, "is_desktop_available", return_value=True)
+    @patch("subprocess.run")
+    def test_desktop_new_message_after_seen_is_kept(self, mock_run, _avail):
+        def ui(*titles):
+            out = MagicMock(); out.returncode = 0
+            out.stdout = ("---TG_DELIM---\n").join(titles)
+            return out
+        first = ["Alice\nWi-Fi drops on kodiak\nReceived 10:01", "Bob\nThanks for the build\nReceived 10:05"]
+        mock_run.return_value = ui(*first)
+        msgs, seen = self.reader.fetch_desktop_updates(seen=[])
+        self.assertEqual([m["author"] for m in msgs], ["Alice", "Bob"])
+
+        # Next poll: one message scrolled off the top, a new one appended where the old index scheme
+        # would have given it the saved offset
+        mock_run.return_value = ui(first[1], "Carol\nCamera crashes on husky\nReceived 11:20")
+        msgs2, seen2 = self.reader.fetch_desktop_updates(seen=seen)
+        self.assertEqual([m["author"] for m in msgs2], ["Carol"])
+        self.assertEqual(len(set(seen2)), 3)
+        # Same message, same id, wherever it appears in the list
+        self.assertEqual(TelegramReader.desktop_message_key("Bob", "Thanks for the build", "Received 10:05"),
+                         seen[1])
+
 
 if __name__ == "__main__":
     unittest.main()

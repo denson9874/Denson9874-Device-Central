@@ -167,12 +167,13 @@ def main():
                     new_tg_offset = next_offset
             elif tg_reader.is_desktop_available():
                 print("[ReviewRunner] Ingesting Telegram feedback via Desktop bridge...")
-                last_offset = state.get("telegram", {}).get("last_update_id")
-                tg_msgs, next_offset = tg_reader.fetch_desktop_updates(offset=last_offset)
+                # The desktop UI has no message ids: dedupe by content key, kept apart from the
+                # Bot API's update offset
+                seen = state.get("telegram", {}).get("desktop_seen", [])
+                tg_msgs, seen = tg_reader.fetch_desktop_updates(seen=seen)
                 print(f"  -> Fetched {len(tg_msgs)} new Telegram messages.")
                 all_raw_items.extend(tg_msgs)
-                if next_offset:
-                    new_tg_offset = next_offset
+                state.setdefault("telegram", {})["desktop_seen"] = seen
             else:
                 print("[ReviewRunner] Telegram bot token not configured and Desktop not open; skipping Telegram.")
 
