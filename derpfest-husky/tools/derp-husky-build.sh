@@ -39,16 +39,24 @@ checks() {
     find "$O/system_ext" "$O/system" "$O/product" -maxdepth 3 -name 'ParanoidSense*.apk' | grep -q . || no "ParanoidSense missing"
     grep -q 'config_face_enroll_hal_owns_camera' "$TREE/device/google/zuma/overlay/SettingsOverlayZuma/res/values/lineage_config.xml" \
         && no "zuma has LineageOS's Pixel face unlock commits (two face unlock providers)"
-    # Firmware in the OTA must be the CP3A set update-firmware.sh installed (never older than the phone's)
-    local radio
-    radio=$(ls -d "$O"/obj/PACKAGING/target_files_intermediates/*/RADIO 2>/dev/null | head -1)
-    if [ -z "$radio" ]; then
-        no "no RADIO/ in target files"
+    # Firmware in the OTA must be the CP3A set update-firmware.sh installed (never older than the phone's):
+    # extract it from the payload and compare byte for byte
+    local zip w p fwbad=0
+    zip=$(ls -t "$O"/DerpFest-v17-*-husky-Unofficial-*.zip 2>/dev/null | head -1)
+    if [ -z "$zip" ]; then
+        no "no OTA zip to check the firmware in"
     else
-        for img in "$TREE"/vendor/google/husky/radio/*.img; do
-            cmp -s "$img" "$radio/$(basename "$img")" || no "firmware $(basename "$img") in the OTA differs from vendor/google/husky/radio"
+        w=$(mktemp -d)
+        unzip -q "$zip" payload.bin -d "$w"
+        local parts=()
+        for p in "$TREE"/vendor/google/husky/radio/*.img; do parts+=("$(basename "$p" .img)"); done
+        TREE=$TREE python3 "$HOME/derpfest-husky/tools/payload_extract.py" "$w/payload.bin" "$w" "${parts[@]}" >/dev/null \
+            || no "can't extract the firmware from $zip"
+        for p in "${parts[@]}"; do
+            cmp -s "$w/$p.img" "$TREE/vendor/google/husky/radio/$p.img" || { no "firmware $p in the OTA differs from vendor/google/husky/radio"; fwbad=1; }
         done
-        echo "FIRMWARE=$(cat "$TREE/vendor/google/husky/radio/SOURCE")"
+        rm -rf "$w"
+        [ "$fwbad" = 0 ] && echo "FIRMWARE=OK ${#parts[@]} images, $(cat "$TREE/vendor/google/husky/radio/SOURCE")"
     fi
     # BCR from vendor/extra, as in the kodiak DerpFest build: presigned, so it must be byte-identical
     local bcr=$TREE/vendor/extra/bcr
@@ -76,6 +84,12 @@ done
 
 cd "$TREE" || finish 1
 "$HOME/derpfest-husky/apply.sh" "$TREE" || finish 1
+# The Muppets blobs are git-lfs, and this tree wasn't repo-init'd with --git-lfs: without a pull, big APKs
+# stay pointer files and the build fails much later ("Improper zip alignment" in check_prebuilt_presigned_apk)
+git -C "$TREE/vendor/google/husky" lfs pull || finish 1
+if grep -rlq 'git-lfs.github.com/spec/v1' "$TREE/vendor/google/husky/proprietary" "$TREE/vendor/google/husky/radio"; then
+    echo "git-lfs pointer files left in vendor/google/husky"; finish 1
+fi
 # Kernel: the one Evolution X husky ships (built by build_kernel in ~/evolution from LineageOS's gs-6.1
 # manifest, lineage-24.0). lunch would otherwise sync and build the whole kernel source again here.
 cp -a "$HOME/evolution/device/google/shusky-kernels/6.1/." "$TREE/device/google/shusky-kernels/6.1/" || finish 1
