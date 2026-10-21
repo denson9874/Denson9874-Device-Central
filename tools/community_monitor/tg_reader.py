@@ -5,6 +5,7 @@ Fetches updates from @ExpressiveLauncherFeedback and @ExpressiveGroup using Tele
 Uses only standard library (urllib.request, json, os, sys) to ensure portability.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -18,6 +19,9 @@ from typing import Dict, List, Optional, Tuple, Any
 
 
 class TelegramReader:
+    # Desktop-bridge message keys kept in state; well above what the chat list shows at once
+    DESKTOP_SEEN_LIMIT = 2000
+
     def __init__(self, config_path: Optional[str] = None, token: Optional[str] = None):
         if config_path is None:
             config_path = str(Path(__file__).parent / "config.json")
@@ -59,15 +63,25 @@ class TelegramReader:
         except Exception:
             return False
 
+    @staticmethod
+    def desktop_message_key(author: str, text: str, time_str: str) -> str:
+        """
+        Stable id for a message read from Telegram Desktop's UI, which exposes no message ids:
+        the same message gets the same key wherever it sits in the visible list.
+        """
+        return hashlib.sha1(f"{author}\n{text}\n{time_str}".encode("utf-8")).hexdigest()[:16]
+
     def fetch_desktop_updates(
         self,
-        offset: Optional[int] = None
-    ) -> Tuple[List[Dict[str, Any]], Optional[int]]:
+        seen: Optional[List[str]] = None
+    ) -> Tuple[List[Dict[str, Any]], List[str]]:
         """
         Ingests user messages from open Telegram Desktop application via AppleScript.
+        Skips messages whose key is in `seen`; returns (new messages, updated seen keys).
         """
+        seen_keys = list(seen or [])
         if not self.is_desktop_available():
-            return [], offset
+            return [], seen_keys
 
         script = '''
         tell application "System Events"
@@ -94,16 +108,16 @@ class TelegramReader:
             res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=10)
         except Exception as e:
             sys.stderr.write(f"[TelegramReader] Failed to query Telegram desktop: {e}\n")
-            return [], offset
+            return [], seen_keys
 
         if res.returncode != 0 or not res.stdout.strip():
-            return [], offset
+            return [], seen_keys
 
         raw_items = res.stdout.split("---TG_DELIM---\n")
         parsed_messages = []
-        max_id = offset or 0
+        known = set(seen_keys)
 
-        for idx, raw in enumerate(raw_items):
+        for raw in raw_items:
             raw = raw.strip()
             if not raw:
                 continue
@@ -134,12 +148,12 @@ class TelegramReader:
             if not text:
                 continue
 
-            msg_id = 2000 + idx
-            if offset is not None and msg_id <= offset:
+            key = self.desktop_message_key(author, text, time_str)
+            if key in known:
                 continue
-
-            if msg_id > max_id:
-                max_id = msg_id
+            known.add(key)
+            seen_keys.append(key)
+            msg_id = int(key[:12], 16)
 
             parsed_messages.append({
                 "source": "telegram",
@@ -154,7 +168,7 @@ class TelegramReader:
                 "attachments": []
             })
 
-        return parsed_messages, max_id + 1
+        return parsed_messages, seen_keys[-self.DESKTOP_SEEN_LIMIT:]
 
     def fetch_updates(
         self,
