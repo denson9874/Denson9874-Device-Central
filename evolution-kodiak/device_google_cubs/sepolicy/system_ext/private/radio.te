@@ -1,0 +1,5 @@
+# ImsStack opens the RTP UDP sockets for a call and hands them to
+# PixelImsMediaService, which runs in the phone process (radio). Without this,
+# media setup fails and IMS calls end with ImsReasonInfo 401
+# (CODE_MEDIA_INIT_FAILED). Stock's compiled policy has the same rule.
+allow radio imsstack_app:udp_socket { getattr getopt ioctl read setopt shutdown write };

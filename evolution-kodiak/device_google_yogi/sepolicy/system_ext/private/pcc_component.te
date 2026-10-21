@@ -1,0 +1,9 @@
+# Private Compute Core components run their on-device models on the Tensor TPU,
+# as stock's system_ext policy allows (gs-common edgetpu, pcc_component.te).
+# Without the Tachyon service, Magic Cue's model process (PixelSense) aborts in
+# libedgetpu_client: "Check failed: compute_service != nullptr".
+allow pcc_component edgetpu_nnapi_service:service_manager find;
+allow pcc_component edgetpu_tachyon_service:service_manager find;
+allow pcc_component edgetpu_app_service:service_manager find;
+allow pcc_component edgetpu_device:chr_file { ioctl read write getattr map };
+binder_call(edgetpu_tachyon_server, pcc_component)

@@ -1,0 +1,16 @@
+# RIL extension (com.google.android.rilextension). Its rild and RIL extension
+# HAL access comes from the stock vendor policy.
+typeattribute rilextensionservice_app coredomain;
+app_domain(rilextensionservice_app)
+
+binder_call(rilextensionservice_app, update_engine)
+binder_call(update_engine, rilextensionservice_app)
+
+set_prop(rilextensionservice_app, radio_prop)
+set_prop(rilextensionservice_app, system_ril_ext_prop)
+
+allow rilextensionservice_app {
+    app_api_service
+    radio_service
+    update_engine_service
+}:service_manager find;

@@ -1,0 +1,14 @@
+# Properties stock labels in its system_ext policy. The stock vendor policy
+# lets rild read or set all four, so they have to be public. Unlabelled, they
+# read as default_prop, which rild may neither read nor set.
+system_public_prop(ims_prop)
+system_public_prop(system_ril_ext_prop)
+system_public_prop(telephony_ril_ntn_sim_deact_prop)
+system_restricted_prop(telephony_ntn_demo_mode_prop)
+# Face unlock's device_config flags. system_server syncs them from DeviceConfig
+# and the stock vendor's hal_face_default reads them.
+system_restricted_prop(device_config_faceauth_native_prop)
+# Labelled by stock's system_ext policy. The stock vendor lets system_app read
+# and set the fingerprint one, and vendor_init sets the setup wizard one.
+system_public_prop(fingerprint_sp_prop)
+system_public_prop(setupwizard_feature_prop)

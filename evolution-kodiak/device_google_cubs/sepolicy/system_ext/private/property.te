@@ -1,0 +1,10 @@
+# Labelled by stock's system_ext policy; only PixelSystemService sets it.
+system_internal_prop(pixelsystemservice_contextualawareness_prop)
+
+# Stock: system_server and flags_health_check set the face unlock flags.
+set_prop(system_server, device_config_faceauth_native_prop)
+set_prop(flags_health_check, device_config_faceauth_native_prop)
+
+# Stock: GMS and privileged apps read the setup wizard provisioning mode.
+get_prop(gmscore_app, setupwizard_feature_prop)
+get_prop(priv_app_all, setupwizard_feature_prop)

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Daryl Denson
+  SPDX-License-Identifier: Apache-2.0
+-->
+<!--
+  Google Play services' system updater sees the stock Pixel build fingerprint this
+  ROM reports and prepares Google's OTAs. They can't install here (update_engine only
+  accepts payloads signed with the ROM's own key), but preparing one arms resume on
+  reboot, which makes the first unlock after every reboot ask for the PIN twice.
+  Updates come from the ROM's own updater.
+-->
+<config>
+    <component-override package="com.google.android.gms">
+        <component class=".update.SystemUpdateService" enabled="false" />
+        <component class=".update.SystemUpdateGcmTaskService" enabled="false" />
+        <component class=".update.SystemUpdatePersistentListenerService" enabled="false" />
+        <component class=".update.SystemUpdateActivity" enabled="false" />
+        <component class=".update.OtaSuggestionActivity" enabled="false" />
+        <component class=".update.OtaSuggestionSummaryProvider" enabled="false" />
+        <component class=".update.phone.PopupDialog" enabled="false" />
+        <component class=".update.resumeonreboot.ResumeOnRebootEscrowService" enabled="false" />
+    </component-override>
+</config>

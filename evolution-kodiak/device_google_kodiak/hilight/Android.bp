@@ -1,0 +1,30 @@
+//
+// SPDX-FileCopyrightText: 2026 Daryl Denson
+// SPDX-License-Identifier: Apache-2.0
+//
+
+// HiLight settings: turns the light bar on the back of the Pixel 11 Pro, Pro XL
+// and Pro Fold on or off for Gemini and for calls from favorite contacts. The
+// lights are driven by Android's own code (LightsService and
+// NotificationAttentionHelper) and by the Google app; this app only writes the
+// settings they read and plays a preview.
+android_app {
+    name: "HiLight",
+    defaults: ["SettingsLibDefaults"],
+    srcs: ["src/**/*.kt"],
+    resource_dirs: ["res"],
+
+    platform_apis: true,
+    system_ext_specific: true,
+    certificate: "platform",
+    privileged: true,
+    privapp_allowlist: "privapp-permissions-hilight.xml",
+
+    static_libs: [
+        "androidx.preference_preference",
+        "SettingsLibSettingsTheme",
+    ],
+    optimize: {
+        enabled: false,
+    },
+}

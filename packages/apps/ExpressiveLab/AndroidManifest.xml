@@ -15,7 +15,7 @@
     <application
         android:label="@string/app_name"
         android:icon="@drawable/ic_expressive_lab"
-        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+        android:theme="@style/Theme.ExpressiveLab">
 
         <!-- Expressive Lab System Settings Activity (Embedded into System Settings homepage) -->
         <activity

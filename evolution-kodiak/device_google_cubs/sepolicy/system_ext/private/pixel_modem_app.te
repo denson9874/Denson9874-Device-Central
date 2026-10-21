@@ -1,0 +1,5 @@
+# Pixel modem service (com.google.android.modem.pms). Its modem logging and
+# shared modem platform access comes from the stock vendor policy.
+typeattribute pixel_modem_app coredomain;
+app_domain(pixel_modem_app)
+net_domain(pixel_modem_app)

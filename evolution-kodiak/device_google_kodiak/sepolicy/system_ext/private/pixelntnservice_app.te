@@ -1,0 +1,18 @@
+# Google's satellite (NTN) service, com.google.android.satellite. Stock's
+# framework RRO names it as config_satellite_service_package. Its rild and
+# satellite HAL access comes from the stock vendor policy.
+typeattribute pixelntnservice_app coredomain;
+app_domain(pixelntnservice_app)
+
+set_prop(pixelntnservice_app, telephony_ntn_demo_mode_prop)
+set_prop(pixelntnservice_app, telephony_ril_ntn_sim_deact_prop)
+
+allow pixelntnservice_app {
+    activity_service
+    gpu_service
+    legacy_permission_service
+    netstats_service
+    radio_service
+    registry_service
+    thermal_service
+}:service_manager find;

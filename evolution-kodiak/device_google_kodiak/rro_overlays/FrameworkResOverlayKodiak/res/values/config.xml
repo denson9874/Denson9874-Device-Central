@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SPDX-FileCopyrightText: The LineageOS Project
+    SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- Telephony values from stock's framework-res product RRO. Our build
+         doesn't ship Google's product RROs, so these fell back to AOSP
+         defaults. Taken from the Pixel 11 Pro Fold's (same malibu telephony
+         stack); check them against kodiak's
+         framework-res__kodiak__auto_generated_rro_product with
+         `aapt2 dump resources` when convenient. -->
+
+    <!-- PixelQualifiedNetworksService (proprietary-files.txt). It chooses
+         cellular or IWLAN for IMS, which Wi-Fi calling needs. -->
+    <string name="config_qualified_networks_service_package" translatable="false">com.android.qns</string>
+
+    <!-- ImsStack reads the cell location from ServiceState, e.g. for the SIP
+         P-Access-Network-Info header. Without this its ServiceState arrives
+         with the location stripped. -->
+    <string-array name="config_serviceStateLocationAllowedPackages" translatable="false">
+        <item>com.android.phone</item>
+        <item>com.android.imsstack</item>
+    </string-array>
+
+    <bool name="config_smma_notification_supported_over_ims">true</bool>
+    <bool name="config_smppsim_response_via_ims">true</bool>
+    <bool name="config_stk_sms_send_support">true</bool>
+
+    <!-- From stock MessagingReadRestrictionAllowlistOverlay.apk -->
+    <string-array name="config_messaging_read_restriction_allowlist" translatable="false">
+        <item>com.google.android.apps.pixel.relationships</item>
+        <item>com.google.android.contacts</item>
+    </string-array>
+</resources>

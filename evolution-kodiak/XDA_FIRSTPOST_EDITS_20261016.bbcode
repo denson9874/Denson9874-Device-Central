@@ -1,0 +1,54 @@
+Edits to the three first posts (XDA_POST.bbcode = 4804712, XDA_POST_CUBS.bbcode = 4804723,
+XDA_POST_YOGI.bbcode = 4804826) for the 2026-10-16 builds. Besides these, update every file name 20261013 -> 20261016
+(Installation, Downloads and the grizzly section), as in earlier updates.
+
+== 1. Build info: the firmware line (all three posts) ==
+Replace:
+[*]Firmware not included: you must already be on stock CD1A.261005.003 (see Requirements)
+With:
+[*]Firmware: the fastboot zip doesn't flash it, so you must already be on stock CD1A.261005.003 (see Requirements). Over-the-air updates include the stock firmware the build is made for.
+
+== 2. What works (kodiak post only; append to the list) ==
+[*]Over-the-air updates (Settings > System > System updates), from the 2026-10-16 build on
+[*]Google's charging screensaver (Settings > Display & touch > Screen saver)
+[*]Extreme Charging Mode ("Bodega") Quick Settings tile
+
+== 3. Updating (kodiak post: replace the whole "Updating" paragraph and its code block) ==
+[B]Updating[/B] keeps your data.
+[LIST]
+[*][B]Over the air[/B] (from the 2026-10-16 build on): Settings > System > System updates finds, downloads and installs new builds, then asks you to restart. If a new build fails to boot, the phone goes back to the one you had.
+[*][B]Rooted with Magisk?[/B] When the update is ready, open Magisk > Install > [I]Install to inactive slot (after OTA)[/I] instead of restarting, or root is gone (KernelSU has the same option). A custom kernel has to be flashed again after each update.
+[*][B]With a computer[/B] (always works, and needed once to get from an older build to 2026-10-16):
+[CODE]
+adb reboot bootloader
+fastboot update EvolutionX-17.0-20261016-kodiak-12.3-Unofficial-fastboot.zip
+[/CODE]
+[/LIST]
+
+== 3b. Updating (cubs and yogi posts: insert after the "Installation (clean flash)" section, before Downloads) ==
+[B]Updating[/B] keeps your data. From the 2026-10-16 build on, Settings > System > System updates finds, downloads and installs new builds, then asks you to restart; if a new build fails to boot, the phone goes back to the one you had. Rooted with Magisk? When the update is ready, use Magisk > Install > [I]Install to inactive slot (after OTA)[/I] instead of restarting, or root is gone. With a computer (and once, to get onto 2026-10-16 from an older build): [ICODE]fastboot update <zip>[/ICODE] from the bootloader.
+
+== 4. Downloads (all three posts; append to the list) ==
+[*]OTA packages for the updater: the zips without [ICODE]-fastboot[/ICODE] in the same SourceForge folder (not for fastboot). Update info: [URL=https://github.com/denson9874/evolution_ota]denson9874/evolution_ota[/URL]
+
+== 5. Changelog (new first entry) ==
+kodiak post:
+[*][B]2026-10-16:[/B] Over-the-air updates through Settings > System > System updates. Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 built in (CASS scheduler, Simple LMK, measured EM). Extreme Charging Mode ("Bodega") Quick Settings tile. Google's charging screensaver built in, and fixed: it showed 0% and drew the battery level too wide. Fixed a remaining brighter flash, in a lit room, when the screen times out into the always-on display. Some Google apps drew Google Sans Flex text wider than designed. kodiak and grizzly builds.
+cubs post:
+[*][B]2026-10-16:[/B] Over-the-air updates through Settings > System > System updates. Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 built in (CASS scheduler, Simple LMK, measured EM). Extreme Charging Mode ("Bodega") Quick Settings tile. Google's charging screensaver built in, and fixed: it showed 0% and drew the battery level too wide. Fixed a remaining brighter flash, in a lit room, when the screen times out into the always-on display. Some Google apps drew Google Sans Flex text wider than designed.
+yogi post: same as cubs (yogi remains on stock Google GKI).
+
+== 6. Kernel line in Build info (kodiak and cubs posts) ==
+Replace:
+[*]Kernel: stock Google GKI 6.12 from CD1A.261005.003 (unmodified)
+With:
+[*]Kernel: Espada v3 (Linux 6.12.92) by Kevtrejo37 (CASS scheduler, Simple LMK, measured EM; plain flavor)
+
+== 7. Kernel source in Source code (kodiak and cubs posts) ==
+Replace:
+[*]Kernel: Google's stock GKI 6.12 binary, unmodified. Source and build instructions: [URL=https://source.android.com/docs/setup/build/building-pixel-kernels]Building Pixel kernels[/URL]
+With:
+[*]Kernel source: [URL=https://github.com/atrejokm301/espada-kernel]atrejokm301/espada-kernel[/URL] (GPL-2.0, branch espada-magisk; vh_mm zram read-ahead fix from [URL=https://github.com/GrapheneOS/kernel_device_google_zuma]The GrapheneOS Project[/URL])
+
+== 8. Credits (kodiak and cubs posts; append to Credits list) ==
+Kevtrejo37 for the Espada Kernel ([URL=https://xdaforums.com/t/4799975/]XDA thread[/URL], [URL=https://t.me/+DJmYe5_dfmwyODUx]Telegram[/URL]), Sultan Alsawaf (CASS and Simple LMK), and The GrapheneOS Project (zram read-ahead fix).

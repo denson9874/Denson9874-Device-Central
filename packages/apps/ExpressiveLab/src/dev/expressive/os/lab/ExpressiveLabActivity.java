@@ -59,6 +59,29 @@ public class ExpressiveLabActivity extends Activity {
         if (btnBack != null) {
             btnBack.setOnClickListener(v -> finish());
         }
+
+        View heroCard = findViewById(R.id.card_hero);
+        if (heroCard != null) {
+            heroCard.setOnClickListener(v -> {
+                Toast.makeText(this, "Expressive Lab Suite • Pixel 8 Pro Hardware Engaged", Toast.LENGTH_SHORT).show();
+            });
+        }
+
+        setupRowToggle(R.id.row_qs_blur, switchQsBlur);
+        setupRowToggle(R.id.row_quick_pull, switchQuickPull);
+        setupRowToggle(R.id.row_auto_brightness, switchAutoBrightness);
+        setupRowToggle(R.id.row_dt2s, switchDt2s);
+        setupRowToggle(R.id.row_network_traffic, switchNetworkTraffic);
+        setupRowToggle(R.id.row_brightness_gesture, switchBrightnessGesture);
+        setupRowToggle(R.id.row_charging_stats, switchChargingStats);
+        setupRowToggle(R.id.row_amoled, switchAmoled);
+    }
+
+    private void setupRowToggle(int rowId, Switch switchWidget) {
+        View row = findViewById(rowId);
+        if (row != null && switchWidget != null) {
+            row.setOnClickListener(v -> switchWidget.toggle());
+        }
     }
 
     private void loadPreferences() {

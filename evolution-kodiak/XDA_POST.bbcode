@@ -1,0 +1,123 @@
+Posted: https://xdaforums.com/t/rom-unofficial-17-kodiak-evolution-x-12-3-android-17-for-the-pixel-11-pro-xl.4804712/ (2026-10-11)
+Edited 2026-10-12: grizzly test build section and title; URL now https://xdaforums.com/t/rom-unofficial-17-kodiak-grizzly-evolution-x-12-3-android-17-for-the-pixel-11-pro-xl-and-11-pro-grizzly-testers-wanted.4804712/
+Edited 2026-10-12 (later): visual voicemail fix, new kodiak and grizzly file names, Changelog; reply posted (see XDA_UPDATE_20261012.bbcode)
+Edited 2026-10-13: HiLight, screen-timeout flash and double-PIN fixes; new file names, What works, Changelog; reply posted (see XDA_UPDATE_20261013.bbcode)
+Title: [ROM][UNOFFICIAL][17][kodiak][grizzly] Evolution X 12.3 (Android 17) for the Pixel 11 Pro XL and 11 Pro (grizzly: testers wanted)
+
+[CENTER][SIZE=6][B]Evolution X 12.3 — Android 17[/B][/SIZE]
+[SIZE=4]Google Pixel 11 Pro XL (kodiak) and Pixel 11 Pro (grizzly, test build) | UNOFFICIAL[/SIZE][/CENTER]
+
+[CODE]
+/*
+ * Your warranty is now void. You flash this at your own risk.
+ * I'm not responsible for bricked devices, lost data, or anything else.
+ */
+[/CODE]
+
+[SIZE=5][B]NEW: Pixel 11 Pro (grizzly) test build, testers wanted[/B][/SIZE]
+There's now a build for the [B]Pixel 11 Pro (grizzly)[/B], made from the same source as the kodiak build with grizzly's own stock images and blobs. It passes every check I can run without the phone, but [B]I don't own a grizzly, so it has never been booted.[/B] Only try it if you're comfortable restoring stock with the Android Flash Tool if it doesn't boot.
+[LIST]
+[*]Download: [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/]SourceForge: grizzly/17[/URL] ([ICODE]EvolutionX-17.0-20261013-grizzly-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE], SHA-256 in the same folder)
+[*]Requirements: the same as below, but with [B]grizzly's[/B] stock CD1A.261005.003 installed
+[*]Clean flash only (wipes your data): [ICODE]fastboot -w update EvolutionX-17.0-20261013-grizzly-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE]
+[*]Never flash the grizzly zip on a Pixel 11 Pro XL, or the kodiak zip on a Pixel 11 Pro
+[/LIST]
+If you try it, please reply in this thread with:
+[LIST]
+[*]Whether it boots, and whether it still boots after a couple of reboots
+[*]Your carrier, and whether calls, SMS, VoLTE, mobile data and Wi-Fi calling work
+[*]Wi-Fi, Bluetooth, cameras, fingerprint and face unlock
+[*]Play Integrity and Google Wallet
+[*]If something fails: what you saw, and a log if you can get one ([ICODE]adb logcat -d > logcat.txt[/ICODE])
+[/LIST]
+
+[SIZE=5][B]About[/B][/SIZE]
+An unofficial build of Evolution X 12.3 on Android 17 for the Pixel 11 Pro XL. Google hasn't published vendor sources for the Tensor G6, so this build keeps the stock vendor, kernel and firmware from the October 2026 factory image and builds everything else from source.
+
+[B]The main build is for the Pixel 11 Pro XL (kodiak) only.[/B] Pixel 11 Pro (grizzly) owners: use the test build above. Don't flash either one on any other model.
+
+This is [B]not[/B] an official Evolution X build. Please don't report its bugs to the Evolution X team; report them in this thread or on GitHub.
+
+[SIZE=5][B]Build info[/B][/SIZE]
+[LIST]
+[*]Evolution X 12.3, Android 17, security patch 2026-10-05 (vendor and boot), 2026-10-01 (system)
+[*]Build type: user, signed with private release keys
+[*]Google apps included
+[*]Kernel: stock Google GKI 6.12 from CD1A.261005.003 (unmodified)
+[*]Vendor, vendor_dlkm, system_dlkm, dtbo: stock CD1A.261005.003
+[*]Firmware not included: you must already be on stock CD1A.261005.003 (see Requirements)
+[*]Not rooted
+[/LIST]
+
+[SIZE=5][B]What works[/B][/SIZE]
+[LIST]
+[*]Boot, gesture navigation, Recents
+[*]Calls and SMS, including VoLTE (tested on T-Mobile US), mobile data (5G SA), eSIM
+[*]Wi-Fi, Bluetooth
+[*]Visual voicemail (tested on T-Mobile US)
+[*]HiLight light bar for Gemini and calls from favorites (Settings > System > HiLight)
+[*]Cameras, fingerprint, face unlock
+[*]Google Play; Play Integrity and Google Wallet tap-to-pay worked in my testing
+[/LIST]
+
+[SIZE=5][B]Known issues[/B][/SIZE]
+[LIST]
+[*]Gemini Nano and the features built on it (Magic Cue and others) don't work. Google only serves the on-device AI models to phones with a locked bootloader, so this applies to any custom ROM.
+[*]Pixel-exclusive extras such as Pixel Screenshots and Now Playing aren't included.
+[*]Tested on T-Mobile US. Reports from other carriers are welcome!
+[/LIST]
+
+[SIZE=5][B]Changelog[/B][/SIZE]
+[LIST]
+[*][B]2026-10-13:[/B] New HiLight settings (Settings > System > HiLight) for the light bar: Gemini and calls from starred contacts, with a preview. Fixed a bright flash when the screen times out into the always-on display. Fixed the PIN being asked twice after a reboot (Google Play services was preparing Google's own updates; its system updater is now disabled). On-device AI features can use the Tensor TPU, as on stock. kodiak and grizzly builds.
+[*][B]2026-10-12:[/B] Fixed visual voicemail not activating. Google Phone authenticates visual voicemail with GBA (SIM-based authentication), and the ROM was missing Google's GBA service. kodiak and grizzly builds.
+[*][B]2026-10-12:[/B] Pixel 11 Pro (grizzly) test build.
+[*][B]2026-10-11:[/B] First release.
+[/LIST]
+
+[SIZE=5][B]Requirements[/B][/SIZE]
+[LIST]
+[*]Unlocked bootloader (unlocking wipes your phone)
+[*]Stock firmware [B]CD1A.261005.003 (October 2026)[/B]. The zip doesn't flash a bootloader or radio, so your phone must already be on this release. If you're on anything else (including a beta or Canary build), install CD1A.261005.003 with the Android Flash Tool first. Going back from a newer build wipes your phone, and only works if your bootloader allows it.
+[*]Latest platform-tools (adb/fastboot)
+[/LIST]
+
+[SIZE=5][B]Installation (clean flash)[/B][/SIZE]
+Download the ROM zip and check its SHA-256, then:
+[CODE]
+adb reboot bootloader
+fastboot -w update EvolutionX-17.0-20261013-kodiak-12.3-Unofficial-fastboot.zip
+[/CODE]
+[B]-w wipes all your data.[/B] fastboot switches to fastbootd partway through to flash the dynamic partitions; leave the phone plugged in until it reboots by itself (a few minutes). The first boot takes a few minutes more.
+
+[B]Updating[/B] from an earlier build of this ROM (keeps your data):
+[CODE]
+adb reboot bootloader
+fastboot update EvolutionX-17.0-20261013-kodiak-12.3-Unofficial-fastboot.zip
+[/CODE]
+
+[SIZE=5][B]Downloads[/B][/SIZE]
+[LIST]
+[*]Pixel 11 Pro XL (kodiak) ROM zip: [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/kodiak/17/]SourceForge: kodiak/17[/URL]
+[*]Pixel 11 Pro (grizzly) test build: [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/]SourceForge: grizzly/17[/URL]
+[*]SHA-256 checksums: in each SourceForge folder
+[/LIST]
+
+[SIZE=5][B]Source code[/B][/SIZE]
+[LIST]
+[*]ROM: [URL=https://github.com/Evolution-X/manifest/tree/cnb]Evolution-X/manifest (cnb)[/URL]
+[*]Device tree: [URL=https://github.com/denson9874/device_google_kodiak]denson9874/device_google_kodiak[/URL]
+[*]Vendor blobs: [URL=https://github.com/denson9874/vendor_google_kodiak]denson9874/vendor_google_kodiak[/URL]
+[*]Kernel: Google's stock GKI 6.12 binary, unmodified. Source and build instructions: [URL=https://source.android.com/docs/setup/build/building-pixel-kernels]Building Pixel kernels[/URL]
+[/LIST]
+
+[SIZE=5][B]Credits[/B][/SIZE]
+The Evolution X team, the LineageOS team (their Tensor device trees were the model for this one), and asdfmonster261 (Pixel 11 Pro Fold tree, used as a reference).
+
+[SIZE=5][B]Reporting bugs[/B][/SIZE]
+Include your build date, whether you clean or dirty flashed, your carrier, steps to reproduce, and a log:
+[CODE]adb logcat -d > logcat.txt[/CODE]
+
+[B]ROM OS version:[/B] Android 17
+[B]Based on:[/B] Evolution X / LineageOS
+[B]Status:[/B] Beta

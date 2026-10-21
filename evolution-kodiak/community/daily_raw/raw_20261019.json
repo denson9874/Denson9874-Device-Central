@@ -1,0 +1,714 @@
+[
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2100,
+    "update_id": 2100,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.673963+00:00",
+    "text": "Did you hard brick it ? If yes, are you RMA-ing it?",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2101,
+    "update_id": 2101,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674002+00:00",
+    "text": "Man thats rough. Either way, take care there!",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2103,
+    "update_id": 2103,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674015+00:00",
+    "text": "Fek. Good luck! \n\nI was able to RMA a hard bricked pixel device in general warranty too, so hopefully should be okay.",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2105,
+    "update_id": 2105,
+    "author": "Masterdex",
+    "timestamp": "2026-10-19T13:25:20.674025+00:00",
+    "text": "While I wait, my fingers are already itching.",
+    "reply_to": {
+      "text": "In reply to Expressive Group: \u200e\u2068m -j16 derp \ud83d\ude31 I'm about to explode my build server \ud83e\udd2a\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2106,
+    "update_id": 2106,
+    "author": "Alin",
+    "timestamp": "2026-10-19T13:25:20.674033+00:00",
+    "text": "didnt age well",
+    "reply_to": {
+      "text": "In reply to Expressive Group: \u200e\u2068m -j16 derp \ud83d\ude31 I'm about to explode my build server \ud83e\udd2a\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2107,
+    "update_id": 2107,
+    "author": "Masterdex",
+    "timestamp": "2026-10-19T13:25:20.674041+00:00",
+    "text": "I just have a question. Since the certification works well on EvolutionX, is it possible to implement the same thing on DerpFest?",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2109,
+    "update_id": 2109,
+    "author": "Masterdex",
+    "timestamp": "2026-10-19T13:25:20.674051+00:00",
+    "text": "Right. In A16, you could actually achieve \"strong integrity\" just by using a valid key; later on, we had to start using modules because the internal integrity mechanism stopped working. Currently, I\u2019m able to get \"strong integrity\" in Evox, but only by using an external key\u2014the internal one seems to have been revoked. I haven\u2019t managed to achieve \"strong integrity\" anywhere else, only in Evox. Just to clarify, when I say \"strong integrity,\" I\u2019m not just referring to the three green checkmarks in the Play Integrity Checker\u2014I mean that I\u2019m actually able to make payments using the digital wallet\u2019s \"tap-to-pay\" feature.",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2112,
+    "update_id": 2112,
+    "author": "Igor",
+    "timestamp": "2026-10-19T13:25:20.674061+00:00",
+    "text": "Sticker, \ud83d\ude33, Not downloaded, 453\u00d7512, 7.2 KB",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068my phone has officially bit the dust \ud83e\udea6Note to all: Don't mess with vmbeta.img \ud83d\ude12 Sunday's build is still scheduled for reported issues and requests on here and XDA. I don't have to have the device in hand to build for it, because most of work is done that would require me to have the device physically.\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2113,
+    "update_id": 2113,
+    "author": "Igor",
+    "timestamp": "2026-10-19T13:25:20.674070+00:00",
+    "text": "atlernatively its possible to just go to reset option and reset app preferences, which makes most apps have data access again",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068Glad to finally have you aboard! This is not an issue, its a feature. By default the app does not have data access to aid in battery saving and background process impact. When you want to grant access, go to app info and enable data access\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2114,
+    "update_id": 2114,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674085+00:00",
+    "text": "So now playing works, just need to install the apks and give the right perms.\n\n@denson9874 \ud83d\ude01\nReceived edited at 9:59\u202fAM",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2115,
+    "update_id": 2115,
+    "author": "Igor",
+    "timestamp": "2026-10-19T13:25:20.674096+00:00",
+    "text": "Huh",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2116,
+    "update_id": 2116,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674106+00:00",
+    "text": "File, Downloaded, com_google_android_apps_pixel_nowplaying_2026_08_27_978158805_4.apkm, 4.6 MB\nThis is what I installed. (You can download from apk mirror if you want to.)",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2117,
+    "update_id": 2117,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674117+00:00",
+    "text": "And gave the now playing app the notifications permission.",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2118,
+    "update_id": 2118,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674124+00:00",
+    "text": "But no quick settings toggle for some reason. (Perhaps needs to be a system app?)",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2120,
+    "update_id": 2120,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674135+00:00",
+    "text": "Yeah. And it's not popping up on the lockscreen automatically",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2121,
+    "update_id": 2121,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674141+00:00",
+    "text": "Damn.",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2122,
+    "update_id": 2122,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674150+00:00",
+    "text": "How's your process of RMAing the p11 going on? \ud83e\udd72",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068Yeah it may not be getting the permissions because it need to be in priv\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2125,
+    "update_id": 2125,
+    "author": "Igor",
+    "timestamp": "2026-10-19T13:25:20.674161+00:00",
+    "text": "Damn",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2126,
+    "update_id": 2126,
+    "author": "Igor",
+    "timestamp": "2026-10-19T13:25:20.674171+00:00",
+    "text": "I always hate having to return shit first\nReceived edited at 10:07\u202fAM",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2128,
+    "update_id": 2128,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674178+00:00",
+    "text": "Wew.",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2129,
+    "update_id": 2129,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-19T13:25:20.674185+00:00",
+    "text": "why i dont can flash a anykernel3 wild 6.12.92 on evox? ist Always bootlooping",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2130,
+    "update_id": 2130,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674194+00:00",
+    "text": "Hoping this build goes smoothly. And hope to see the now playing in there too \ud83d\ude01",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068Today's release isn't deploying to the build server until 1400 EST so there is still time to back the apk into the update\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2131,
+    "update_id": 2131,
+    "author": "Masterdex",
+    "timestamp": "2026-10-19T13:25:20.674217+00:00",
+    "text": "If it\u2019s Derpfest, please add BCR\u2014thanks.",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068Today's release isn't deploying to the build server until 1400 EST so there is still time to back the apk into the update\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2134,
+    "update_id": 2134,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-19T13:25:20.674233+00:00",
+    "text": "But the est is actually 16:32 right? Or I am wrong?",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068Today's release isn't deploying to the build server until 1400 EST so there is still time to back the apk into the update\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2136,
+    "update_id": 2136,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-19T13:25:20.674243+00:00",
+    "text": "Sry I think that was the realse time, my wrong\nReceived edited at 4:47\u202fPM",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068Build session began at 1412pm EST. That would be 2112 IDT\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2137,
+    "update_id": 2137,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-19T13:25:20.674251+00:00",
+    "text": "Which launcher works derpfest? And who's the differences?",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068Build session began at 1412pm EST. That would be 2112 IDT\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2139,
+    "update_id": 2139,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-19T13:25:20.674262+00:00",
+    "text": "OK thanks\nReceived edited at 5:19\u202fPM",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068DerpFest runs DerpFest Launcher, which is a flavor of Launche3 with customizations tailored to DerpFest in-built features.\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2141,
+    "update_id": 2141,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-19T13:25:20.674309+00:00",
+    "text": "DerpFest builds will not get support from me for\u00a0MEETS_STRONG_INTEGRITY.\n\nWhy:\u00a0my attempts to make STRONG available on DerpFest left my Pixel 11 Pro XL unbootable. I'm not shipping something that can do that to your phone, so DerpFest stays without it.\n\nWhat this means\u00a0\u2022 DerpFest won't pass STRONG, and requests or bug reports about STRONG on DerpFest will be closed. \n\n\u2022 Please don't try to force it on DerpFest yourself: the same attempts are what broke booting here. \n\n\u2022 Everything else in DerpFest is unaffected.\n\nNeed STRONG?\u00a0The Evolution X builds for the Pixel 11 series support it today: \n\nkodiak/grizzly\u00a0https://xdaforums.com/t/4804712/\u00a0\u00b7 cubs\u00a0https://xdaforums.com/t/4804723/\u00a0\u00b7 yogi\u00a0https://xdaforums.com/t/4804826/\nQuestions: @ExpressiveLauncherFeedback\nWhy you use a own kernel? I don't can flash a susfs anykernel3 from wildkernel",
+    "reply_to": {
+      "text": "In reply to Expressive Group: \ud83d\udce2\u00a0PSA: DerpFest and Play Integrity STRONG"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2143,
+    "update_id": 2143,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674317+00:00",
+    "text": "The OTA update works (only that I forgot you ship a non rooted kernel by default, and had to flash espada (KsuN) after the first boot post update)",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2144,
+    "update_id": 2144,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674325+00:00",
+    "text": "OTA update through the system update is what I tried just to check functionality.",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2146,
+    "update_id": 2146,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674331+00:00",
+    "text": "yeah.",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2147,
+    "update_id": 2147,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674339+00:00",
+    "text": "Whenever you get a chance to put your release notes and an announcement, will look forward to see the changelog. Thanks again for this amazing work!",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2150,
+    "update_id": 2150,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674350+00:00",
+    "text": "I thought it does. In the manager, it says \n\nSuSFS version Supported v2.3.0 (GKI)",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2152,
+    "update_id": 2152,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674362+00:00",
+    "text": "Also - im unable to togglle the \"Use Now Playing\" option, could it be due to my previous installation of now playing? \n\nI tried clearing data and cache, but still unable to proceed. Perhaps somebody else can test this out too",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2154,
+    "update_id": 2154,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674369+00:00",
+    "text": "yeah im gonna try that. Else I might try to uninstall the system app and flash the OTA over it again, hoping that helps?",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2156,
+    "update_id": 2156,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-19T13:25:20.674378+00:00",
+    "text": "I know, I know\u2014it\u2019s just that I personally prefer *kowsu* or *bakasu*. It\u2019s a personal thing.",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068That's what I thought @arxelis89 why not just use Espada KSUN?\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2157,
+    "update_id": 2157,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-19T13:25:20.674389+00:00",
+    "text": "And the ota is only for update and not clean? Or I can come from stock?",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2159,
+    "update_id": 2159,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674402+00:00",
+    "text": "Atleast for me I seem to be having a problem with now playing. Tried this and didn't work. Tried uninstalling it completely, dirty flashed the ota over and got the older now playing. Updated from playstore and it started crashing. \n\nI'll try a clean flash tomorrow, almost 4am here \ud83e\udd72",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068I moved Now Playing 26q1.xml to priv app, so if you are using an apkm from another source, there could a SDK conflict. I am targeting SDK37 so try to uninstall updates or installing the apkm over it and let me know what happens\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2160,
+    "update_id": 2160,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674412+00:00",
+    "text": "Video, Downloaded, 01:00, 1080\u00d72404, 43.4 MB\nThis is once the app is updated. I'll try to grab logs tomorrow",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2162,
+    "update_id": 2162,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-19T13:25:20.674435+00:00",
+    "text": "Thanks",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2163,
+    "update_id": 2163,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-19T13:25:20.674443+00:00",
+    "text": "But i dont can disable live view",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2164,
+    "update_id": 2164,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-19T13:25:20.674450+00:00",
+    "text": "On the previously version I can disable live display",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2166,
+    "update_id": 2166,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-19T13:25:20.674460+00:00",
+    "text": "That I can not disable in the new realse",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2168,
+    "update_id": 2168,
+    "author": "Igor",
+    "timestamp": "2026-10-19T13:25:20.674472+00:00",
+    "text": "Are you on Derp?\u2069\nThe one he shows is from when u long press the widget or go 1 step further into at a glance settings",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068This is working without issue on Evo, also your settings screen doesn't appear to be from Google Launcher. "
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2169,
+    "update_id": 2169,
+    "author": "Igor",
+    "timestamp": "2026-10-19T13:25:20.674479+00:00",
+    "text": "For some reason only disabling at a glance from home screen setting works, but not the more specific options",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 2170,
+    "update_id": 2170,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-19T13:25:20.674490+00:00",
+    "text": "Are you on Derp?\u2069\nIs the derp build somewhere in the files? I couldnt see it earlier",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068This is working without issue on Evo, also your settings screen doesn't appear to be from Google Launcher. "
+    },
+    "attachments": []
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90782887",
+    "author": "mcflyrk01",
+    "timestamp": "2026-10-18T20:46:11-0400",
+    "text": "Just installed the 10/18 build - SIM settings are no longer greyed out but won't do anything when I try to open them.  From the \"Let's get you started\" notification I also see the \"Set up your SIM\" option, but it doesn't go anywhere either.  I'll try re-flashing the factory image first and see if that helps \n\nWifi does connect during initial setup now though!\n\nAdding a Google account seems to be working, although hitting \"Next\" or \"Skip\" in the setup just loops you back to the same view.\n\nEDIT: flashing the factory image first didn't help  logcat attached though!  My carrier is Google Fi if that matters,and I've also tried setting up the eSIM through the Fi app, but I get the T120 error \"can't connect to Fi.\"\n\nEDIT 2: not sure if Google accounts are fully getting added correctly... play store is working but gmail is showing no accounts, and when I try to add the one I'm already logged into, I get an error that it has already been added.",
+    "quotes": [],
+    "url": "https://xdaforums.com/t/4804712/post-90782887"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90782928",
+    "author": "denson9874",
+    "timestamp": "2026-10-18T22:05:34-0400",
+    "text": "Thanks for the log! It was captured during the first setup after a clean flash, and it ends before Gmail ever opens, so it doesn't show the problem yet. Could you:\n1. Describe exactly what happens (or send a screenshot): a sign-in loop, \"Account action required\", sync errors, Gmail not loading mail?\n2. Make it happen again, then right away run on your PC:\n   adb logcat -b all -d > logcat.txt\n   and send that file.\n3. Are you rooted (KernelSU, Magisk, SuSFS or other modules)? Your log shows Digital Wellbeing can't see a LineageOS system file, which happens when root hiding hides it.\n\nYour current logs are helpful with another issue I am tracking though. It confirms why Now Playing is not functioning. It confirmed my suspicion on ASI being blocked by PCS. I am deploying a fix for that issue after I can root cause your gmail report.",
+    "quotes": [
+      "mcflyrk01 said:\nJust installed the 10/18 build - SIM settings are no longer greyed out but won't do anything when I try to open them. From the \"Let's get you started\" notification I also see the \"Set up your SIM\" option, but it doesn't go anywhere either. I'll try re-flashing the factory image first and see if that helps \n\nWifi does connect during initial setup now though!\n\nAdding a Google account seems to be working, although hitting \"Next\" or \"Skip\" in the setup just loops you back to the same view.\n\nEDIT: flashing the factory image first didn't help  logcat attached though! My carrier is Google Fi if that matters,and I've also tried setting up the eSIM through the Fi app, but I get the T120 error \"can't connect to Fi.\"\n\nEDIT 2: not sure if Google accounts are fully getting added correctly... play store is working but gmail is showing no accounts, and when I try to add the one I'm already logged into, I get an error that it has already been added.\nClick to expand..."
+    ],
+    "url": "https://xdaforums.com/t/4804712/post-90782928"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90782939",
+    "author": "mcflyrk01",
+    "timestamp": "2026-10-18T22:34:08-0400",
+    "text": "Awesome, happy to help any way I can!  I still have my P9PXL as my daily driver, so I'm still heavily messing around with this one \n\nI'm rooted with KernelSU, but at first I didn't have PIF or Tricky installed, so I added those to see if the keybox made any difference. During the setup (from the Evolution X \"finish setting up your account\" notification), I get basically a sign-in loop - it says the account is added, but \"Next\" just keeps bringign up that same page.  I did just try removing my account and re-adding it through Gmail instead, and that seems to have worked (play store, chrome, etc work with the account).  The SIM settings still won't launch, but another clue may be that through the Google FI app there is a distinct error (code T120).  New logcat attached.",
+    "quotes": [
+      "denson9874 said:\nThanks for the log! It was captured during the first setup after a clean flash, and it ends before Gmail ever opens, so it doesn't show the problem yet. Could you:\n1. Describe exactly what happens (or send a screenshot): a sign-in loop, \"Account action required\", sync errors, Gmail not loading mail?\n2. Make it happen again, then right away run on your PC:\nadb logcat -b all -d > logcat.txt\nand send that file.\n3. Are you rooted (KernelSU, Magisk, SuSFS or other modules)? Your log shows Digital Wellbeing can't see a LineageOS system file, which happens when root hiding hides it.\n\nYour current logs are helpful with another issue I am tracking though. It confirms why Now Playing is not functioning. It confirmed my suspicion on ASI being blocked by PCS. I am deploying a fix for that issue after I can root cause your gmail report.\nClick to expand..."
+    ],
+    "url": "https://xdaforums.com/t/4804712/post-90782939"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90782948",
+    "author": "xerel89",
+    "timestamp": "2026-10-18T22:50:41-0400",
+    "text": "can not fully disable the live display on homescreen, on the new realse what you are today posted, i am not sure how i can create boout that a logcat",
+    "quotes": [],
+    "url": "https://xdaforums.com/t/4804712/post-90782948"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90782990",
+    "author": "Paddybecks87",
+    "timestamp": "2026-10-19T00:25:35-0400",
+    "text": "@denson9874 Thanks a bunch for the update! Is the app-content of apps locked via sandbox now obfuscated in the recents overview or is this still being worked on?\n\nGreetings and thanks for your support.",
+    "quotes": [],
+    "url": "https://xdaforums.com/t/4804712/post-90782990"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90783284",
+    "author": "DoubtTM",
+    "timestamp": "2026-10-19T06:25:52-0400",
+    "text": "thats cuz for some reason most apps dont have wifi/mobile data access by default, either set it for each app manually or go to system settings - reset options - reset app preferences",
+    "quotes": [
+      "mcflyrk01 said:\nJust installed the 10/18 build - SIM settings are no longer greyed out but won't do anything when I try to open them. From the \"Let's get you started\" notification I also see the \"Set up your SIM\" option, but it doesn't go anywhere either. I'll try re-flashing the factory image first and see if that helps \n\nWifi does connect during initial setup now though!\n\nAdding a Google account seems to be working, although hitting \"Next\" or \"Skip\" in the setup just loops you back to the same view.\n\nEDIT: flashing the factory image first didn't help  logcat attached though! My carrier is Google Fi if that matters,and I've also tried setting up the eSIM through the Fi app, but I get the T120 error \"can't connect to Fi.\"\n\nEDIT 2: not sure if Google accounts are fully getting added correctly... play store is working but gmail is showing no accounts, and when I try to add the one I'm already logged into, I get an error that it has already been added.\nClick to expand..."
+    ],
+    "url": "https://xdaforums.com/t/4804712/post-90783284"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90783413",
+    "author": "mcflyrk01",
+    "timestamp": "2026-10-19T08:42:20-0400",
+    "text": "do you mean for the Google Fi error? that doesn't fix it unfortunately  \n\nI do see keystore errors related to the Fi app in the logs so I'm wondering if this will work if I set up the eSIM on stock and then flash EvoX. Will try that later today.",
+    "quotes": [
+      "DoubtTM said:\nthats cuz for some reason most apps dont have wifi/mobile data access by default, either set it for each app manually or go to system settings - reset options - reset app preferences"
+    ],
+    "url": "https://xdaforums.com/t/4804712/post-90783413"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804723",
+    "thread_name": "Pixel 11 (cubs)",
+    "device": "cubs",
+    "post_id": "90782860",
+    "author": "denson9874",
+    "timestamp": "2026-10-18T19:39:10-0400",
+    "text": "Update 2026-10-18: weekly Evolution X sync\n\nNew build: EvolutionX-17.0-20261018-cubs-12.3-Unofficial-fastboot.zip\nSHA-256 91386eb6c524a88712611a87307652b255ce6d3734e8b25b059471727b7ed929\nSourceForge: cubs/17\n\nAlready on the 2026-10-16 build? Settings > System > System updates has this one (rooted: Magisk > Install > Install to inactive slot after the update, or root is gone). From an older build: fastboot update <zip> (keeps your data).\n\nChanges (upstream Evolution X, October 9 to 18)\n\nGoogle apps updated from Pixel 11 Pro firmware CD1A.261005.003.\nAndroid System WebView 155.0.8059.39.\nEvolver: the spoofing settings are redesigned in Material 3 Expressive.\nBluetooth no longer turns itself back on by default (auto-on is off).\nMobile network: when a network scan is rejected, the phone falls back to the cells it can see.\nBug reports include the full kernel log.\nTranslation updates across Evolution X and LineageOS apps.\nKnown issue: a user has reported that Now Playing won't turn on in this build. It's being looked into.\n\nUnchanged: Espada kernel v3 (Linux 6.12.92) by Kevtrejo37, Extreme Charging, the charging screensaver, \"Use device MAC\" for Wi-Fi networks that filter by MAC address (since the 10-16 build), and stock CD1A.261005.003 firmware. Reports are very welcome.",
+    "quotes": [],
+    "url": "https://xdaforums.com/t/4804723/post-90782860"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804826",
+    "thread_name": "Pixel 11 Pro Fold (yogi)",
+    "device": "yogi",
+    "post_id": "90782862",
+    "author": "denson9874",
+    "timestamp": "2026-10-18T19:40:01-0400",
+    "text": "Update 2026-10-18: weekly Evolution X sync\n\nNew build: EvolutionX-17.0-20261019-yogi-12.3-Unofficial-fastboot.zip\nSHA-256 db05f6075dab75304b636e9cc02c45a90fcfebc79f487c5b638bf85ed6d57abd\nSourceForge: yogi/17\n\nAlready on the 2026-10-16 build? Settings > System > System updates has this one (rooted: Magisk > Install > Install to inactive slot after the update, or root is gone). From an older build: fastboot update <zip> (keeps your data).\n\nChanges (upstream Evolution X, October 9 to 18)\n\nGoogle apps updated from Pixel 11 Pro firmware CD1A.261005.003.\nAndroid System WebView 155.0.8059.39.\nEvolver: the spoofing settings are redesigned in Material 3 Expressive.\nBluetooth no longer turns itself back on by default (auto-on is off).\nMobile network: when a network scan is rejected, the phone falls back to the cells it can see.\nBug reports include the full kernel log.\nTranslation updates across Evolution X and LineageOS apps.\nKnown issue: a user has reported that Now Playing won't turn on in this build. It's being looked into.\n\nUnchanged: stock Google GKI kernel, Extreme Charging, the charging screensaver, \"Use device MAC\" for Wi-Fi networks that filter by MAC address (since the 10-16 build), and stock CD1A.261005.003 firmware. Reports are very welcome.",
+    "quotes": [],
+    "url": "https://xdaforums.com/t/4804826/post-90782862"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4805239",
+    "thread_name": "Pixel 8 Pro (husky)",
+    "device": "husky",
+    "post_id": "90783314",
+    "author": "kingpeppermint",
+    "timestamp": "2026-10-19T07:03:50-0400",
+    "text": "Does this rom also has the sideload lockout / beg Google on your knees to have in enabled after 24hrs \"feature\"  as it based on stock?",
+    "quotes": [],
+    "url": "https://xdaforums.com/t/4805239/post-90783314"
+  }
+]

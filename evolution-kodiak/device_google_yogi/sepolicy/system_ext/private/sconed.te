@@ -1,0 +1,21 @@
+# Stock's system_ext policy for sconed (gs-common scone_net_agent). init starts
+# it on demand through its AIDL interface (sconed.rc: interface aidl).
+type sconed_exec, exec_type, file_type, system_file_type;
+
+typeattribute sconed coredomain;
+init_daemon_domain(sconed)
+
+binder_use(sconed)
+add_service(sconed, scone_aidl_service)
+
+# TCP socket diagnostics (SOCK_DIAG / TCPDIAG_GETSOCK).
+allow sconed self:netlink_tcpdiag_socket { create_socket_perms_no_ioctl nlmsg_read };
+allowxperm sconed self:netlink_tcpdiag_socket nlmsg { 0x12 };
+
+# It runs the netutils wrappers (ip, tc, ...).
+domain_auto_trans(sconed, netutils_wrapper_exec, netutils_wrapper)
+allow netutils_wrapper sconed:fd use;
+
+dontaudit dumpstate sconed:binder call;
+dontaudit sconed dumpstate:fd use;
+dontaudit sconed self:capability net_admin;

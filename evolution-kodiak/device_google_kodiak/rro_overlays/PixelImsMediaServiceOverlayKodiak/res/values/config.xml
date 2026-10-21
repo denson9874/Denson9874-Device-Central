@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SPDX-FileCopyrightText: The LineageOS Project
+    SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- Values from stock PixelImsMediaService__kodiak__auto_generated_rro_product
+         (CD1A.261005.003). -->
+    <bool name="cp_noflow_supported">true</bool>
+    <bool name="enable_session_leak_detection">false</bool>
+    <integer name="audio_switch_mode">2</integer>
+</resources>

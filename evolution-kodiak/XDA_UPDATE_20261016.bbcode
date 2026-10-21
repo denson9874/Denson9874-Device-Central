@@ -1,0 +1,75 @@
+== kodiak/grizzly thread (4804712) ==
+[B]Update 2026-10-16: Over-the-air updates, Espada kernel v3, Extreme Charging ("Bodega")[/B]
+
+New builds for both phones in this thread:
+[LIST]
+[*][B]Pixel 11 Pro XL (kodiak):[/B] [ICODE]EvolutionX-17.0-20261016-kodiak-12.3-Unofficial-fastboot.zip[/ICODE]
+    SHA-256 [ICODE]540e495e33c868bfa030e87b5f05cdcdc972deb49f7031528918984ded6312fc[/ICODE]
+    [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/kodiak/17/]SourceForge: kodiak/17[/URL]
+[*][B]Pixel 11 Pro (grizzly, untested):[/B] [ICODE]EvolutionX-17.0-20261016-grizzly-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE]
+    SHA-256 [ICODE]20fa44b0494a15ae48884b1e3853dd541fcac4328aea93dc68f818f5d1992609[/ICODE]
+    [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/]SourceForge: grizzly/17[/URL]
+[/LIST]
+
+[B]Changes[/B]
+[LIST]
+[*][B]New: over-the-air updates.[/B] From this build on, [B]Settings > System > System updates[/B] finds new builds, downloads them and installs them in the background, then asks you to restart. No computer needed.
+[*][B]New: Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 built in[/B] (plain Magisk flavor). Features CASS scheduler, Simple LMK, measured energy model, and upstream 6.12 LTS fixes. Special thanks to Kevtrejo37 ([URL=https://xdaforums.com/t/4799975/]XDA thread[/URL]), Sultan Alsawaf (CASS/Simple LMK), and The GrapheneOS Project (zram read-ahead fix). (yogi remains on stock Google GKI).
+[*][B]New: Google's charging screensaver is built in[/B] (Settings > Display & touch > Screen saver).
+[*][B]New: Extreme Charging Mode ("Bodega") Quick Settings tile.[/B] Implements Pixel 11's stock Extreme Charging feature via a dedicated Quick Settings tile and system_server controller. Communicates directly with the Pixel Power HAL extension ([ICODE]IPowerExt.setMode("BODEGA", on)[/ICODE]) to unlock relaxed thermal ceilings and battery priority charging when fast-charging below 50% battery on 30 W+ chargers. Automatically disables when unplugged or when fully charged.
+[*][B]Fixed:[/B] the charging screensaver showing 0% instead of your battery level, and drawing the number too wide, into the charge bar. It now shows the level, the time to full and the charging state, with the narrow digits stock uses.
+[*][B]Fixed:[/B] in a lit room, the screen could still flash brighter for about a second when it timed out into the always-on display. The always-on display now stays dim until the screen-off animation has finished.
+[*][B]Fixed:[/B] some Google apps drew Google Sans Flex text wider (or rounder) than designed; the charging screensaver was the visible case.
+[*]Evolution X source is identical to the 2026-10-13 build (upstream sync scheduled for Sunday, October 18).
+[/LIST]
+Thanks to Ashray V K for the logs behind the screen-timeout fix.
+
+[B]Over-the-air updates[/B]
+[LIST]
+[*][B]This build still needs a computer[/B] ([ICODE]fastboot update <zip>[/ICODE], keeps your data): earlier builds look for updates on Evolution X's official server, which doesn't list these phones.
+[*]After that, open Settings > System > System updates (it also checks by itself). The update installs to the other slot while you use the phone; restart when it's done. If the new build ever fails to boot, the phone goes back to the one you had.
+[*][B]Rooted with Magisk?[/B] When the update says it's ready, don't restart from there: open Magisk > Install > [I]Install to inactive slot (after OTA)[/I], which keeps root and restarts for you. KernelSU has the same option. Without it, root is gone after the update.
+[*][B]Custom kernel?[/B] The build now includes Espada kernel v3 (Linux 6.12.92) out of the box (yogi remains on stock GKI). Over-the-air updates carry both boot and vendor_kernel_boot.
+[*]Updates include the stock Pixel firmware (bootloader and radio) the build is made for (CD1A.261005.003).
+[*]The OTA zips (without [ICODE]-fastboot[/ICODE] in the name) sit next to the fastboot zips on SourceForge; they're for the updater, not for fastboot.
+[/LIST]
+Fresh installs: see the first post.
+
+== cubs thread (4804723) ==
+[B]Update 2026-10-16: Over-the-air updates, Espada kernel v3, Extreme Charging ("Bodega")[/B]
+
+New test build: [ICODE]EvolutionX-17.0-20261016-cubs-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE]
+SHA-256 [ICODE]d8ad87979601d36d4f7eb8e3f94be66b26d3ca01f114631313e65ee7be1ffec3[/ICODE]
+[URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/cubs/17/]SourceForge: cubs/17[/URL]
+
+[B]Changes[/B]
+[LIST]
+[*][B]New: over-the-air updates.[/B] From this build on, [B]Settings > System > System updates[/B] finds, downloads and installs new builds, then asks you to restart. This build itself still needs [ICODE]fastboot update <zip>[/ICODE] (keeps your data). Rooted with Magisk? When the update is ready, use Magisk > Install > Install to inactive slot instead of restarting, or root is gone. Updates include stock CD1A firmware.
+[*][B]New: Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 built in[/B] (plain Magisk flavor; CASS scheduler, Simple LMK, measured EM).
+[*][B]New: Google's charging screensaver is built in[/B] (Settings > Display & touch > Screen saver).
+[*][B]New: Extreme Charging Mode ("Bodega") Quick Settings tile.[/B] Implements Pixel 11's stock Extreme Charging feature via a dedicated Quick Settings tile and system_server controller.
+[*][B]Fixed:[/B] the charging screensaver showing 0% instead of your battery level, and drawing the number too wide.
+[*][B]Fixed:[/B] in a lit room, a brief brighter flash when the screen times out into the always-on display.
+[*][B]Fixed:[/B] some Google apps drew Google Sans Flex text wider than designed.
+[*]Evolution X source is identical to the 2026-10-13 build (upstream sync scheduled for Sunday, October 18).
+[/LIST]
+All of this is verified on a Pixel 11 Pro XL; this Pixel 11 build is still untested, so reports are very welcome.
+
+== yogi thread (4804826) ==
+[B]Update 2026-10-16: Over-the-air updates, Extreme Charging ("Bodega")[/B]
+
+New test build: [ICODE]EvolutionX-17.0-20261016-yogi-12.3-Unofficial-UNTESTED-fastboot.zip[/ICODE]
+SHA-256 [ICODE]772f8ba673abcb8c9ce7b220d016cb8949c795154836bad56fc83c7819ff6ccb[/ICODE]
+[URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/yogi/17/]SourceForge: yogi/17[/URL]
+
+[B]Changes[/B]
+[LIST]
+[*][B]New: over-the-air updates.[/B] From this build on, [B]Settings > System > System updates[/B] finds, downloads and installs new builds, then asks you to restart. This build itself still needs [ICODE]fastboot update <zip>[/ICODE] (keeps your data).
+[*][B]New: Google's charging screensaver is built in[/B] (Settings > Display & touch > Screen saver).
+[*][B]New: Extreme Charging Mode ("Bodega") Quick Settings tile.[/B] Implements Pixel 11's stock Extreme Charging feature via a dedicated Quick Settings tile and system_server controller.
+[*][B]Fixed:[/B] the charging screensaver showing 0% instead of your battery level, and drawing the number too wide.
+[*][B]Fixed:[/B] in a lit room, a brief brighter flash when the screen times out into the always-on display.
+[*][B]Fixed:[/B] some Google apps drew Google Sans Flex text wider than designed.
+[*]Evolution X source is identical to the 2026-10-13 build (upstream sync scheduled for Sunday, October 18).
+[/LIST]
+All of this is verified on a Pixel 11 Pro XL; this Fold build is still untested, so reports are very welcome.
