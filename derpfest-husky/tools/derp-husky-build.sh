@@ -1,9 +1,13 @@
 #!/bin/bash
-# Build DerpFest 17 for the Pixel 8 Pro (husky) in ~/derpfest, check the result offline and stage the release
-# files in ~/releases/derpfest-husky. Nothing is uploaded here.
+# Build DerpFest 17 for the Pixel 8 Pro (husky) in ~/derpfest, check the result offline, then verify the signed
+# OTA package with derp-ota.sh (and, with --upload, publish it: SourceForge derpfest/husky, then
+# denson9874/derpfest_ota for the Updater).
 #
-#   derp-husky-build.sh [--check-only]
+#   derp-husky-build.sh [--clean] [--upload] [--changes <file>] [--check-only]
 #
+#   --clean       full build: remove out/target/product/husky first (installclean for this device only)
+#   --upload      publish the OTA after every check passed (derp-ota.sh husky --upload)
+#   --changes     ROM changes for the changelog, passed to derp-ota.sh
 #   --check-only  only run the offline checks on the existing out/; no lunch, no build
 #
 # There is no phone to test on (see README.md), so the gate is a clean build plus these checks. Exit status:
@@ -11,16 +15,20 @@
 # "=== DerpFest husky Build Finished: <date> (EXIT=<n>) ===".
 set -uo pipefail
 
-CHECKONLY=0
-case ${1:-} in
-    --check-only) CHECKONLY=1 ;;
-    "") ;;
-    *) echo "usage: derp-husky-build.sh [--check-only]" >&2; exit 2 ;;
-esac
+CHECKONLY=0; CLEAN=0; UPLOAD=0; CHANGES=
+while [ $# -gt 0 ]; do
+    case $1 in
+        --check-only) CHECKONLY=1 ;;
+        --clean) CLEAN=1 ;;
+        --upload) UPLOAD=1 ;;
+        --changes) CHANGES=${2:-}; shift ;;
+        *) echo "usage: derp-husky-build.sh [--clean] [--upload] [--changes <file>] [--check-only]" >&2; exit 2 ;;
+    esac
+    shift
+done
 
 TREE=$HOME/derpfest
 O=$TREE/out/target/product/husky
-DEST=$HOME/releases/derpfest-husky
 
 finish() {
     echo "=== DerpFest husky Build Finished: $(date) (EXIT=$1) ==="
@@ -66,6 +74,14 @@ checks() {
     else
         echo "BCR_CHECK=SKIPPED"
     fi
+    # Signed with DerpFest's own keys, never Evolution X's: otherwise either ROM's packages install over the other
+    local otacert=$TREE/vendor/lineage-priv/keys/releasekey.x509.pem evokeys=$HOME/evolution/vendor/evolution-priv/keys
+    if [ -n "$zip" ]; then
+        unzip -p "$zip" META-INF/com/android/otacert | cmp -s - "$otacert" || no "OTA isn't signed with vendor/lineage-priv's releasekey"
+    fi
+    for k in releasekey platform shared media networkstack avb; do
+        cmp -s "$TREE/vendor/lineage-priv/keys/$k.x509.pem" "$evokeys/$k.x509.pem" && no "DerpFest's $k key is Evolution X's"
+    done
     [ "$bad" = 0 ] && echo "CHECKS=OK"
     return $(( bad ? 3 : 0 ))
 }
@@ -90,15 +106,22 @@ git -C "$TREE/vendor/google/husky" lfs pull || finish 1
 if grep -rlq 'git-lfs.github.com/spec/v1' "$TREE/vendor/google/husky/proprietary" "$TREE/vendor/google/husky/radio"; then
     echo "git-lfs pointer files left in vendor/google/husky"; finish 1
 fi
-# Kernel: the one Evolution X husky ships (built by build_kernel in ~/evolution from LineageOS's gs-6.1
-# manifest, lineage-24.0). lunch would otherwise sync and build the whole kernel source again here.
-cp -a "$HOME/evolution/device/google/shusky-kernels/6.1/." "$TREE/device/google/shusky-kernels/6.1/" || finish 1
-export SKIP_KERNEL_BUILD=1
+# DerpFest is its own ROM (README): its own keys, nothing taken from the Evolution X tree
+[ -e "$TREE/vendor/evolution-priv" ] && { echo "vendor/evolution-priv exists: DerpFest must use its own keys"; finish 1; }
+[ -f "$TREE/vendor/lineage-priv/keys/testkey.pk8" ] || { echo "no DerpFest keys in vendor/lineage-priv/keys"; finish 1; }
+# Kernel: lunch runs build_kernel (LineageOS gs-6.1 manifest, lineage-24.0) in out-kernel/; once the source is
+# there, rebuild without re-syncing it
+[ -d "$TREE/out-kernel/google/gs-6.1/.repo" ] && export SKIP_KERNEL_SYNC=1
 export USE_CCACHE=1
 export CCACHE_EXEC=/usr/bin/ccache
 export DERPFEST_BUILD_TYPE=Unofficial
 export BUILD_USERNAME=android-build
 export BUILD_HOSTNAME=voltage-build
+
+if [ "$CLEAN" = 1 ]; then
+    echo "== full build: removing $O"
+    rm -rf "$O"
+fi
 
 source build/envsetup.sh
 lunch lineage_husky-cp2a-user || finish 1
@@ -110,18 +133,8 @@ BUILD_EXIT=${PIPESTATUS[0]}
 
 checks || finish 3
 
-ZIP=$(ls -t "$O"/DerpFest-v17-*-husky-Unofficial-*.zip 2>/dev/null | head -1)
-[ -n "$ZIP" ] || { echo "no DerpFest-v17-<date>-husky-Unofficial-*.zip in $O"; finish 4; }
-NAME=$(basename "$ZIP")
-DATE=$(sed -n 's/^DerpFest-v17-\([0-9]\{8\}\)-husky-.*/\1/p' <<<"$NAME")
-
-# The OTA zip plus boot/vendor_boot for clean installs (recovery lives in vendor_boot), as for Evolution X husky
-mkdir -p "$DEST"
-cp "$ZIP" "$DEST/"
-cp "$O/boot.img" "$DEST/boot-$DATE.img"
-cp "$O/vendor_boot.img" "$DEST/vendor_boot-$DATE.img"
-cp "$O/husky.json" "$DEST/husky-$DATE.json" 2>/dev/null || true
-( cd "$DEST" && sha256sum "$NAME" > "$NAME.sha256" && sha256sum "boot-$DATE.img" "vendor_boot-$DATE.img" > "recovery-$DATE.sha256" )
-cat "$DEST/$NAME.sha256" "$DEST/recovery-$DATE.sha256"
-ls -l "$DEST"
+# The signed OTA package: verified always, published with --upload (derp-ota.sh stages and uploads the release files)
+ota=(husky); [ "$UPLOAD" = 1 ] && ota+=(--upload)
+[ -n "$CHANGES" ] && ota+=(--changes "$CHANGES")
+"$HOME/derpfest-husky/tools/derp-ota.sh" "${ota[@]}" || finish 4
 finish 0
