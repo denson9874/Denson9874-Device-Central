@@ -4,7 +4,7 @@
 # phone's (Pixels refuse bootloader downgrades). LineageOS's husky blobs carry
 # the firmware of the release they were extracted from.
 #
-#   update-firmware.sh <evolution-top> <bootloader-husky-*.img> <radio-husky-*.img>
+#   update-firmware.sh <tree-top> <bootloader-husky-*.img> <radio-husky-*.img>
 #
 # Uses the tree's lineage/scripts/fbpacktool; rewrites the sha1s in
 # vendor/google/husky/Android.mk (a local change; rerun after `repo sync`).

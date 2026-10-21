@@ -4,7 +4,7 @@ Unofficial build. husky's official DerpFest maintainer is Adrian Szymański (@Ad
 
 **What's in it**
 • DerpFest v17 on LineageOS 24.0, security patch 2026-10-01, user build signed with private keys, Google apps included
-• Kernel 6.1.157 and October firmware (CP3A.261005.005) included, the same as my Evolution X husky build
+• Kernel 6.1.157 (LineageOS gs-6.1) and October firmware (CP3A.261005.005) included
 • Built-in call recorder: BCR 3.11 by chenxiaolong. It's off until you turn it on, and it plays no beep, so the other party isn't told. Recording laws differ by country, so follow the rules where you and the other party are.
 • OTA updates through the built-in Updater
 
@@ -17,6 +17,6 @@ Unofficial build. husky's official DerpFest maintainer is Adrian Szymański (@Ad
 • `DerpFest-v17-20261021-husky-Unofficial-Stable.zip` (2.87 GB)
 • SHA-256: `c2df9952802f89fb42e316d8126c51fb741083910de3227fd5d1699125ba635c`
 • Recovery images: `boot-20261021.img`, `vendor_boot-20261021.img` (checksums in `recovery-20261021.sha256`)
-• https://sourceforge.net/projects/denson9874-s-user-builds/files/husky/DerpFest-17/
+• https://sourceforge.net/projects/denson9874-s-user-builds/files/derpfest/husky/
 
-**Install (clean flash, required when coming from another ROM, including Evolution X):** flash `boot-20261021.img` and `vendor_boot-20261021.img`, boot recovery, format data, then `adb sideload DerpFest-v17-20261021-husky-Unofficial-Stable.zip`. Full steps are in the XDA thread.
+**Install (clean flash: DerpFest is its own ROM, so coming from any other ROM needs a clean install):** flash `boot-20261021.img` and `vendor_boot-20261021.img`, boot recovery, format data, then `adb sideload DerpFest-v17-20261021-husky-Unofficial-Stable.zip`. Full steps are in the XDA thread.
