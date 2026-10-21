@@ -52,100 +52,147 @@ class XDAReader:
     def is_available(self) -> bool:
         return PLAYWRIGHT_AVAILABLE or self.is_chrome_available()
 
+    # Pages walked back from the last one in a single review. A thread busier than this between two
+    # reviews loses its oldest unread posts (with a warning) rather than stalling the review.
+    MAX_PAGES = 20
+
+    # Runs in the thread page: the page number shown and its posts (quotes left out of the text)
+    _EXTRACT_JS = """
+    (function() {
+        let cur = document.querySelector('.pageNav-page--current');
+        let page = cur ? parseInt(cur.innerText.trim(), 10) || 1 : 1;
+        let posts = [];
+        for (let el of document.querySelectorAll('article.message--post')) {
+            let id = el.getAttribute('data-content') || el.getAttribute('id') || '';
+            id = id.replace('post-', '').trim();
+            let authorEl = el.querySelector('.message-userDetails .username, [itemprop="name"]');
+            let author = authorEl ? authorEl.innerText.trim() : 'Unknown';
+            let timeEl = el.querySelector('time.u-dt');
+            let ts = timeEl ? (timeEl.getAttribute('datetime') || timeEl.innerText.trim()) : '';
+            let contentEl = el.querySelector('.bbWrapper');
+            let clone = contentEl ? contentEl.cloneNode(true) : null;
+            if (clone) {
+                clone.querySelectorAll('blockquote').forEach(b => b.remove());
+            }
+            let text = clone ? clone.innerText.trim() : '';
+            let quotes = [];
+            for (let q of el.querySelectorAll('blockquote.bbCodeBlock--quote')) {
+                quotes.push(q.innerText.trim());
+            }
+            posts.push({post_id: id, author: author, timestamp: ts, text: text, quotes: quotes});
+        }
+        return JSON.stringify({page: page, posts: posts});
+    })()
+    """
+
+    @staticmethod
+    def _page_url(url: str, page: int) -> str:
+        return url.rstrip("/") + f"/page-{page}"
+
+    @staticmethod
+    def _post_num(post_id: Optional[str]) -> Optional[int]:
+        try:
+            return int(str(post_id).replace("post-", ""))
+        except (TypeError, ValueError):
+            return None
+
+    def _collect_new_posts(
+        self,
+        thread_info: Dict[str, Any],
+        fetch_page,
+        last_post_id: Optional[str] = None
+    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        """
+        Walks back from the thread's last page until it reaches a post at or below last_post_id (or page 1),
+        so posts on every unread page are returned, oldest first. fetch_page(n) returns (actual_page, raw_posts);
+        n=999 lands on the last page. Without a last_post_id (first run) only the last page is read.
+        """
+        thread_id = thread_info["id"]
+        device = thread_info.get("device", "unknown")
+        last_num = self._post_num(last_post_id)
+
+        pages: List[List[Dict[str, Any]]] = []
+        page_no, raw = fetch_page(999)
+        if raw is None:
+            return [], last_post_id
+        pages.append(raw)
+        while last_post_id and page_no > 1 and len(pages) < self.MAX_PAGES:
+            nums = [self._post_num(r.get("post_id")) for r in raw]
+            if any(n is not None and last_num is not None and n <= last_num for n in nums) or \
+                    any(r.get("post_id") == last_post_id for r in raw):
+                break
+            page_no, raw = fetch_page(page_no - 1)
+            if raw is None:
+                break
+            pages.append(raw)
+        else:
+            if last_post_id and len(pages) >= self.MAX_PAGES:
+                sys.stderr.write(
+                    f"[XDAReader] Thread {thread_id}: more than {self.MAX_PAGES} unread pages; "
+                    "older unread posts were skipped.\n"
+                )
+
+        posts = []
+        highest_id = last_post_id
+        seen = set()
+        for raw in reversed(pages):
+            for p in raw:
+                pid = p.get("post_id", "")
+                if not pid or pid in seen:
+                    continue
+                seen.add(pid)
+                num = self._post_num(pid)
+                if last_post_id and (pid == last_post_id or (num is not None and last_num is not None and num <= last_num)):
+                    continue
+                posts.append({
+                    "source": "xda",
+                    "thread_id": thread_id,
+                    "thread_name": thread_info.get("name"),
+                    "device": device,
+                    "post_id": pid,
+                    "author": p.get("author") or "Unknown",
+                    "timestamp": p.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+                    "text": p.get("text", ""),
+                    "quotes": p.get("quotes", []),
+                    "url": f"https://xdaforums.com/t/{thread_id}/post-{pid}"
+                })
+                hnum = self._post_num(highest_id)
+                if num is not None and (hnum is None or num > hnum):
+                    highest_id = pid
+        return posts, highest_id
+
     def fetch_thread_posts_chrome(
         self,
         thread_info: Dict[str, Any],
         last_post_id: Optional[str] = None
     ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
         url = thread_info["url"]
-        thread_id = thread_info["id"]
-        device = thread_info.get("device", "unknown")
-        target_url = url.rstrip("/") + "/page-999"
+        escaped_js = json.dumps(self._EXTRACT_JS)
 
-        js_code = """
-        (function() {
-            let posts = [];
-            let els = document.querySelectorAll('article.message--post');
-            for (let el of els) {
-                let id = el.getAttribute('data-content') || el.getAttribute('id') || '';
-                id = id.replace('post-', '').trim();
-                let authorEl = el.querySelector('.message-userDetails .username, [itemprop="name"]');
-                let author = authorEl ? authorEl.innerText.trim() : 'Unknown';
-                let timeEl = el.querySelector('time.u-dt');
-                let ts = timeEl ? (timeEl.getAttribute('datetime') || timeEl.innerText.trim()) : '';
-                let contentEl = el.querySelector('.bbWrapper');
-                let clone = contentEl ? contentEl.cloneNode(true) : null;
-                if (clone) {
-                    clone.querySelectorAll('blockquote').forEach(b => b.remove());
-                }
-                let text = clone ? clone.innerText.trim() : (contentEl ? contentEl.innerText.trim() : '');
-                let quotes = [];
-                let quoteEls = el.querySelectorAll('blockquote.bbCodeBlock--quote');
-                for (let q of quoteEls) {
-                    quotes.push(q.innerText.trim());
-                }
-                posts.push({post_id: id, author: author, timestamp: ts, text: text, quotes: quotes});
-            }
-            return JSON.stringify(posts);
-        })()
-        """
-        escaped_js = json.dumps(js_code)
-        apple_script = f'''
-        tell application "Google Chrome Canary"
-            tell front window
-                set newTab to make new tab with properties {{URL:"{target_url}"}}
+        def fetch_page(n: int):
+            apple_script = f"""
+            tell application "Google Chrome Canary"
+                tell front window
+                    set newTab to make new tab with properties {{URL:"{self._page_url(url, n)}"}}
+                end tell
+                delay 3
+                set postData to execute active tab of front window javascript {escaped_js}
+                tell front window
+                    close active tab
+                end tell
+                return postData
             end tell
-            delay 3
-            set postData to execute active tab of front window javascript {escaped_js}
-            tell front window
-                close active tab
-            end tell
-            return postData
-        end tell
-        '''
-        res = subprocess.run(["osascript", "-e", apple_script], capture_output=True, text=True, timeout=20)
-        if res.returncode != 0 or not res.stdout.strip():
-            return [], last_post_id
+            """
+            res = subprocess.run(["osascript", "-e", apple_script], capture_output=True, text=True, timeout=20)
+            if res.returncode != 0 or not res.stdout.strip():
+                return n, None
+            try:
+                data = json.loads(res.stdout.strip())
+            except Exception:
+                return n, None
+            return int(data.get("page") or 1), data.get("posts", [])
 
-        try:
-            raw_posts = json.loads(res.stdout.strip())
-        except Exception:
-            return [], last_post_id
-
-        posts = []
-        highest_id = last_post_id
-
-        for p in raw_posts:
-            pid = p.get("post_id", "")
-            if last_post_id and pid:
-                try:
-                    if int(pid) <= int(str(last_post_id).replace("post-", "")):
-                        continue
-                except ValueError:
-                    if pid == last_post_id:
-                        continue
-
-            posts.append({
-                "source": "xda",
-                "thread_id": thread_id,
-                "thread_name": thread_info.get("name"),
-                "device": device,
-                "post_id": pid,
-                "author": p.get("author", "Unknown"),
-                "timestamp": p.get("timestamp") or datetime.now(timezone.utc).isoformat(),
-                "text": p.get("text", ""),
-                "quotes": p.get("quotes", []),
-                "url": f"https://xdaforums.com/t/{thread_id}/post-{pid}"
-            })
-
-            if pid:
-                try:
-                    if not highest_id or int(pid) > int(str(highest_id).replace("post-", "")):
-                        highest_id = pid
-                except ValueError:
-                    highest_id = pid
-
-        return posts, highest_id
+        return self._collect_new_posts(thread_info, fetch_page, last_post_id)
 
     def fetch_thread_posts(
         self,
@@ -178,10 +225,6 @@ class XDAReader:
     ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
         url = thread_info["url"]
         thread_id = thread_info["id"]
-        device = thread_info.get("device", "unknown")
-
-        posts = []
-        highest_post_id = last_post_id
 
         with sync_playwright() as p:
             browser = p.chromium.launch(
@@ -202,88 +245,23 @@ class XDAReader:
             )
             page = context.new_page()
 
+            def fetch_page(n: int):
+                try:
+                    page.goto(self._page_url(url, n), wait_until="domcontentloaded", timeout=30000)
+                    page.wait_for_timeout(2000)
+                    # BunnyCDN Shield challenge: give it time to resolve
+                    if "Shield" in page.title() or "challenge" in page.content().lower():
+                        page.wait_for_timeout(4000)
+                    data = json.loads(page.evaluate(self._EXTRACT_JS))
+                    return int(data.get("page") or 1), data.get("posts", [])
+                except Exception as e:
+                    sys.stderr.write(f"[XDAReader] Error reading thread {thread_id} page {n}: {e}\n")
+                    return n, None
+
             try:
-                # 1. Navigate to thread root
-                page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                page.wait_for_timeout(2000)
-
-                # Check for BunnyCDN challenge or wait for resolution
-                if "Shield" in page.title() or "challenge" in page.content().lower():
-                    page.wait_for_timeout(4000)
-
-                # 2. Find pagination to navigate to the last page if multiple pages exist
-                last_page_links = page.query_selector_all("ul.pageNav-main li.pageNav-page a")
-                target_url = url
-                if last_page_links:
-                    last_href = last_page_links[-1].get_attribute("href")
-                    if last_href:
-                        if not last_href.startswith("http"):
-                            target_url = f"https://xdaforums.com{last_href}"
-                        else:
-                            target_url = last_href
-                        page.goto(target_url, wait_until="domcontentloaded", timeout=30000)
-                        page.wait_for_timeout(2000)
-
-                # 3. Extract posts on the current (latest) page
-                post_elements = page.query_selector_all("article.message--post")
-                for post_el in post_elements:
-                    post_id = post_el.get_attribute("data-content") or post_el.get_attribute("id") or ""
-                    post_id = post_id.replace("post-", "").strip()
-
-                    # Filter by last_post_id if provided
-                    if last_post_id and post_id:
-                        try:
-                            if int(post_id) <= int(last_post_id.replace("post-", "")):
-                                continue
-                        except ValueError:
-                            if post_id == last_post_id:
-                                continue
-
-                    author_el = post_el.query_selector(".message-userDetails .username, [itemprop='name']")
-                    author_name = author_el.inner_text().strip() if author_el else "Unknown"
-
-                    time_el = post_el.query_selector("time.u-dt")
-                    timestamp = time_el.get_attribute("datetime") if time_el else ""
-                    if not timestamp and time_el:
-                        timestamp = time_el.inner_text().strip()
-                    if not timestamp:
-                        timestamp = datetime.now(timezone.utc).isoformat()
-
-                    content_el = post_el.query_selector(".bbWrapper")
-                    content_text = content_el.inner_text().strip() if content_el else ""
-
-                    # Extract quotes
-                    quotes = []
-                    quote_els = post_el.query_selector_all("blockquote.bbCodeBlock--quote")
-                    for q in quote_els:
-                        quotes.append(q.inner_text().strip())
-
-                    posts.append({
-                        "source": "xda",
-                        "thread_id": thread_id,
-                        "thread_name": thread_info.get("name"),
-                        "device": device,
-                        "post_id": post_id,
-                        "author": author_name,
-                        "timestamp": timestamp,
-                        "text": content_text,
-                        "quotes": quotes,
-                        "url": f"https://xdaforums.com/t/{thread_id}/post-{post_id}"
-                    })
-
-                    if post_id:
-                        try:
-                            if not highest_post_id or int(post_id) > int(highest_post_id):
-                                highest_post_id = post_id
-                        except ValueError:
-                            highest_post_id = post_id
-
-            except Exception as e:
-                sys.stderr.write(f"[XDAReader] Error reading thread {thread_id}: {e}\n")
+                return self._collect_new_posts(thread_info, fetch_page, last_post_id)
             finally:
                 browser.close()
-
-        return posts, highest_post_id
 
     def fetch_all_threads(
         self,
