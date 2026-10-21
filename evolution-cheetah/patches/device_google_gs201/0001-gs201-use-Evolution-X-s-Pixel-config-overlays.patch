@@ -1,4 +1,4 @@
-From cf01abbf4d9fc7c0c1ef05f1928194e25b1d6dc4 Mon Sep 17 00:00:00 2001
+From c7cdb890d5df103af307b527251232d355530e22 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 23:44:58 +0200
 Subject: [PATCH] gs201: use Evolution X's Pixel config overlays
@@ -117,7 +117,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  overlay/GoogleConfigOverlay/Android.bp        |   9 -
  .../GoogleConfigOverlay/AndroidManifest.xml   |  11 -
  .../res/raw/fallback_categories.csv           | 387 ------------------
- .../GoogleConfigOverlay/res/values/config.xml |  22 -
+ .../GoogleConfigOverlay/res/values/config.xml |  68 ---
  .../Android.bp                                |   9 -
  .../AndroidManifest.xml                       |  12 -
  .../res/values/bools.xml                      |  10 -
@@ -130,7 +130,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  overlay/PixelConfigOverlayCommon/Android.bp   |   9 -
  .../AndroidManifest.xml                       |  11 -
  .../res/values/config.xml                     |  70 ----
- 114 files changed, 2640 deletions(-)
+ 114 files changed, 2686 deletions(-)
  delete mode 100644 overlay/GlanceableHubConfigOverlay/Android.bp
  delete mode 100644 overlay/GlanceableHubConfigOverlay/AndroidManifest.xml
  delete mode 100644 overlay/GlanceableHubConfigOverlay/res/values/config.xml
@@ -3269,10 +3269,10 @@ index 2185faf..0000000
 -tv.twitch.android.app,2
 diff --git a/overlay/GoogleConfigOverlay/res/values/config.xml b/overlay/GoogleConfigOverlay/res/values/config.xml
 deleted file mode 100644
-index c52908f..0000000
+index 6e1c50b..0000000
 --- a/overlay/GoogleConfigOverlay/res/values/config.xml
 +++ /dev/null
-@@ -1,22 +0,0 @@
+@@ -1,68 +0,0 @@
 -<?xml version="1.0" encoding="utf-8"?>
 -<!--
 -     SPDX-FileCopyrightText: The LineageOS Project
@@ -3294,6 +3294,52 @@ index c52908f..0000000
 -        <item>fr.vinted</item>
 -        <item>org.telegram.messenger</item>
 -    </string-array>
+-
+-    <!-- Messages that should not be shown to the user during face auth enrollment. This should be
+-         used to hide messages that may be too chatty or messages that the user can't do much about.
+-         Entries are defined in android.hardware.biometrics.face@1.0 types.hal -->
+-    <integer-array name="config_face_acquire_enroll_ignorelist">
+-        <item>13</item>
+-    </integer-array>
+-
+-    <!-- Same as the above, but are defined by vendorCodes -->
+-    <integer-array name="config_face_acquire_vendor_enroll_ignorelist"/>
+-
+-    <!-- Messages that should not be shown to the user during face authentication, on keyguard.
+-         This includes both lockscreen and bouncer. This should be used to hide messages that may be
+-         too chatty or messages that the user can't do much about. Entries are defined in
+-         android.hardware.biometrics.face@1.0 types.hal -->
+-    <integer-array name="config_face_acquire_keyguard_ignorelist"/>
+-
+-    <!-- Same as the above, but are defined by vendorCodes -->
+-    <integer-array name="config_face_acquire_vendor_keyguard_ignorelist"/>
+-
+-    <!-- Messages that should not be shown to the user during face authentication, on
+-         BiometricPrompt. This should be used to hide messages that may be too chatty or messages
+-         that the user can't do much about. Entries are defined in
+-         android.hardware.biometrics.face@1.0 types.hal -->
+-    <integer-array name="config_face_acquire_biometricprompt_ignorelist">
+-        <item>1</item>
+-        <item>2</item>
+-        <item>4</item>
+-        <item>5</item>
+-        <item>6</item>
+-        <item>7</item>
+-        <item>8</item>
+-        <item>9</item>
+-        <item>11</item>
+-        <item>12</item>
+-        <item>13</item>
+-        <item>14</item>
+-        <item>15</item>
+-        <item>16</item>
+-        <item>17</item>
+-        <item>18</item>
+-        <item>19</item>
+-    </integer-array>
+-
+-    <!-- Same as the above, but are defined by vendorCodes -->
+-    <integer-array name="config_face_acquire_vendor_biometricprompt_ignorelist"/>
 -</resources>
 diff --git a/overlay/GooglePermissionControllerSafetyCenterOverlay/Android.bp b/overlay/GooglePermissionControllerSafetyCenterOverlay/Android.bp
 deleted file mode 100644
