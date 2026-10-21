@@ -1,0 +1,86 @@
+From 2a5812fbc3fb1eb6acfcf74ad3b7844f42a08b60 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 20:28:54 +0000
+Subject: [PATCH 2/2] cheetah: get updates from denson9874/evolution_ota
+
+Unofficial builds are signed with our own keys, so they can't take
+Evolution X's official OTAs. Point the Updater at the unofficial OTA feed,
+as the Pixel 11 trees do.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ cheetah/overlay/UpdaterOverlayCheetah/Android.bp      |  9 +++++++++
+ .../overlay/UpdaterOverlayCheetah/AndroidManifest.xml | 11 +++++++++++
+ .../UpdaterOverlayCheetah/res/values/strings.xml      | 11 +++++++++++
+ device-cheetah.mk                                     |  3 ++-
+ 4 files changed, 33 insertions(+), 1 deletion(-)
+ create mode 100644 cheetah/overlay/UpdaterOverlayCheetah/Android.bp
+ create mode 100644 cheetah/overlay/UpdaterOverlayCheetah/AndroidManifest.xml
+ create mode 100644 cheetah/overlay/UpdaterOverlayCheetah/res/values/strings.xml
+
+diff --git a/cheetah/overlay/UpdaterOverlayCheetah/Android.bp b/cheetah/overlay/UpdaterOverlayCheetah/Android.bp
+new file mode 100644
+index 0000000..f98ff7f
+--- /dev/null
++++ b/cheetah/overlay/UpdaterOverlayCheetah/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "UpdaterOverlayCheetah",
++    product_specific: true,
++}
+diff --git a/cheetah/overlay/UpdaterOverlayCheetah/AndroidManifest.xml b/cheetah/overlay/UpdaterOverlayCheetah/AndroidManifest.xml
+new file mode 100644
+index 0000000..0d4576e
+--- /dev/null
++++ b/cheetah/overlay/UpdaterOverlayCheetah/AndroidManifest.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="org.evolution.updater.overlay.cheetah">
++    <overlay
++        android:isStatic="true"
++        android:targetPackage="org.evolution.updater" />
++</manifest>
+diff --git a/cheetah/overlay/UpdaterOverlayCheetah/res/values/strings.xml b/cheetah/overlay/UpdaterOverlayCheetah/res/values/strings.xml
+new file mode 100644
+index 0000000..e85b299
+--- /dev/null
++++ b/cheetah/overlay/UpdaterOverlayCheetah/res/values/strings.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
++    <!-- Unofficial builds: updates come from denson9874/evolution_ota. Delete this overlay
++         when cheetah has official Android 17 builds, so the Updater uses Evolution X's servers. -->
++    <string name="updater_server_url" translatable="false">https://raw.githubusercontent.com/denson9874/evolution_ota/cnb/builds/{device}.json</string>
++    <string name="menu_changelog_url" translatable="false">https://raw.githubusercontent.com/denson9874/evolution_ota/cnb/changelogs/<xliff:g id="device_name">%1$s</xliff:g>.txt</string>
++</resources>
+diff --git a/device-cheetah.mk b/device-cheetah.mk
+index 24818da..9933249 100644
+--- a/device-cheetah.mk
++++ b/device-cheetah.mk
+@@ -37,7 +37,8 @@ PRODUCT_PACKAGES += \
+     SystemUIGoogleOverlayVendorCheetah
+ 
+ PRODUCT_PACKAGES += \
+-    ApertureOverlayCheetah
++    ApertureOverlayCheetah \
++    UpdaterOverlayCheetah
+ 
+ # PowerShare
+ include hardware/google/pixel/powershare/device.mk
+-- 
+2.43.0
+

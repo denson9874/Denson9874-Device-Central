@@ -1657,6 +1657,100 @@ Claude ran low on weekly usage; Gemini continues. Sections 2t-2v have the detail
   - **yogi:** Queued next in chain.
 
 
+## 2af (cheetah). Pixel 7 Pro (cheetah) port and its place in the release schedule (2026-10-17)
+
+Daryl asked for Evolution X 17 on the Pixel 7 Pro from Evolution-X-Devices' `device_google_pantah`, added to the
+weekly release schedule. Everything is in `evolution-cheetah/` (README there has the details).
+
+- **Trees:** Evolution X's own `cnb` trees: `device_google_pantah`, `device_google_gs201`,
+  `vendor_google_cheetah` (Git LFS from git.evolution-x.org), and LineageOS `pantah-kernels`.
+  - The kernel (6.1) is built by `build_kernel`.
+  - gs201 is still the 2024 "Initialize for Evolution X 12.x" tree, older than today's `vendor/pixel-style` and
+    `vendor/gms`. It needs the same fixes husky's zuma/shusky/vendor trees did (2ab). Our patches
+    (`evolution-cheetah/patches/`), which `prepare.sh` reapplies on every build along with the newest Google firmware:
+    - pantah 0001 / 0002: unofficial maintainer, Updater URL.
+    - pantah 0003: allow-list AppDataBackup's /system files (husky's shusky 0001).
+    - gs201 0001: drop gs201's nine Pixel config overlays that `vendor/pixel-style` also defines (husky's zuma 0001).
+    - gs201 0002: install gs201's `default-permissions.xml` as `default-permissions-gs201.xml`; vendor/gms has its
+      own, different one (husky's zuma 0002).
+    - vendor 0001: leave `DeviceIntelligenceNetworkPrebuiltAstrea` (vendor/gms's is newer, 137423 vs 127331) and 14
+      byte-identical Pixel sysconfig/default-permission XMLs to vendor/gms (husky's vendor 0001).
+- **Unofficial:** official Android 16 maintainer nhansp; no official `cnb` cheetah builds yet. Same stance as husky
+  (2ab). If official cnb builds appear, drop patch 0002 and talk to the maintainer before publishing more.
+- **Release schedule:** `p11-routine.sh cheetah` and `p11-ota.sh cheetah` (Pixel 11 paths unchanged; a kodiak
+  `--preview` mock gives byte-identical output), plus a fifth Mac task, `evox-parity-cheetah`
+  (`evolution-cheetah/evox-parity-cheetah.SKILL.md`), scheduled after the four Pixel 11 tasks.
+  - Google Drive (2026-10-18): the routine copies each successful build to `gdrive:EvolutionX/<dev>` with
+    `~/evox-to-drive.sh` (section 5). The server's current four-device `p11-routine.sh` already does it; cheetah's
+    copies start once `cheetah-install-routine` installs this branch's routine, which carries the same step. Until
+    then, after a hand build and `cheetah-pack.sh`: `~/evox-to-drive.sh cheetah`.
+- **PRs:** #6 (runner actions into `main`), #7 (this port into `evolution/kodiak-port`) and #8 (runner `bp-check` /
+  `bp-repair`), all merged.
+- **First build attempts (2026-10-17):** setup, firmware (CP3A.261005.002.A1) and the kernel went through. The ROM
+  build then stopped four times, each fix exposing the next stage's error:
+  1. At blueprint bootstrap, on `vendor/google/kodiak/Android.bp:245`. An uncommitted, half-finished hand edit
+     removing the AICore module (`AICorePrebuilt-aicore_20260302.01_RC00`) had left a `,` and the module's last
+     three lines. Soong parses every Android.bp, so it broke every device's build, the Pixel 11s included.
+     `bp-repair restore` put back the committed file (`4833f69`). The edit is in
+     `~/bp-repair-backups/20261017-232750-TStk/uncommitted.patch`.
+     - **Cause:** Antigravity (2026-10-16 22:07 UTC) removed AICore from `~/derpfest/vendor/google/kodiak`, where it
+       duplicates `vendor/pixel/gms/common`'s module. That DerpFest tree is a hardlinked copy of
+       `~/evolution/vendor/google/kodiak` (same inodes), so its in-place Python write also changed the Evolution X
+       `Android.bp` and `kodiak-vendor.mk`.
+     - **AICore restored (Daryl's call, 2026-10-18):** `git checkout -- kodiak-vendor.mk` in
+       `~/evolution/vendor/google/kodiak`, which is clean at `4833f69` again. `get_build_var PRODUCT_PACKAGES` for
+       `lineage_kodiak-cp2a-user` lists `AICorePrebuilt-aicore_20260302.01_RC00`. `~/derpfest` was left as is: it
+       still ships AICore from its own GMS.
+     - **Still shared:** most files in the two kodiak vendor trees are still hardlinks. An in-place edit in one changes
+       the other. Edit with tools that replace the file (`sed -i`, `git checkout`), or break the links first.
+  2. In soong_build: generic_system.mk's artifact-path check rejected AppDataBackup in /system. Fixed by pantah 0003.
+  3. In Kati: `GlanceableHubConfigOverlay already defined by vendor/pixel-style/rro_overlays/...`. Fixed by gs201 0001.
+     pixel-style's copies carry every value gs201's set. The only non-translation change is
+     `config_disabledDreamComponents` (pixel-style disables the low-light clock dream), which husky has shipped since
+     zuma 64a83886 (zuma's copy was identical to gs201's).
+  4. In Kati: `DeviceIntelligenceNetworkPrebuiltAstrea already defined by vendor/google/cheetah`. Kati reports one
+     error per run, so a static check of the whole tree (module names in more than one exported namespace, including
+     Android.mk modules, and PRODUCT_COPY_FILES destinations that vendor/gms also installs) listed the rest: that app,
+     14 XMLs, and gs201's `default-permissions.xml`. Fixed by vendor 0001 and gs201 0002; the check then found none.
+- **First good build (2026-10-18, by hand, `~/cheetah-images.sh`):** `BUILD_EXIT=0` in 1:29:08.
+  `out/target/product/cheetah/EvolutionX-17.0-20261018-cheetah-12.3-Unofficial.zip` (3.5 GB, SHA-256
+  `29a81cc6f5dff57bf0eb51939112e31d3189f5ee0ea33c2bd0234976a085b3c9`).
+- **Verified (2026-10-18 04:31 UTC, `cheetah-verify` with `tree_ref` = this branch, no upload):**
+  - `cheetah-pack.sh`: cheetah / Pixel 7 Pro / `board=cheetah`; maintainer and Updater patches in, the overlay points
+    at `denson9874/evolution_ota`; the radio images match firmware CP3A.261005.002.A1; the fastboot zip has 19 files,
+    all identical to out/, unrooted; system patch level 2026-10-01.
+  - `p11-ota.sh cheetah --preview`: `OTA_VERIFIED` (built by this build, signed with our key, payload carries every
+    firmware and ROM partition); patch levels system 2026-10-01, vendor/boot 2026-07-05 (the vendor repo's
+    CP2A.260705.006 blobs); firmware CP3A.261005.002.A1. Updater JSON and changelog previews look right (forum
+    still the SourceForge folder).
+  - Two script fixes it took: `cheetah-pack.sh` looked for the overlay in a module-named folder (an RRO installs as
+    `product/overlay/<name>.apk`), and `p11-ota.sh` required target-files `META/ab_partitions.txt`, which this tree
+    doesn't leave extracted (now: the required firmware + ROM list, plus the build's list when it's there).
+  - Not booted, not uploaded.
+- **Unreleased zips to delete:** the two verify runs before `cheetah-pack.sh` learned `check/` left
+  `~/releases/cheetah/EvolutionX-17.0-20261018-cheetah-12.3-Unofficial-UNTESTED{,-r2}-fastboot.zip` (+ `.sha256`,
+  7.5 GB each) in the release folder. Delete them before the first release, or it is named `-r3` and the Mac task
+  lists them. Checks now write one copy to `~/releases/cheetah/check/`; only `--upload` writes to the release folder.
+- **Hand builds under the tree lock:** use `flock -o ~/.evolution-tree.lock ~/cheetah-images.sh`. Without `-o`,
+  `build_kernel`'s Bazel server inherits the lock's file descriptor and keeps holding it after the build exits,
+  so the next build or `p11-routine.sh` waits on it. (`p11-routine.sh` already closes it for children with `9>&-`.)
+- **Next, in order:**
+  1. Done: Daryl merged #6.
+  2. Done: build (by hand) and `cheetah-verify` (above). Still to run: `cheetah-setup` with `tree_ref` = this branch.
+     The server's `~/evolution-cheetah` patches and README were copied by hand; its `INSTALLED_FROM` still says
+     `a821da4` and `~/cheetah-pack.sh` predates the fixes above. Setup reinstalls the kit and syncs cheetah's projects,
+     which drops the hand-made commits; `prepare.sh` then applies the six kit patches (same content: the kit's
+     patches reproduce the server commits' result blobs exactly) and the firmware again.
+  3. After Sunday's Pixel 11 release has finished: `cheetah-install-routine`, which installs the shared scripts
+     (backups kept) and dry-runs them.
+  4. Daryl adds the Mac task, approves the first upload, and creates the XDA thread in the Pixel 7 Pro forum. Then
+     set cheetah's `FORUM` in `p11-ota.sh` to that thread.
+- **Not done on purpose:**
+  - The shared routine scripts aren't installed before Sunday's Pixel 11 release. `cheetah-setup` did add the local
+    manifest, so Sunday's runs (still the old `p11-routine.sh`) also fetch and check out cheetah's four projects and
+    count them in their state. That's harmless: no Pixel 11 product reads them, and the new script leaves them out.
+  - Nothing has been published.
+
 ## 2af. Daily Community Review & Sunday Release Pipeline (2026-10-16, fixed 2026-10-18)
 
 - **Purpose:** a daily review of community feedback on Telegram (`@ExpressiveLauncherFeedback`, `@ExpressiveGroup`)
@@ -1918,6 +2012,7 @@ Key device-tree files:
 | `~/kodiak-build.sh` | Full `m evolution` (OTA zip). About 1 h. Release builds |
 | `~/kodiak-test-build.sh` | Images, `WITH_DEXPREOPT=false`. Faster later, but the first run rebuilds a lot (config change). Not used yet |
 | `~/kodiak-imgzip.sh <out> <image zip> <output>` | Packs images for `fastboot update` |
+| `~/evox-to-drive.sh <dev> [--dry-run]` | Copies a device's newest fastboot and OTA zips (with `.sha256`) and changelog from `~/releases/<dev>` to Google Drive, `gdrive:EvolutionX/<dev>`, through `~/upload-to-drive.sh` (DerpFest's goes to `gdrive:DerpFest/kodiak`). `p11-routine.sh` runs it after every successful build for kodiak, grizzly, cubs, yogi and cheetah; a failed copy is reported (`DRIVE_UPLOAD=FAILED`) but doesn't fail the routine. rclone log: `~/routine-logs/drive-<dev>-*.log` |
 
 Run builds detached and wait for `BUILD_EXIT=` in the log:
 ```bash
@@ -2002,6 +2097,9 @@ Write multi-step logic to a script file instead.
   Use `~/android-dt/bin/aospdtgen-vendorfirst.py`.
 
 **Packaging and build config**
+- Never hand-edit a generated vendor `Android.bp`. Change `proprietary-files.txt` and re-run `extract-files.py`.
+  Soong parses every Android.bp in the tree, so one broken file stops every device's build (2af). The runner's
+  `bp-check` finds such a file; `bp-repair` fixes the common cases.
 - releasetools crashed with `KeyError: 'vendor'` on prebuilt vendor. The fix is in `patches/build_make`.
 - `BOARD_PREBUILT_PVMFWIMAGE` is obsolete; pvmfw is built from AOSP.
 - vintffm needed `hwservicemanager` and `android.hidl.allocator@1.0-service`.
