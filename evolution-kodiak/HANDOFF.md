@@ -2327,3 +2327,18 @@ cd ~/Downloads/kodiak-evox/aod-flash
 fastboot update ../EvolutionX-17.0-20261015-kodiak-12.3-Unofficial-personal-keep-initboot-bodega-sepolicy.zip
 ```
 
+
+## 2ak. 20261022 fix release (2026-10-22)
+
+- **Released** all four Pixel 11 builds (`release-chain-20261022.sh`, `--no-sync` from the 10-21 01:42 sync, Espada
+  v3.5 on kodiak/grizzly/cubs, still not booted by us): no `nowplaying.xml` (Now Playing, At a Glance sub-settings:
+  ISS-20261019-01/-05, Ashray's logcat showed `association not allowed` com.google.android.as -> as.oss) and no stale
+  AOSP SystemUI.apk on kodiak (ISS-20261020-01). SourceForge + evolution_ota published for each.
+- **`tools/release-checks.sh`** now runs in `p11-routine.sh` after the build and before pack: allow-association rules
+  must match the stock dump, and every */app, */priv-app APK in out/ must be in
+  `obj/PACKAGING/<part>_intermediates/file_list.txt` (plus no SystemUI next to SystemUIGoogle). Deployed on the server
+  (old routine: `~/p11-routine.sh.bak-20261022`; the server copy still lacks the repo's cheetah changes).
+- **Announced** with Daryl's go-ahead: Telegram `@ExpressiveGroup`, XDA posts 90787067 (kodiak/grizzly), 90787070
+  (cubs), 90787072 (yogi), from `TELEGRAM_UPDATE_20261022.md` / `XDA_UPDATE_20261022.bbcode`. New support policy in
+  both: custom setups (modules, root, Xposed, non-Espada kernels, mismatched APKMirror apps) get limited to no support,
+  and reports without logs are flagged for deletion. Triage should hold reporters to it.
