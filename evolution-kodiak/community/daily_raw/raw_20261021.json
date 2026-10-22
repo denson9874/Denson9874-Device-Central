@@ -1,0 +1,526 @@
+[
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 230248725985106,
+    "update_id": 230248725985106,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-21T13:06:46.755390+00:00",
+    "text": "yeah.",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 241550183991047,
+    "update_id": 241550183991047,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-21T13:06:46.755428+00:00",
+    "text": "Whenever you get a chance to put your release notes and an announcement, will look forward to see the changelog. Thanks again for this amazing work!",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 100444337134869,
+    "update_id": 100444337134869,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-21T13:06:46.755439+00:00",
+    "text": "I thought it does. In the manager, it says \n\nSuSFS version Supported v2.3.0 (GKI)",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 108483363962403,
+    "update_id": 108483363962403,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-21T13:06:46.755453+00:00",
+    "text": "Also - im unable to togglle the \"Use Now Playing\" option, could it be due to my previous installation of now playing? \n\nI tried clearing data and cache, but still unable to proceed. Perhaps somebody else can test this out too",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 109549154187335,
+    "update_id": 109549154187335,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-21T13:06:46.755461+00:00",
+    "text": "yeah im gonna try that. Else I might try to uninstall the system app and flash the OTA over it again, hoping that helps?",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 72824044828930,
+    "update_id": 72824044828930,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-21T13:06:46.755814+00:00",
+    "text": "I know, I know\u2014it\u2019s just that I personally prefer *kowsu* or *bakasu*. It\u2019s a personal thing.",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068That's what I thought @arxelis89 why not just use Espada KSUN?\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 127966047873786,
+    "update_id": 127966047873786,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-21T13:06:46.755830+00:00",
+    "text": "And the ota is only for update and not clean? Or I can come from stock?",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 121359791672826,
+    "update_id": 121359791672826,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-21T13:06:46.755845+00:00",
+    "text": "Atleast for me I seem to be having a problem with now playing. Tried this and didn't work. Tried uninstalling it completely, dirty flashed the ota over and got the older now playing. Updated from playstore and it started crashing. \n\nI'll try a clean flash tomorrow, almost 4am here \ud83e\udd72",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068I moved Now Playing 26q1.xml to priv app, so if you are using an apkm from another source, there could a SDK conflict. I am targeting SDK37 so try to uninstall updates or installing the apkm over it and let me know what happens\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 189297385147389,
+    "update_id": 189297385147389,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-21T13:06:46.755854+00:00",
+    "text": "Video, Downloaded, 01:00, 1080\u00d72404, 43.4 MB\nThis is once the app is updated. I'll try to grab logs tomorrow",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 126025347113198,
+    "update_id": 126025347113198,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-21T13:06:46.755880+00:00",
+    "text": "Thanks",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 15660201500490,
+    "update_id": 15660201500490,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-21T13:06:46.755888+00:00",
+    "text": "But i dont can disable live view",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 57163587748240,
+    "update_id": 57163587748240,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-21T13:06:46.755898+00:00",
+    "text": "On the previously version I can disable live display",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 142002106556995,
+    "update_id": 142002106556995,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-21T13:06:46.755910+00:00",
+    "text": "That I can not disable in the new realse",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 268042239942310,
+    "update_id": 268042239942310,
+    "author": "Igor",
+    "timestamp": "2026-10-21T13:06:46.755928+00:00",
+    "text": "Are you on Derp?\u2069\nThe one he shows is from when u long press the widget or go 1 step further into at a glance settings",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068This is working without issue on Evo, also your settings screen doesn't appear to be from Google Launcher. "
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 112444988505541,
+    "update_id": 112444988505541,
+    "author": "Igor",
+    "timestamp": "2026-10-21T13:06:46.755935+00:00",
+    "text": "For some reason only disabling at a glance from home screen setting works, but not the more specific options",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 276108488478653,
+    "update_id": 276108488478653,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-21T13:06:46.755946+00:00",
+    "text": "Are you on Derp?\u2069\nIs the derp build somewhere in the files? I couldnt see it earlier",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068This is working without issue on Evo, also your settings screen doesn't appear to be from Google Launcher. "
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 65570316321577,
+    "update_id": 65570316321577,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-21T13:06:46.755961+00:00",
+    "text": "Are you on Derp?\u2069\nDeactivate at glance",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068This is working without issue on Evo, also your settings screen doesn't appear to be from Google Launcher. "
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 197418804591678,
+    "update_id": 197418804591678,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-21T13:06:46.755967+00:00",
+    "text": "All Three",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 222857428068973,
+    "update_id": 222857428068973,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-21T13:06:46.755979+00:00",
+    "text": "I will try again",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 229583194048031,
+    "update_id": 229583194048031,
+    "author": "Igor",
+    "timestamp": "2026-10-21T13:06:46.755988+00:00",
+    "text": "Interesting, that doesn't work for me either, turning the whole thing off does tho\nReceived edited at 10:52\u202fAM",
+    "reply_to": {
+      "text": "In reply to Daryl: Video"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 144775082891264,
+    "update_id": 144775082891264,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-21T13:06:46.755994+00:00",
+    "text": "Video, Downloaded, 00:22, 576\u00d71280, 3.0 MB",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 123358869114671,
+    "update_id": 123358869114671,
+    "author": "Igor",
+    "timestamp": "2026-10-21T13:06:46.756001+00:00",
+    "text": "Just for some reason I keep getting system ui restarts sometimes after unlocking phone, probably hard to get logs for that tho",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 14444329750722,
+    "update_id": 14444329750722,
+    "author": "Igor",
+    "timestamp": "2026-10-21T13:06:46.756008+00:00",
+    "text": "Ok seems to be consistently happen when I unlock phone, and instantly try to open qs\nAnd when turning screen off and instantly unlocking with fod again",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 102648466928127,
+    "update_id": 102648466928127,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-21T13:06:46.756017+00:00",
+    "text": "I noticed this too, happens right after unlocking the screen sometimes you go back to the lockacreen. \n\n(Cant get logs rn since moved to stock for a few days of travel)",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 225961452361004,
+    "update_id": 225961452361004,
+    "author": "Ashray V K",
+    "timestamp": "2026-10-21T13:06:46.756023+00:00",
+    "text": "Thought it was just me.",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 56354350446379,
+    "update_id": 56354350446379,
+    "author": "Loic",
+    "timestamp": "2026-10-21T13:06:46.756090+00:00",
+    "text": "New builds for the Pixel 11 Pro XL (kodiak), Pixel 11 Pro (grizzly), Pixel 11 (cubs) and Pixel 11 Pro Fold (yogi), synced with this week's Evolution X source.\n\n\ud83d\udd04 Already on the October 16 build? Settings > System > System updates has this one; it installs in the background, then restart. Rooted? Use Magisk > Install > Install to inactive slot (after OTA) instead of restarting, or root is gone.\n\nWhat's new upstream:\n\u2022 Google apps updated from Pixel 11 Pro firmware CD1A.261005.003\n\u2022 Android System WebView 155.0.8059.39\n\u2022 Evolver: spoofing settings redesigned in Material 3 Expressive\n\u2022 Bluetooth no longer turns itself back on by default\n\u2022 Mobile network: falls back to visible cells when a network scan is rejected\n\u2022 Bug reports include the full kernel log\n\u2022 Emergency information: picking a photo works without a crop app\n\u2022 Translation updates across Evolution X and LineageOS apps\n\n\u26a0\ufe0f Known issue: a user has reported that Now Playing won't turn on in this build. It's being looked into.\n\nUnchanged: Espada kernel v3 (Linux 6.12.92) by Kevtrejo37 on kodiak, grizzly and cubs (yogi stays on stock Google GKI), Extreme Charging, the charging screensaver, \"Use device MAC\" for Wi-Fi networks that filter by MAC address (since the 10-16 build), and stock CD1A.261005.003 firmware (security patch 2026-10-05).\n\n\ud83d\udcf1 Pixel 11 Pro XL (kodiak): EvolutionX-17.0-20261018-kodiak-12.3-Unofficial-fastboot.zip\nSHA-256: 0dd2e184a1a61518e3b333c3072d8ca48d7fb724366e2505f75e09a567656156\n\n\ud83d\udcf1 Pixel 11 Pro (grizzly): EvolutionX-17.0-20261018-grizzly-12.3-Unofficial-fastboot.zip\nSHA-256: 5e971deabeb379bf25408d12489aa07eed1b0d1dd33261b2b76b09c91ca276ac\n\n\ud83d\udcf1 Pixel 11 (cubs): EvolutionX-17.0-20261018-cubs-12.3-Unofficial-fastboot.zip\nSHA-256: 91386eb6c524a88712611a87307652b255ce6d3734e8b25b059471727b7ed929\n\n\ud83d\udcf1 Pixel 11 Pro Fold (yogi): EvolutionX-17.0-20261019-yogi-12.3-Unofficial-fastboot.zip\nSHA-256: db05f6075dab75304b636e9cc02c45a90fcfebc79f487c5b638bf85ed6d57abd\n\n\u2b07\ufe0f SourceForge: https://sourceforge.net/projects/denson9874-s-user-builds/files/\n\ud83d\udcac XDA: kodiak/grizzly https://xdaforums.com/t/4804712/ \u00b7 cubs https://xdaforums.com/t/4804723/ \u00b7 yogi https://xdaforums.com/t/4804826/\nPixel 11 pro xl \nKsuNext \nZygisk Next\nBrene SuSFS\nLSPosed \nTout fonctionne hormis New Playing et Chrome (update 15/10) qui bloque a l'ouverture puis Crash \nLe reste est parfait merci pour tout \ud83d\ude09",
+    "reply_to": {
+      "text": "In reply to Expressive Group: \ud83d\udee0 Evolution X for the Pixel 11 series: October 18 update"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 216774928875151,
+    "update_id": 216774928875151,
+    "author": "Pratik",
+    "timestamp": "2026-10-21T13:06:46.756115+00:00",
+    "text": "Hi @denson9874 thanks for the launcher update. It's smooth!\n\nFew feedback:\n1. The app drawer top search bar covers the top icon bar\n2. In app drawer hide apps, the work profile apps do not have a work profile bagde.. So i see 2 apps for apps in my work and personal profile.. Just a work profile badge in hide apps list.\n3. Can you see if appsfolder can have a icon (not cover)? So for 2 email apps in a folder I can set its icon to a email app icon..\n4. App icon size issue still persists. For e. g 90% app size in home screen is smaller than 90% app size in app drawer\n5. Icons within the folder are also not same in size \n\nMore when I find out.. Thanks always",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 116856943851336,
+    "update_id": 116856943851336,
+    "author": "Loic",
+    "timestamp": "2026-10-21T13:06:46.756128+00:00",
+    "text": "Merci pour ta r\u00e9ponse \nJ'avais activ\u00e9 l'option hide framework-res.apk pour \u00e9viter d'avoir cette erreur dans Duck mais c'est \u00e7a qui bloquait \nMaintenant Chrome a jour et fonctionne parfaitement, juste a trouv\u00e9 comment hide",
+    "reply_to": {
+      "text": "In reply to Daryl: \u200e\u2068Merci ! Now Playing est un probl\u00e8me connu, corrig\u00e9 dans la prochaine mise \u00e0 jour. Pour Chrome : ouvre-le jusqu'au crash, puis sur PC adb logcat -b crash -d > crash.txt et envoie le fichier. Essaie aussi Chrome sans modules LSPosed pour Chrome, pour voir si c'est la ROM ou un module.\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 3187653535470,
+    "update_id": 3187653535470,
+    "author": "Loic",
+    "timestamp": "2026-10-21T13:06:46.756138+00:00",
+    "text": "J'avais activ\u00e9 l'option hide framework-res.apk pour \u00e9viter d'avoir cette erreur dans Duck mais c'est \u00e7a qui bloquait \nMaintenant Chrome a jour et fonctionne parfaitement, juste a trouv\u00e9 comment hide\u2069",
+    "reply_to": {
+      "text": "In reply to Loic: \u200e\u2068Merci pour ta r\u00e9ponse "
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 144174602843788,
+    "update_id": 144174602843788,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-21T13:06:46.756144+00:00",
+    "text": "Rcs is not working",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 84142602660033,
+    "update_id": 84142602660033,
+    "author": "Igor",
+    "timestamp": "2026-10-21T13:06:46.756150+00:00",
+    "text": "Works",
+    "reply_to": {
+      "text": "In reply to Christoph \ud83c\uddee\ud83c\uddf1: \u200e\u2068Rcs is not working\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 231784788225811,
+    "update_id": 231784788225811,
+    "author": "Christoph \ud83c\uddee\ud83c\uddf1",
+    "timestamp": "2026-10-21T13:06:46.756156+00:00",
+    "text": "Hm, for me not",
+    "reply_to": {
+      "text": "In reply to Igor: \u200e\u2068Works\u2069"
+    },
+    "attachments": []
+  },
+  {
+    "source": "telegram",
+    "chat_name": "Expressive Group Feedback",
+    "chat_id": null,
+    "message_id": 234447113024594,
+    "update_id": 234447113024594,
+    "author": "Igor",
+    "timestamp": "2026-10-21T13:06:46.756185+00:00",
+    "text": "File, Downloaded, Downloads.zip, 8.8 MB\nlogs",
+    "reply_to": null,
+    "attachments": []
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90784662",
+    "author": "xerel89",
+    "timestamp": "2026-10-20T10:17:12-0400",
+    "text": "I don't think that's was a rom issue, that's a play integrity issue.",
+    "quotes": [
+      "bs3pro said:\nI'm assuming rcs is broken in the US with this rom? And any custom room for that matter?"
+    ],
+    "url": "https://xdaforums.com/t/4804712/post-90784662"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90784724",
+    "author": "LoganDeveloper",
+    "timestamp": "2026-10-20T11:15:39-0400",
+    "text": "If you have freshly installed evox, try updating all your apps first, then if the problem persists clear cache and data of Google messages app.\n\nIt fixed rcs for me",
+    "quotes": [
+      "bs3pro said:\nI'm assuming rcs is broken in the US with this rom? And any custom room for that matter?"
+    ],
+    "url": "https://xdaforums.com/t/4804712/post-90784724"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90784727",
+    "author": "LoganDeveloper",
+    "timestamp": "2026-10-20T11:16:37-0400",
+    "text": "Where? I only have this setting (that keeps going off by itself)",
+    "quotes": [
+      "xerel89 said:\nSearch in the settings for that, this feature is also in stock available"
+    ],
+    "url": "https://xdaforums.com/t/4804712/post-90784727"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90784739",
+    "author": "xerel89",
+    "timestamp": "2026-10-20T11:23:17-0400",
+    "text": "Contact the devopler, I didn't have this issue",
+    "quotes": [],
+    "url": "https://xdaforums.com/t/4804712/post-90784739"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90784745",
+    "author": "xerel89",
+    "timestamp": "2026-10-20T11:28:12-0400",
+    "text": "Whats your settings on pif, I get only an connecting issue",
+    "quotes": [
+      "LoganDeveloper said:\nIf you have freshly installed evox, try updating all your apps first, then if the problem persists clear cache and data of Google messages app.\n\nIt fixed rcs for me"
+    ],
+    "url": "https://xdaforums.com/t/4804712/post-90784745"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4804712",
+    "thread_name": "Pixel 11 Pro XL & Pro (kodiak / grizzly)",
+    "device": "kodiak",
+    "post_id": "90784756",
+    "author": "LoganDeveloper",
+    "timestamp": "2026-10-20T11:42:48-0400",
+    "text": "I just use default config, fetched pixel 6a fingerprint as recommended\n\nI also use default config for tricky store",
+    "quotes": [
+      "xerel89 said:\nWhats your settings on pif, I get only an connecting issue"
+    ],
+    "url": "https://xdaforums.com/t/4804712/post-90784756"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4805239",
+    "thread_name": "Pixel 8 Pro (husky)",
+    "device": "husky",
+    "post_id": "90785457",
+    "author": "denson9874",
+    "timestamp": "2026-10-21T01:00:31-0400",
+    "text": "Update: 2026-10-21 build\n\nNew build of Evolution X 12.3 (Android 17) for the Pixel 8 Pro, synced with upstream Evolution X cnb and LineageOS on 2026-10-21.\n\nWhat's new\n\nExtreme Charging on husky: the Quick Settings tile now works on the Pixel 8 Pro. Below 50% on a wired charger it relaxes the charge-temperature throttling, so the phone keeps charging faster while you use it. It turns itself off when you unplug or reach 100%. The 47 \u00b0C and 55 \u00b0C charging cut-offs, USB-port protection and the battery's own temperature limits are unchanged; expect the phone to run warmer while it's on.\nPixel face unlock: face unlock now uses the Pixel 8 Pro's own face unlock (LineageOS device tree update). If you used face unlock before, set it up again in Settings > Security & privacy > Device unlock.\nFaster first boot after updates: SystemUI and Settings now ship precompiled, so they're fully optimized from the first boot instead of recompiling.\nUser build, like the Pixel 11 releases.\nUpstream Evolution X: SystemUI no longer polls lockscreen widgets in the background, and the Wi-Fi icon updates on events instead of polling; DynamicBar redesign; torch fixes for long-press power; App Lock, Settings and Evolver updates; latest LineageOS changes.\n\nKnown issues\n\nNotification shade animations can still drop frames. I traced it to SystemUI's notification list layout and I'm working on it.\nGemini Nano features don't work (Google serves the models only to phones with a locked bootloader).\n\nDownloads (SourceForge: husky/17)\n\nROM: EvolutionX-17.0-20261021-husky-12.3-Unofficial.zip\nSHA-256: 3fcd713310bb9b1d1947fec588bef98931676f9edfc8e9fe6e746c85faa8f69b\nRecovery images for clean installs: boot-20261021.img and vendor_boot-20261021.img (SHA-256 in recovery-20261021.sha256)\n\nUpdating from an earlier build keeps your data: reboot to recovery, Apply update > Apply from ADB, then\n\n\t\n\t\n\n\n\n\t\n\t\tCode:\n\t\n\t\n\t\tadb sideload EvolutionX-17.0-20261021-husky-12.3-Unofficial.zip\n\t\nand reboot. For a clean install, follow the first post using the dated recovery images.\n\nTested on my Pixel 8 Pro (October CP3A firmware) as an update from the 10-16 build: verified boot green, SELinux enforcing, Wi-Fi, Bluetooth, NFC, mobile data, both cameras, fingerprint, 43 sensors, 120/60 Hz.",
+    "quotes": [],
+    "url": "https://xdaforums.com/t/4805239/post-90785457"
+  },
+  {
+    "source": "xda",
+    "thread_id": "4805779",
+    "thread_name": "Pixel 8 Pro (husky) DerpFest",
+    "device": "husky",
+    "post_id": "90785708",
+    "author": "denson9874",
+    "timestamp": "2026-10-21T05:46:44-0400",
+    "text": "DerpFest v17 \u2014 Android 17\nGoogle Pixel 8 Pro (husky) | UNOFFICIAL\u200b\n\n\t\n\t\n\n\n\n\t\n\t\tCode:\n\t\n\t\n\t\t/*\n * Your warranty is now void. You flash this at your own risk.\n * I'm not responsible for bricked devices, lost data, or anything else.\n */\n\t\n\nAbout\nAn unofficial build of DerpFest v17 (Android 17, LineageOS 24.0-based) for the Google Pixel 8 Pro (husky).\n\nhusky has an official DerpFest maintainer, Adrian Szyma\u0144ski (Adi20_01 on Telegram), whose last official build is v16.2. This is not an official DerpFest build. It brings Android 17 to the Pixel 8 Pro until an official v17 build is out. Please don't report its bugs to the DerpFest team or to Adrian: report them in this thread or in the Telegram group.\n\nFor the Google Pixel 8 Pro (husky) only. Don't flash this on the Pixel 8 (shiba), Pixel 8a (akita), or any other model.\n\nBuild info\n\nDerpFest v17, Android 17, security patch 2026-10-01 (system), 2026-08-05 (vendor)\nBuild type: user, signed with private release keys\nGoogle apps included\nKernel: Linux 6.1.157 (GKI android14-6.1, built from LineageOS's gs-6.1 sources)\nFirmware: stock CP3A.261005.005 (October 2026, ripcurrent bootloader and modem), included in the zip\nDevice trees: LineageOS 24.0 (the same revisions as LineageOS's official husky build of 2026-10-16)\nNot rooted\n\nHighlights\n\nDerpFest's customizations: DerpFest Parts, themes, clocks, Game Space, freeform windows, and more\nGemini Nano runtime (AICore) included\nBuilt-in call recorder: Basic Call Recorder (BCR) 3.11 by chenxiaolong (see the notes below)\nOver-the-air updates through DerpFest's Updater (from this build's own update server, not DerpFest's official one)\n\nCall recording (BCR)\n\nBasic Call Recorder (BCR) 3.11 by chenxiaolong is built in as a system app (GPL-3.0, source: chenxiaolong/BCR v3.11).\nBCR is off until you open it and turn on Call recording. It asks for microphone and notification access.\nBCR plays no announcement or beep: the other party is not told that the call is being recorded.\nMany places require every party's consent to record a call. You are responsible for following the law where you and the other party are.\nWhile BCR records, don't use Google Phone's own Record button, and turn off features that listen to calls (Call Screen, Call Notes, Scam Detection, Voice Translate): two recorders on one call can fail.\nNewer BCR releases from GitHub install over the built-in copy (same signature).\n\nKnown issues\n\nFace unlock is DerpFest's camera-based face unlock, not the Pixel's secure face unlock, so it can't be used for payments or app sign-in. Use the fingerprint sensor for those.\nGemini Nano features that need Google's on-device models (Magic Cue and others) may not work: Google only serves those models to phones with a locked bootloader, on any custom ROM.\nThis is the first DerpFest build for husky. If something doesn't work, please post in this thread with a logcat (adb logcat -b all -d > log.txt) and your carrier.\n\nChangelog\n\n2026-10-21: First DerpFest v17 (Android 17) build for husky. LineageOS 24.0 device trees, October 2026 (CP3A.261005.005) firmware.\n\nRequirements\n\nUnlocked bootloader (unlocking wipes your phone)\nStock firmware CP3A.261005.005 (October 2026). The zip includes October 2026 firmware, but your phone should be on this release. If you're coming from an older release or beta, install CP3A.261005.005 with the Android Flash Tool first.\nLatest platform-tools (adb/fastboot)\nComing from any other ROM: a clean install is required. Updates from other ROMs (and theirs from this one) won't install: this build is signed with its own keys.\n\nInstallation (clean flash)\nDownload the ROM zip and check its SHA-256. Download boot-20261021.img and vendor_boot-20261021.img from the same SourceForge folder, then:\n\n\t\n\t\n\n\n\n\t\n\t\tCode:\n\t\n\t\n\t\tadb reboot bootloader\nfastboot flash boot boot-20261021.img\nfastboot flash vendor_boot vendor_boot-20261021.img\nfastboot reboot recovery\n\t\nIn the recovery:\n\nSelect Factory reset > Format data/factory reset > Format data (wipes all your data).\nReturn to the main menu and select Apply update > Apply from ADB.\nFrom your computer, sideload the ROM:\n\n\t\n\t\n\n\n\n\t\n\t\tCode:\n\t\n\t\n\t\tadb sideload DerpFest-v17-20261021-husky-Unofficial-Stable.zip\n\t\nAfter the sideload finishes (it stops around 47% with Total xfer: 1.00x), select Reboot system now. The first boot takes a few minutes.\n\nUpdating from an earlier build of this ROM keeps your data: use Settings > System > Updater, or reboot to recovery and sideload the new zip the same way.\n\nDownloads\n\nPixel 8 Pro (husky): SourceForge: derpfest/husky\nFile: DerpFest-v17-20261021-husky-Unofficial-Stable.zip (2.87 GB)\nSHA-256: 7ab1b0c5e04fb9c3279df8d319e4cad8442244f526fad8062425c3bbd674b94b\nRecovery images: boot-20261021.img, vendor_boot-20261021.img (checksums in recovery-20261021.sha256)\n\nSource code\n\nROM: DerpFest-AOSP/android_manifest (17)\nDevice trees: LineageOS/android_device_google_shusky and LineageOS/android_device_google_zuma (lineage-24.0), with five small DerpFest patches\nKernel: LineageOS/android_kernel_google_gs-6.1_manifest (lineage-24.0), GKI android14-6.1-2025-12_r30\nVendor blobs: TheMuppets/proprietary_vendor_google_husky\n\nCredits\n\nThe DerpFest team and Adrian Szyma\u0144ski (Adi20_01 on Telegram), official husky maintainer\nThe LineageOS team (Michael Bestas and the Pixel maintainers) for the husky trees\nchenxiaolong for BCR\n\nROM OS version: Android 17\nBased on: LineageOS 24.0 / DerpFest\nStatus: Unofficial",
+    "quotes": [],
+    "url": "https://xdaforums.com/t/4805779/post-90785708"
+  }
+]
