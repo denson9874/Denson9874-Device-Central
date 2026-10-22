@@ -1,0 +1,81 @@
+== kodiak/grizzly thread (4804712) ==
+[B]Update 2026-10-22: fix release (Now Playing, At a Glance, SystemUI)[/B]
+
+New builds for both phones in this thread:
+[LIST]
+[*][B]Pixel 11 Pro XL (kodiak):[/B] [ICODE]EvolutionX-17.0-20261022-kodiak-12.3-Unofficial-fastboot.zip[/ICODE]
+    SHA-256 [ICODE]337aaa1445f86a87e30d1e9839df7b55495cb16380445022dc4cbef649066bb3[/ICODE]
+    [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/kodiak/17/]SourceForge: kodiak/17[/URL]
+[*][B]Pixel 11 Pro (grizzly):[/B] [ICODE]EvolutionX-17.0-20261022-grizzly-12.3-Unofficial-fastboot.zip[/ICODE]
+    SHA-256 [ICODE]789924328f45fcac15a35cb0b7b39816ced4e4742f00d0828c4fc6c906809f4b[/ICODE]
+    [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/]SourceForge: grizzly/17[/URL]
+[/LIST]
+
+[B]Already on the 2026-10-18 build?[/B] Settings > System > System updates has this one: it installs to the other slot in the background, then asks you to restart. Rooted with Magisk? Don't restart from there: Magisk > Install > [I]Install to inactive slot (after OTA)[/I] keeps root. Coming from an older build: [ICODE]fastboot update <zip>[/ICODE] (keeps your data).
+
+[B]Fixed[/B]
+[LIST]
+[*]Now Playing can be turned on again (it was stuck at "Setting up Now Playing").
+[*]At a Glance: the individual options (Live Display and the rest) can be switched off again from the widget settings.
+[*]kodiak: SystemUI no longer restarts and drops you to the lock screen when you open Quick Settings right after a fingerprint unlock.
+[*]Every build is now checked before release for leftover apps and for association rules that differ from stock firmware, the two problems behind these bugs.
+[/LIST]
+[B]Kernel:[/B] Espada v3.5 (Linux 6.12.96) by Kevtrejo37: reworked Simple LMK (fixes an lmkd crash), CASS picks little/mid cores by measured power, per-app uname spoof, USB OTG in recovery.
+[B]Also from upstream:[/B] Evolver redesigned in Material 3 Expressive, Launcher3 layout fix for display size settings, App Lock focus ring, Markup strokes stay inside the image.
+
+Unchanged: Extreme Charging, the charging screensaver, "Use device MAC" for MAC-filtered Wi-Fi, and the stock CD1A.261005.003 firmware (security patch 2026-10-05). Fresh installs: see the first post.
+
+[B]Support policy, please read before reporting[/B]
+[LIST]
+[*][B]Custom setups get limited to no support.[/B] That means root modules, Xposed/LSPosed, any kernel other than Espada, or apps from APKMirror and similar sites that don't match this build (Google system apps especially). Before you report, reproduce the problem on a clean install without them.
+[*][B]No logs, no report.[/B] Bug reports without a logcat are flagged for deletion. Capture one right after the problem happens: [ICODE]adb logcat -b all -d > log.txt[/ICODE] (rooted: [ICODE]su -c "logcat -b all -d > /sdcard/log.txt"[/ICODE]), then post it with your device, build date and steps to reproduce.
+[/LIST]
+
+== cubs thread (4804723) ==
+[B]Update 2026-10-22: fix release (Now Playing, At a Glance)[/B]
+
+New build: [ICODE]EvolutionX-17.0-20261022-cubs-12.3-Unofficial-fastboot.zip[/ICODE]
+SHA-256 [ICODE]6df6e7ee0b7ba262e7d753ce94525c8e3b31725550edd282ec496419adccba0a[/ICODE]
+[URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/cubs/17/]SourceForge: cubs/17[/URL]
+
+[B]Already on the 2026-10-18 build?[/B] Settings > System > System updates has this one (rooted: Magisk > Install > Install to inactive slot after the update, or root is gone). From an older build: [ICODE]fastboot update <zip>[/ICODE] (keeps your data).
+
+[B]Fixed[/B]
+[LIST]
+[*]Now Playing can be turned on again (it was stuck at "Setting up Now Playing").
+[*]At a Glance: the individual options can be switched off again from the widget settings.
+[*]Every build is now checked before release for leftover apps and for association rules that differ from stock firmware.
+[/LIST]
+[B]Kernel:[/B] Espada v3.5 (Linux 6.12.96) by Kevtrejo37: reworked Simple LMK (fixes an lmkd crash), CASS core choice by measured power, per-app uname spoof, USB OTG in recovery.
+[B]Also from upstream:[/B] Evolver redesigned in Material 3 Expressive, Launcher3 layout fix, App Lock focus ring.
+
+[B]Support policy[/B]
+[LIST]
+[*][B]Custom setups get limited to no support:[/B] root modules, Xposed/LSPosed, kernels other than Espada, or mismatched apps from APKMirror and similar sites. Reproduce on a clean install first.
+[*][B]No logs, no report:[/B] reports without a logcat are flagged for deletion. [ICODE]adb logcat -b all -d > log.txt[/ICODE], posted with device, build date and steps to reproduce.
+[/LIST]
+
+== yogi thread (4804826) ==
+[B]Update 2026-10-22: fix release (Now Playing, At a Glance)[/B]
+
+New build: [ICODE]EvolutionX-17.0-20261022-yogi-12.3-Unofficial-fastboot.zip[/ICODE]
+SHA-256 [ICODE]dd943c89cd21d5a60f0d2d0e5e9f13dc70cacaee7ad4a33880ad481da5a6a1b1[/ICODE]
+[URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/yogi/17/]SourceForge: yogi/17[/URL]
+
+[B]Already on the 2026-10-18 build?[/B] Settings > System > System updates has this one (rooted: Magisk > Install > Install to inactive slot after the update, or root is gone). From an older build: [ICODE]fastboot update <zip>[/ICODE] (keeps your data).
+
+[B]Fixed[/B]
+[LIST]
+[*]Now Playing can be turned on again (it was stuck at "Setting up Now Playing").
+[*]At a Glance: the individual options can be switched off again from the widget settings.
+[*]Every build is now checked before release for leftover apps and for association rules that differ from stock firmware.
+[/LIST]
+[B]Also from upstream:[/B] Evolver redesigned in Material 3 Expressive, Launcher3 layout fix, App Lock focus ring.
+
+Unchanged: stock Google GKI kernel, Extreme Charging, the charging screensaver, and stock CD1A.261005.003 firmware.
+
+[B]Support policy[/B]
+[LIST]
+[*][B]Custom setups get limited to no support:[/B] root modules, Xposed/LSPosed, non-stock kernels, or mismatched apps from APKMirror and similar sites. Reproduce on a clean install first.
+[*][B]No logs, no report:[/B] reports without a logcat are flagged for deletion. [ICODE]adb logcat -b all -d > log.txt[/ICODE], posted with device, build date and steps to reproduce.
+[/LIST]
