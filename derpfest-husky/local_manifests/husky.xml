@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Pixel 8 Pro (husky) for DerpFest 17: LineageOS lineage-24.0 device trees + TheMuppets blobs.
+     Pinned to LineageOS's official 20261016 husky nightly (its build-manifest.xml) and the Muppets tip,
+     all CP2A.260805.005; the 10-12 face unlock commits after it are left out on purpose (README). Bump together. -->
+<manifest>
+  <remote name="lineage-gh" fetch="https://github.com/LineageOS" revision="lineage-24.0" />
+  <remote name="muppets" fetch="https://github.com/TheMuppets" revision="lineage-24.0" />
+
+  <project path="device/google/husky" name="android_device_google_husky" remote="lineage-gh"
+           revision="58fde14a7aebbf9608f9cdc0cfb1d0cec4016eb9" upstream="lineage-24.0" />
+  <project path="device/google/shusky" name="android_device_google_shusky" remote="lineage-gh"
+           revision="bf3858753d35531e70f79c6dca18718092be289d" upstream="lineage-24.0" />
+  <project path="device/google/zuma" name="android_device_google_zuma" remote="lineage-gh"
+           revision="f085107fa7d119210764a83ecab92d5dbff1cbef" upstream="lineage-24.0" />
+  <project path="device/google/shusky-kernels" name="android_device_google_shusky-kernels" remote="lineage-gh"
+           revision="cd4a90f656c18677b6171cef35c5b5573ed537ca" upstream="lineage-24.0" clone-depth="1" />
+  <project path="vendor/google/husky" name="proprietary_vendor_google_husky" remote="muppets"
+           revision="7085ddc01630fdfed802c5900db1b1b6a42cd90c" upstream="lineage-24.0" clone-depth="1" />
+</manifest>

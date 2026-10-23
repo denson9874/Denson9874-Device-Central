@@ -1,0 +1,87 @@
+From 9873ee331dd86b27b8d61adfc481f9bfda582e0e Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Thu, 22 Oct 2026 12:47:13 +0200
+Subject: [PATCH] App Lock: keep locked apps out of Recents thumbnails
+
+Launchers draw Recents from task snapshots. Pixel Launcher, which
+provides Recents even with another home app, doesn't know about the
+sandbox App Lock, so a locked app's last screen showed there.
+createRecentTaskInfo() asked AxSandboxService whether the task was
+locked and dropped the answer.
+
+Withhold snapshots (get and take) of apps on the App Lock list, so any
+launcher falls back to the app icon, and set
+RecentTaskInfo.isRealActivityAppLockEnabled for them, the flag Pixel
+Launcher uses for Android's own App Lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../com/android/server/wm/RecentTasks.java     |  8 +++++++-
+ .../android/server/wm/SnapshotController.java  | 18 ++++++++++++++++++
+ 2 files changed, 25 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/wm/RecentTasks.java b/services/core/java/com/android/server/wm/RecentTasks.java
+index 1d3732bbe2..93eff5bfb4 100644
+--- a/services/core/java/com/android/server/wm/RecentTasks.java
++++ b/services/core/java/com/android/server/wm/RecentTasks.java
+@@ -2124,7 +2124,13 @@ class RecentTasks {
+         if (!getTasksAllowed) {
+             Task.trimIneffectiveInfo(tr, rti);
+         }
+-        AxSandboxService.get().isTopAppLocked(rti, tr.effectiveUid);
++        final String basePackage = tr.getBasePackageName();
++        if (AxSandboxService.get().isTopAppLocked(rti, tr.effectiveUid)
++                || (basePackage != null
++                        && AxSandboxService.get().hasAppLock(basePackage, tr.mUserId))) {
++            // Launchers that support App Lock (Pixel Launcher among them) hide the task content.
++            rti.isRealActivityAppLockEnabled = true;
++        }
+         return rti;
+     }
+ 
+diff --git a/services/core/java/com/android/server/wm/SnapshotController.java b/services/core/java/com/android/server/wm/SnapshotController.java
+index 3d5cc8bbfb..4ee720318e 100644
+--- a/services/core/java/com/android/server/wm/SnapshotController.java
++++ b/services/core/java/com/android/server/wm/SnapshotController.java
+@@ -385,6 +385,17 @@ class SnapshotController {
+         mSnapshotManagerService.notifySnapshotReleased(taskId);
+     }
+ 
++    /**
++     * Whether the task belongs to an app on the App Lock list. Launchers draw Recents from these
++     * snapshots, and Pixel Launcher doesn't know about App Lock, so a locked app's content has to
++     * be withheld here or it shows in Recents.
++     */
++    private static boolean isLockedByAppLock(Task task) {
++        final String packageName = task.getBasePackageName();
++        return packageName != null
++                && AxSandboxService.get().hasAppLock(packageName, task.mUserId);
++    }
++
+     class SnapshotManagerService extends ITaskSnapshotManager.Stub {
+ 
+         @Override
+@@ -401,6 +412,10 @@ class SnapshotController {
+                         Slog.w(TAG, "getTaskSnapshot: taskId=" + taskId + " not found");
+                         return null;
+                     }
++                    if (isLockedByAppLock(task)) {
++                        // Recents shows the app icon instead of the locked app's content.
++                        return null;
++                    }
+                 }
+                 return SnapshotController.this.getTaskSnapshotInner(taskId, task, latestCaptureTime,
+                         retrieveResolution);
+@@ -427,6 +442,9 @@ class SnapshotController {
+                                 + " not found or not visible");
+                         return null;
+                     }
++                    if (isLockedByAppLock(task)) {
++                        return null;
++                    }
+                     // Note that if updateCache is true, ActivityRecord#shouldUseAppThemeSnapshot
+                     // will be used to decide whether the task is allowed to be captured because
+                     // that may be retrieved by recents. While if updateCache is false, the real
+-- 
+2.43.0
+

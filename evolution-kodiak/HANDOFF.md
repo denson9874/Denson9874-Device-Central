@@ -2327,3 +2327,34 @@ cd ~/Downloads/kodiak-evox/aod-flash
 fastboot update ../EvolutionX-17.0-20261015-kodiak-12.3-Unofficial-personal-keep-initboot-bodega-sepolicy.zip
 ```
 
+
+## 2ak. 20261022 fix release (2026-10-22)
+
+- **Released** all four Pixel 11 builds (`release-chain-20261022.sh`, `--no-sync` from the 10-21 01:42 sync, Espada
+  v3.5 on kodiak/grizzly/cubs, still not booted by us): no `nowplaying.xml` (Now Playing, At a Glance sub-settings:
+  ISS-20261019-01/-05, Ashray's logcat showed `association not allowed` com.google.android.as -> as.oss) and no stale
+  AOSP SystemUI.apk on kodiak (ISS-20261020-01). SourceForge + evolution_ota published for each.
+- **`tools/release-checks.sh`** now runs in `p11-routine.sh` after the build and before pack: allow-association rules
+  must match the stock dump, and every */app, */priv-app APK in out/ must be in
+  `obj/PACKAGING/<part>_intermediates/file_list.txt` (plus no SystemUI next to SystemUIGoogle). Deployed on the server
+  (old routine: `~/p11-routine.sh.bak-20261022`; the server copy still lacks the repo's cheetah changes).
+- **Announced** with Daryl's go-ahead: Telegram `@ExpressiveGroup`, XDA posts 90787067 (kodiak/grizzly), 90787070
+  (cubs), 90787072 (yogi), from `TELEGRAM_UPDATE_20261022.md` / `XDA_UPDATE_20261022.bbcode`. New support policy in
+  both: custom setups (modules, root, Xposed, non-Espada kernels, mismatched APKMirror apps) get limited to no support,
+  and reports without logs are flagged for deletion. Triage should hold reporters to it.
+
+## 2al. Husky releases 2026-10-23 (Evolution X and DerpFest together)
+
+- **Evolution X husky 20261023** (`4e4da0cb…`): frameworks_base 0009/0010 added to `evolution-husky/patches`. Sideloaded
+  on Daryl's wife's Pixel 8 Pro (data kept, slot _b): island showing, 0 of 937 frames GPU-composited. device-ok written,
+  uploaded to SourceForge husky/17, announced (Telegram, XDA 4805239 post 90788434). SCONE (Play-updated) crashes after
+  boot on husky: not installed as a priv-app in either husky ROM (ISS-20261022-06; fix needs a Google-signed SCONE).
+- **DerpFest husky 20261023** (`ba6de368…`): a read-only 18-agent check found the island blur and face-enroll bugs don't
+  apply to DerpFest; NetworkPolicy 0007/0008 do (ported as derpfest-husky frameworks_base 0001/0002); App Lock tiles were
+  already placeholders but Screenshot/Lens/split used the real snapshot (0003 withholds snapshots of App-Locked tasks).
+  Daryl's calls: ADB authorization restored (vendor/lineage common.mk had ro.adb.secure=0 + adb on by default since
+  10-17, shipped in 10-21), the uncommitted Evolution TrickyStore/PIF spoof code in DerpFest frameworks/base dropped
+  (backup ~/derpfest-backups/20261023-native-strong-integrity), kernel re-synced to 6.1.162 (`--kernel-sync`). DerpFest's
+  4 undocumented local frameworks commits are now patches 0004-0007. Built, checks OK, published (SF derpfest/husky,
+  derpfest_ota), announced (Telegram, XDA 4805779 post 90788436). No phone test (policy). ~/derpfest is shared with
+  DerpFest kodiak: its next build gets the ADB fix and loses the spoof code too.

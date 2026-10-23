@@ -1,0 +1,115 @@
+Title: [ROM][UNOFFICIAL][17][husky] DerpFest v17 (Android 17) for the Pixel 8 Pro
+
+[CENTER][SIZE=6][B]DerpFest v17 — Android 17[/B][/SIZE]
+[SIZE=4]Google Pixel 8 Pro (husky) | UNOFFICIAL[/SIZE][/CENTER]
+
+[CODE]
+/*
+ * Your warranty is now void. You flash this at your own risk.
+ * I'm not responsible for bricked devices, lost data, or anything else.
+ */
+[/CODE]
+
+[SIZE=5][B]About[/B][/SIZE]
+An unofficial build of DerpFest v17 (Android 17, LineageOS 24.0-based) for the Google Pixel 8 Pro (husky).
+
+husky has an official DerpFest maintainer, [B]Adrian Szymański (Adi20_01 on Telegram)[/B], whose last official build is v16.2. This is [B]not an official DerpFest build[/B]. It brings Android 17 to the Pixel 8 Pro until an official v17 build is out. Please don't report its bugs to the DerpFest team or to Adrian: report them in this thread or in the Telegram group.
+
+[B]For the Google Pixel 8 Pro (husky) only.[/B] Don't flash this on the Pixel 8 (shiba), Pixel 8a (akita), or any other model.
+
+[SIZE=5][B]Build info[/B][/SIZE]
+[LIST]
+[*]DerpFest v17, Android 17, security patch 2026-10-01 (system), 2026-08-05 (vendor)
+[*]Build type: user, signed with private release keys
+[*]Google apps included
+[*]Kernel: Linux 6.1.157 (GKI android14-6.1, built from LineageOS's gs-6.1 sources)
+[*]Firmware: stock CP3A.261005.005 (October 2026, ripcurrent bootloader and modem), included in the zip
+[*]Device trees: LineageOS 24.0 (the same revisions as LineageOS's official husky build of 2026-10-16)
+[*]Not rooted
+[/LIST]
+
+[SIZE=5][B]Highlights[/B][/SIZE]
+[LIST]
+[*]DerpFest's customizations: DerpFest Parts, themes, clocks, Game Space, freeform windows, and more
+[*]Gemini Nano runtime (AICore) included
+[*]Built-in call recorder: Basic Call Recorder (BCR) 3.11 by chenxiaolong (see the notes below)
+[*]Over-the-air updates through DerpFest's Updater (from this build's own update server, not DerpFest's official one)
+[/LIST]
+
+[SIZE=5][B]Call recording (BCR)[/B][/SIZE]
+[LIST]
+[*]Basic Call Recorder (BCR) 3.11 by chenxiaolong is built in as a system app (GPL-3.0, source: [URL=https://github.com/chenxiaolong/BCR/tree/v3.11]chenxiaolong/BCR v3.11[/URL]).
+[*]BCR is off until you open it and turn on Call recording. It asks for microphone and notification access.
+[*]BCR plays no announcement or beep: the other party is not told that the call is being recorded.
+[*]Many places require every party's consent to record a call. You are responsible for following the law where you and the other party are.
+[*]While BCR records, don't use Google Phone's own Record button, and turn off features that listen to calls (Call Screen, Call Notes, Scam Detection, Voice Translate): two recorders on one call can fail.
+[*]Newer BCR releases from GitHub install over the built-in copy (same signature).
+[/LIST]
+
+[SIZE=5][B]Known issues[/B][/SIZE]
+[LIST]
+[*]Face unlock is DerpFest's camera-based face unlock, not the Pixel's secure face unlock, so it can't be used for payments or app sign-in. Use the fingerprint sensor for those.
+[*]Gemini Nano features that need Google's on-device models (Magic Cue and others) may not work: Google only serves those models to phones with a locked bootloader, on any custom ROM.
+[*]This is the first DerpFest build for husky. If something doesn't work, please post in this thread with a logcat ([ICODE]adb logcat -b all -d > log.txt[/ICODE]) and your carrier.
+[/LIST]
+
+[SIZE=5][B]Changelog[/B][/SIZE]
+[LIST]
+[*][B]2026-10-21:[/B] First DerpFest v17 (Android 17) build for husky. LineageOS 24.0 device trees, October 2026 (CP3A.261005.005) firmware.
+[/LIST]
+
+[SIZE=5][B]Requirements[/B][/SIZE]
+[LIST]
+[*]Unlocked bootloader (unlocking wipes your phone)
+[*]Stock firmware [B]CP3A.261005.005 (October 2026)[/B]. The zip includes October 2026 firmware, but your phone should be on this release. If you're coming from an older release or beta, install CP3A.261005.005 with the Android Flash Tool first.
+[*]Latest platform-tools (adb/fastboot)
+[*][B]Coming from any other ROM: a clean install is required. Updates from other ROMs (and theirs from this one) won't install: this build is signed with its own keys.[/B]
+[/LIST]
+
+[SIZE=5][B]Installation (clean flash)[/B][/SIZE]
+Download the ROM zip and check its SHA-256. Download [ICODE]boot-20261021.img[/ICODE] and [ICODE]vendor_boot-20261021.img[/ICODE] from the same SourceForge folder, then:
+[CODE]
+adb reboot bootloader
+fastboot flash boot boot-20261021.img
+fastboot flash vendor_boot vendor_boot-20261021.img
+fastboot reboot recovery
+[/CODE]
+In the recovery:
+[LIST=1]
+[*]Select [B]Factory reset[/B] > [B]Format data/factory reset[/B] > [B]Format data[/B] ([B]wipes all your data[/B]).
+[*]Return to the main menu and select [B]Apply update[/B] > [B]Apply from ADB[/B].
+[*]From your computer, sideload the ROM:
+[/LIST]
+[CODE]
+adb sideload DerpFest-v17-20261021-husky-Unofficial-Stable.zip
+[/CODE]
+After the sideload finishes (it stops around 47% with [ICODE]Total xfer: 1.00x[/ICODE]), select [B]Reboot system now[/B]. The first boot takes a few minutes.
+
+[B]Updating[/B] from an earlier build of this ROM keeps your data: use Settings > System > Updater, or reboot to recovery and sideload the new zip the same way.
+
+[SIZE=5][B]Downloads[/B][/SIZE]
+[LIST]
+[*]Pixel 8 Pro (husky): [URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/derpfest/husky/]SourceForge: derpfest/husky[/URL]
+[*]File: [ICODE]DerpFest-v17-20261021-husky-Unofficial-Stable.zip[/ICODE] (2.87 GB)
+[*]SHA-256: [ICODE]7ab1b0c5e04fb9c3279df8d319e4cad8442244f526fad8062425c3bbd674b94b[/ICODE]
+[*]Recovery images: [ICODE]boot-20261021.img[/ICODE], [ICODE]vendor_boot-20261021.img[/ICODE] (checksums in [ICODE]recovery-20261021.sha256[/ICODE])
+[/LIST]
+
+[SIZE=5][B]Source code[/B][/SIZE]
+[LIST]
+[*]ROM: [URL=https://github.com/DerpFest-AOSP/android_manifest/tree/17]DerpFest-AOSP/android_manifest (17)[/URL]
+[*]Device trees: [URL=https://github.com/LineageOS/android_device_google_shusky/tree/lineage-24.0]LineageOS/android_device_google_shusky[/URL] and [URL=https://github.com/LineageOS/android_device_google_zuma/tree/lineage-24.0]LineageOS/android_device_google_zuma[/URL] (lineage-24.0), with five small DerpFest patches
+[*]Kernel: [URL=https://github.com/LineageOS/android_kernel_google_gs-6.1_manifest/tree/lineage-24.0]LineageOS/android_kernel_google_gs-6.1_manifest (lineage-24.0)[/URL], GKI [ICODE]android14-6.1-2025-12_r30[/ICODE]
+[*]Vendor blobs: [URL=https://github.com/TheMuppets/proprietary_vendor_google_husky/tree/lineage-24.0]TheMuppets/proprietary_vendor_google_husky[/URL]
+[/LIST]
+
+[SIZE=5][B]Credits[/B][/SIZE]
+[LIST]
+[*]The DerpFest team and Adrian Szymański (Adi20_01 on Telegram), official husky maintainer
+[*]The LineageOS team (Michael Bestas and the Pixel maintainers) for the husky trees
+[*]chenxiaolong for BCR
+[/LIST]
+
+[B]ROM OS version:[/B] Android 17
+[B]Based on:[/B] LineageOS 24.0 / DerpFest
+[B]Status:[/B] Unofficial
