@@ -628,10 +628,24 @@ jobs:
           ls build/make/target/product/ | grep -E '^(sdk_phone64|aosp_arm64|emu)' || true
           ls build/release/release_configs 2>/dev/null | tr '\n' ' ' || true; echo
           ls -d device/generic/goldfish device/generic/goldfish-opengl device/generic/goldfish-arm64 2>/dev/null || true
+          ls device/generic 2>/dev/null | tr '\n' ' ' || true; echo
+          for f in vendor/lineage/build/target/product/lineage_sdk_phone_arm64.mk \
+                   vendor/lineage/build/target/product/lineage_sdk_phone_arm64_board.mk \
+                   vendor/lineage/build/target/product/lineage_generic_target.mk; do
+            [[ -f "$f" ]] && { echo "-- $f"; grep -vE '^\s*(#|$)' "$f"; }
+          done
+          echo "-- artifact path requirement settings"
+          grep -rnE 'ARTIFACT_PATH_REQUIREMENT' vendor/lineage vendor/evolution* vendor/extras build/make/target/product/generic_system.mk \
+            --include='*.mk' 2>/dev/null | head -30 || true
+          grep -rln 'artifact path requirement' build/soong build/make/core 2>/dev/null | head -5 || true
           echo "== emulator build"
           l="$(cat ~/routine-logs/emulator-build.latest 2>/dev/null || true)"
           if [[ -n "$l" && -f "$l" ]]; then
             echo "$l"; grep -E 'BUILD_EXIT|#### |FAILED:|error:|^lunch|TARGET_PRODUCT=' "$l" | tail -25 || true
+            if grep -q 'artifact path requirement' "$l"; then
+              echo "-- artifact path requirement failure"
+              grep -B 3 -A 120 -m 1 'artifact path requirement' "$l" | tr '\r' '\n' | grep -vE '^\[ *[0-9]+%' | head -150
+            fi
             tail -c 800 "$l" | tr '\r' '\n' | tail -5
           else
             echo "none started"
