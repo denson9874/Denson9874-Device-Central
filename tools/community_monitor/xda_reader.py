@@ -27,6 +27,10 @@ except ImportError:
     PLAYWRIGHT_AVAILABLE = False
 
 
+class ThreadReadError(Exception):
+    """A page of a thread couldn't be read, so nothing from that thread is trusted this run."""
+
+
 class XDAReader:
     def __init__(self, config_path: Optional[str] = None):
         if config_path is None:
@@ -35,6 +39,11 @@ class XDAReader:
             self.config = json.load(f)
 
         self.threads = self.config.get("xda", {}).get("threads", [])
+        # Threads the last fetch_all_threads() couldn't read in full: {"thread_id", "name", "kind", "reason"}.
+        # kind "failed": nothing read, its state not advanced, so the next run retries it.
+        # kind "truncated": more than MAX_PAGES unread pages, so its oldest unread posts were skipped.
+        self.thread_warnings: List[Dict[str, str]] = []
+        self._fetch_error: Optional[str] = None
 
     @staticmethod
     def is_chrome_available() -> bool:
@@ -56,7 +65,8 @@ class XDAReader:
     # reviews loses its oldest unread posts (with a warning) rather than stalling the review.
     MAX_PAGES = 20
 
-    # Runs in the thread page: the page number shown and its posts (quotes left out of the text)
+    # Runs in the thread page: the page number shown and its posts (quotes left out of the text), plus the
+    # document's load state and URL so a half-loaded or wrong page isn't taken for this thread's page
     _EXTRACT_JS = """
     (function() {
         let cur = document.querySelector('.pageNav-page--current');
@@ -81,13 +91,31 @@ class XDAReader:
             }
             posts.push({post_id: id, author: author, timestamp: ts, text: text, quotes: quotes});
         }
-        return JSON.stringify({page: page, posts: posts});
+        return JSON.stringify({page: page, posts: posts, ready: document.readyState, href: location.href});
     })()
     """
 
     @staticmethod
     def _page_url(url: str, page: int) -> str:
         return url.rstrip("/") + f"/page-{page}"
+
+    @staticmethod
+    def _one_line(text: Any, cap: int = 200) -> str:
+        """Error text for the briefing: one line, at most `cap` characters (Playwright errors span several)."""
+        s = " ".join(str(text).split())
+        return s if len(s) <= cap else s[:cap - 3] + "..."
+
+    @staticmethod
+    def _page_problem(data: Dict[str, Any], thread_id: str) -> Optional[str]:
+        """Why an extracted page can't be trusted, or None. A page read before it finished loading can hold
+        only its first posts; one from another tab or URL isn't this thread's."""
+        ready = data.get("ready")
+        if ready is not None and ready != "complete":
+            return f"page still loading (readyState {ready})"
+        href = data.get("href")
+        if href is not None and f".{thread_id}/" not in href and f"/t/{thread_id}" not in href:
+            return f"read a different page ({XDAReader._one_line(href, 100)})"
+        return None
 
     @staticmethod
     def _post_num(post_id: Optional[str]) -> Optional[int]:
@@ -106,31 +134,47 @@ class XDAReader:
         Walks back from the thread's last page until it reaches a post at or below last_post_id (or page 1),
         so posts on every unread page are returned, oldest first. fetch_page(n) returns (actual_page, raw_posts);
         n=999 lands on the last page. Without a last_post_id (first run) only the last page is read.
+
+        Raises ThreadReadError if any page can't be read (None) or comes back with no posts (every thread
+        page has at least one, so an empty one hadn't loaded or was XDA's anti-bot check). Returning the
+        pages read so far would move the thread's state past the posts on the page that failed.
         """
         thread_id = thread_info["id"]
         device = thread_info.get("device", "unknown")
         last_num = self._post_num(last_post_id)
 
+        def read(n: int) -> Tuple[int, List[Dict[str, Any]]]:
+            self._fetch_error = None
+            page_no, raw = fetch_page(n)
+            if not raw:
+                where = "last page" if n == 999 else f"page {n}"
+                reason = self._fetch_error if raw is None else None
+                raise ThreadReadError(self._one_line(
+                    f"{where}: {reason or 'no posts on the page (not loaded in time, or the anti-bot check)'}"
+                ))
+            return page_no, raw
+
+        def reached(raw: List[Dict[str, Any]]) -> bool:
+            """The page holds last_post_id or an older post, so nothing before it is unread."""
+            nums = [self._post_num(r.get("post_id")) for r in raw]
+            return any(n is not None and last_num is not None and n <= last_num for n in nums) or \
+                any(r.get("post_id") == last_post_id for r in raw)
+
         pages: List[List[Dict[str, Any]]] = []
-        page_no, raw = fetch_page(999)
-        if raw is None:
-            return [], last_post_id
+        page_no, raw = read(999)
         pages.append(raw)
         while last_post_id and page_no > 1 and len(pages) < self.MAX_PAGES:
-            nums = [self._post_num(r.get("post_id")) for r in raw]
-            if any(n is not None and last_num is not None and n <= last_num for n in nums) or \
-                    any(r.get("post_id") == last_post_id for r in raw):
+            if reached(raw):
                 break
-            page_no, raw = fetch_page(page_no - 1)
-            if raw is None:
-                break
+            page_no, raw = read(page_no - 1)
             pages.append(raw)
         else:
-            if last_post_id and len(pages) >= self.MAX_PAGES:
-                sys.stderr.write(
-                    f"[XDAReader] Thread {thread_id}: more than {self.MAX_PAGES} unread pages; "
-                    "older unread posts were skipped.\n"
-                )
+            # Only when the walk stopped at MAX_PAGES with older pages still unread
+            if last_post_id and len(pages) >= self.MAX_PAGES and page_no > 1 and not reached(raw):
+                reason = f"more than {self.MAX_PAGES} unread pages; older unread posts were skipped"
+                sys.stderr.write(f"[XDAReader] Thread {thread_id}: {reason}.\n")
+                self.thread_warnings.append({"thread_id": thread_id, "name": thread_info.get("name") or thread_id,
+                                             "kind": "truncated", "reason": reason})
 
         posts = []
         highest_id = last_post_id
@@ -170,25 +214,48 @@ class XDAReader:
         escaped_js = json.dumps(self._EXTRACT_JS)
 
         def fetch_page(n: int):
+            # Works on the tab it opened (not whichever tab is active, which the user may have switched),
+            # waits until that tab has finished loading (up to 30 s), and always closes it
             apple_script = f"""
             tell application "Google Chrome Canary"
                 tell front window
                     set newTab to make new tab with properties {{URL:"{self._page_url(url, n)}"}}
                 end tell
-                delay 3
-                set postData to execute active tab of front window javascript {escaped_js}
-                tell front window
-                    close active tab
-                end tell
+                set waited to 0
+                repeat while (loading of newTab) and waited < 60
+                    delay 0.5
+                    set waited to waited + 1
+                end repeat
+                delay 1
+                try
+                    set postData to execute newTab javascript {escaped_js}
+                on error errMsg
+                    close newTab
+                    error errMsg
+                end try
+                close newTab
                 return postData
             end tell
             """
-            res = subprocess.run(["osascript", "-e", apple_script], capture_output=True, text=True, timeout=20)
-            if res.returncode != 0 or not res.stdout.strip():
+            try:
+                res = subprocess.run(["osascript", "-e", apple_script], capture_output=True, text=True, timeout=45)
+            except subprocess.TimeoutExpired:
+                self._fetch_error = "Chrome Canary timed out after 45 s"
+                return n, None
+            if res.returncode != 0:
+                self._fetch_error = f"Chrome Canary script failed: {self._one_line(res.stderr) or res.returncode}"
+                return n, None
+            if not res.stdout.strip():
+                self._fetch_error = "Chrome Canary returned nothing"
                 return n, None
             try:
                 data = json.loads(res.stdout.strip())
             except Exception:
+                self._fetch_error = "Chrome Canary's page result wasn't readable"
+                return n, None
+            problem = self._page_problem(data, thread_info["id"])
+            if problem:
+                self._fetch_error = problem
                 return n, None
             return int(data.get("page") or 1), data.get("posts", [])
 
@@ -200,21 +267,33 @@ class XDAReader:
         last_post_id: Optional[str] = None,
         max_posts: int = 50
     ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        """
+        New posts of one thread. If it can't be read in full, returns no posts and last_post_id (so its
+        state stays put and the next run retries it) and records why in self.thread_warnings.
+        """
+        thread_id = thread_info["id"]
+        errors = []
         if self.is_chrome_available():
             try:
-                posts, highest = self.fetch_thread_posts_chrome(thread_info, last_post_id)
-                if posts or highest:
-                    return posts, highest
+                return self.fetch_thread_posts_chrome(thread_info, last_post_id)
             except Exception as e:
-                sys.stderr.write(f"[XDAReader] Chrome Canary fetch failed: {e}, falling back to Playwright\n")
+                errors.append(f"Chrome Canary: {self._one_line(e)}")
+                if PLAYWRIGHT_AVAILABLE:
+                    sys.stderr.write(f"[XDAReader] Thread {thread_id}: {errors[-1]}; trying Playwright\n")
 
         if PLAYWRIGHT_AVAILABLE:
-            return self.fetch_thread_posts_playwright(thread_info, last_post_id, max_posts)
+            try:
+                return self.fetch_thread_posts_playwright(thread_info, last_post_id, max_posts)
+            except Exception as e:
+                errors.append(f"Playwright: {self._one_line(e)}")
 
-        sys.stderr.write(
-            "[XDAReader] Neither Chrome Canary nor Playwright available. "
-            "Run 'pip3 install playwright && playwright install chromium' or launch Chrome Canary.\\n"
-        )
+        if not errors:
+            errors.append("neither Chrome Canary nor Playwright is available "
+                          "(launch Chrome Canary, or pip3 install playwright && playwright install chromium)")
+        reason = "; ".join(errors)
+        sys.stderr.write(f"[XDAReader] WARNING: thread {thread_id} not read, retried next run: {reason}\n")
+        self.thread_warnings.append({"thread_id": thread_id, "name": thread_info.get("name") or thread_id,
+                                     "kind": "failed", "reason": reason})
         return [], last_post_id
 
     def fetch_thread_posts_playwright(
@@ -252,10 +331,15 @@ class XDAReader:
                     # BunnyCDN Shield challenge: give it time to resolve
                     if "Shield" in page.title() or "challenge" in page.content().lower():
                         page.wait_for_timeout(4000)
+                    page.wait_for_load_state("load", timeout=30000)
                     data = json.loads(page.evaluate(self._EXTRACT_JS))
+                    problem = self._page_problem(data, thread_id)
+                    if problem:
+                        self._fetch_error = problem
+                        return n, None
                     return int(data.get("page") or 1), data.get("posts", [])
                 except Exception as e:
-                    sys.stderr.write(f"[XDAReader] Error reading thread {thread_id} page {n}: {e}\n")
+                    self._fetch_error = self._one_line(f"{type(e).__name__}: {e}")
                     return n, None
 
             try:
@@ -268,11 +352,13 @@ class XDAReader:
         state: Dict[str, Any]
     ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
-        Iterates over all configured threads and extracts new posts.
+        Iterates over all configured threads and extracts new posts. Threads it couldn't read in full are
+        listed in self.thread_warnings afterwards.
         """
         all_posts = []
         updated_state = dict(state)
         xda_state = updated_state.setdefault("xda", {})
+        self.thread_warnings = []
 
         for thread in self.threads:
             tid = thread["id"]
