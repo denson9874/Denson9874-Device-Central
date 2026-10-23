@@ -638,6 +638,17 @@ jobs:
           grep -rnE 'ARTIFACT_PATH_REQUIREMENT' vendor/lineage vendor/evolution* vendor/extras build/make/target/product/generic_system.mk \
             --include='*.mk' 2>/dev/null | head -30 || true
           grep -rln 'artifact path requirement' build/soong build/make/core 2>/dev/null | head -5 || true
+          echo "== mobile data defaults: our builds, the stock dumps, and the makefiles that set them"
+          for d in kodiak grizzly cubs yogi emu64a; do
+            for f in out/target/product/"$d"/{system/build.prop,system_ext/etc/build.prop,product/etc/build.prop,vendor/build.prop}; do
+              [[ -f "$f" ]] && { grep -HE 'ro\.com\.android\.(mobiledata|dataroaming)' "$f" || echo "$f: (not set)"; }
+            done
+          done
+          for f in ~/android-dt/dumps/*/{system/build.prop,system/system/build.prop,system_ext/etc/build.prop,product/etc/build.prop,vendor/build.prop}; do
+            [[ -f "$f" ]] && { grep -HE 'ro\.com\.android\.(mobiledata|dataroaming)' "$f" || echo "$f: (not set)"; }
+          done
+          grep -rnE 'ro\.com\.android\.(mobiledata|dataroaming)' vendor/lineage vendor/evolution* vendor/extras vendor/gms vendor/google* \
+            device/google device/generic/goldfish build/make/target --include='*.mk' 2>/dev/null | head -20 || true
           echo "== emulator build"
           l="$(cat ~/routine-logs/emulator-build.latest 2>/dev/null || true)"
           if [[ -n "$l" && -f "$l" ]]; then
