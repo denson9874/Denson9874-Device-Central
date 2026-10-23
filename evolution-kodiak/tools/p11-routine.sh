@@ -14,7 +14,8 @@
 #      published build. The state is the content (git tree hash) of every repo
 #      project plus our device, vendor, images and signing-key trees, so
 #      re-applying the same patch doesn't count as a change.
-#   4. Builds (images plus the signed A/B OTA package), then runs the device's pack
+#   4. Builds (images plus the signed A/B OTA package), runs release-checks.sh (association
+#      rules match stock, no stale apps left in out/), then runs the device's pack
 #      script, which verifies the build and uploads the fastboot zip to SourceForge
 #      only if every check passes.
 #   5. Writes a changelog of upstream commits plus the device's community fixes from
@@ -174,6 +175,8 @@ if ! grep -q "BUILD_EXIT=0" "$BLOG"; then
     grep -E "FAILED:|error:|ninja: build stopped" "$BLOG" | head -30
     fail "the build failed, see $BLOG"
 fi
+echo "== release checks (association rules vs stock, stale apps in out/)"
+~/release-checks.sh "$dev" 9>&- || fail "release-checks.sh found a problem (above); nothing was packed or uploaded"
 echo "== verify and pack ($PACK)"
 if [ $UPLOAD = 1 ]; then out=$($PACK --upload 2>&1 9>&-); else out=$($PACK 2>&1 9>&-); fi
 rc=$?

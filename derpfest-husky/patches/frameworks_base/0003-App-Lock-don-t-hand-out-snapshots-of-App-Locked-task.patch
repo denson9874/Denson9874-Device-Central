@@ -1,0 +1,61 @@
+From e7faa06ed5360081592d8fbd8196e4bee150e192 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 11:49:20 +0200
+Subject: [PATCH] App Lock: don't hand out snapshots of App-Locked tasks
+
+Overview already draws its App Lock placeholder for these tasks
+(RecentTaskInfo.isRealActivityAppLockEnabled), but the framework still
+gave the launcher the real snapshot, and Overview uses it outside the
+tile: the Screenshot and Lens actions save or send it, and starting
+split screen from an App-Locked tile shows it for about 133 ms.
+
+Return no snapshot (get and take) for tasks whose app has App Lock on,
+so every launcher path falls back to having no thumbnail; Overview
+disables the snapshot actions for a task without one.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../com/android/server/wm/SnapshotController.java   | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/services/core/java/com/android/server/wm/SnapshotController.java b/services/core/java/com/android/server/wm/SnapshotController.java
+index 3d5cc8bbfb7b..016f33697d68 100644
+--- a/services/core/java/com/android/server/wm/SnapshotController.java
++++ b/services/core/java/com/android/server/wm/SnapshotController.java
+@@ -385,6 +385,11 @@ class SnapshotController {
+         mSnapshotManagerService.notifySnapshotReleased(taskId);
+     }
+ 
++    /** Whether the task's app has App Lock turned on (the state Overview shows a lock for). */
++    private static boolean isAppLockEnabled(Task task) {
++        return android.security.Flags.appLockCore() && task.mRealActivityAppLockEnabled;
++    }
++
+     class SnapshotManagerService extends ITaskSnapshotManager.Stub {
+ 
+         @Override
+@@ -401,6 +406,11 @@ class SnapshotController {
+                         Slog.w(TAG, "getTaskSnapshot: taskId=" + taskId + " not found");
+                         return null;
+                     }
++                    if (isAppLockEnabled(task)) {
++                        // Overview draws its App Lock placeholder instead; its Screenshot, Lens
++                        // and split-screen paths must not get the locked app's last screen either.
++                        return null;
++                    }
+                 }
+                 return SnapshotController.this.getTaskSnapshotInner(taskId, task, latestCaptureTime,
+                         retrieveResolution);
+@@ -427,6 +437,9 @@ class SnapshotController {
+                                 + " not found or not visible");
+                         return null;
+                     }
++                    if (isAppLockEnabled(task)) {
++                        return null;
++                    }
+                     // Note that if updateCache is true, ActivityRecord#shouldUseAppThemeSnapshot
+                     // will be used to decide whether the task is allowed to be captured because
+                     // that may be retrieved by recents. While if updateCache is false, the real
+-- 
+2.43.0
+

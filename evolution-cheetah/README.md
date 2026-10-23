@@ -57,6 +57,7 @@ The weekly routine runs all of that: `~/p11-routine.sh cheetah` (see "Release sc
    | device/google/gs201 | `0001` | Drop gs201's nine Pixel config overlays that `vendor/pixel-style` also defines (GlanceableHub*, GoogleConfigOverlay, PixelConfigOverlay*, ...); Kati fails on the duplicate module names. Same as husky's zuma `0001` |
    | device/google/gs201 | `0002` | Install gs201's `default-permissions.xml` as `default-permissions-gs201.xml`; vendor/gms installs its own (different) `default-permissions.xml`. Same as husky's zuma `0002` |
    | vendor/google/cheetah | `0001` | Defer `DeviceIntelligenceNetworkPrebuiltAstrea` (vendor/gms's is newer) and 14 byte-identical Pixel sysconfig/default-permission XMLs to vendor/gms. Same as husky's vendor `0001` |
+   | vendor/google/cheetah | `0002` | Don't install `gpuflag` (+ its rc and library): our policy has no `gpuflag` domain, so init's child aborted at every boot, and it targets another SoC's GPU anyway. Same as husky's vendor `0004` |
 
 3. Firmware: Pixels refuse bootloader downgrades, and the OTA flashes the bootloader and radio. So the
    OTA must never carry firmware older than what users run. `fetch-firmware.sh` downloads the newest

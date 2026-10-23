@@ -48,3 +48,21 @@ Daryl's Pixel 7 Pro (`28231FDH3005GR`), build 20261019 (personal, Magisk 30.7), 
   under the same light use) with these numbers.
 - Flash the 2026-10-21 build (upstream SystemUI fixes) and repeat.
 - SystemUI shade cost: shared fix with husky.
+
+## Update: 20261021 build flashed (2026-10-21 02:56)
+
+- OTA sideloaded over the 20261019 personal build (data kept), slot `_a`, verified boot green, SELinux enforcing;
+  then `init_boot_a` flashed with this build's init_boot patched by **Magisk 31.0** (the version the phone had
+  updated to; APK pulled from the phone, signer John Wu `b4cb83b4…`, same as v30.7), preinit `sda8`.
+  Files: server `~/releases/cheetah/personal/init_boot-EvolutionX-17.0-20261021-cheetah-12.3-Unofficial-{magisk,stock}.img`
+  (`4d77123e…` / `53a772d7…`). Root, Zygisk and the 22-entry DenyList are back; MMRL stays restricted.
+- Gate: Wi-Fi, Bluetooth, NFC, mobile data, 2 cameras, 2 fingerprints, 120/60 Hz, 39 sensors (no earlier count
+  to compare), no crashes apart from the one below.
+- **The init child abort at every boot (also seen on husky) is `exec 14 (/vendor/bin/gpuflag)`.** The vendor blob
+  ships `gpuflag` and `gpuflag.rc` (`exec_background u:r:gpuflag:s0 -- /vendor/bin/gpuflag`), but our policy has no
+  `gpuflag` domain, so init's child fails `setexeccon('u:r:gpuflag:s0')` and aborts before running it. Harmless:
+  gpuflag (`vendor/google/graphics/gpuflag`) only sets `power/autosuspend_delay_ms` on
+  `/sys/devices/genpd:0:34f00000.gpu0`, which neither gs201 (`28000000.mali`) nor, from the same binary, zuma has;
+  it would exit "unsupported device". Fix: stop installing `gpuflag.rc` (and the binary) in the cheetah and husky
+  vendor patches.
+- Heat recheck needs a few hours of normal use on this build; compare against the numbers above.

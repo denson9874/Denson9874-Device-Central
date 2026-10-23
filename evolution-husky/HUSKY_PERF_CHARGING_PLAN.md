@@ -56,6 +56,11 @@ for CPU and the encoder, so `husky-audit.sh fluidity` re-measures without it.
   `persist.sysui.disableBlur=1`.
 - Charging could not be measured: the phone was on the Mac's USB port (CDP, `dc-mains` offline).
 
+- **Boot-time `init` child SIGABRT (open item from the 20261021 release): identified on cheetah** as
+  `exec (/vendor/bin/gpuflag)` from the vendor blob's `gpuflag.rc`. Our policy has no `gpuflag` domain, so init's
+  child aborts at `setexeccon`. Harmless (gpuflag targets another SoC's GPU power domain and would exit
+  "unsupported device"); fix by not installing `gpuflag.rc` (`evolution-cheetah/CHEETAH_THERMAL_20261021.md`).
+
 ## 3. Workstreams
 
 ### A. Charging (P0)
