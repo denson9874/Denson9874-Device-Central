@@ -144,6 +144,7 @@ def main():
     print(f"=== ExpressiveOS Daily Community Review: {date_str} ===")
 
     all_raw_items = []
+    xda_warnings = []
     new_tg_offset = state.get("telegram", {}).get("last_update_id", 0)
 
     if args.mock_feed:
@@ -185,10 +186,17 @@ def main():
                 print(f"[ReviewRunner] Ingesting XDA threads via {engine_name}...")
                 xda_posts, updated_state = xda_reader.fetch_all_threads(state)
                 print(f"  -> Fetched {len(xda_posts)} new XDA posts.")
+                xda_warnings = xda_reader.thread_warnings
+                for w in xda_warnings:
+                    what = "NOT READ (retried next run)" if w["kind"] == "failed" else "PARTLY READ"
+                    print(f"  !! XDA thread {w['thread_id']} ({w['name']}) {what}: {w['reason']}")
                 all_raw_items.extend(xda_posts)
                 state = updated_state
             else:
                 print("[ReviewRunner] Neither Playwright nor Chrome Canary available; skipping live XDA scraping.")
+                xda_warnings = [{"thread_id": t["id"], "name": t.get("name") or t["id"], "kind": "failed",
+                                 "reason": "neither Chrome Canary nor Playwright is available"}
+                                for t in xda_reader.threads]
 
     # Save raw feed
     raw_archive = raw_dir / f"raw_{date_compact}.json"
@@ -343,6 +351,13 @@ def main():
     print(f"• Items Reviewed: {len(all_raw_items)}")
     print(f"• Actionable Items: {len(actionable_items)} ({added_count} added to COMMUNITY_TRIAGE.md)")
     print(f"• Reply Drafts Prepared: {len(replies)}")
+    if xda_warnings:
+        failed = [w for w in xda_warnings if w["kind"] == "failed"]
+        print(f"• WARNING: {len(failed)} XDA thread(s) not read, {len(xda_warnings) - len(failed)} partly read; "
+              "this briefing may be missing posts:")
+        for w in xda_warnings:
+            what = "not read, retried next run" if w["kind"] == "failed" else "partly read"
+            print(f"    - {w['name']} (#{w['thread_id']}): {what}: {w['reason']}")
     if args.auto_reply:
         label = "Replies Previewed (dry-run, nothing sent)" if args.dry_run else "Live Replies Sent"
         print(f"• {label}: {replies_sent_count}")
@@ -350,7 +365,9 @@ def main():
         print("\nActionable Items Identified:")
         for item in actionable_items:
             print(f"  - [{item['device'].upper()}][{item['category']}] {item['author']}: {item['text'][:80]}...")
-    if replies:
+    if replies and args.dry_run:
+        print(f"\nDraft responses not saved (dry run); a real run writes them to:\n  {replies_file}")
+    elif replies:
         print(f"\nDraft Responses Available in:\n  {replies_file}")
     print("="*50 + "\n")
 
