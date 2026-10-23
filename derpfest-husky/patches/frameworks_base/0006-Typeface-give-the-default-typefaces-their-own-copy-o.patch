@@ -1,0 +1,83 @@
+From 767a8bfac4c5548abf080942d088b57a8080c1cf Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Wed, 14 Oct 2026 00:47:28 +0200
+Subject: [PATCH 6/7] Typeface: give the default typefaces their own copy of
+ the chosen font
+
+changeFont() repoints Typeface.DEFAULT, DEFAULT_BOLD and SANS_SERIF at
+the system font map's typeface for the chosen font, Google Sans Flex by
+default. Typeface.create("google-sans-flex") then equals
+Typeface.DEFAULT, and apps that check for that treat the family as not
+installed. Jetpack Compose's DeviceFontFamilyName does: it skips the
+font and falls back to the default typeface without the font variation
+settings the app asked for. Google's charging screensaver asks for
+Google Sans Flex at width 25 for its battery level, so the digits came
+out at full width, too big, and ran into the gauge.
+
+Point the defaults at a copy of the chosen font instead: the same fonts
+under their own native instance. Copies are made once per font family
+and kept for the life of the process, because paints keep the native
+instance of the typeface they were set to.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ graphics/java/android/graphics/Typeface.java | 29 ++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
+
+diff --git a/graphics/java/android/graphics/Typeface.java b/graphics/java/android/graphics/Typeface.java
+index 3dd11d18b8cf..cb7e40d109d2 100644
+--- a/graphics/java/android/graphics/Typeface.java
++++ b/graphics/java/android/graphics/Typeface.java
+@@ -138,6 +138,9 @@ public class Typeface {
+             new LongSparseArray<>(3);
+     private static final Object sStyledCacheLock = new Object();
+ 
++    @GuardedBy("sStyledCacheLock")
++    private static final ArrayMap<String, Typeface> sDefaultFontCopies = new ArrayMap<>();
++
+     /**
+      * Cache for Typeface objects for weight variant. Currently max size is 3.
+      */
+@@ -1602,6 +1605,9 @@ public class Typeface {
+         // sSystemFontMap by their list name, falling back through known
+         // aliases to Typeface.DEFAULT.
+         Typeface tf = FontController.resolveBaseTypeface();
++        if (tf != DEFAULT && tf.getSystemFontFamilyName() != null) {
++            tf = getDefaultFontCopy(tf);
++        }
+ 
+         Typeface tfBold = create(tf, BOLD);
+         Typeface tfItalic = create(tf, ITALIC);
+@@ -1613,6 +1619,29 @@ public class Typeface {
+                 Arrays.asList(tf, Typeface.SERIF, Typeface.MONOSPACE));
+     }
+ 
++    /**
++     * Returns a copy of {@code tf} for the default typefaces, made once per font family and kept
++     * for the life of the process, since paints keep the native instance of the typeface they
++     * were set to.
++     *
++     * Apps (Jetpack Compose's DeviceFontFamilyName among them) treat a named family that equals
++     * Typeface.DEFAULT as not installed, so if the defaults shared the chosen font's instance,
++     * asking for that family by name would fall back to the default without the app's font
++     * variation settings.
++     */
++    private static Typeface getDefaultFontCopy(Typeface tf) {
++        final String familyName = tf.getSystemFontFamilyName();
++        synchronized (sStyledCacheLock) {
++            Typeface copy = sDefaultFontCopies.get(familyName);
++            if (copy == null) {
++                copy = new Typeface(nativeCreateFromTypeface(tf.getNativeInstance(), tf.mStyle),
++                        familyName, tf);
++                sDefaultFontCopies.put(familyName, copy);
++            }
++            return copy;
++        }
++    }
++
+     /** @hide */
+     public static String getFontName() {
+         return sFontName;
+-- 
+2.43.0
+

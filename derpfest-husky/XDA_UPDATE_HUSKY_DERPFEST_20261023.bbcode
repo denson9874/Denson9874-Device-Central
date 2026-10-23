@@ -1,0 +1,31 @@
+[SIZE=5][B]Update: 2026-10-23 build[/B][/SIZE]
+
+[B]Already on the 2026-10-21 build?[/B] The built-in Updater has this one (Settings > System > Updater). Rooted? Install Magisk (or KernelSU) to the inactive slot before rebooting, or root is gone. Coming from any other ROM still needs a clean install (see the first post).
+
+[B]What's new[/B]
+[LIST]
+[*][B]Network access after restoring a backup:[/B] apps restored from your Google backup during setup keep their Wi-Fi and mobile data. Some of them had their Network access setting turned off. If an app on the 10-21 build still has no connection, turn Network access back on in App info.
+[*][B]App Lock:[/B] the Recents Screenshot and Lens buttons and split screen no longer show a locked app's last screen.
+[*][B]USB debugging is off by default again[/B] and asks for authorization on your computer, as it should on a user build. The first build had it on without asking. If you use ADB, turn it on in Developer options and accept the prompt.
+[*][B]Play Integrity:[/B] the experimental integrity spoofing layer from the first build is gone; DerpFest's own attestation handling is back. If an app that checks Play Integrity behaves differently, report it with a logcat.
+[*][B]Kernel 6.1.162[/B] (LineageOS gs-6.1, android14-6.1-2026-03), built from source with the ROM.
+[/LIST]
+
+[B]Known issues[/B]
+[LIST]
+[*]Face unlock is DerpFest's camera-based face unlock, not the Pixel's secure face unlock, so it can't be used for payments or app sign-in. Use the fingerprint sensor for those.
+[*]Gemini Nano features that need Google's on-device models may not work (Google only serves those models to phones with a locked bootloader).
+[/LIST]
+
+[B]Support policy, please read before reporting[/B]
+[LIST]
+[*][B]Custom setups get limited to no support.[/B] That means root modules, Xposed/LSPosed, custom kernels, or apps from APKMirror and similar sites that don't match this build (Google system apps especially). Before you report, reproduce the problem on a clean install without them.
+[*][B]No logs, no report.[/B] Bug reports without a logcat are flagged for deletion. Capture one right after the problem happens with [ICODE]adb logcat -b all -d > log.txt[/ICODE], then post it with your build date and steps to reproduce.
+[/LIST]
+
+[B]Downloads[/B] ([URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/derpfest/husky/]SourceForge: derpfest/husky[/URL])
+[LIST]
+[*]ROM: [ICODE]DerpFest-v17-20261023-husky-Unofficial-Stable.zip[/ICODE] (2.87 GB)
+[*]SHA-256: [ICODE]ba6de368a3acfabc10890fb472212edf0c16af17424e13fdde5ffc395f448459[/ICODE]
+[*]Recovery images for clean installs: [ICODE]boot-20261023.img[/ICODE] and [ICODE]vendor_boot-20261023.img[/ICODE] (SHA-256 in [ICODE]recovery-20261023.sha256[/ICODE])
+[/LIST]

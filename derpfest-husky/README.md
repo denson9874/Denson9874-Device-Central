@@ -53,7 +53,7 @@ doesn't upload. Its last line is `=== DerpFest husky Build Finished: … (EXIT=<
   (ParanoidSense) by default, as in the official DerpFest 16.2 husky tree. Its other branch
   (`TARGET_FACE_UNLOCK_SUPPORTED := false`) asks for `SettingsGoogleFutureFaceEnroll`, which nothing in DerpFest 17
   defines (the build stops: `includes non-existent modules in PRODUCT_PACKAGES`).
-- **Kernel:** GKI android14-6.1 (6.1.157), built by `build_kernel` from LineageOS's
+- **Kernel:** GKI android14-6.1 (6.1.162 since 2026-10-23; 6.1.157 before), built by `build_kernel` from LineageOS's
   `android_kernel_google_gs-6.1_manifest` (lineage-24.0; `kernel/common` at `android14-6.1-2025-12_r30`). DerpFest's
   `lunch` runs it in `out-kernel/` of this tree; the build script then rebuilds with `SKIP_KERNEL_SYNC=1`.
   The synced manifest is saved as `~/derpfest-husky-kernel-manifest.xml` (GPL source offer).
@@ -70,6 +70,22 @@ doesn't upload. Its last line is `=== DerpFest husky Build Finished: … (EXIT=<
 | device/google/zuma | `0001` | Installs the Pixel default permissions as `default-permissions-zuma.xml`, so they don't silently lose to gms's `default-permissions.xml` |
 | vendor/google/husky | `0001` | Doesn't install `gpuflag`: the policy has no `gpuflag` domain, so init's child aborts at every boot |
 | vendor/google/husky | `0002` | Defers `AICorePrebuilt-aicore_20260302.01_RC00` and `DeviceIntelligenceNetworkPrebuiltAstrea` to vendor/pixel/gms. Soong stops otherwise: `found in multiple namespaces(vendor/pixel/gms/common and vendor/google/husky)`. Both are the same version, DeviceIntelligence byte-identical |
+| frameworks/base | `0001`, `0002` | LineageOS's per-app Network access (POLICY_REJECT_ALL): don't block apps that are added without INTERNET yet (Play's archived restore installs during setup), and give restored apps their access back once. Same as Evolution X kodiak 0007/0008; the build checks the 0002 log string in services.jar |
+| frameworks/base | `0003` | Android 17 App Lock: SnapshotController hands out no snapshot (get or take) for tasks whose app has App Lock on. Overview already draws its lock placeholder, but its Screenshot and Lens actions and split screen used the real snapshot |
+| frameworks/base | `0004`-`0006` | Ports of Evolution X kodiak fixes, committed in the tree since 2026-10-16 and shipped in 10-21: AOD not brighter than the dimmed screen, NotificationAttentionHelper call-light crash, Typeface default copies |
+| frameworks/base | `0007` | AppIdPermissionPolicy logs privapp allowlist violations instead of throwing (with `ro.control_privapp_permissions=log` below) |
+
+**Local changes in the tree that aren't patches here** (all from the 2026-10-17 bring-up; backups of the removed ones in
+`~/derpfest-backups/20261023-native-strong-integrity` on the build server):
+
+- `vendor/lineage` `config/common.mk`: `ro.control_privapp_permissions=log` (was `?=enforce`). Kept. Its other 10-17
+  change, ADB authorization off and ADB on by default on user builds (`ro.adb.secure=0`, `persist.sys.usb.config=adb`),
+  shipped in 10-21 and was reverted to LineageOS's block on 2026-10-23; the build now fails if it comes back.
+- `build/make` `core/Makefile`: drops the "Prebuilt apk found in PRODUCT_COPY_FILES" error. Kept: DerpFest kodiak needs
+  it (kodiak-vendor.mk copies three overlay APKs); harmless for husky.
+- `frameworks/base`: an uncommitted "native-strong-integrity" experiment (Evolution X's TrickyStore/PIF/AxSpoofManager
+  in place of DerpFest's AttestationService and keybox code) shipped in 10-21 and was removed on 2026-10-23 (Daryl's
+  call). The tree is back to DerpFest's attestation code plus the patches above.
 
 Evolution X husky patches that aren't needed here: the artifact-path allow-list (DerpFest sets
 `DISABLE_ARTIFACT_PATH_REQUIREMENTS`), the zuma overlay removals (gms-17 suffixes its overlays `_GMS`), the nowplaying
@@ -88,7 +104,10 @@ images in the target files byte-identical to the CP3A set, and BCR unmodified (D
 | Date | File | SHA-256 | Where |
 |---|---|---|---|
 | 2026-10-21 | `DerpFest-v17-20261021-husky-Unofficial-Stable.zip` (3,086,412,868 bytes) | `7ab1b0c5e04fb9c3279df8d319e4cad8442244f526fad8062425c3bbd674b94b` | [SourceForge derpfest/husky](https://sourceforge.net/projects/denson9874-s-user-builds/files/derpfest/husky/), [derpfest_ota](https://github.com/denson9874/derpfest_ota) `builds/husky.json`, [XDA thread 4805779](https://xdaforums.com/t/4805779/), Telegram @ExpressiveGroup |
+| 2026-10-23 | `DerpFest-v17-20261023-husky-Unofficial-Stable.zip` (3,086,337,827 bytes) | `ba6de368a3acfabc10890fb472212edf0c16af17424e13fdde5ffc395f448459` | SourceForge derpfest/husky, derpfest_ota `builds/husky.json`, XDA post 90788436, Telegram @ExpressiveGroup. frameworks_base 0001-0003, ADB authorization restored, Evolution spoof code removed, kernel 6.1.162 (`android14-6.1-2026-03_r24`) |
 
 Recovery images `boot-20261021.img` (`54dc0bbf…8ad3`) and `vendor_boot-20261021.img` (`7d6490aa…a422`), checksums in
-`recovery-20261021.sha256`. Release steps from now on: `~/derp-husky-build.sh --clean --upload [--changes <file>]`, then
-the XDA and Telegram posts.
+`recovery-20261021.sha256`. Release steps: `~/derp-husky-build.sh --clean [--kernel-sync]` (no upload), then
+`~/derpfest-husky/tools/derp-ota.sh husky --preview --changes <file>`, then `derp-ota.sh husky --upload --changes <file>`,
+then the XDA and Telegram posts. The one-step `--clean --upload` run has never finished end to end (10-21 stopped at EXIT=4
+in derp-ota.sh and was published by hand after a fix). Don't run it alongside an Evolution X build.

@@ -3,11 +3,13 @@
 # OTA package with derp-ota.sh (and, with --upload, publish it: SourceForge derpfest/husky, then
 # denson9874/derpfest_ota for the Updater).
 #
-#   derp-husky-build.sh [--clean] [--upload] [--changes <file>] [--check-only]
+#   derp-husky-build.sh [--clean] [--kernel-sync] [--upload] [--changes <file>] [--check-only]
 #
 #   --clean       full build: remove out/target/product/husky first (installclean for this device only)
 #   --upload      publish the OTA after every check passed (derp-ota.sh husky --upload)
 #   --changes     ROM changes for the changelog, passed to derp-ota.sh
+#   --kernel-sync re-sync the kernel source (LineageOS gs-6.1 manifest) before building it, and save the synced
+#                 manifest to ~/derpfest-husky-kernel-manifest.xml (GPL source offer); otherwise it's rebuilt as is
 #   --check-only  only run the offline checks on the existing out/; no lunch, no build
 #
 # There is no phone to test on (see README.md), so the gate is a clean build plus these checks. Exit status:
@@ -15,14 +17,15 @@
 # "=== DerpFest husky Build Finished: <date> (EXIT=<n>) ===".
 set -uo pipefail
 
-CHECKONLY=0; CLEAN=0; UPLOAD=0; CHANGES=
+CHECKONLY=0; CLEAN=0; UPLOAD=0; KSYNC=0; CHANGES=
 while [ $# -gt 0 ]; do
     case $1 in
         --check-only) CHECKONLY=1 ;;
         --clean) CLEAN=1 ;;
         --upload) UPLOAD=1 ;;
+        --kernel-sync) KSYNC=1 ;;
         --changes) CHANGES=${2:-}; shift ;;
-        *) echo "usage: derp-husky-build.sh [--clean] [--upload] [--changes <file>] [--check-only]" >&2; exit 2 ;;
+        *) echo "usage: derp-husky-build.sh [--clean] [--kernel-sync] [--upload] [--changes <file>] [--check-only]" >&2; exit 2 ;;
     esac
     shift
 done
@@ -47,6 +50,14 @@ checks() {
     find "$O/system_ext" "$O/system" "$O/product" -maxdepth 3 -name 'ParanoidSense*.apk' | grep -q . || no "ParanoidSense missing"
     grep -q 'config_face_enroll_hal_owns_camera' "$TREE/device/google/zuma/overlay/SettingsOverlayZuma/res/values/lineage_config.xml" \
         && no "zuma has LineageOS's Pixel face unlock commits (two face unlock providers)"
+    # frameworks_base 0001/0002 (restored apps keep network access): the dex in services.jar is stored, so the
+    # 0002 log string is greppable
+    grep -a -q 'Keeping REJECT_ALL for uid=' "$O/system/framework/services.jar" \
+        || no "NetworkPolicy fixes (frameworks_base 0001/0002) not in services.jar"
+    # ADB must ask for authorization on a user build (vendor/lineage common.mk had it off from 10-17 to 10-23)
+    grep -qx 'ro.adb.secure=0' "$O/system_ext/etc/build.prop" "$O/recovery/root/prop.default" 2>/dev/null \
+        && no "ADB authentication disabled (ro.adb.secure=0)"
+    grep -qx 'persist.sys.usb.config=adb' "$O/system_ext/etc/build.prop" && no "ADB enabled by default (persist.sys.usb.config=adb)"
     # Firmware in the OTA must be the CP3A set update-firmware.sh installed (never older than the phone's):
     # extract it from the payload and compare byte for byte
     local zip w p fwbad=0
@@ -111,7 +122,7 @@ fi
 [ -f "$TREE/vendor/lineage-priv/keys/testkey.pk8" ] || { echo "no DerpFest keys in vendor/lineage-priv/keys"; finish 1; }
 # Kernel: lunch runs build_kernel (LineageOS gs-6.1 manifest, lineage-24.0) in out-kernel/; once the source is
 # there, rebuild without re-syncing it
-[ -d "$TREE/out-kernel/google/gs-6.1/.repo" ] && export SKIP_KERNEL_SYNC=1
+[ "$KSYNC" = 0 ] && [ -d "$TREE/out-kernel/google/gs-6.1/.repo" ] && export SKIP_KERNEL_SYNC=1
 export USE_CCACHE=1
 export CCACHE_EXEC=/usr/bin/ccache
 export DERPFEST_BUILD_TYPE=Unofficial
@@ -125,6 +136,11 @@ fi
 
 source build/envsetup.sh
 lunch lineage_husky-cp2a-user || finish 1
+if [ "$KSYNC" = 1 ]; then
+    # lunch's build_kernel just re-synced the kernel source: keep the exact manifest for the GPL source offer
+    (cd "$TREE/out-kernel/google/gs-6.1" && repo manifest -r -o "$HOME/derpfest-husky-kernel-manifest.xml") \
+        && echo "== kernel source manifest saved: ~/derpfest-husky-kernel-manifest.xml" || finish 1
+fi
 
 echo "=== DerpFest husky Build Started: $(date) ==="
 m -j"$(nproc)" derp 2>&1 | tee ~/derp-husky-build.log
