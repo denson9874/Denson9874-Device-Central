@@ -120,7 +120,8 @@ on:
           ~/evolution, e.g. vendor/google/kodiak/Android.bp. local-commits:
           space-separated project paths under device/ or vendor/ (default:
           cheetah's four projects). emulator-build: a lunch target, e.g.
-          sdk_phone64_arm64-cp2a-userdebug. parity-diff: kodiak, grizzly, cubs or yogi.
+          sdk_phone64_arm64-cp2a-userdebug. parity-diff: kodiak, grizzly, cubs or yogi,
+          optionally followed by names to grep in both trees' etc files.
         type: string
         default: ''
 
@@ -678,8 +679,8 @@ jobs:
       - name: Parity diff against stock
         if: inputs.action == 'parity-diff'
         run: |
-          d="${QUERY:-kodiak}"
-          [[ "$d" =~ ^(kodiak|grizzly|cubs|yogi)$ ]] || { echo "::error::query must be kodiak, grizzly, cubs or yogi"; exit 1; }
+          read -r d names <<< "${QUERY:-kodiak}"
+          [[ "$d" =~ ^(kodiak|grizzly|cubs|yogi)$ ]] || { echo "::error::query must start with kodiak, grizzly, cubs or yogi"; exit 1; }
           ours=~/evolution/out/target/product/"$d"; stock=~/android-dt/dumps/"$d"
           [[ -d "$ours" && -d "$stock" ]] || { echo "::error::missing $ours or $stock"; exit 1; }
           props() {  # key=value lines of one build.prop, without build identity noise
@@ -709,6 +710,14 @@ jobs:
           }
           echo "== apps: '<' ours only, '>' stock only"
           diff <(apps "$ours") <(apps "$stock") | grep -E '^[<>]' || echo "(identical)"
+          for n in $names; do  # names after the device: grep them in both trees' etc files (policy, permissions, sysconfig)
+            [[ "$n" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "skipping bad name $n"; continue; }
+            for side in ours stock; do
+              root="${!side}"
+              echo "== $n in $side"
+              grep -rnF "$n" "$root"/{system/etc,system_ext/etc,product/etc} 2>/dev/null | sed "s|^$root/||" | cut -c1-260 | head -25 || true
+            done
+          done
 
       - name: Emulator build (detached)
         if: inputs.action == 'emulator-build'
