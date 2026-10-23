@@ -649,6 +649,15 @@ jobs:
           done
           grep -rnE 'ro\.com\.android\.(mobiledata|dataroaming)' vendor/lineage vendor/evolution* vendor/extras vendor/gms vendor/google* \
             device/google device/generic/goldfish build/make/target --include='*.mk' 2>/dev/null | head -20 || true
+          echo "== setup wizard candidates (apps that may declare category SETUP_WIZARD), ours vs stock"
+          for d in kodiak grizzly cubs yogi; do
+            echo "-- $d (ours)"
+            find out/target/product/"$d"/{system,system_ext,product}/{app,priv-app} -maxdepth 1 \
+              \( -iname '*setup*' -o -iname '*provision*' -o -iname '*wizard*' \) 2>/dev/null | sed "s|out/target/product/$d/||" | sort || true
+            echo "-- $d (stock)"
+            find ~/android-dt/dumps/"$d"/{system/system,system,system_ext,product}/{app,priv-app} -maxdepth 1 \
+              \( -iname '*setup*' -o -iname '*provision*' -o -iname '*wizard*' \) 2>/dev/null | sed "s|.*/dumps/$d/||" | sort || true
+          done
           echo "== emulator build"
           l="$(cat ~/routine-logs/emulator-build.latest 2>/dev/null || true)"
           if [[ -n "$l" && -f "$l" ]]; then
