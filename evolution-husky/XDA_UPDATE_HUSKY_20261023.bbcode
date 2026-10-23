@@ -1,0 +1,34 @@
+[SIZE=5][B]Update: 2026-10-23 build[/B][/SIZE]
+
+A fix release on top of the 2026-10-21 build.
+
+[B]Fixed[/B]
+[LIST]
+[*][B]Scrolling stutter:[/B] apps no longer stutter while the Dynamic Bar island is showing (timers, media, calls, screen recording). The island blurred everything behind it, which forced every frame of the app below through the GPU. It now uses a solid background, and scrolling stays smooth.
+[*][B]Locked apps in Recents:[/B] apps you lock with App Lock now show only their icon in Recents instead of their last screen.
+[*][B]Kernel:[/B] updated to 6.1.162 from the LineageOS husky kernel.
+[/LIST]
+
+[B]Known issues[/B]
+[LIST]
+[*]Gemini Nano features don't work (Google serves the models only to phones with a locked bootloader).
+[/LIST]
+
+[B]Support policy, please read before reporting[/B]
+[LIST]
+[*][B]Custom setups get limited to no support.[/B] That means root modules, Xposed/LSPosed, custom kernels, or apps from APKMirror and similar sites that don't match this build (Google system apps especially). Before you report, reproduce the problem on a clean install without them.
+[*][B]No logs, no report.[/B] Bug reports without a logcat are flagged for deletion. Capture one right after the problem happens with [ICODE]adb logcat -b all -d > log.txt[/ICODE], then post it with your build date and steps to reproduce.
+[/LIST]
+
+[B]Downloads[/B] ([URL=https://sourceforge.net/projects/denson9874-s-user-builds/files/husky/17/]SourceForge: husky/17[/URL])
+[LIST]
+[*]ROM: [ICODE]EvolutionX-17.0-20261023-husky-12.3-Unofficial.zip[/ICODE]
+[*]SHA-256: [ICODE]4e4da0cb9fe0d1adfd2334578b4bbbf160719f0210b8359f75a65746f6253c73[/ICODE]
+[*]Recovery images for clean installs: [ICODE]boot-20261023.img[/ICODE] and [ICODE]vendor_boot-20261023.img[/ICODE] (SHA-256 in [ICODE]recovery-20261023.sha256[/ICODE])
+[/LIST]
+
+[B]Updating[/B] from an earlier build keeps your data: reboot to recovery, [B]Apply update[/B] > [B]Apply from ADB[/B], then
+[CODE]adb sideload EvolutionX-17.0-20261023-husky-12.3-Unofficial.zip[/CODE]
+and reboot. For a clean install, follow the first post using the dated recovery images.
+
+Tested on a Pixel 8 Pro (October CP3A firmware) as an update from the 10-21 build: verified boot green, SELinux enforcing, Wi-Fi, Bluetooth, NFC, mobile data, both cameras, face and fingerprint, 56 sensors, 120/60 Hz; scrolling with the island showing stays on the display hardware (0 GPU-composited frames).
