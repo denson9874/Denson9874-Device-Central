@@ -661,10 +661,31 @@ jobs:
           mkdir -p ~/routine-logs
           log=~/routine-logs/emulator-build-"$(date +%Y%m%d-%H%M%S)".log
           echo "$log" > ~/routine-logs/emulator-build.latest
-          job="cd ~/evolution && export EVO_BUILD_TYPE=Unofficial USE_CCACHE=1 CCACHE_EXEC=/usr/bin/ccache && unset KODIAK_PERSONAL && source build/envsetup.sh && lunch $target && m -j\$(nproc) && m -j\$(nproc) emu_img_zip; echo BUILD_EXIT=\$?"
+          job=~/routine-logs/emulator-build-job.sh
+          cat > "$job" <<'EOF'
+          target="$1"
+          cd ~/evolution || exit 1
+          mk="build/target/product/${target%%-*}.mk"
+          # The emulator's generic system image only takes /system files on its allow
+          # list, and Evolution's AppDataBackup isn't on it (soong fails the build). Allow
+          # it in the emulator product for this build only; the trap puts the file back.
+          if [[ -f "vendor/lineage/$mk" ]] && git -C vendor/lineage diff --quiet -- "$mk"; then
+            trap 'git -C vendor/lineage checkout -q -- "$mk"' EXIT
+            printf '%s\n' '' 'PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \' \
+              '    system/etc/permissions/privapp-permissions-appbackup.xml \' \
+              '    system/priv-app/AppDataBackup/AppDataBackup.apk \' \
+              '    system/priv-app/AppDataBackup/oat/arm64/AppDataBackup.odex \' \
+              '    system/priv-app/AppDataBackup/oat/arm64/AppDataBackup.vdex' >> "vendor/lineage/$mk"
+          fi
+          export EVO_BUILD_TYPE=Unofficial USE_CCACHE=1 CCACHE_EXEC=/usr/bin/ccache
+          unset KODIAK_PERSONAL
+          source build/envsetup.sh
+          lunch "$target" && m -j"$(nproc)" && m -j"$(nproc)" emu_img_zip
+          echo "BUILD_EXIT=$?"
+          EOF
           # Detached under the tree lock, so it waits for (and blocks) the routines' builds.
           # Without RUNNER_TRACKING_ID the runner's orphan cleanup leaves it running.
-          env -u RUNNER_TRACKING_ID setsid nohup flock -o ~/.evolution-tree.lock bash -c "$job" > "$log" 2>&1 < /dev/null &
+          env -u RUNNER_TRACKING_ID setsid nohup flock -o ~/.evolution-tree.lock bash "$job" "$target" > "$log" 2>&1 < /dev/null &
           sleep 30
           echo "started $target, log $log"; tail -c 1500 "$log" | tr '\r' '\n' | tail -12
 
