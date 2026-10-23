@@ -76,6 +76,8 @@ on:
           emulator products and emulator build progress. emulator-build: start an
           emulator image build of the lunch target in query (detached; follow with
           early-status). emulator-upload: newest emulator image zip to Google Drive.
+          parity-diff: read-only: our build vs the stock dump for the device in query
+          (default kodiak): build props (graphics, radio, power and the rest) and app lists.
         type: choice
         default: status
         options:
@@ -101,6 +103,7 @@ on:
           - early-status
           - emulator-build
           - emulator-upload
+          - parity-diff
       tree_ref:
         description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak (sync, round) or evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, cheetah-install-routine) from
         type: string
@@ -117,7 +120,7 @@ on:
           ~/evolution, e.g. vendor/google/kodiak/Android.bp. local-commits:
           space-separated project paths under device/ or vendor/ (default:
           cheetah's four projects). emulator-build: a lunch target, e.g.
-          sdk_phone64_arm64-cp2a-userdebug.
+          sdk_phone64_arm64-cp2a-userdebug. parity-diff: kodiak, grizzly, cubs or yogi.
         type: string
         default: ''
 
@@ -151,7 +154,7 @@ jobs:
           # this job, and the husky build too. Don't start on top of one.
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|early-status)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|early-status|parity-diff)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -671,6 +674,41 @@ jobs:
             echo "none started"
           fi
           ls -la ~/evolution/out/target/product/*/sdk-repo-linux-system-images*.zip 2>/dev/null || true
+
+      - name: Parity diff against stock
+        if: inputs.action == 'parity-diff'
+        run: |
+          d="${QUERY:-kodiak}"
+          [[ "$d" =~ ^(kodiak|grizzly|cubs|yogi)$ ]] || { echo "::error::query must be kodiak, grizzly, cubs or yogi"; exit 1; }
+          ours=~/evolution/out/target/product/"$d"; stock=~/android-dt/dumps/"$d"
+          [[ -d "$ours" && -d "$stock" ]] || { echo "::error::missing $ours or $stock"; exit 1; }
+          props() {  # key=value lines of one build.prop, without build identity noise
+            [[ -f "$1" ]] || return 0
+            grep -E '^[a-z][^#=]*=' "$1" \
+              | grep -vE '^(ro\.([a-z_]+\.)?build\.|ro\.product\.|ro\.(lineage|evolution|modversion)|ro\.bootimage|ro\.system(_ext)?\.build|ro\.vendor\.build|ro\.odm\.build|ro\.product_?.*\.build)' \
+              | sort -u
+          }
+          for part in "system/build.prop system/build.prop" "system_ext/etc/build.prop system_ext/etc/build.prop" \
+                      "product/etc/build.prop product/etc/build.prop"; do
+            set -- $part
+            echo "== props $1: '<' ours only or different, '>' stock only or different"
+            diff <(props "$ours/$1") <(props "$stock/$2") | grep -E '^[<>]' || echo "(identical)"
+          done
+          echo "== graphics, radio and power props in ours (all partitions we build)"
+          cat "$ours"/{system/build.prop,system_ext/etc/build.prop,product/etc/build.prop} 2>/dev/null \
+            | grep -E '^(debug\.(sf|hwui|renderengine|graphics)|ro\.surface_flinger|ro\.hwui|persist\.(sys|radio|vendor\.radio|data|net)|ro\.(telephony|ril|radio)|ro\.com\.android|wifi\.|ro\.config\.(low_ram|batt|power)|power\.)' \
+            | sort -u || true
+          apps() {  # app directory names in system, system_ext and product
+            for p in system system_ext product; do
+              for t in app priv-app; do
+                for base in "$1/$p/$t" "$1/system/$p/$t"; do
+                  [[ -d "$base" ]] && find "$base" -mindepth 1 -maxdepth 1 -type d -printf "$p/$t/%f\n"
+                done
+              done
+            done | sort -u
+          }
+          echo "== apps: '<' ours only, '>' stock only"
+          diff <(apps "$ours") <(apps "$stock") | grep -E '^[<>]' || echo "(identical)"
 
       - name: Emulator build (detached)
         if: inputs.action == 'emulator-build'
