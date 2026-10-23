@@ -37,6 +37,16 @@
 #      Stop it with `tmux kill-session -t runner`; remove it with
 #      ./config.sh remove (token from the same Settings page).
 #
+# early-status, emulator-build and emulator-upload support testing without a phone or SSH
+# (e.g. from a network that blocks SSH). early-status is read-only: the latest p11
+# routine/chain logs, the release directories, the emulator products the tree can build
+# and the emulator build's progress. emulator-build starts an emulator image build
+# (lunch target in query) detached under ~/.evolution-tree.lock and returns; follow it
+# with early-status. emulator-upload copies the newest emulator image zip and its
+# .sha256 to the owner's private Google Drive (gdrive:EvolutionX/emulator) through
+# ~/upload-to-drive.sh, like the release builds. It is the one place build output
+# leaves the server from this workflow, and never as a GitHub artifact.
+#
 # Only use a self-hosted runner with a private repository.
 
 name: kodiak build server
@@ -62,6 +72,10 @@ on:
           state. bp-repair: fix the one Android.bp named in query (see query).
           local-commits: read-only: commits on top of the manifest revision in the
           repo projects named in query (default: cheetah's four), as patches.
+          early-status: read-only: p11 chain/routine results, release files,
+          emulator products and emulator build progress. emulator-build: start an
+          emulator image build of the lunch target in query (detached; follow with
+          early-status). emulator-upload: newest emulator image zip to Google Drive.
         type: choice
         default: status
         options:
@@ -84,6 +98,9 @@ on:
           - bp-check
           - bp-repair
           - local-commits
+          - early-status
+          - emulator-build
+          - emulator-upload
       tree_ref:
         description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak (sync, round) or evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, cheetah-install-routine) from
         type: string
@@ -99,7 +116,8 @@ on:
           (delete lone ',' lines the parser stops at); path relative to
           ~/evolution, e.g. vendor/google/kodiak/Android.bp. local-commits:
           space-separated project paths under device/ or vendor/ (default:
-          cheetah's four projects).
+          cheetah's four projects). emulator-build: a lunch target, e.g.
+          sdk_phone64_arm64-cp2a-userdebug.
         type: string
         default: ''
 
@@ -133,7 +151,7 @@ jobs:
           # this job, and the husky build too. Don't start on top of one.
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|early-status)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -587,3 +605,64 @@ jobs:
             head -6000 "$RUNNER_TEMP/lc.patch"
             (( lines <= 6000 )) || echo "(cut after 6000 of $lines lines)"
           done
+
+      - name: Early release status
+        if: inputs.action == 'early-status'
+        run: |
+          cd ~/evolution
+          echo "== machine"; uptime; free -g | head -2; df -h ~ | sed 1d
+          echo "== build processes"; pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-160 || echo none
+          chain="$(ls -t ~/routine-logs/early-chain-*.out ~/routine-logs/release-chain-*.out 2>/dev/null | head -1 || true)"
+          if [[ -n "$chain" ]]; then echo "== $chain"; tail -120 "$chain"; fi
+          for d in kodiak grizzly cubs yogi; do
+            l="$(ls -t ~/routine-logs/"$d"-2*.log 2>/dev/null | head -1 || true)"
+            echo "== $d: ${l:-no routine log}"
+            if [[ -n "$l" ]]; then
+              grep -E 'ROUTINE_RESULT|RELEASE_CHECKS|ESPADA|BUILD_EXIT|OTA_|DRIVE_UPLOAD|FAIL|already applied|^applied|^OK|unrooted|UPLOAD' "$l" | tail -45 || true
+            fi
+            echo "-- ~/releases/$d, newest"; ls -lt ~/releases/"$d" 2>/dev/null | sed -n 2,9p || true
+          done
+          echo "== emulator products in the tree"
+          ls vendor/lineage/build/target/product/ 2>/dev/null | grep -iE 'sdk|emu|gsi' || true
+          grep -hE 'sdk_phone|emu|COMMON_LUNCH|PRODUCT_MAKEFILES' vendor/lineage/build/target/product/AndroidProducts.mk 2>/dev/null | head -20 || true
+          ls build/make/target/product/ | grep -E '^(sdk_phone64|aosp_arm64|emu)' || true
+          ls build/release/release_configs 2>/dev/null | tr '\n' ' ' || true; echo
+          ls -d device/generic/goldfish device/generic/goldfish-opengl device/generic/goldfish-arm64 2>/dev/null || true
+          echo "== emulator build"
+          l="$(cat ~/routine-logs/emulator-build.latest 2>/dev/null || true)"
+          if [[ -n "$l" && -f "$l" ]]; then
+            echo "$l"; grep -E 'BUILD_EXIT|#### |FAILED:|error:|^lunch|TARGET_PRODUCT=' "$l" | tail -25 || true
+            tail -c 800 "$l" | tr '\r' '\n' | tail -5
+          else
+            echo "none started"
+          fi
+          ls -la ~/evolution/out/target/product/*/sdk-repo-linux-system-images*.zip 2>/dev/null || true
+
+      - name: Emulator build (detached)
+        if: inputs.action == 'emulator-build'
+        run: |
+          target="$QUERY"
+          [[ "$target" =~ ^[a-z0-9_]+-[a-z0-9]+-(user|userdebug|eng)$ ]] \
+            || { echo "::error::query must be a lunch target such as sdk_phone64_arm64-cp2a-userdebug"; exit 1; }
+          mkdir -p ~/routine-logs
+          log=~/routine-logs/emulator-build-"$(date +%Y%m%d-%H%M%S)".log
+          echo "$log" > ~/routine-logs/emulator-build.latest
+          job="cd ~/evolution && export EVO_BUILD_TYPE=Unofficial USE_CCACHE=1 CCACHE_EXEC=/usr/bin/ccache && unset KODIAK_PERSONAL && source build/envsetup.sh && lunch $target && m -j\$(nproc) && m -j\$(nproc) emu_img_zip; echo BUILD_EXIT=\$?"
+          # Detached under the tree lock, so it waits for (and blocks) the routines' builds.
+          # Without RUNNER_TRACKING_ID the runner's orphan cleanup leaves it running.
+          env -u RUNNER_TRACKING_ID setsid nohup flock -o ~/.evolution-tree.lock bash -c "$job" > "$log" 2>&1 < /dev/null &
+          sleep 30
+          echo "started $target, log $log"; tail -c 1500 "$log" | tr '\r' '\n' | tail -12
+
+      - name: Emulator upload to Google Drive
+        if: inputs.action == 'emulator-upload'
+        run: |
+          zip="$(ls -t ~/evolution/out/target/product/*/sdk-repo-linux-system-images*.zip 2>/dev/null | head -1 || true)"
+          [[ -n "$zip" ]] || { echo "::error::no emulator image zip yet (run emulator-build, then early-status)"; exit 1; }
+          product="$(basename "$(dirname "$zip")")"
+          name="EvolutionX-emulator-$product-$(date -r "$zip" +%Y%m%d-%H%M).zip"
+          mkdir -p ~/releases/emulator
+          cp "$zip" ~/releases/emulator/"$name"
+          (cd ~/releases/emulator && sha256sum "$name" > "$name.sha256" && cat "$name.sha256")
+          ls -la ~/releases/emulator/"$name"
+          ~/upload-to-drive.sh EvolutionX emulator ~/releases/emulator/"$name" ~/releases/emulator/"$name.sha256"
