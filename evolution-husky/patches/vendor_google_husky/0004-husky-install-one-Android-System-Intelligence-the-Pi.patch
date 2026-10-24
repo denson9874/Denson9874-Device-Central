@@ -1,0 +1,34 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 14:00:55 +0200
+Subject: [PATCH 4/5] husky: install one Android System Intelligence, the Pixel
+ 8 Pro's
+
+vendor/gms installs DevicePersonalizationAiAiPrebuiltPixel2026 (ASI built
+for the Pixel 11) next to this tree's DevicePersonalizationAiAiPixel2023, both
+com.google.android.as. PackageManager kept the higher version, the Pixel 11
+build, until Play replaced it with its pixel8 build. Override vendor/gms's
+copy so the system image carries the one built for this phone.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Android.bp | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/Android.bp b/Android.bp
+index 69fb1885..0a91ecd5 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -381,6 +381,9 @@ android_app_import {
+     name: "DevicePersonalizationAiAiPrebuiltPixel2023",
+     owner: "google",
+     apk: "proprietary/product/priv-app/DevicePersonalizationAiAiPrebuiltPixel2023/DevicePersonalizationAiAiPrebuiltPixel2023.apk",
++    overrides: [
++        "DevicePersonalizationAiAiPrebuiltPixel2026",
++    ],
+     preprocessed: true,
+     presigned: true,
+     dex_preopt: {
+-- 
+2.43.0
+

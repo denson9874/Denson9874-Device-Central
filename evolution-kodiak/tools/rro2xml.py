@@ -22,7 +22,7 @@ def parse(apk):
     """{(type, name): {config: raw value}} from `aapt2 dump resources`."""
     out = subprocess.run([AAPT2, 'dump', 'resources', apk],
                          capture_output=True, text=True, check=True).stdout
-    res, cur, pending = {}, None, None
+    res, cur, pending, buf = {}, None, None, ''
     for line in out.splitlines():
         m = re.match(r'\s+resource 0x[0-9a-f]+ (\w+)/(\S+)', line)
         if m:
@@ -38,9 +38,13 @@ def parse(apk):
             else:
                 res[cur][cfg] = val
             continue
-        m = re.match(r'\s+\[(.*)\]\s*$', line)
-        if m and pending is not None:
-            res[cur][pending] = ('ARRAY', m.group(1)); pending = None
+        # aapt2 wraps long arrays over several lines: collect from '[' to the closing ']'
+        if pending is not None and (buf or line.strip().startswith('[')):
+            buf += line.strip()
+            if buf.endswith(']'):
+                res[cur][pending] = ('ARRAY', buf[1:-1]); pending = None; buf = ''
+            else:
+                buf += ' '
     return res
 
 

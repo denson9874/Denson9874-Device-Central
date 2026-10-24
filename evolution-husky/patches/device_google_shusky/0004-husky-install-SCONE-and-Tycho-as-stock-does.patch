@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 12:23:39 +0200
+Subject: [PATCH 04/10] husky: install SCONE and Tycho, as stock does
+
+vendor/gms defines SCONE-v77459 and Tycho, but gms_full.mk installs them only
+when PRODUCT_MANUFACTURER is Google, which it isn't yet while the product
+makefiles are inherited. Play services then updated the missing SCONE as a
+user app, which crashed after boot without its privileged permissions
+(WRITE_SECURE_SETTINGS). Same as kodiak's device.mk.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ device-husky.mk | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/device-husky.mk b/device-husky.mk
+index 5ad85e1..92babfa 100644
+--- a/device-husky.mk
++++ b/device-husky.mk
+@@ -75,3 +75,11 @@ PRODUCT_SOONG_NAMESPACES += \
+ 
+ # Window extensions
+ $(call inherit-product, $(SRC_TARGET_DIR)/product/window_extensions.mk)
++
++# Adaptive Connectivity Services (SCONE) and Google Fi (Tycho): vendor/gms
++# defines both, but gms_full.mk's PRODUCT_MANUFACTURER filter doesn't match
++# inside inherit-product, so neither was installed. SCONE's privileged
++# permission allowlist already ships (privapp-permissions-google-p*.xml).
++PRODUCT_PACKAGES += \
++    SCONE-v77459 \
++    Tycho
+-- 
+2.43.0
+
