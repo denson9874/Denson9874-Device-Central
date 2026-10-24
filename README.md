@@ -168,12 +168,10 @@ ExpressiveOS/
 ├── derpfest-husky/                 # DerpFest kit for the Pixel 8 Pro
 ├── tools/
 │   ├── community_monitor/          # Daily XDA/Telegram triage
-│   ├── ota_mirror/                 # R2 mirror for the Updaters' OTA packages
-│   └── avb/, flash_all/, web_flasher/   # From the original ExpressiveOS concept; not used for these builds
-├── packages/                       # Expressive app and overlay sources from the original concept; not in these builds
+│   └── ota_mirror/                 # R2 mirror for the Updaters' OTA packages
 ├── research_notes/                 # Source research behind the kits
 ├── archive/                        # Posted XDA/Telegram announcements and old reply drafts
-└── docs/assets/screenshots/        # Logo and screenshots
+└── docs/assets/screenshots/        # Logo
 ```
 
 ---
@@ -182,5 +180,4 @@ ExpressiveOS/
 
 * AOSP, LineageOS, Evolution X and DerpFest sources keep their own licenses, mostly the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 * The kernels are GPL-2.0. Basic Call Recorder (BCR), built into DerpFest, is GPL-3.0 ([chenxiaolong/BCR](https://github.com/chenxiaolong/BCR)).
-* The Expressive app sources in `packages/` are GPL-3.0.
 * Google's proprietary Pixel binaries, vendor images and apps belong to Google LLC. They aren't in this repository.
