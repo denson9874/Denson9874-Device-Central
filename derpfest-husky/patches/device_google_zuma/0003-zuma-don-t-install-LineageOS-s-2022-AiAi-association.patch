@@ -1,0 +1,40 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 13:09:24 +0200
+Subject: [PATCH 3/3] zuma: don't install LineageOS's 2022 AiAi association
+ allowlist
+
+allowlist_com.google.android.as.xml gives Private Compute Services
+(com.google.android.as.oss) an allow-association list (only Android System
+Intelligence and AICore). A package with any allow-association entry refuses
+every package not listed, and stock husky (CP3A) has no such entry for it:
+Google dropped that restriction, so here anything else that binds Private
+Compute Services was refused. The file's rules for Android System
+Intelligence itself are a subset of stock's, which vendor/gms installs
+byte-identical. release-checks.sh flagged it once it had a stock dump.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ common.mk | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/common.mk b/common.mk
+index 305c9f3d..4a2df21e 100644
+--- a/common.mk
++++ b/common.mk
+@@ -263,9 +263,9 @@ PRODUCT_COPY_FILES += \
+ # Hardware Info Collection
+ include hardware/google/pixel/HardwareInfo/HardwareInfo.mk
+ 
+-# AiAi Config
+-PRODUCT_COPY_FILES += \
+-    device/google/zuma/allowlist_com.google.android.as.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/sysconfig/allowlist_com.google.android.as.xml
++# AiAi Config: not LineageOS's allowlist_com.google.android.as.xml. Stock's
++# association rules for Android System Intelligence come with vendor/gms, and
++# stock no longer restricts Private Compute Services (com.google.android.as.oss).
+ 
+ # Android Verified Boot
+ PRODUCT_COPY_FILES += \
+-- 
+2.43.0
+

@@ -1,7 +1,7 @@
-From 2edebe0f5098caba292b84d80c1528116a8b0968 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Sun, 18 Oct 2026 00:19:54 +0200
-Subject: [PATCH] gs201: install Pixel default permissions as
+Subject: [PATCH 2/5] gs201: install Pixel default permissions as
  default-permissions-gs201.xml
 
 Evolution X's vendor/gms installs its own product/etc/default-permissions/
@@ -15,7 +15,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/common.mk b/common.mk
-index fdfe534..5e105bb 100644
+index 220d8c07..29e702aa 100644
 --- a/common.mk
 +++ b/common.mk
 @@ -222,7 +222,7 @@ endif

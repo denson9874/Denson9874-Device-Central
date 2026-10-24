@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 P11_DEVICES = ["kodiak", "grizzly", "cubs", "yogi"]
-ALL_DEVICES = P11_DEVICES + ["husky"]
+ALL_DEVICES = P11_DEVICES + ["husky", "cheetah"]
 
 # Columns of a backlog row, after the leading "|"
 ID, DATE, REPORTER, DEVICE, CATEGORY, SEVERITY, STATUS, SUMMARY, TARGET = range(9)

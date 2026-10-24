@@ -45,7 +45,9 @@ doesn't upload. Its last line is `=== DerpFest husky Build Finished: … (EXIT=<
 
 - The pins are the official LineageOS 20261016 husky nightly's (its `build-manifest.xml`) plus the Muppets tip. The
   trees and the blobs are both from CP2A.260805.005. A CP3A update is open in LineageOS Gerrit, so bump all five
-  together, never one.
+  together, never one. The CP3A versions are in lineage-24.0 since 2026-10-22 (shusky 5eceafc, zuma 9eeeb27b, vendor
+  f80d252d), and Evolution X husky moved to them on 2026-10-24. DerpFest follows once that build has passed its phone
+  test; it also needs the face unlock commits reverted (below).
 - Everything else husky needs (hardware/google/pixel, pixel-sepolicy, camera, interfaces) is already in DerpFest's
   manifest. Don't add gs-common: lineage-24.0 zuma doesn't use it.
 - **Face unlock:** LineageOS's 2026-10-12 commits after these pins (zuma "Enable face unlock", "Import face unlock
@@ -67,7 +69,14 @@ doesn't upload. Its last line is `=== DerpFest husky Build Finished: … (EXIT=<
 |---|---|---|
 | device/google/shusky | `0001` | `lineage_husky.mk`: `TARGET_DOES_NOT_SUPPORT_GOOGLE_BATTERY := false` (PixelOS gms otherwise installs TurboAdapter_NoBatt) and `WITH_GMS_AICORE := true`, both before `common_full_phone.mk` because gms reads them while it's inherited; `PRODUCT_BUILD_IGNORE_APEX_CONTRIBUTION_CONTENTS := true`, as on DerpFest kodiak (gms adds extservices, which turns on the release config's Google APEX lists) |
 | device/google/shusky | `0002` | `UpdaterOverlayDerpHusky`: points the Updater at [`denson9874/derpfest_ota`](https://github.com/denson9874/derpfest_ota) (`builds/husky.json`), not DerpFest-AOSP/Updater-Stuff, whose husky.json lists the official builds (other keys). Delete it if this build becomes official |
+| device/google/shusky | `0003` | App odex on /system, not system_other (194 MB): an OTA never writes system_other, so SystemUIFundamental and Settings lost their AOT code after every update. Same as Evolution X husky `0003`; the build checks for SystemUI's odex on /system_ext |
+| device/google/shusky | `0006` | Allows OmniStyle's `oat/arm64` odex/vdex in /system (generic_system.mk's artifact-path list): with `0003` they leave system_other, and soong stopped on them |
+| device/google/shusky | `0004` | `NfcOverlayHusky`: NFC on after a clean flash (LineageOS's NfcOverlay turns it off), plus stock's URL-open dialog for three carriers |
+| device/google/shusky | `0005` | `disable-google-ota.xml`: Play services doesn't prepare Google's OTAs (the build reports the stock fingerprint), which armed resume-on-reboot and made the first unlock after a reboot ask for the PIN twice |
 | device/google/zuma | `0001` | Installs the Pixel default permissions as `default-permissions-zuma.xml`, so they don't silently lose to gms's `default-permissions.xml` |
+| device/google/zuma | `0002` | PinnerService pins `SystemUIFundamental.apk` (DerpFest's SystemUI) instead of a non-existent `SystemUI.apk` |
+| device/google/zuma | `0003` | Doesn't install LineageOS's 2022 `allowlist_com.google.android.as.xml`: it restricted Private Compute Services to ASI and AICore, which stock CP3A doesn't |
+| packages/apps/Settings | `0001` | Settings > Connected devices > NFC > Contactless payments opens again (AOSP left the activity on a removed fragment). LineageOS's fix, as cherry-picked by Evolution X (8b2dded5b421) |
 | vendor/google/husky | `0001` | Doesn't install `gpuflag`: the policy has no `gpuflag` domain, so init's child aborts at every boot |
 | vendor/google/husky | `0002` | Defers `AICorePrebuilt-aicore_20260302.01_RC00` and `DeviceIntelligenceNetworkPrebuiltAstrea` to vendor/pixel/gms. Soong stops otherwise: `found in multiple namespaces(vendor/pixel/gms/common and vendor/google/husky)`. Both are the same version, DeviceIntelligence byte-identical |
 | frameworks/base | `0001`, `0002` | LineageOS's per-app Network access (POLICY_REJECT_ALL): don't block apps that are added without INTERNET yet (Play's archived restore installs during setup), and give restored apps their access back once. Same as Evolution X kodiak 0007/0008; the build checks the 0002 log string in services.jar |

@@ -1,7 +1,7 @@
-From 2a5812fbc3fb1eb6acfcf74ad3b7844f42a08b60 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 20:28:54 +0000
-Subject: [PATCH 2/2] cheetah: get updates from denson9874/evolution_ota
+Subject: [PATCH 2/9] cheetah: get updates from denson9874/evolution_ota
 
 Unofficial builds are signed with our own keys, so they can't take
 Evolution X's official OTAs. Point the Updater at the unofficial OTA feed,
@@ -68,7 +68,7 @@ index 0000000..e85b299
 +    <string name="menu_changelog_url" translatable="false">https://raw.githubusercontent.com/denson9874/evolution_ota/cnb/changelogs/<xliff:g id="device_name">%1$s</xliff:g>.txt</string>
 +</resources>
 diff --git a/device-cheetah.mk b/device-cheetah.mk
-index 24818da..9933249 100644
+index 8c6cf79..8efbfdd 100644
 --- a/device-cheetah.mk
 +++ b/device-cheetah.mk
 @@ -37,7 +37,8 @@ PRODUCT_PACKAGES += \

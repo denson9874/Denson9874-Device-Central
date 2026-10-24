@@ -52,6 +52,8 @@ checks() {
         && no "zuma has LineageOS's Pixel face unlock commits (two face unlock providers)"
     # frameworks_base 0001/0002 (restored apps keep network access): the dex in services.jar is stored, so the
     # 0002 log string is greppable
+    # App odex on /system_ext, not system_other (which an OTA never writes): shusky 0003
+    [ -d "$O/system_ext/priv-app/SystemUIFundamental/oat/arm64" ] || no "SystemUI odex isn't on /system_ext (shusky 0003)"
     grep -a -q 'Keeping REJECT_ALL for uid=' "$O/system/framework/services.jar" \
         || no "NetworkPolicy fixes (frameworks_base 0001/0002) not in services.jar"
     # ADB must ask for authorization on a user build (vendor/lineage common.mk had it off from 10-17 to 10-23)

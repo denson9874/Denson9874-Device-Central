@@ -1,7 +1,7 @@
-From 189ac3b3dbb41fc0f0b897a998b3bcfbcbdf8626 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 20:28:54 +0000
-Subject: [PATCH 1/2] cheetah: set unofficial maintainer
+Subject: [PATCH 1/9] cheetah: set unofficial maintainer
 
 These Android 17 builds are unofficial: the Settings > About maintainer line
 names Daryl Denson (Unofficial) instead of the official Android 16
