@@ -139,7 +139,7 @@ Rather than running as a third-party application with restricted privileges, **E
 * **Google Flagship Services**: Now Playing ambient music recognition, Pixel Recorder with on-device transcription, and Google Play Services out-of-the-box.
 
 ### 🔒 Enterprise Security & Play Integrity
-* **SELinux Enforcing**: Zero permissive compromises; fully audited SELinux policy rules (`device/google/pixel11/sepolicy/`).
+* **SELinux Enforcing**: Zero permissive compromises; fully audited SELinux policy rules.
 * **Android Verified Boot (AVB 2.0)**: Hardware-backed custom key enrollment support for Google's Titan M security chip.
 * **Google Play Integrity**: Pre-configured to pass `MEETS_DEVICE_INTEGRITY`, guaranteeing that Google Wallet, PayPal, banking apps, and RCS work cleanly out-of-the-box.
 
@@ -219,34 +219,12 @@ Updates download and install automatically in the background via Android's nativ
 
 ## Building from Source
 
-### 1. Initialize the Source Tree
-```sh
-mkdir ~/expressive_os && cd ~/expressive_os
-repo init -u https://github.com/denson9874/ExpressiveOS.git -b main
-repo sync -c -j$(nproc) --force-sync --no-clone-bundle --no-tags
-```
+Builds run on the build server from the per-ROM kits below. Each kit's README covers its trees, patches, build and release steps:
 
-### 2. Set Up the Build Environment
-```sh
-source build/envsetup_expressive.sh
-lunch_pixel11        # For production signed release
-# or
-lunch_pixel11_debug  # For development userdebug build
-```
-
-### 3. Compile Platform Target Files
-```sh
-make_expressive
-```
-
-### 4. Run the Automated Release Pipeline
-```sh
-python3 build/release_pipeline.py --product pixel11 --channel qa
-```
-This generates:
-* Fastboot factory bundle: `out/release/image-expressive_pixel11-1.0.0-qa.zip`
-* Seamless A/B OTA package: `out/release/expressive_pixel11-ota-1.0.0-qa.zip`
-* JSON Updater feed: `out/release/update_qa.json`
+* Evolution X, Pixel 11 series (kodiak, grizzly, cubs, yogi): [`evolution-kodiak/`](evolution-kodiak/README.md)
+* Evolution X, Pixel 8 Pro (husky): [`evolution-husky/`](evolution-husky/README.md)
+* Evolution X, Pixel 7 Pro (cheetah): [`evolution-cheetah/`](evolution-cheetah/README.md)
+* DerpFest, Pixel 8 Pro (husky): [`derpfest-husky/`](derpfest-husky/README.md)
 
 ---
 
@@ -254,22 +232,21 @@ This generates:
 
 ```
 ExpressiveOS/
-├── manifests/                      # AOSP & device repo manifests (default.xml, pixel11.xml)
-├── build/                          # Build orchestration & release pipeline
-│   ├── envsetup_expressive.sh      # Environment setup & lunch target script
-│   └── release_pipeline.py         # Factory image & OTA payload packager
-├── packages/apps/
-│   ├── ExpressiveLauncher/         # Privileged system launcher (Android.bp, privapp XML)
-│   ├── ExpressiveHub/              # System Settings personalization suite
-│   └── ExpressiveUpdater/          # Seamless A/B OTA background updater
-├── frameworks/base/
-│   ├── core/res/res/values/        # Design tokens, 28dp pill geometry, ink-indigo colors
-│   └── packages/SystemUI/          # QS pill tiles, blur scrim, and lockscreen clock
-├── device/google/pixel11/          # Device tree, product makefiles & BoardConfig.mk
+├── evolution-kodiak/               # Evolution X kit for the Pixel 11 series, plus the shared release tools
+├── evolution-husky/                # Evolution X kit for the Pixel 8 Pro
+├── evolution-cheetah/              # Evolution X kit for the Pixel 7 Pro
+├── derpfest-husky/                 # DerpFest kit for the Pixel 8 Pro
+├── packages/
+│   ├── apps/                       # ExpressiveLauncher, ExpressiveHub, ExpressiveLab
+│   └── overlays/                   # Theme, nav and SystemUI overlays, boot animation
 ├── tools/
+│   ├── community_monitor/          # Daily XDA/Telegram triage
+│   ├── ota_mirror/                 # R2 mirror for the Updaters' OTA packages
 │   ├── avb/                        # AVB 2.0 key generator & Titan M enrollment
 │   ├── flash_all/                  # Fastboot flash-all scripts (Bash & Batch)
 │   └── web_flasher/                # WebUSB Fastboot web installer (Google Chrome)
+├── research_notes/                 # Source research behind the kits
+├── archive/                        # Posted XDA/Telegram announcements and old reply drafts
 └── docs/assets/screenshots/        # Real emulator screenshots & visual documentation
 ```
 

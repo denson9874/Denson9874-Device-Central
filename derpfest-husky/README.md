@@ -12,7 +12,7 @@
 > between them always needs a clean install. The build script refuses Evolution X keys.
 
 DerpFest 17 is LineageOS 24.0-based (`lunch lineage_<device>-cp2a-user`, `m derp`), so LineageOS's own lineage-24.0
-husky trees are used, with TheMuppets blobs. Research behind every choice here: [`reports/DerpFest husky device tree sources.md`](../reports/DerpFest%20husky%20device%20tree%20sources.md).
+husky trees are used, with TheMuppets blobs. Research behind every choice here: [`research_notes/DerpFest husky device tree sources.md`](../research_notes/DerpFest%20husky%20device%20tree%20sources.md).
 
 ## Build (x86-64 Linux, ~64 GB RAM)
 
