@@ -18,12 +18,14 @@ class TestXDAReader(unittest.TestCase):
         self.reader = XDAReader()
 
     def test_threads_configuration(self):
-        self.assertEqual(len(self.reader.threads), 4)
+        self.assertEqual(len(self.reader.threads), 6)
         thread_ids = {t["id"] for t in self.reader.threads}
         self.assertIn("4804712", thread_ids)  # kodiak/grizzly
         self.assertIn("4804723", thread_ids)  # cubs
         self.assertIn("4804826", thread_ids)  # yogi
         self.assertIn("4805239", thread_ids)  # husky
+        self.assertIn("4805779", thread_ids)  # husky DerpFest
+        self.assertIn("4806248", thread_ids)  # cheetah
 
     def test_thread_device_mapping(self):
         mapping = {t["id"]: t["device"] for t in self.reader.threads}
