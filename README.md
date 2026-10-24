@@ -118,30 +118,41 @@ Rather than running as a third-party application with restricted privileges, **E
 
 ## Major Features
 
-### 🌟 Privileged System Launcher (`ExpressiveLauncherQuickstep`)
-* **Deep Quickstep Integration**: Expressive Launcher owns `TouchInteractionService` directly (`config_recentsComponentName`), delivering zero-latency full-screen gestural navigation.
-* **Privileged Platform Permissions**: Whitelisted for `MANAGE_ACTIVITY_TASKS`, `STATUS_BAR_SERVICE`, `STOP_APP_SWITCHES`, and `READ_FRAME_BUFFER`.
-* **Native Overview Screen**: Seamless Recents task carousel with instant action pills: **Screenshot**, **Select Text**, and **Split Screen**.
-* **In-Process Folder Widgets**: Hank's model folder widgets with continuous edge drag-resizing, adaptive columns (2–6), custom corner radii, and geometry-aware open/close animations.
-* **Presentation Modes**: Instant switching between edge-to-edge full-screen drawer and classic Pixel floating bottom sheet with top drag handle.
+### 📱 Builds
 
-### 🎨 Material 3 Expressive SystemUI & Frameworks
-* **Fluid QS Pill Tiles**: 28dp pill geometry with dynamic touch ripple morphing.
-* **Real-Time Wallpaper Blur Scrim**: Compositor-level frosted glass backdrop blur in the notification shade, volume panel, and recents overview.
-* **Expressive Hub**: A dedicated personalization suite built right into Android Settings (`Personalize > Expressive Hub`) backed by `Settings.Secure` for live, restart-free updates.
-* **Lock Screen Typography**: Expressive clock styles including bundled Google Sans Flex variable typeface, Ink Display, and retro monospace.
-* **Hybrid At a Glance Engine**: Bridges Google's official Pixel smart cards (weather, timer, flight, doorbell) with Expressive daily quotes and holiday greetings across Home, Lock Screen, and Always-On Display.
+| Device | ROM | Kernel | Updates |
+| :--- | :--- | :--- | :--- |
+| Pixel 11 Pro XL (`kodiak`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
+| Pixel 11 Pro (`grizzly`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
+| Pixel 11 (`cubs`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
+| Pixel 11 Pro Fold (`yogi`) | Evolution X 12.3 | Google's stock GKI 6.12 | System updates in Settings |
+| Pixel 8 Pro (`husky`) | Evolution X 12.3 | Linux 6.1 (Google's GKI, LineageOS's device modules) | System updates in Settings (from the 2026-10-24 build) |
+| Pixel 7 Pro (`cheetah`) | Evolution X 12.3 | Linux 6.1 (Google's GKI, LineageOS's device modules) | System updates in Settings |
+| Pixel 8 Pro (`husky`) | DerpFest v17 | Linux 6.1 (GKI android14-6.1, LineageOS's gs-6.1 sources) | DerpFest's Updater |
 
-### 📱 100% Pixel 11 Pro / XL Hardware Parity
-* **Tensor SoC Optimization**: Full hardware HAL integration for next-gen Tensor NPU, TPU, and GPU drivers.
-* **120Hz LTPO Smooth Display**: Dynamic variable refresh rate scaling (1Hz–120Hz) with High Brightness Mode (HBM).
-* **Pixel Camera Suite**: Bundled Google Camera with full HDR+, Night Sight, Cinematic Video, Macro Focus, and Ultra HDR capture.
-* **Google Flagship Services**: Now Playing ambient music recognition, Pixel Recorder with on-device transcription, and Google Play Services out-of-the-box.
+All builds are unofficial Android 17 builds: user builds signed with private release keys, Google apps included, not rooted. Evolution X and DerpFest are separate ROMs with their own keys, so moving between them takes a clean install.
 
-### 🔒 Enterprise Security & Play Integrity
-* **SELinux Enforcing**: Zero permissive compromises; fully audited SELinux policy rules.
-* **Android Verified Boot (AVB 2.0)**: Hardware-backed custom key enrollment support for Google's Titan M security chip.
-* **Google Play Integrity**: Pre-configured to pass `MEETS_DEVICE_INTEGRITY`, guaranteeing that Google Wallet, PayPal, banking apps, and RCS work cleanly out-of-the-box.
+### 🔄 Over-the-Air Updates
+* **Our own update server**: the built-in Updater reads [`denson9874/evolution_ota`](https://github.com/denson9874/evolution_ota) (Evolution X) or [`denson9874/derpfest_ota`](https://github.com/denson9874/derpfest_ota) (DerpFest), not the official servers.
+* **A/B updates in the background**: the update installs to the inactive slot, then you restart. Rooted users install Magisk to the inactive slot before restarting.
+* **Precompiled apps survive updates**: app odex ships with the apps instead of on `system_other`, which updates never write, so preinstalled apps don't run slowly after every update.
+
+### 🧩 Stock Pixel Parity
+* **Stock settings values** (Evolution X): overlay values taken from each phone's stock firmware instead of AOSP defaults.
+* **Google's system services as on stock**: Private Compute Services isn't cut off from the apps that use it, and on Evolution X, Adaptive Connectivity (SCONE) has its system permissions.
+* **NFC on after a clean install**, with the Contactless payments page that Google Wallet opens.
+* **No double PIN after a reboot**: Play services can't prepare Google's stock OTAs, which armed resume-on-reboot.
+* **Checked against stock before release**: every Evolution X build is compared with stock firmware for leftover apps and for association rules that differ from stock.
+
+### ✨ Per-Device Extras
+* **Pixel 11 series**: VoLTE, 5G SA and visual voicemail (tested on T-Mobile US); Now Playing; HiLight light bar settings for Gemini and calls from starred contacts (kodiak, grizzly, yogi); fold postures on yogi.
+* **Evolution X on the Pixel 8 Pro and Pixel 7 Pro**: October 2026 vendor firmware (vendor security patch 2026-10-05); stock screenshot Markup editor, Quick Share copy, Files button and Google Photos in the photo picker; Google Fi (Tycho); Restart SystemUI in husky's advanced reboot menu.
+* **DerpFest on the Pixel 8 Pro**: DerpFest Parts, themes, clocks, Game Space and freeform windows; Basic Call Recorder (BCR) built in, off until you turn it on.
+
+### ⚠️ Known Limitations
+* **Gemini Nano** features don't work: Google serves its on-device models only to phones with a locked bootloader.
+* **Extreme Charging**: the tile has no effect on husky yet and isn't available on cheetah.
+* **DerpFest face unlock** is camera-based, not the Pixel's secure face unlock: use the fingerprint sensor for payments and app sign-in.
 
 ---
 
