@@ -1,7 +1,8 @@
 #!/bin/bash
 # Verify DerpFest's signed A/B OTA package for a device (built by `m derp` in ~/derpfest) and, with --upload,
-# publish it for DerpFest's Updater: upload it with the recovery images to SourceForge (derpfest/<dev>), wait until
-# SourceForge serves it, then update builds/<dev>.json and changelogs/<dev>.txt in denson9874/derpfest_ota (the repo
+# publish it for DerpFest's Updater: upload it with the recovery images to SourceForge (derpfest/<dev>, manual
+# downloads) and to the R2 bucket the OTA mirror serves (tools/ota_mirror), check the mirror serves it, then update
+# builds/<dev>.json and changelogs/<dev>.txt in denson9874/derpfest_ota (the repo
 # the device tree's UpdaterOverlayDerp* points at). The JSON goes out last, so it never points at a file that isn't
 # downloadable yet. DerpFest's counterpart of Evolution X's p11-ota.sh; the two never share keys, folders or repos.
 #
@@ -35,6 +36,8 @@ TOP=~/derpfest; O=$TOP/out/target/product/$dev; H=$TOP/out/host/linux-x86/bin
 DEVTREE=$TOP/$DEVTREE
 DEST=~/releases/derpfest-$dev; mkdir -p "$DEST"
 SF_USER=daryldenson0405; SF_PROJECT=denson9874-s-user-builds; SF_DIR=/home/frs/project/$SF_PROJECT/derpfest/$dev
+# The Updater downloads from the OTA mirror; rclone's r2: remote writes to the bucket it serves
+R2=r2:denson9874-ota/derpfest/$dev; MIRROR=https://ota-mirror.daryldenson-apps.workers.dev/derpfest/$dev
 REPO=~/derpfest_ota; RAW=https://raw.githubusercontent.com/denson9874/derpfest_ota/main
 KEYS=$TOP/vendor/lineage-priv/keys; EVOKEYS=~/evolution/vendor/evolution-priv/keys
 fail() { echo "FAIL: $*"; exit 1; }
@@ -105,8 +108,8 @@ firmware=$(cat $TOP/vendor/google/$dev/radio/SOURCE)
 echo "OTA_VERIFIED $OTA (patch levels: system $system_spl, vendor/boot $boot_spl; firmware $firmware)"
 [ $UPLOAD = 1 ] || [ $PREVIEW = 1 ] || exit 0
 
-# 5. Upload with the recovery images for clean installs
-URL=https://sourceforge.net/projects/$SF_PROJECT/files/derpfest/$dev/$NAME/download
+# 5. Upload with the recovery images for clean installs, and the OTA to the mirror
+URL=$MIRROR/$NAME
 size=$(stat -c %s "$OTA")
 sha256=$(sha256sum "$OTA" | cut -d' ' -f1)
 if [ $PREVIEW = 1 ]; then
@@ -126,13 +129,11 @@ echo "== upload $NAME to SourceForge: $SF_DIR"
     || { tail -5 $T/sftp.log; fail "SourceForge upload failed"; }
 echo "== upload to Google Drive: DerpFest/$dev"
 ~/upload-to-drive.sh DerpFest "$dev" "$DEST/$NAME" "$DEST/$NAME.sha256" || true
-echo "== waiting for SourceForge to serve $URL"
-for i in $(seq 1 60); do
-    len=$(curl -sIL --max-time 60 "$URL" | tr -d '\r' | awk 'tolower($1)=="content-length:" {l=$2} END {print l}')
-    [ "$len" = "$size" ] && break
-    sleep 60
-done
-[ "$len" = "$size" ] || fail "SourceForge didn't serve the package within an hour (got length '$len', want $size)"
+echo "== upload $NAME to the OTA mirror: $R2"
+~/bin/rclone copyto --s3-no-check-bucket "$DEST/$NAME" "$R2/$NAME" > $T/rclone.log 2>&1 \
+    || { tail -5 $T/rclone.log; fail "R2 upload failed (rclone remote r2: missing? see tools/ota_mirror/README.md)"; }
+len=$(curl -sIL --max-time 60 "$URL" | tr -d '\r' | awk 'tolower($1)=="content-length:" {l=$2} END {print l}')
+[ "$len" = "$size" ] || fail "the OTA mirror doesn't serve $URL (got length '$len', want $size)"
 git -C "$REPO" pull -q --ff-only
 fi
 
@@ -187,4 +188,7 @@ git -C "$REPO" add "builds/$dev.json" "changelogs/$dev.txt"
 git -C "$REPO" commit -q -m "$dev: $NAME" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 git -C "$REPO" push -q origin main || fail "pushing the JSON failed"
 git -C $DEVTREE rev-parse HEAD > "$DEST/LAST_DEVICE_COMMIT"
+# The mirror keeps this build and the one before it, for downloads still running (SourceForge keeps every build)
+~/bin/rclone lsf --files-only --format tp "$R2" | sort | awk -F';' -v keep="$NAME" '$2 != keep {print $2}' | head -n -1 \
+    | while read -r f; do ~/bin/rclone deletefile "$R2/$f"; done || echo "note: couldn't remove old builds from $R2"
 echo "OTA_PUBLISHED $RAW/builds/$dev.json"

@@ -1,17 +1,18 @@
 #!/bin/bash
 # Verify a device's signed A/B OTA package (built by `m evolution`) and, with --upload,
-# publish it for the Updater: upload it to SourceForge next to the fastboot zip, wait
-# until SourceForge serves it, then update builds/<dev>.json and changelogs/<dev>.txt in
+# publish it for the Updater: upload it to SourceForge next to the fastboot zip (manual
+# downloads) and to the R2 bucket the OTA mirror serves (tools/ota_mirror), check the mirror
+# serves it, then update builds/<dev>.json and changelogs/<dev>.txt in
 # denson9874/evolution_ota (the repo the device tree's UpdaterOverlay points at). The JSON
 # goes out last, so it never points at a file that isn't downloadable yet.
 #
-#   p11-ota.sh <kodiak|grizzly|cubs|yogi|cheetah> [--upload | --preview] [--changes <file>]
+#   p11-ota.sh <kodiak|grizzly|cubs|yogi|cheetah|husky> [--upload | --preview] [--changes <file>]
 #
 # --preview prints the JSON and changelog an upload would publish, without uploading.
 #
 # Checks: the package is A/B, for this device and from this build; its zip and payload
 # signatures verify against the build's own otacerts.zip; the payload carries every
-# partition the device tree lists (ROM plus firmware.txt; for cheetah, the build's own
+# partition the device tree lists (ROM plus firmware.txt; for cheetah and husky, the build's own
 # AB_OTA_PARTITIONS list); its vbmeta has the same boot and
 # system patch levels as the build's vbmeta.img.
 # Prints OTA_VERIFIED, and OTA_PUBLISHED <json url> after a successful --upload.
@@ -35,15 +36,20 @@ case $dev in
     yogi)    MODEL="Pixel 11 Pro Fold"; FORUM=https://xdaforums.com/t/4804826/; TAG= ;;
     # Evolution X's own trees (evolution-cheetah/). FORUM: replace with the XDA thread once it exists.
     cheetah) MODEL="Pixel 7 Pro";       FORUM=https://sourceforge.net/projects/denson9874-s-user-builds/files/cheetah/17/; TAG= ;;
-    *) echo "usage: p11-ota.sh <kodiak|grizzly|cubs|yogi|cheetah> [--upload | --preview] [--changes <file>]" >&2; exit 2 ;;
+    # LineageOS's trees and TheMuppets' blobs (evolution-husky/)
+    husky)   MODEL="Pixel 8 Pro";       FORUM=https://xdaforums.com/t/4805239/; TAG= ;;
+    *) echo "usage: p11-ota.sh <kodiak|grizzly|cubs|yogi|cheetah|husky> [--upload | --preview] [--changes <file>]" >&2; exit 2 ;;
 esac
 
 TOP=~/evolution; O=$TOP/out/target/product/$dev; H=$TOP/out/host/linux-x86/bin
 # The device tree whose commits the changelog lists
 DEVTREE=$TOP/device/google/$dev
 if [ "$dev" = cheetah ]; then DEVTREE=$TOP/device/google/pantah; fi
+if [ "$dev" = husky ]; then DEVTREE=$TOP/device/google/shusky; fi
 DEST=~/releases/$dev; mkdir -p "$DEST"
 SF_USER=daryldenson0405; SF_PROJECT=denson9874-s-user-builds; SF_DIR=/home/frs/project/$SF_PROJECT/$dev/17
+# The Updater downloads from the OTA mirror; rclone's r2: remote writes to the bucket it serves
+R2=r2:denson9874-ota/$dev/17; MIRROR=https://ota-mirror.daryldenson-apps.workers.dev/$dev/17
 REPO=~/evolution_ota; RAW=https://raw.githubusercontent.com/denson9874/evolution_ota/cnb
 fail() { echo "FAIL: $*"; exit 1; }
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
@@ -91,12 +97,14 @@ names = {m.group(2).decode() for m in re.finditer(rb"\x0a([\x02-\x20])([a-z0-9_]
          if len(m.group(2)) == m.group(1)[0]}
 print("\n".join(sorted(names)))
 EOF
-if [ "$dev" = cheetah ]; then
-    # What the payload must carry: the vendor repo's firmware partitions and gs201's ROM ones
-    need="abl bl1 bl2 bl31 gsa ldfw modem pbl tzsw boot init_boot vendor_boot vendor_kernel_boot dtbo vbmeta vbmeta_system vbmeta_vendor system system_ext product vendor"
-    # Plus the rest of the build's own list (target-files META, as a folder or only in the zip)
+if [ "$dev" = cheetah ] || [ "$dev" = husky ]; then
+    # What the payload must carry: the vendor repo's firmware partitions (its radio/*.img) and the ROM's
+    need="$(grep -oE 'radio/[a-z0-9_]+\.img' $TOP/vendor/google/$dev/Android.mk | sed 's|radio/||; s|\.img$||' | sort -u | tr '\n' ' ')"
+    need+="boot init_boot vendor_boot vendor_kernel_boot dtbo vbmeta vbmeta_system vbmeta_vendor system system_ext product vendor"
+    # Plus the rest of the build's own list: AB_OTA_PARTITIONS as the images script saved it
+    # after lunch, else target-files META (as a folder or only in the zip)
     tf=$O/obj/PACKAGING/target_files_intermediates
-    ab=$(ls -t $tf/*/META/ab_partitions.txt 2>/dev/null | head -1 || true)
+    ab=$(ls -t $O/ab_partitions.txt $tf/*/META/ab_partitions.txt 2>/dev/null | head -1 || true)
     tfz=$(ls -t $tf/*.zip 2>/dev/null | head -1 || true)
     if [ -n "$ab" ]; then
         want=$(cat "$ab")
@@ -121,10 +129,10 @@ missing=$(for p in $want; do grep -qx "$p" $T/partitions || echo "$p"; done)
 
 # 4. vbmeta keeps the patch levels (KeyMint must never see them go missing or backwards)
 mkdir $T/x
-# Where the boot and system patch levels live: vbmeta.img, or for gs201, whose boot and
+# Where the boot and system patch levels live: vbmeta.img, or for gs201 and zuma, whose boot and
 # system partitions are chained, boot.img's footer and vbmeta_system.img.
 AVB=vbmeta
-if [ "$dev" = cheetah ]; then AVB="vbmeta vbmeta_system boot"; fi
+if [ "$dev" = cheetah ] || [ "$dev" = husky ]; then AVB="vbmeta vbmeta_system boot"; fi
 $H/ota_extractor -payload "$OTA" -payload_offset "$off" -output_dir $T/x -partitions "${AVB// /,}" > $T/x.log 2>&1 \
     || { tail -3 $T/x.log; fail "couldn't extract $AVB"; }
 props() { local d=$1 i; for i in $AVB; do $H/avbtool info_image --image "$d/$i.img"; done | grep -oE "com\.android\.build\.(boot|system)\.security_patch -> '[0-9-]+'" | sort -u; }
@@ -132,20 +140,30 @@ props() { local d=$1 i; for i in $AVB; do $H/avbtool info_image --image "$d/$i.i
 [ "$(props $T/x)" = "$(props $O)" ] || fail "the OTA's patch levels differ from the build's $AVB images"
 boot_spl=$(props $T/x | sed -n "s/.*boot.security_patch -> '\(.*\)'/\1/p")
 system_spl=$(props $T/x | sed -n "s/.*system.security_patch -> '\(.*\)'/\1/p")
-if [ "$dev" = cheetah ]; then
-    # prepare.sh records the factory release it took the firmware from
-    firmware=$(tr a-z A-Z 2>/dev/null < $TOP/vendor/google/cheetah/FIRMWARE_SOURCE ||
-               grep -oE 'cheetah:17/[A-Z0-9]{4}\.[0-9]{6}\.[0-9]{3}' $DEVTREE/lineage_cheetah.mk | cut -d/ -f2)
+if [ "$dev" = cheetah ] || [ "$dev" = husky ]; then
+    # cheetah's prepare.sh records the factory release it took the firmware from; otherwise
+    # the vendor repo's firmware is the release its blobs (and stock fingerprint) come from
+    firmware=$(tr a-z A-Z 2>/dev/null < $TOP/vendor/google/$dev/FIRMWARE_SOURCE ||
+               grep -oE "$dev:17/[A-Z0-9]{4}\.[0-9]{6}\.[0-9]{3}" $DEVTREE/lineage_$dev.mk | head -1 | cut -d/ -f2)
 else
 firmware=$(grep -oE '^[a-z0-9]+\.[0-9]+\.[0-9]+' $TOP/vendor/google/$dev-images/SOURCE | tr a-z A-Z)
 fi
 echo "OTA_VERIFIED $OTA (patch levels: system $system_spl, vendor/boot $boot_spl; firmware $firmware)"
 [ $UPLOAD = 1 ] || [ $PREVIEW = 1 ] || exit 0
 
-# 5. Upload next to the fastboot zip
-NAME=$ver$TAG.zip; r=2
-while [ -e "$DEST/$NAME" ]; do NAME=$ver$TAG-r$r.zip; r=$((r + 1)); done
-URL=https://sourceforge.net/projects/$SF_PROJECT/files/$dev/17/$NAME/download
+# 5. Upload next to the fastboot zip, and to the mirror. A package already uploaded with the same
+# content (marked <name>.uploaded; husky: the pack script uploads the OTA zip itself as the release)
+# isn't uploaded to SourceForge again. A copy that never reached SourceForge is uploaded under its name.
+# The mirror always gets it (rclone skips a copy it already has).
+NAME=$ver$TAG.zip; r=2; REUSE=0
+while [ -e "$DEST/$NAME" ]; do
+    if cmp -s "$OTA" "$DEST/$NAME"; then
+        [ -f "$DEST/$NAME.uploaded" ] && REUSE=1
+        break
+    fi
+    NAME=$ver$TAG-r$r.zip; r=$((r + 1))
+done
+URL=$MIRROR/$NAME
 size=$(stat -c %s "$OTA")
 md5=$(md5sum "$OTA" | cut -d' ' -f1)
 sha256=$(sha256sum "$OTA" | cut -d' ' -f1)
@@ -153,22 +171,25 @@ if [ $PREVIEW = 1 ]; then
     OUT=$T/preview; mkdir -p $OUT/builds $OUT/changelogs
 else
 OUT=$REPO; mkdir -p "$OUT/builds" "$OUT/changelogs"
-cp "$OTA" "$DEST/$NAME"
+if [ $REUSE = 1 ]; then
+echo "== $NAME is already in $DEST (uploaded by the pack script); not uploading it to SourceForge again"
+else
+[ -e "$DEST/$NAME" ] || cp "$OTA" "$DEST/$NAME"
 (cd "$DEST" && echo "$sha256  $NAME" > "$NAME.sha256")
 echo "== upload $NAME to SourceForge: $SF_DIR"
 printf -- "-mkdir /home/frs/project/%s/%s\n-mkdir %s\nput %s %s/%s\nput %s %s/%s\n" \
     "$SF_PROJECT" "$dev" "$SF_DIR" "$DEST/$NAME" "$SF_DIR" "$NAME" "$DEST/$NAME.sha256" "$SF_DIR" "$NAME.sha256" \
     | sftp -b - -o BatchMode=yes -i ~/.ssh/sourceforge_ed25519 $SF_USER@frs.sourceforge.net > $T/sftp.log 2>&1 \
     || { tail -5 $T/sftp.log; fail "SourceForge upload failed"; }
+touch "$DEST/$NAME.uploaded"
 echo "== upload OTA to Google Drive: EvolutionX/$dev"
 ~/upload-to-drive.sh EvolutionX "$dev" "$DEST/$NAME" "$DEST/$NAME.sha256" || true
-echo "== waiting for SourceForge to serve $URL"
-for i in $(seq 1 60); do
-    len=$(curl -sIL --max-time 60 "$URL" | tr -d '\r' | awk 'tolower($1)=="content-length:" {l=$2} END {print l}')
-    [ "$len" = "$size" ] && break
-    sleep 60
-done
-[ "$len" = "$size" ] || fail "SourceForge didn't serve the package within an hour (got length '$len', want $size)"
+fi
+echo "== upload $NAME to the OTA mirror: $R2"
+~/bin/rclone copyto --s3-no-check-bucket "$DEST/$NAME" "$R2/$NAME" > $T/rclone.log 2>&1 \
+    || { tail -5 $T/rclone.log; fail "R2 upload failed (rclone remote r2: missing? see tools/ota_mirror/README.md)"; }
+len=$(curl -sIL --max-time 60 "$URL" | tr -d '\r' | awk 'tolower($1)=="content-length:" {l=$2} END {print l}')
+[ "$len" = "$size" ] || fail "the OTA mirror doesn't serve $URL (got length '$len', want $size)"
 git -C "$REPO" pull -q --ff-only
 fi
 
@@ -199,10 +220,10 @@ with open(sys.argv[1], "w") as f:
     json.dump({"response": [entry]}, f, indent=2)
     f.write("\n")
 EOF
-# cheetah's HEAD carries our patches, re-applied (new hashes) on every run: list and record
-# Evolution's own commits (the manifest revision repo checked out) instead.
+# cheetah's and husky's HEAD carry our patches, re-applied (new hashes) on every run: list and
+# record the upstream commits (the manifest revision repo checked out) instead.
 DEVHEAD=HEAD
-if [ "$dev" = cheetah ]; then
+if [ "$dev" = cheetah ] || [ "$dev" = husky ]; then
     DEVHEAD=$(git -C $DEVTREE rev-parse --verify -q refs/remotes/m/cnb || git -C $DEVTREE rev-parse --verify -q refs/remotes/evox-devices/cnb || echo HEAD)
 fi
 {
@@ -218,6 +239,8 @@ fi
         echo "- Kernel: stock Google GKI (Linux 6.12)."
     elif [ "$dev" = "cheetah" ]; then
         echo "- Kernel: LineageOS's gs201 kernel (Linux 6.1), built from source with the ROM."
+    elif [ "$dev" = "husky" ]; then
+        echo "- Kernel: LineageOS's zuma kernel (Linux 6.1), built from source with the ROM."
     else
         echo "- Kernel: Espada v3 (Linux 6.12.92) by Kevtrejo37 (CASS scheduler, Simple LMK, GrapheneOS zram fix; source: https://github.com/atrejokm301/espada-kernel)."
     fi
@@ -246,4 +269,7 @@ git -C "$REPO" add "builds/$dev.json" "changelogs/$dev.txt"
 git -C "$REPO" commit -q -m "$dev: $NAME" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 git -C "$REPO" push -q origin cnb || fail "pushing the JSON failed"
 git -C $DEVTREE rev-parse $DEVHEAD > "$DEST/LAST_DEVICE_COMMIT"
+# The mirror keeps this build and the one before it, for downloads still running (SourceForge keeps every build)
+~/bin/rclone lsf --files-only --format tp "$R2" | sort | awk -F';' -v keep="$NAME" '$2 != keep {print $2}' | head -n -1 \
+    | while read -r f; do ~/bin/rclone deletefile "$R2/$f"; done || echo "note: couldn't remove old builds from $R2"
 echo "OTA_PUBLISHED $RAW/builds/$dev.json"

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Build DerpFest 17 for the Pixel 8 Pro (husky) in ~/derpfest, check the result offline, then verify the signed
-# OTA package with derp-ota.sh (and, with --upload, publish it: SourceForge derpfest/husky, then
-# denson9874/derpfest_ota for the Updater).
+# OTA package with derp-ota.sh (and, with --upload, publish it: SourceForge derpfest/husky and the OTA mirror,
+# then denson9874/derpfest_ota for the Updater).
 #
 #   derp-husky-build.sh [--clean] [--kernel-sync] [--upload] [--changes <file>] [--check-only]
 #
