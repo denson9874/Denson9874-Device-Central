@@ -1,1 +1,0 @@
-evolution-kodiak/setup-fresh-mac.sh
