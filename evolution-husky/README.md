@@ -79,7 +79,7 @@ Stability, fluidity and charging capture: `tools/husky-audit.sh {baseline|fluidi
 
 ## Community Releases
 
-- **Telegram Post Draft:** [TELEGRAM_UPDATE_HUSKY.md](TELEGRAM_UPDATE_HUSKY.md)
+- **Telegram posts (archived):** [archive/evolution-husky/](../archive/evolution-husky/)
 - **XDA Release Thread Draft:** [XDA_RELEASE_HUSKY.bbcode](XDA_RELEASE_HUSKY.bbcode)
 
 ## Hardware Verification Status (Tested on Physical Pixel 8 Pro)
