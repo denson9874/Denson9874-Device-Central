@@ -226,3 +226,10 @@ BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += \
 
 include $(IMAGES_PATH)/BoardConfigImages.mk
 -include vendor/google/kodiak/BoardConfigVendor.mk
+
+# Keep app odex on /system rather than system_other. Only a factory flash
+# writes system_other to the inactive slot; OTA and fastboot-update installs of
+# our zips don't, so SystemUIGoogle, SettingsGoogle and the other preopted
+# priv-apps lose their AOT code after every update and run interpreted/JIT
+# until background dexopt catches up (~180 MB, well inside super).
+BOARD_USES_SYSTEM_OTHER_ODEX :=

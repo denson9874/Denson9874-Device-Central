@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 14:00:55 +0200
+Subject: [PATCH 4/4] cheetah: install one Android System Intelligence, the
+ Pixel 7 Pro's
+
+vendor/gms installs DevicePersonalizationAiAiPrebuiltPixel2026 (ASI built
+for the Pixel 11) next to this tree's DevicePersonalizationAiAiPixel2022, both
+com.google.android.as. PackageManager kept the higher version, the Pixel 11
+build, until Play replaced it with its pixel7 build. Override vendor/gms's
+copy so the system image carries the one built for this phone.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Android.bp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Android.bp b/Android.bp
+index 749f9db..f333d8a 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -320,6 +320,7 @@ android_app_import {
+     owner: "google",
+     apk: "proprietary/product/priv-app/DevicePersonalizationAiAiPrebuiltPixel2022/DevicePersonalizationAiAiPrebuiltPixel2022.apk",
+     overrides: [
++        "DevicePersonalizationAiAiPrebuiltPixel2026",
+         "DevicePersonalizationAiAiPrebuiltPixel2025",
+     ],
+     preprocessed: true,
+-- 
+2.43.0
+

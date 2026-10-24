@@ -1,0 +1,63 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 12:23:39 +0200
+Subject: [PATCH 6/9] cheetah: keep Play services from preparing Google's OTAs
+
+Play services' system updater sees the stock build fingerprint and prepares
+Google's OTAs. They can't install (update_engine only takes payloads signed
+with our key), but preparing one arms resume on reboot, so the first unlock
+after a reboot asks for the PIN twice. Disable its update components, as
+kodiak does.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ device-cheetah.mk                |  4 ++++
+ sysconfig/disable-google-ota.xml | 24 ++++++++++++++++++++++++
+ 2 files changed, 28 insertions(+)
+ create mode 100644 sysconfig/disable-google-ota.xml
+
+diff --git a/device-cheetah.mk b/device-cheetah.mk
+index b96e02f..ba53a13 100644
+--- a/device-cheetah.mk
++++ b/device-cheetah.mk
+@@ -84,3 +84,7 @@ PRODUCT_PACKAGES += \
+ # NFC on after a clean flash, as stock
+ PRODUCT_PACKAGES += \
+     NfcOverlayCheetah
++
++# Keep Google Play services from preparing Google's OTAs (sysconfig/disable-google-ota.xml).
++PRODUCT_COPY_FILES += \
++    $(DEVICE_PATH)/sysconfig/disable-google-ota.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/sysconfig/disable-google-ota.xml
+diff --git a/sysconfig/disable-google-ota.xml b/sysconfig/disable-google-ota.xml
+new file mode 100644
+index 0000000..7c558e8
+--- /dev/null
++++ b/sysconfig/disable-google-ota.xml
+@@ -0,0 +1,24 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  SPDX-FileCopyrightText: 2026 Daryl Denson
++  SPDX-License-Identifier: Apache-2.0
++-->
++<!--
++  Google Play services' system updater sees the stock Pixel build fingerprint this
++  ROM reports and prepares Google's OTAs. They can't install here (update_engine only
++  accepts payloads signed with the ROM's own key), but preparing one arms resume on
++  reboot, which makes the first unlock after every reboot ask for the PIN twice.
++  Updates come from the ROM's own updater.
++-->
++<config>
++    <component-override package="com.google.android.gms">
++        <component class=".update.SystemUpdateService" enabled="false" />
++        <component class=".update.SystemUpdateGcmTaskService" enabled="false" />
++        <component class=".update.SystemUpdatePersistentListenerService" enabled="false" />
++        <component class=".update.SystemUpdateActivity" enabled="false" />
++        <component class=".update.OtaSuggestionActivity" enabled="false" />
++        <component class=".update.OtaSuggestionSummaryProvider" enabled="false" />
++        <component class=".update.phone.PopupDialog" enabled="false" />
++        <component class=".update.resumeonreboot.ResumeOnRebootEscrowService" enabled="false" />
++    </component-override>
++</config>
+-- 
+2.43.0
+

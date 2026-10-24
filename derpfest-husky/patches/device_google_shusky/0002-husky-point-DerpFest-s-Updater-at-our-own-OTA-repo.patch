@@ -1,7 +1,7 @@
-From a7a7220b139e7372b99d348a10fbfacc8fe7e71a Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <daryldenson0405@gmail.com>
 Date: Wed, 21 Oct 2026 09:30:54 +0200
-Subject: [PATCH 2/2] husky: point DerpFest's Updater at our own OTA repo
+Subject: [PATCH 2/6] husky: point DerpFest's Updater at our own OTA repo
 
 DerpFest's Updater reads DerpFest-AOSP/Updater-Stuff/<device>.json,
 which for husky lists the official builds. They're signed with other

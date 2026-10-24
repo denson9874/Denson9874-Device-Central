@@ -249,10 +249,6 @@ def main():
             with open(replies_file, "w", encoding="utf-8") as f:
                 f.write("\n".join(reply_lines))
             print(f"[ReviewRunner] Formatted reply drafts saved to: {replies_file}")
-            root_replies = repo_root / f"COMMUNITY_REPLIES_{date_compact}.md"
-            with open(root_replies, "w", encoding="utf-8") as f:
-                f.write("\n".join(reply_lines))
-            print(f"[ReviewRunner] Formatted reply drafts copied to root: {root_replies}")
 
     # 5. Live Auto-Reply Execution (acknowledging user reports)
     replies_sent_count = 0

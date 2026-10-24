@@ -16,7 +16,7 @@ folder only adds what an unofficial build needs on top.
 | `device/google/gs201` | Evolution-X-Devices/device_google_gs201 `cnb` |
 | `device/google/pantah-kernels` | LineageOS/android_device_google_pantah-kernels `lineage-24.0` (module lists only) |
 | Kernel (Linux 6.1) | Built from source by LineageOS's `build_kernel` into `out-kernel/`, from LineageOS's gs201 kernel manifest |
-| `vendor/google/cheetah` | Evolution-X-Devices/vendor_google_cheetah `cnb`: blobs from CP2A.260705.006, plus bootloader and radio images. **Git LFS** (git.evolution-x.org) |
+| `vendor/google/cheetah` | Evolution-X-Devices/vendor_google_cheetah `cnb`: blobs from CP3A.261005.002.A1 (since 2026-10-24; CP2A.260705.006 before), plus bootloader and radio images. **Git LFS** (GitLab, `.lfsconfig`) |
 | Firmware the OTA ships | The newest Google factory release, swapped in by `prepare.sh` (see below) |
 
 ## Build (on the build server)
@@ -54,10 +54,20 @@ The weekly routine runs all of that: `~/p11-routine.sh cheetah` (see "Release sc
    | device/google/pantah | `0001` | Settings > About maintainer: "Daryl Denson (Unofficial)" instead of the official Android 16 maintainer |
    | device/google/pantah | `0002` | `UpdaterOverlayCheetah`: the Updater reads `denson9874/evolution_ota` (as the Pixel 11 trees' `UpdaterOverlay<Dev>`) |
    | device/google/pantah | `0003` | `lineage_cheetah.mk` allow-lists Evolution X's AppDataBackup in /system, which generic_system.mk's artifact-path check otherwise rejects (soong_build stops). Same fix as husky's shusky `0001` |
+   | device/google/pantah | `0004` | Installs SCONE (Adaptive Connectivity) and Tycho (Google Fi): vendor/gms defines both, but gms_full.mk's PRODUCT_MANUFACTURER gate never matches under inherit-product. As kodiak's device.mk |
+   | device/google/pantah | `0005` | `NfcOverlayCheetah`: NFC on after a clean flash (LineageOS's NfcOverlay turns it off), plus stock's URL-open dialog for three carriers. As kodiak e016d25 |
+   | device/google/pantah | `0006` | `disable-google-ota.xml`: Play services doesn't prepare Google's OTAs, which armed resume-on-reboot and made the first unlock after a reboot ask for the PIN twice. As kodiak |
+   | device/google/pantah | `0007` | App odex on /system, not system_other (179 MB): an OTA never writes system_other, so SystemUIGoogle and Settings lost their AOT code after every update. As husky's shusky `0003` |
+   | device/google/gs201 | `0003` | PinnerService pins `SystemUIGoogle.apk` (the SystemUI we ship) instead of a non-existent `SystemUI.apk` |
+   | device/google/gs201 | `0005` | Keeps `app_domain(ssr_detector_app)` in private policy: Evolution's rebased gs201 put it in system_ext/public, and its type_transition rules stop version_policy (`plat_pub_versioned.cil`) |
+   | device/google/gs201 | `0004` | Doesn't install LineageOS's 2022 `allowlist_com.google.android.as.xml`: it restricted Private Compute Services to ASI, which stock CP3A doesn't |
+   | device/google/pantah | `0008` | Stock values our build left at the AOSP default, copied from stock CP3A.261005.002.A1's overlays by `rro2xml.py` (camera pinning, Play Store pre-reboot compile, operator name after carrier config, Play Protect events, screenshot editor/Files/Quick Share copy, avatar picker, Settings slices, 5 GHz Wi-Fi thresholds, prefer-bad-Wi-Fi, Photos in the photo picker) |
    | device/google/gs201 | `0001` | Drop gs201's nine Pixel config overlays that `vendor/pixel-style` also defines (GlanceableHub*, GoogleConfigOverlay, PixelConfigOverlay*, ...); Kati fails on the duplicate module names. Same as husky's zuma `0001` |
    | device/google/gs201 | `0002` | Install gs201's `default-permissions.xml` as `default-permissions-gs201.xml`; vendor/gms installs its own (different) `default-permissions.xml`. Same as husky's zuma `0002` |
-   | vendor/google/cheetah | `0001` | Defer `DeviceIntelligenceNetworkPrebuiltAstrea` (vendor/gms's is newer) and 14 byte-identical Pixel sysconfig/default-permission XMLs to vendor/gms. Same as husky's vendor `0001` |
-   | vendor/google/cheetah | `0002` | Don't install `gpuflag` (+ its rc and library): our policy has no `gpuflag` domain, so init's child aborted at every boot, and it targets another SoC's GPU anyway. Same as husky's vendor `0004` |
+   | vendor/google/cheetah | `0001` | Defer `DeviceIntelligenceNetworkPrebuiltAstrea` (vendor/gms's is newer) and 15 byte-identical Pixel sysconfig/default-permission XMLs (google_build.xml and nowplaying_app_26q1.xml included) to vendor/gms. Same as husky's vendor `0001` |
+   | vendor/google/cheetah | `0003` | One Android System Intelligence: the Pixel 7 Pro build (`...Pixel2022`) also overrides vendor/gms's Pixel 11 build (`...Pixel2026`; its override named the old `...Pixel2025`) |
+   | device/google/pantah | `0009` | Stock's TrustTokenService root keys, which gs201 `0001` dropped with the tree's GoogleConfigOverlay |
+   | vendor/google/cheetah | `0002` | Don't install `gpuflag` (+ its rc and library): our policy has no `gpuflag` domain, so init's child aborted at every boot, and it targets another SoC's GPU anyway. Same as husky's vendor `0003` |
 
 3. Firmware: Pixels refuse bootloader downgrades, and the OTA flashes the bootloader and radio. So the
    OTA must never carry firmware older than what users run. `fetch-firmware.sh` downloads the newest
@@ -90,7 +100,9 @@ Commit it, run the runner's `cheetah-setup` (installs the kit) and `cheetah-firm
 system/memory/lmkd, vendor/gms) for every build from this tree, cheetah's included. None of them
 depends on the Pixel 11:
 
-- The Extreme Charging tile hides itself where the charger reports no Bodega support.
+- The Extreme Charging tile hides itself where the power HAL has no BODEGA hint, as on cheetah (no
+  charge-thermal profile yet: it changes charging temperature limits on a phone that runs warm, so it
+  needs a supervised charge test first).
 - The lmkd fix only matters with an in-kernel LMK.
 - The Dreamliner list only names Pixel 11 devices.
 
@@ -106,7 +118,7 @@ depends on the Pixel 11:
 - **No Espada:** the Espada kernel is only for the Pixel 11.
 - **OTA checks:** the expected partitions come from the build's own `META/ab_partitions.txt`. gs201
   chains boot and system, so their patch levels are read from `boot.img` and `vbmeta_system.img`.
-- **Names:** like grizzly/cubs/yogi, files are tagged `-UNTESTED` until someone has booted a build.
+- **Names:** no `-UNTESTED` tag (Daryl, 2026-10-19), as grizzly/cubs/yogi.
 - **Weekly task:** `evox-parity-cheetah` on the Mac (`evox-parity-cheetah.SKILL.md`), Sundays after
   the four Pixel 11 runs. It only starts `~/p11-routine.sh cheetah` and reports.
 

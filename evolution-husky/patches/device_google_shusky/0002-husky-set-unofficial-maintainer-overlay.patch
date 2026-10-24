@@ -1,7 +1,7 @@
-From a36da89536834c0a5d975363c3b13e0a9b75403d Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <daryldenson0405@gmail.com>
 Date: Thu, 15 Oct 2026 21:09:22 -0400
-Subject: [PATCH] husky: set unofficial maintainer overlay
+Subject: [PATCH 02/10] husky: set unofficial maintainer overlay
 
 Evolution X displays the maintainer name on the Android Version screen in
 Settings. Add an overlay pointing build_maintainer_summary to Daryl Denson
@@ -13,7 +13,7 @@ as the unofficial maintainer for Android 17.
  create mode 100644 overlay-evolution/packages/apps/Settings/res/values/evolution_strings.xml
 
 diff --git a/lineage_husky.mk b/lineage_husky.mk
-index 5936ad9..19513ce 100644
+index f24af12..6688bfd 100644
 --- a/lineage_husky.mk
 +++ b/lineage_husky.mk
 @@ -23,6 +23,9 @@ PRODUCT_SYSTEM_NAME := generic_system_google
@@ -24,8 +24,8 @@ index 5936ad9..19513ce 100644
 +DEVICE_PACKAGE_OVERLAYS += $(DEVICE_PATH)/overlay-evolution
 +
  PRODUCT_BUILD_PROP_OVERRIDES += \
-     BuildDesc="husky-user 17 CP2A.260805.005 15828068 release-keys" \
-     BuildFingerprint=google/husky/husky:17/CP2A.260805.005/15828068:user/release-keys \
+     BuildDesc="husky-user 17 CP3A.261005.005 16271449 release-keys" \
+     BuildSystemDesc=generic_system_google-user 17 CP3A.261005.005 16271449 release-keys \
 diff --git a/overlay-evolution/packages/apps/Settings/res/values/evolution_strings.xml b/overlay-evolution/packages/apps/Settings/res/values/evolution_strings.xml
 new file mode 100644
 index 0000000..8e01ac3
@@ -42,5 +42,5 @@ index 0000000..8e01ac3
 +    <string name="build_maintainer_summary" translatable="false">Daryl Denson (Unofficial)</string>
 +</resources>
 -- 
-2.56.0
+2.43.0
 

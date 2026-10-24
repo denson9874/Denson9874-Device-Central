@@ -1,7 +1,7 @@
-From e573ef6789993b0372dccd971d6d37c399c8c3e8 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <daryldenson0405@gmail.com>
 Date: Wed, 21 Oct 2026 09:37:12 +0200
-Subject: [PATCH 1/2] husky: DerpFest 17 product settings
+Subject: [PATCH 1/6] husky: DerpFest 17 product settings
 
 vendor/pixel/gms reads TARGET_DOES_NOT_SUPPORT_GOOGLE_BATTERY (?=) and
 WITH_GMS_AICORE (ifeq) when common_full_phone.mk is inherited, so set

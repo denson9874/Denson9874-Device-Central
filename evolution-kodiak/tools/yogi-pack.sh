@@ -46,6 +46,7 @@ for o in FrameworkResOverlayYogi SystemUIOverlayYogi SettingsOverlayYogi GRilSer
     [ -n "$(find $O/product/overlay -name "$o*.apk" | head -1)" ] || fail "$o isn't installed"
 done
 $H/aapt2 dump resources "$(find $O/product/overlay -name "FrameworkResOverlayYogi*.apk" | head -1)" | grep -q "config_foldedDeviceStates" || fail "framework overlay lacks the fold device states"
+$H/aapt2 dump resources "$(find $O/product/overlay -name "FrameworkResOverlayYogi*.apk" | head -1)" | grep -q "config_device_state_postures" || fail "framework overlay lacks the device state postures"
 $H/aapt2 dump resources "$(find $O/product/overlay -name "GRilServiceOverlayYogi*.apk" | head -1)" | grep -q "cap_sensor_support" || fail "grilservice overlay lacks cap_sensor_support"
 echo "OK: fold, SystemUI, Settings and grilservice overlays installed"
 
