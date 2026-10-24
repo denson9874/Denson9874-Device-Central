@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <daryldenson0405@gmail.com>
 Date: Tue, 20 Oct 2026 18:30:00 +0200
-Subject: [PATCH] husky: add an Extreme Charging (BODEGA) charge-thermal
+Subject: [PATCH 2/5] husky: add an Extreme Charging (BODEGA) charge-thermal
  profile
 
 Evolution X's ExtremeChargingController (frameworks/base) enables the
@@ -33,7 +33,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  2 files changed, 64 insertions(+)
 
 diff --git a/proprietary/vendor/etc/powerhint.json b/proprietary/vendor/etc/powerhint.json
-index 790f957..d46e483 100644
+index 790f9572..d46e483f 100644
 --- a/proprietary/vendor/etc/powerhint.json
 +++ b/proprietary/vendor/etc/powerhint.json
 @@ -965,6 +965,28 @@
@@ -85,7 +85,7 @@ index 790f957..d46e483 100644
        "PowerHint": "GAME",
        "Node": "CPUDVFSHeadroom",
 diff --git a/proprietary/vendor/etc/thermal_info_config_charge.json b/proprietary/vendor/etc/thermal_info_config_charge.json
-index ee24971..8b98214 100644
+index ee24971a..8b98214f 100644
 --- a/proprietary/vendor/etc/thermal_info_config_charge.json
 +++ b/proprietary/vendor/etc/thermal_info_config_charge.json
 @@ -194,6 +194,21 @@
@@ -133,5 +133,5 @@ index ee24971..8b98214 100644
          },
          {
 -- 
-2.56.0
+2.43.0
 

@@ -16,7 +16,7 @@ O=out/target/product/cheetah
 H=out/host/linux-x86/bin
 V=vendor/google/cheetah
 # The build's own name, e.g. EvolutionX-17.0-20261018-cheetah-12.3-Unofficial
-NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)-UNTESTED-fastboot.zip
+NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)-fastboot.zip
 DEST=~/releases/cheetah
 # A check (no --upload) isn't a release: keep one copy aside, out of the release folder
 [ "$MODE" = "--upload" ] || DEST=~/releases/cheetah/check
@@ -60,6 +60,10 @@ if [ -x $H/aapt2 ]; then
     $H/aapt2 dump resources $ovl | grep "denson9874/evolution_ota" >/dev/null || fail "$ovl doesn't point at denson9874/evolution_ota"
 fi
 echo "OK: unofficial maintainer, Updater overlay -> denson9874/evolution_ota"
+[ -f $O/product/priv-app/SCONE-v77459/SCONE-v77459.apk ] || fail "SCONE isn't installed"
+# Odex on /system_ext, not system_other (which an OTA never writes)
+[ -d $O/system_ext/priv-app/SystemUIGoogle/oat/arm64 ] || fail "SystemUIGoogle odex isn't on /system_ext"
+echo "OK: SCONE installed, SystemUIGoogle odex on /system_ext"
 
 echo "== firmware"
 fwsrc=$(cat $V/FIRMWARE_SOURCE 2>/dev/null || echo "vendor repo default")
@@ -114,6 +118,6 @@ ls -la $ZIP; cat $DEST/$NAME.sha256
 if [ "$MODE" = "--upload" ]; then
     echo "== upload to SourceForge: $SF_DIR"
     printf -- "-mkdir /home/frs/project/denson9874-s-user-builds/cheetah\n-mkdir $SF_DIR\nput $ZIP $SF_DIR/$NAME\nput $DEST/$NAME.sha256 $SF_DIR/$NAME.sha256\nls -l $SF_DIR\nbye\n" \
-        | sftp -o BatchMode=yes -i ~/.ssh/sourceforge_ed25519 $SF_USER@frs.sourceforge.net
+        | sftp -b - -o BatchMode=yes -i ~/.ssh/sourceforge_ed25519 $SF_USER@frs.sourceforge.net
     echo "UPLOAD_DONE https://sourceforge.net/projects/denson9874-s-user-builds/files/cheetah/17/"
 fi

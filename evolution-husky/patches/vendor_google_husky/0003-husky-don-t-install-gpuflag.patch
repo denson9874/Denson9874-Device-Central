@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <daryldenson0405@gmail.com>
 Date: Wed, 21 Oct 2026 10:30:00 +0200
-Subject: [PATCH] husky: don't install gpuflag
+Subject: [PATCH 3/5] husky: don't install gpuflag
 
 The vendor blob's gpuflag.rc runs /vendor/bin/gpuflag as
 exec_background u:r:gpuflag:s0, but our policy has no gpuflag domain:
@@ -14,14 +14,14 @@ Stop installing gpuflag.rc, gpuflag and libgpuflag_aconfig_rust.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- husky-vendor.mk | 3 ---
- 1 file changed, 3 deletions(-)
+ husky-vendor.mk | 2 --
+ 1 file changed, 2 deletions(-)
 
 diff --git a/husky-vendor.mk b/husky-vendor.mk
-index 3cdb388..f52400a 100644
+index bdf95471..f4d2cb35 100644
 --- a/husky-vendor.mk
 +++ b/husky-vendor.mk
-@@ -974,7 +974,6 @@ PRODUCT_COPY_FILES += \
+@@ -977,7 +977,6 @@ PRODUCT_COPY_FILES += \
      vendor/google/husky/proprietary/vendor/etc/init/dump_power.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/dump_power.rc \
      vendor/google/husky/proprietary/vendor/etc/init/fingerprint-goodix.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/fingerprint-goodix.rc \
      vendor/google/husky/proprietary/vendor/etc/init/google.hardware.media.c2@2.0-service.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/google.hardware.media.c2@2.0-service.rc \
@@ -29,7 +29,7 @@ index 3cdb388..f52400a 100644
      vendor/google/husky/proprietary/vendor/etc/init/hw/init.husky.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/hw/init.husky.rc \
      vendor/google/husky/proprietary/vendor/etc/init/hw/init.zuma.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/hw/init.zuma.rc \
      vendor/google/husky/proprietary/vendor/etc/init/hw/init.zuma.storage.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/hw/init.zuma.storage.rc \
-@@ -2821,7 +2820,6 @@ PRODUCT_PACKAGES += \
+@@ -2841,7 +2840,6 @@ PRODUCT_PACKAGES += \
      libgooglerilaudio \
      libgooglerilmemmonitor \
      libgpudataproducer \
@@ -37,14 +37,6 @@ index 3cdb388..f52400a 100644
      libgril_oem-google \
      libgxp \
      libhwjpeg \
-@@ -2978,7 +2976,6 @@ PRODUCT_PACKAGES += \
-     predump_gti0 \
-     predump_stm \
-     qm35_poll \
--    gpuflag \
-     android.hardware.audio.service-aidl.aoc \
-     android.hardware.authsecret-service.citadel \
-     android.hardware.biometrics.fingerprint-service.goodix \
 -- 
-2.56.0
+2.43.0
 

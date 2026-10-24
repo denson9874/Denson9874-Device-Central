@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <daryldenson0405@gmail.com>
 Date: Tue, 20 Oct 2026 18:45:00 +0200
-Subject: [PATCH] husky: keep app odex on /system, not system_other
+Subject: [PATCH 03/10] husky: keep app odex on /system, not system_other
 
 BoardConfigMainlineCommon.mk turns on BOARD_USES_SYSTEM_OTHER_ODEX, which
 moves the odex/vdex of every preopted app (SystemUIGoogle, SettingsGoogle,
@@ -35,5 +35,5 @@ index 5fcac28..f7c77e9 100644
 +# dexopt catches up (~183 MB, well inside super).
 +BOARD_USES_SYSTEM_OTHER_ODEX :=
 -- 
-2.56.0
+2.43.0
 

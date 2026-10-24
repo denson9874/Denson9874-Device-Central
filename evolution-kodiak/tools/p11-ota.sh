@@ -34,8 +34,8 @@ case $dev in
     grizzly) MODEL="Pixel 11 Pro";      FORUM=https://xdaforums.com/t/4804712/; TAG= ;;
     cubs)    MODEL="Pixel 11";          FORUM=https://xdaforums.com/t/4804723/; TAG= ;;
     yogi)    MODEL="Pixel 11 Pro Fold"; FORUM=https://xdaforums.com/t/4804826/; TAG= ;;
-    # Evolution X's own trees (evolution-cheetah/). FORUM: replace with the XDA thread once it exists.
-    cheetah) MODEL="Pixel 7 Pro";       FORUM=https://sourceforge.net/projects/denson9874-s-user-builds/files/cheetah/17/; TAG= ;;
+    # Evolution X's own trees (evolution-cheetah/)
+    cheetah) MODEL="Pixel 7 Pro";       FORUM=https://xdaforums.com/t/4806248/; TAG= ;;
     # LineageOS's trees and TheMuppets' blobs (evolution-husky/)
     husky)   MODEL="Pixel 8 Pro";       FORUM=https://xdaforums.com/t/4805239/; TAG= ;;
     *) echo "usage: p11-ota.sh <kodiak|grizzly|cubs|yogi|cheetah|husky> [--upload | --preview] [--changes <file>]" >&2; exit 2 ;;
@@ -238,9 +238,9 @@ fi
     if [ "$dev" = "yogi" ]; then
         echo "- Kernel: stock Google GKI (Linux 6.12)."
     elif [ "$dev" = "cheetah" ]; then
-        echo "- Kernel: LineageOS's gs201 kernel (Linux 6.1), built from source with the ROM."
+        echo "- Kernel: Linux 6.1, Google's signed GKI with the Pixel 7 Pro's modules and device tree built from LineageOS's gs-6.1 kernel source."
     elif [ "$dev" = "husky" ]; then
-        echo "- Kernel: LineageOS's zuma kernel (Linux 6.1), built from source with the ROM."
+        echo "- Kernel: Linux 6.1, Google's signed GKI with the Pixel 8 Pro's modules and device tree built from LineageOS's gs-6.1 kernel source."
     else
         echo "- Kernel: Espada v3 (Linux 6.12.92) by Kevtrejo37 (CASS scheduler, Simple LMK, GrapheneOS zram fix; source: https://github.com/atrejokm301/espada-kernel)."
     fi

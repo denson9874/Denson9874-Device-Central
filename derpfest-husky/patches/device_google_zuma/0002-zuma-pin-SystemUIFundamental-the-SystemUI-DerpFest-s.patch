@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 12:44:36 +0200
+Subject: [PATCH 2/3] zuma: pin SystemUIFundamental, the SystemUI DerpFest
+ ships
+
+config_defaultPinnerServiceFiles listed /system_ext/priv-app/SystemUI/SystemUI.apk,
+which DerpFest doesn't install (its SystemUI is SystemUIFundamental), so
+PinnerService pinned nothing for SystemUI and its code could be paged out
+under memory pressure. Pin the APK that's there.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ overlay/FrameworkResOverlayVendorZuma/res/values/config.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/overlay/FrameworkResOverlayVendorZuma/res/values/config.xml b/overlay/FrameworkResOverlayVendorZuma/res/values/config.xml
+index 4c08f651..5c7b02ee 100644
+--- a/overlay/FrameworkResOverlayVendorZuma/res/values/config.xml
++++ b/overlay/FrameworkResOverlayVendorZuma/res/values/config.xml
+@@ -544,7 +544,7 @@
+         <item>/system/framework/framework.jar</item>
+         <item>/system/framework/services.jar</item>
+         <item>/system/bin/surfaceflinger</item>
+-        <item>/system_ext/priv-app/SystemUI/SystemUI.apk</item>
++        <item>/system_ext/priv-app/SystemUIFundamental/SystemUIFundamental.apk</item>
+     </string-array>
+ 
+     <!-- Pre-scale volume at volume step 1 for Absolute Volume -->
+-- 
+2.43.0
+

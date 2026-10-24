@@ -1,0 +1,33 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 17:40:07 +0200
+Subject: [PATCH 6/6] husky: allow OmniStyle's odex in /system
+
+With app odex on /system (shusky 0003) instead of system_other,
+OmniStyle (a DerpFest /system priv-app) now installs oat/arm64/OmniStyle.odex
+and .vdex there, and soong stopped: "Device makefile produces files inside
+generic_system.mk's artifact path requirement". vendor/lineage allows only its
+APK; allow the two oat files too.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ lineage_husky.mk | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/lineage_husky.mk b/lineage_husky.mk
+index a8e531f2..5a51d619 100644
+--- a/lineage_husky.mk
++++ b/lineage_husky.mk
+@@ -45,3 +45,9 @@ $(call inherit-product, $(VENDOR_PATH)/$(DEVICE_CODENAME)-vendor.mk)
+ # DerpFest: unofficial build, so the Updater reads our OTA repo, not DerpFest's husky.json
+ PRODUCT_PACKAGES += \
+     UpdaterOverlayDerpHusky
++
++# App odex lives on /system now (husky/BoardConfig.mk), not system_other: allow
++# OmniStyle's, the one /system priv-app DerpFest preopts.
++PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \
++    system/priv-app/OmniStyle/oat/arm64/OmniStyle.odex \
++    system/priv-app/OmniStyle/oat/arm64/OmniStyle.vdex
+-- 
+2.43.0
+

@@ -47,6 +47,13 @@
         "device": "husky",
         "rom": "DerpFest",
         "url": "https://xdaforums.com/t/rom-17-0-unofficial-derpfest-v17-for-pixel-8-pro-husky-2026-10-21.4805779/"
+      },
+      {
+        "id": "4806248",
+        "name": "Pixel 7 Pro (cheetah) Evolution X",
+        "device": "cheetah",
+        "rom": "Evolution X",
+        "url": "https://xdaforums.com/t/rom-17-0-unofficial-evolution-x-12-3-for-pixel-7-pro-cheetah-2026-10-24.4806248/"
       }
     ]
   },

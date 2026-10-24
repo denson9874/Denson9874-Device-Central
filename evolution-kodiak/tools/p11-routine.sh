@@ -1,15 +1,16 @@
 #!/bin/bash
-# Weekly parity routine for one device (the Pixel 11 family, and the Pixel 7 Pro
-# from evolution-cheetah/): keep its build in step with official Evolution X (cnb).
+# Weekly parity routine for one device (the Pixel 11 family, the Pixel 7 Pro from
+# evolution-cheetah/ and the Pixel 8 Pro from evolution-husky/): keep its build in step
+# with official Evolution X (cnb).
 #
-#   p11-routine.sh <kodiak|grizzly|cubs|yogi|cheetah> [--dry-run] [--force] [--no-upload] [--mark-current]
+#   p11-routine.sh <kodiak|grizzly|cubs|yogi|cheetah|husky> [--dry-run] [--force] [--no-upload] [--mark-current]
 #
 #   1. Takes the tree lock, so the three weekly routines (and anything else using
 #      the lock) run one at a time, and waits for any build started by hand.
 #   2. Runs `repo sync` unless the tree was synced in the last 6 hours (the first
 #      routine of the day syncs; the others build from the same sync), skipping
-#      the husky port's projects (and, for the Pixel 11 devices, cheetah's). Then (synced or not) applies our build/make and
-#      frameworks/base patches (apply-patches.sh, idempotent).
+#      the cheetah and husky ports' projects, which only their own runs check out. Then (synced or
+#      not) applies our build/make and frameworks/base patches (apply-patches.sh, idempotent).
 #   3. Skips the build when nothing the device depends on changed since its last
 #      published build. The state is the content (git tree hash) of every repo
 #      project plus our device, vendor, images and signing-key trees, so
@@ -49,7 +50,8 @@ case $dev in
     cubs)    BUILD=~/cubs-images.sh;           BLOG=~/cubs-build.log;           PACK=~/cubs-pack.sh ;;
     yogi)    BUILD=~/yogi-images.sh;           BLOG=~/yogi-build.log;           PACK=~/yogi-pack.sh ;;
     cheetah) BUILD=~/cheetah-images.sh;        BLOG=~/cheetah-build.log;        PACK=~/cheetah-pack.sh ;;
-    *) echo "usage: p11-routine.sh <kodiak|grizzly|cubs|yogi|cheetah> [--dry-run] [--force] [--no-upload] [--mark-current]" >&2; exit 2 ;;
+    husky)   BUILD=~/husky-images.sh;          BLOG=~/husky-build.log;          PACK=~/husky-release-pack.sh ;;
+    *) echo "usage: p11-routine.sh <kodiak|grizzly|cubs|yogi|cheetah|husky> [--dry-run] [--force] [--no-upload] [--mark-current]" >&2; exit 2 ;;
 esac
 
 TOP=~/evolution
@@ -58,16 +60,18 @@ LOG=~/routine-logs/$dev-$(date +%Y%m%d-%H%M%S).log
 exec > >(tee -a "$LOG") 2>&1
 finish() { echo "ROUTINE_RESULT=$1 device=$dev log=$LOG"; exit "${2:-0}"; }
 fail() { echo "FAIL: $*"; finish FAILED 1; }
-# Projects outside this device's build: the husky port's local manifest, and for the
-# Pixel 11 devices the cheetah port's (evolution-cheetah/local_manifests/cheetah.xml), whose
-# projects only cheetah runs check out (they carry its locally committed patches and firmware).
+# Projects outside this device's build: the husky and cheetah ports' local manifests
+# (evolution-<dev>/local_manifests/<dev>.xml), whose projects only that device's runs check
+# out (they carry its locally committed patches, and for cheetah its firmware).
 HUSKY='device/google/(husky|shusky|shusky-kernels|zuma)|vendor/google/husky'
+CHEETAH='device/google/(pantah|gs201|pantah-kernels)|vendor/google/cheetah'
+HUSKY_PROJECTS='device/google/husky device/google/shusky device/google/shusky-kernels device/google/zuma vendor/google/husky'
 CHEETAH_PROJECTS='device/google/pantah device/google/gs201 device/google/pantah-kernels vendor/google/cheetah'
-if [ "$dev" = cheetah ]; then
-    SKIP="^($HUSKY)( |\$)"
-else
-    SKIP="^($HUSKY|device/google/(pantah|gs201|pantah-kernels)|vendor/google/cheetah)( |\$)"
-fi
+case $dev in
+    cheetah) SKIP="^($HUSKY)( |\$)" ;;
+    husky)   SKIP="^($CHEETAH)( |\$)" ;;
+    *)       SKIP="^($HUSKY|$CHEETAH)( |\$)" ;;
+esac
 
 echo "== $(date '+%F %T %Z') $dev routine (dry-run=$DRY force=$FORCE upload=$UPLOAD mark=$MARK no-sync=$NOSYNC)"
 
@@ -100,19 +104,20 @@ else
     repo sync -c -n -j8 --no-tags --no-clone-bundle --optimized-fetch 9>&- \
         || { echo "== fetch failed; retrying with -j4"; repo sync -c -n -j4 --no-tags --no-clone-bundle 9>&-; } \
         || fail "repo sync (fetch) failed"
-    # Then check out every project except the husky port's, which has local work
-    # in progress (uncommitted radio images) that a checkout would refuse to touch.
+    # Then check out every project except the other ports' (theirs carry local commits
+    # that only their own runs drop and re-apply).
     mapfile -t projects < <(repo list -p 2>/dev/null | grep -Ev "$SKIP")
     [ ${#projects[@]} -gt 1000 ] || fail "repo list returned only ${#projects[@]} projects"
     echo "== repo sync: check out ${#projects[@]} projects"
     repo sync -c -l -j8 --fail-fast "${projects[@]}" 9>&- || fail "repo sync (checkout) failed"
     date +%s > ~/.evolution-last-sync
 fi
-# The Pixel 11 runs don't check out cheetah's projects: do it here, from the last fetch,
-# whether or not this run fetched. That also drops the previous run's local commits.
-if [ "$dev" = cheetah ] && [ $DRY = 0 ] && [ $MARK = 0 ] && [ $NOSYNC = 0 ]; then
-    echo "== repo sync: check out the cheetah projects"
-    repo sync -c -l -j4 $CHEETAH_PROJECTS 9>&- || fail "repo sync (cheetah checkout) failed"
+# The other runs don't check out cheetah's or husky's projects: do it here, from the last
+# fetch, whether or not this run fetched. That also drops the previous run's local commits.
+if [[ $dev =~ ^(cheetah|husky)$ ]] && [ $DRY = 0 ] && [ $MARK = 0 ] && [ $NOSYNC = 0 ]; then
+    [ $dev = cheetah ] && P=$CHEETAH_PROJECTS || P=$HUSKY_PROJECTS
+    echo "== repo sync: check out the $dev projects"
+    repo sync -c -l -j4 $P 9>&- || fail "repo sync ($dev checkout) failed"
 fi
 # Our patches (build/make, frameworks/base) go into every build, whether or not this
 # run synced. A sync drops them; apply-patches.sh skips the ones already applied.
@@ -121,6 +126,9 @@ if [ $DRY = 0 ] && [ $MARK = 0 ]; then
     if [ "$dev" = cheetah ]; then
         # Our pantah patches and the newest cached Google firmware (local commits)
         ~/evolution-cheetah/prepare.sh "$TOP" 9>&- || fail "evolution-cheetah/prepare.sh failed"
+    elif [ "$dev" = husky ]; then
+        # Our shusky/zuma/vendor patches (local commits); TheMuppets' blobs carry the firmware
+        ~/evolution-husky/apply.sh "$TOP" 9>&- || fail "evolution-husky/apply.sh failed"
     fi
 fi
 
@@ -129,10 +137,10 @@ echo "== computing the source state"
 trees=$(mktemp); trap 'rm -f "$trees"' EXIT
 repo forall -c 'echo "$REPO_PATH $(git rev-parse HEAD^{tree})"' 2>/dev/null | grep -Ev "$SKIP" | sort > "$trees"
 [ -s "$trees" ] || fail "repo forall listed no projects"
-if [ "$dev" = cheetah ]; then
-    # Evolution's device and vendor trees are repo projects (listed above); our part is the kit
+if [[ $dev =~ ^(cheetah|husky)$ ]]; then
+    # The upstream device and vendor trees are repo projects (listed above); our part is the kit
     ours="vendor/evolution-priv/keys"
-    echo "evolution-cheetah $(cd ~/evolution-cheetah && find . -type f ! -path './.git/*' -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16)" >> "$trees"
+    echo "evolution-$dev $(cd ~/evolution-$dev && find . -type f ! -path './.git/*' -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16)" >> "$trees"
 else
     ours="device/google/$dev vendor/google/$dev vendor/google/$dev-images vendor/evolution-priv/keys"
 fi

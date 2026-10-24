@@ -2,8 +2,9 @@
 # Pre-release checks on a finished build in out/, for the two kinds of regression
 # the 10-18 build shipped without anyone noticing (HANDOFF 2aj):
 #
-#   1. Association rules: every <allow-association> in the build's sysconfig and
-#      permissions XML must also be in stock firmware (~/android-dt/dumps/<dev>).
+#   1. Association rules vs stock firmware (~/android-dt/dumps/<dev>): no installed target
+#      may be restricted here but not in stock, and no stock pair may be missing for a target
+#      restricted here. Extra pairs for a target stock also restricts only widen it (noted).
 #      vendor/gms's nowplaying.xml added one for com.google.android.as.oss, which
 #      cut Android System Intelligence off from Private Compute Services (Now
 #      Playing and At a Glance settings couldn't be changed, ISS-20261019-01/-05).
@@ -13,7 +14,7 @@
 #      from 10-15 shipped next to SystemUIGoogle and won, crashing SystemUI after
 #      fingerprint unlock (ISS-20261020-01). Also flags SystemUI next to SystemUIGoogle.
 #
-#   release-checks.sh <kodiak|grizzly|cubs|yogi|cheetah>
+#   release-checks.sh <kodiak|grizzly|cubs|yogi|cheetah|husky>
 #
 # Exit 0 and RELEASE_CHECKS=OK when both pass; exit 1 and RELEASE_CHECKS=FAILED otherwise.
 set -uo pipefail
@@ -51,17 +52,41 @@ built = assocs(out)
 if os.path.isdir(f'{stock}/product'):
     ref = assocs(stock)
     print(f'== association rules: {len(built)} in the build, {len(ref)} in stock')
+    # A target with any allow-association refuses every package not listed. What breaks apps is a target
+    # restricted here but not in stock (new restriction) or a stock pair missing for a target restricted
+    # here (narrowed). Extra pairs for a target stock restricts too only widen it.
+    import subprocess
+    aapt2 = os.path.expanduser('~/evolution/out/host/linux-x86/bin/aapt2')
+    installed = set()
+    for apk in glob.glob(f'{out}/**/*app/*/*.apk', recursive=True):
+        if '/overlay/' in apk or '/obj/' in apk or '/system_other/' in apk:
+            continue
+        pkg = subprocess.run([aapt2, 'dump', 'packagename', apk], capture_output=True, text=True).stdout.strip()
+        if pkg:
+            installed.add(pkg)
+    bt, st = {t for t, _ in built}, {t for t, _ in ref}
+    new_r = sorted(k for k in built if k[0] not in st)
+    narrowed = sorted(k for k in ref if k[0] in bt and k not in built)
+    wider = sorted(k for k in built if k[0] in st and k not in ref)
+    fail = 0
+    for t, a in new_r:
+        if t in installed:
+            print(f'   NEW RESTRICTION: target={t} allowed={a} ({built[(t, a)]}); stock restricts {t} nowhere')
+            fail = 1
+        else:
+            print(f'   inert (no {t} APK in the build): target={t} allowed={a} ({built[(t, a)]})')
+    for t, a in narrowed:
+        print(f'   NARROWED: stock lets {a} associate with {t} ({ref[(t, a)]}); this build restricts {t} without it')
+        fail = 1
+    for t, a in wider:
+        print(f'   wider than stock (ok): target={t} allowed={a} ({built[(t, a)]})')
+    if fail:
+        print('   A target with any allow-association refuses every package not listed: compare with stock')
+        bad += 1
+    else:
+        print('   OK')
 else:
-    ref = built
     print(f'== association rules: SKIPPED, no stock dump at {stock}')
-extra = sorted(k for k in built if k not in ref)
-for target, allowed in extra:
-    print(f'   NOT IN STOCK: target={target} allowed={allowed} ({built[(target, allowed)]})')
-if extra:
-    print('   A target with any allow-association refuses every package not listed: compare with stock')
-    bad += 1
-else:
-    print('   OK')
 
 # 2. Stale apps: APKs in a partition's staging dir that aren't in the list of files the build
 # installs there (obj/PACKAGING/<part>_intermediates/file_list.txt). The images are made from

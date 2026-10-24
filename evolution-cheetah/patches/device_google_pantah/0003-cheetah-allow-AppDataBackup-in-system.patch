@@ -1,7 +1,7 @@
-From f1ef64f88808acea71f95117a24b6f46b20fe97a Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 21:45:00 +0000
-Subject: [PATCH] cheetah: allow AppDataBackup in /system
+Subject: [PATCH 3/9] cheetah: allow AppDataBackup in /system
 
 Evolution X installs AppDataBackup in /system, which generic_system.mk's
 artifact-path check forbids for device makefiles, so soong_build stops:
@@ -19,11 +19,11 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  1 file changed, 8 insertions(+)
 
 diff --git a/lineage_cheetah.mk b/lineage_cheetah.mk
-index 6a603a0..7b60072 100644
+index d476562..b6c20c3 100644
 --- a/lineage_cheetah.mk
 +++ b/lineage_cheetah.mk
-@@ -32,4 +32,12 @@ PRODUCT_BUILD_PROP_OVERRIDES += \
-     BuildSystemFingerprint=google/generic_system_google/generic:17/CP2A.260705.006/15641320:user/release-keys \
+@@ -33,4 +33,12 @@ PRODUCT_BUILD_PROP_OVERRIDES += \
+     BuildSystemFingerprint=google/generic_system_google/generic:17/CP3A.261005.002.A1/16269273:user/release-keys \
      DeviceProduct=$(DEVICE_CODENAME)
  
 +# Evolution X puts AppDataBackup in /system, which generic_system.mk's artifact-path

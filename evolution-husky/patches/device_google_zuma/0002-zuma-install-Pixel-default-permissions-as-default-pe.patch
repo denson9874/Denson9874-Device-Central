@@ -1,7 +1,7 @@
-From 92378771d85d781059ad437fbfb7f2fba5d9a508 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <daryldenson0405@gmail.com>
 Date: Sat, 10 Oct 2026 01:52:42 +0200
-Subject: [PATCH] zuma: install Pixel default permissions as
+Subject: [PATCH 2/6] zuma: install Pixel default permissions as
  default-permissions-zuma.xml
 
 Evolution X's vendor/gms installs its own product/etc/default-permissions/
@@ -12,7 +12,7 @@ file in that directory, so give zuma's its own name.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/common.mk b/common.mk
-index 8b1cb1a..305c9f3 100644
+index 4ed42763..5750cbbf 100644
 --- a/common.mk
 +++ b/common.mk
 @@ -213,7 +213,7 @@ PRODUCT_PACKAGES += \

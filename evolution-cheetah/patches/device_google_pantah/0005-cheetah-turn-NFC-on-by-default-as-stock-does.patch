@@ -1,0 +1,139 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 12:23:39 +0200
+Subject: [PATCH 5/9] cheetah: turn NFC on by default, as stock does
+
+LineageOS's NfcOverlay sets enable_nfc_default=false, so after a clean flash
+NFC (and tap-to-pay) stayed off until the user found the toggle. Stock and
+AOSP default to on. NfcOverlayCheetah (priority 1, above NfcOverlay) sets it
+back, with stock PixelNfcOverlayCommon's URL-open dialog for mcc204-mnc04,
+mcc310-mnc04 and mcc311-mnc480. Same as kodiak e016d25.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ cheetah/overlay/NfcOverlayCheetah/Android.bp       |  9 +++++++++
+ .../overlay/NfcOverlayCheetah/AndroidManifest.xml  | 14 ++++++++++++++
+ .../res/values-mcc204-mnc04/config.xml             |  9 +++++++++
+ .../res/values-mcc310-mnc04/config.xml             |  9 +++++++++
+ .../res/values-mcc311-mnc480/config.xml            |  9 +++++++++
+ .../NfcOverlayCheetah/res/values/config.xml        | 10 ++++++++++
+ device-cheetah.mk                                  |  4 ++++
+ 7 files changed, 64 insertions(+)
+ create mode 100644 cheetah/overlay/NfcOverlayCheetah/Android.bp
+ create mode 100644 cheetah/overlay/NfcOverlayCheetah/AndroidManifest.xml
+ create mode 100644 cheetah/overlay/NfcOverlayCheetah/res/values-mcc204-mnc04/config.xml
+ create mode 100644 cheetah/overlay/NfcOverlayCheetah/res/values-mcc310-mnc04/config.xml
+ create mode 100644 cheetah/overlay/NfcOverlayCheetah/res/values-mcc311-mnc480/config.xml
+ create mode 100644 cheetah/overlay/NfcOverlayCheetah/res/values/config.xml
+
+diff --git a/cheetah/overlay/NfcOverlayCheetah/Android.bp b/cheetah/overlay/NfcOverlayCheetah/Android.bp
+new file mode 100644
+index 0000000..f6f79ec
+--- /dev/null
++++ b/cheetah/overlay/NfcOverlayCheetah/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "NfcOverlayCheetah",
++    product_specific: true,
++}
+diff --git a/cheetah/overlay/NfcOverlayCheetah/AndroidManifest.xml b/cheetah/overlay/NfcOverlayCheetah/AndroidManifest.xml
+new file mode 100644
+index 0000000..1cdb6a1
+--- /dev/null
++++ b/cheetah/overlay/NfcOverlayCheetah/AndroidManifest.xml
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.android.nfc.overlay.cheetah">
++    <!-- Priority 1: above LineageOS's NfcOverlay (priority 0), which turns NFC off by default. -->
++    <overlay
++        android:isStatic="true"
++        android:priority="1"
++        android:targetName="NfcCustomization"
++        android:targetPackage="com.android.nfc" />
++</manifest>
+diff --git a/cheetah/overlay/NfcOverlayCheetah/res/values-mcc204-mnc04/config.xml b/cheetah/overlay/NfcOverlayCheetah/res/values-mcc204-mnc04/config.xml
+new file mode 100644
+index 0000000..9c21f2d
+--- /dev/null
++++ b/cheetah/overlay/NfcOverlayCheetah/res/values-mcc204-mnc04/config.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<resources>
++    <!-- From stock PixelNfcOverlayCommon (as on kodiak), which targets Google's NFC module. -->
++    <bool name="enable_nfc_url_open_dialog">true</bool>
++</resources>
+diff --git a/cheetah/overlay/NfcOverlayCheetah/res/values-mcc310-mnc04/config.xml b/cheetah/overlay/NfcOverlayCheetah/res/values-mcc310-mnc04/config.xml
+new file mode 100644
+index 0000000..9c21f2d
+--- /dev/null
++++ b/cheetah/overlay/NfcOverlayCheetah/res/values-mcc310-mnc04/config.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<resources>
++    <!-- From stock PixelNfcOverlayCommon (as on kodiak), which targets Google's NFC module. -->
++    <bool name="enable_nfc_url_open_dialog">true</bool>
++</resources>
+diff --git a/cheetah/overlay/NfcOverlayCheetah/res/values-mcc311-mnc480/config.xml b/cheetah/overlay/NfcOverlayCheetah/res/values-mcc311-mnc480/config.xml
+new file mode 100644
+index 0000000..9c21f2d
+--- /dev/null
++++ b/cheetah/overlay/NfcOverlayCheetah/res/values-mcc311-mnc480/config.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<resources>
++    <!-- From stock PixelNfcOverlayCommon (as on kodiak), which targets Google's NFC module. -->
++    <bool name="enable_nfc_url_open_dialog">true</bool>
++</resources>
+diff --git a/cheetah/overlay/NfcOverlayCheetah/res/values/config.xml b/cheetah/overlay/NfcOverlayCheetah/res/values/config.xml
+new file mode 100644
+index 0000000..55a35df
+--- /dev/null
++++ b/cheetah/overlay/NfcOverlayCheetah/res/values/config.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<resources>
++    <!-- Stock Pixels and AOSP turn NFC on after a clean flash; LineageOS's NfcOverlay
++         turns it off, so tap-to-pay didn't work until the user found the toggle. -->
++    <bool name="enable_nfc_default">true</bool>
++</resources>
+diff --git a/device-cheetah.mk b/device-cheetah.mk
+index a36721e..b96e02f 100644
+--- a/device-cheetah.mk
++++ b/device-cheetah.mk
+@@ -80,3 +80,7 @@ DEVICE_PRODUCT_COMPATIBILITY_MATRIX_FILE += \
+ PRODUCT_PACKAGES += \
+     SCONE-v77459 \
+     Tycho
++
++# NFC on after a clean flash, as stock
++PRODUCT_PACKAGES += \
++    NfcOverlayCheetah
+-- 
+2.43.0
+

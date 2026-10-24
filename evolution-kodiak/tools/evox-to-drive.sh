@@ -3,7 +3,7 @@
 # derp-build.sh copies DerpFest builds to gdrive:DerpFest/kodiak (both through ~/upload-to-drive.sh).
 # p11-routine.sh runs it after every successful build; by hand it copies a device's newest build.
 #
-#   evox-to-drive.sh <kodiak|grizzly|cubs|yogi|cheetah> [--newer <file>] [--dry-run]
+#   evox-to-drive.sh <kodiak|grizzly|cubs|yogi|cheetah|husky> [--newer <file>] [--dry-run]
 #
 #   --newer <file>  the files in ~/releases/<dev> written after <file> (the routine's start marker)
 #   (default)       the newest fastboot zip and the newest OTA zip, each with its .sha256, and the
@@ -25,8 +25,8 @@ while [ $# -gt 0 ]; do
     shift
 done
 case $dev in
-    kodiak|grizzly|cubs|yogi|cheetah) ;;
-    *) echo "usage: evox-to-drive.sh <kodiak|grizzly|cubs|yogi|cheetah> [--newer <file>] [--dry-run]" >&2; exit 2 ;;
+    kodiak|grizzly|cubs|yogi|cheetah|husky) ;;
+    *) echo "usage: evox-to-drive.sh <kodiak|grizzly|cubs|yogi|cheetah|husky> [--newer <file>] [--dry-run]" >&2; exit 2 ;;
 esac
 dir=~/releases/$dev
 [ -d "$dir" ] || { echo "no $dir"; echo "DRIVE_UPLOAD=NOTHING"; exit 0; }
