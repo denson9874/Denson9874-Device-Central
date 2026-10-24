@@ -1,18 +1,17 @@
-# ExpressiveOS — Android 17 for Pixel 11 Pro / XL & Pixel 8 Pro
+# ExpressiveOS: Unofficial Android 17 for Google Pixel
 
 <div align="center">
   <img src="docs/assets/screenshots/logo.png" alt="ExpressiveOS Logo" width="128" />
   <h1>ExpressiveOS</h1>
-  <p><strong>A customized, production-grade Android 17 operating system for Google Pixel 11 Pro / XL and Pixel 8 Pro (husky), infused with Material 3 Expressive design.</strong></p>
+  <p><strong>Unofficial Android 17 builds of Evolution X and DerpFest for the Pixel 11 series, Pixel 8 Pro and Pixel 7 Pro.</strong></p>
 
   <p>
     <a href="#major-features">Features</a> •
-    <a href="#screenshots--gallery">Screenshots</a> •
-    <a href="#hardware-verification--pixel-8-pro">Hardware Test</a> •
-    <a href="#installation-instructions">Installation</a> •
-    <a href="#bootloader-locking--security">AVB 2.0 Locking</a> •
-    <a href="#building-from-source">Building</a> •
-    <a href="#release-channels">OTA Updates</a>
+    <a href="#downloads">Downloads</a> •
+    <a href="#installation">Installation</a> •
+    <a href="#updating">Updating</a> •
+    <a href="#reporting-bugs">Reporting Bugs</a> •
+    <a href="#building-from-source">Building</a>
   </p>
 </div>
 
@@ -20,99 +19,12 @@
 
 ## Overview
 
-**ExpressiveOS** combines the clean stability, Tensor hardware optimization, and camera fidelity of Google's flagship Pixel firmware with the fluid design philosophy, system-level folder widgets, and rich personalization features pioneered by **Expressive Launcher**.
+These are unofficial builds maintained by Daryl Denson (@daryldenson). They aren't official Evolution X or DerpFest builds, so report bugs in this project's threads, not to those teams.
 
-Rather than running as a third-party application with restricted privileges, **Expressive Launcher** is integrated directly into the AOSP platform as the primary, privileged **Recents, Taskbar, and Home provider** (`system_ext/priv-app/ExpressiveLauncherQuickstep`). This unlocks zero-latency gesture navigation, native overview actions, fluid app-to-home physics, and seamless system-wide customization.
+* **Evolution X 12.3** (`cnb`, based on LineageOS 24.0) for the Pixel 11 Pro XL, Pixel 11 Pro, Pixel 11, Pixel 11 Pro Fold, Pixel 8 Pro and Pixel 7 Pro.
+* **DerpFest v17** (based on LineageOS 24.0) for the Pixel 8 Pro.
 
----
-
-## Hardware Verification: Pixel 8 Pro (husky) — v1.1.0 Customization & OTA Suite
-
-*Live captures taken directly from a physical Google Pixel 8 Pro (`husky`) running ExpressiveOS v1.1.0 (Android 17, Build `ZP11.260821.010`):*
-
-<div align="center">
-  <table>
-    <tr>
-      <td width="50%" align="center">
-        <h4>Expressive Lab Hub</h4>
-        <img src="docs/assets/screenshots/pixel8pro-expressive-lab.png" alt="Expressive Lab Settings" width="320" /><br />
-        <em>System customization suite: Quick Settings blur toggles, status bar battery styles, gestures, and pure AMOLED mode.</em>
-      </td>
-      <td width="50%" align="center">
-        <h4>Seamless OTA Updater Flow</h4>
-        <img src="docs/assets/screenshots/pixel8pro-expressive-ota.png" alt="ExpressiveOS OTA Check" width="320" /><br />
-        <em>Integrated OTA update engine with live changelog and non-wipe in-place A/B partition flashing.</em>
-      </td>
-    </tr>
-    <tr>
-      <td width="50%" align="center">
-        <h4>Real-Time Frosted Glass QS Blur</h4>
-        <img src="docs/assets/screenshots/pixel8pro-expressive-qs-blur.png" alt="Quick Settings Blur" width="320" /><br />
-        <em>Compositor-level real-time frosted glass backdrop blur behind Quick Settings pill tiles and pure AMOLED background.</em>
-      </td>
-      <td width="50%" align="center">
-        <h4>App Drawer & Expressive Lab</h4>
-        <img src="docs/assets/screenshots/pixel8pro-expressive-drawer-lab.png" alt="Pixel 8 Pro App Drawer" width="320" /><br />
-        <em>Floating Material 3 app drawer featuring Expressive Lab alongside core system and Google applications.</em>
-      </td>
-    </tr>
-    <tr>
-      <td width="50%" align="center">
-        <h4>Physical Home Screen</h4>
-        <img src="docs/assets/screenshots/pixel8pro-expressive-home.png" alt="Pixel 8 Pro Home" width="320" /><br />
-        <em>Expressive Launcher running as primary system home with emerald wallpaper, dock search bar, and app layout.</em>
-      </td>
-      <td width="50%" align="center">
-        <h4>Home Settings Hub</h4>
-        <img src="docs/assets/screenshots/pixel8pro-expressive-settings.png" alt="Pixel 8 Pro Settings" width="320" /><br />
-        <em>Native system settings menu for Expressive Pro, icons, widgets, and gestures.</em>
-      </td>
-    </tr>
-  </table>
-</div>
-
-
----
-
-## Screenshots & Gallery
-
-*All screenshots below are actual, unedited captures taken directly from the Android 17 build running on the Pixel emulator.*
-
-<div align="center">
-  <table>
-    <tr>
-      <td width="50%" align="center">
-        <h4>1. Expressive Desktop &amp; Folder Widget</h4>
-        <img src="docs/assets/screenshots/01-home-screen.png" alt="Expressive Desktop" width="340" /><br />
-        <em>Material 3 Expressive Home with in-process Folder Widget, At a Glance daily quote ("Make today a good story"), Clock widget, and Google dock search pill.</em>
-      </td>
-      <td width="50%" align="center">
-        <h4>2. Floating Bottom Sheet App Drawer</h4>
-        <img src="docs/assets/screenshots/04-app-drawer.png" alt="App Drawer" width="340" /><br />
-        <em>Fluid bottom sheet app drawer with top pill handle, prediction row, search bar, and live wallpaper background blur.</em>
-      </td>
-    </tr>
-    <tr>
-      <td width="50%" align="center">
-        <h4>3. Material 3 Expressive Quick Settings</h4>
-        <img src="docs/assets/screenshots/03-quicksettings-blur.png" alt="Quick Settings & Blur" width="340" /><br />
-        <em>Android 17 Quick Settings with 2x4 pill tiles, brightness slider, and real-time frosted glass wallpaper blur scrim.</em>
-      </td>
-      <td width="50%" align="center">
-        <h4>4. Home &amp; System Customization Settings</h4>
-        <img src="docs/assets/screenshots/02-customization-settings.png" alt="Customization Settings" width="340" /><br />
-        <em>Comprehensive customization hub for icons, shapes, widgets, At a Glance, and gesture navigation.</em>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="2" align="center">
-        <h4>5. Deep Typography &amp; Appearance Controls</h4>
-        <img src="docs/assets/screenshots/05-icons-appearance.png" alt="Icons and Appearance Settings" width="340" /><br />
-        <em>System font engine featuring Google Sans Flex Variable typography, custom icon shapes, and dynamic Material You color themes.</em>
-      </td>
-    </tr>
-  </table>
-</div>
+This repository holds the device trees, patches and release tools the builds are made from.
 
 ---
 
@@ -156,75 +68,82 @@ All builds are unofficial Android 17 builds: user builds signed with private rel
 
 ---
 
-## Installation Instructions
+## Downloads
 
-### Prerequisites
-1. A **Google Pixel 11 Pro** or **Pixel 11 Pro XL**.
-2. A computer with **Android SDK Platform-Tools (v35+)** installed (`adb` and `fastboot`).
-3. High-speed USB-C to USB-C cable.
-4. **OEM Unlocking** enabled in *Settings > System > Developer Options*.
+Every download folder has the SHA-256 checksums: check the zip before you flash it.
 
----
+| Device | Download | XDA thread |
+| :--- | :--- | :--- |
+| Pixel 11 Pro XL (`kodiak`) | [SourceForge: kodiak/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/kodiak/17/) | [kodiak / grizzly](https://xdaforums.com/t/4804712/) |
+| Pixel 11 Pro (`grizzly`) | [SourceForge: grizzly/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/) | [kodiak / grizzly](https://xdaforums.com/t/4804712/) |
+| Pixel 11 (`cubs`) | [SourceForge: cubs/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/cubs/17/) | [cubs](https://xdaforums.com/t/4804723/) |
+| Pixel 11 Pro Fold (`yogi`) | [SourceForge: yogi/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/yogi/17/) | [yogi](https://xdaforums.com/t/4804826/) |
+| Pixel 8 Pro (`husky`), Evolution X | [SourceForge: husky/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/husky/17/) | [husky](https://xdaforums.com/t/4805239/) |
+| Pixel 7 Pro (`cheetah`) | [SourceForge: cheetah/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/cheetah/17/) | [cheetah](https://xdaforums.com/t/4806248/) |
+| Pixel 8 Pro (`husky`), DerpFest | [SourceForge: derpfest/husky](https://sourceforge.net/projects/denson9874-s-user-builds/files/derpfest/husky/) | [husky DerpFest](https://xdaforums.com/t/4805779/) |
 
-### Method 1: WebUSB Fastboot Web Flasher (Recommended)
-
-1. Open `tools/web_flasher/index.html` in **Google Chrome** or any WebUSB-compatible browser.
-2. Reboot your Pixel 11 Pro / XL into **Bootloader Mode**:
-   ```sh
-   adb reboot bootloader
-   ```
-   *(Or power off, then hold **Power + Volume Down** until the fastboot screen appears).*
-3. Click **Connect Device** and select your Pixel device in the browser prompt.
-4. Click **Flash ExpressiveOS** to automatically flash all system partitions and reboot.
+Release announcements: Telegram [@ExpressiveGroup](https://t.me/ExpressiveGroup).
 
 ---
 
-### Method 2: Fastboot Command Line Flashing
+## Installation
 
-1. Download the latest ExpressiveOS Factory Image bundle (`image-expressive_pixel11-*.zip`).
-2. Reboot into bootloader:
-   ```sh
-   adb reboot bootloader
-   ```
-3. Run the automated flash script:
-   * **macOS / Linux**:
-     ```sh
-     chmod +x tools/flash_all/flash-all.sh
-     ./tools/flash_all/flash-all.sh
-     ```
-   * **Windows**:
-     ```cmd
-     tools\flash_all\flash-all.bat
-     ```
-4. The device will automatically reboot into ExpressiveOS.
+### Before you start
+1. **Unlock the bootloader.** Unlocking wipes the phone.
+2. **Install the latest platform-tools** (`adb` and `fastboot`).
+3. **Put the phone on the right stock firmware** with the [Android Flash Tool](https://flash.android.com/):
+
+   | Device | Stock firmware | Notes |
+   | :--- | :--- | :--- |
+   | Pixel 11 series | CD1A.261005.003 (October 2026) | The zip doesn't flash a bootloader or radio, so the phone must already be on this release |
+   | Pixel 7 Pro | CP3A.261005.002.A1 (October 2026) or newer | The zip doesn't flash a bootloader or radio; later OTAs include them |
+   | Pixel 8 Pro | CP3A.261005.005 (October 2026) | The zip includes this firmware, but the phone should already be on it |
+
+4. **Coming from any other ROM, a clean install is required**, including between Evolution X and DerpFest. Each build is signed with its own keys, so updates from one won't install over another.
+
+### Pixel 11 series and Pixel 7 Pro (fastboot zip)
+Use the zip whose name ends in `-fastboot.zip` (the other zip is the OTA package). If a folder has several for the same date, the highest `-rN` is the newest.
+```sh
+adb reboot bootloader
+fastboot -w update EvolutionX-17.0-<date>-<device>-12.3-Unofficial-fastboot.zip
+```
+`-w` wipes all your data. fastboot switches to fastbootd partway through; leave the phone plugged in until it reboots by itself. The first boot takes a few minutes.
+
+### Pixel 8 Pro (recovery sideload, Evolution X or DerpFest)
+Download the ROM zip and the matching `boot-<date>.img` and `vendor_boot-<date>.img` from the same folder, then:
+```sh
+adb reboot bootloader
+fastboot flash boot boot-<date>.img
+fastboot flash vendor_boot vendor_boot-<date>.img
+fastboot reboot recovery
+```
+In recovery, choose **Factory reset > Format data/factory reset > Format data** (this wipes all your data), then **Apply update > Apply from ADB**, and sideload the zip:
+```sh
+adb sideload <ROM zip>
+```
+The sideload stops at about 47% with `Total xfer: 1.00x`; that's normal. Choose **Reboot system now**.
+
+### Keep the bootloader unlocked
+These builds don't support a locked bootloader. Locking it with a custom ROM installed can leave the phone unable to boot.
 
 ---
 
-## Bootloader Locking & Security (AVB 2.0)
+## Updating
 
-ExpressiveOS fully supports re-locking your bootloader with cryptographic Verified Boot active using custom AVB keys:
-
-1. Connect your Pixel 11 Pro / XL in Bootloader mode.
-2. Enroll the ExpressiveOS custom signing key into the Titan M security chip:
-   ```sh
-   ./tools/avb/enroll_avb_key.sh
-   ```
-   *(Internally runs `fastboot flashing set-custom-key vendor/expressive/keys/avb_custom_key.img`)*.
-3. When prompted, select **Lock Bootloader** (`fastboot flashing lock`) and confirm on the phone's physical display.
-4. The device will reboot with green/yellow verified boot state active, passing Google Play Integrity checks with a secure locked bootloader!
+* **Evolution X:** Settings > System > System updates. **DerpFest:** Settings > System > Updater. The update installs in the background to the inactive slot; restart when it's done. Updates keep your data.
+* **Pixel 8 Pro on an Evolution X build older than 2026-10-24:** sideload the newest build once (recovery > Apply update > Apply from ADB); updates arrive in Settings after that.
+* **Rooted:** before restarting, open Magisk > Install > *Install to inactive slot (after OTA)*, or root is gone. With KernelSU-Next / SuSFS on Espada (kodiak, grizzly, cubs), flash Espada's KSU zip again after the update.
 
 ---
 
-## Release Channels & OTA Updates
+## Reporting Bugs
 
-ExpressiveOS features seamless A/B background system updates with dual release tracks:
-
-| Channel | Frequency | Stability | Update Feed |
-| :--- | :--- | :--- | :--- |
-| **QA / Beta** | Daily (03:00 ET) | Latest enhancements & experimental UI | `updates:qa-v2/latest.json` |
-| **Stable** | Weekly (Saturdays) | Fully verified & weekly release gate passed | `updates:stable/latest.json` |
-
-Updates download and install automatically in the background via Android's native `update_engine`. Switch channels anytime in **Settings > System > System Updates**.
+* **No logs, no report.** Reports without a logcat are flagged for deletion. Capture one right after the problem happens, and post it with your build date and the steps to reproduce:
+  ```sh
+  adb logcat -b all -d > log.txt
+  ```
+* **Custom setups get limited to no support.** That covers root modules, Xposed/LSPosed, kernels other than the build's own or Espada, and apps from APKMirror and similar sites that don't match the build (Google system apps especially). Reproduce the problem on a clean install without them first.
+* Post in your device's XDA thread (see [Downloads](#downloads)).
 
 ---
 
@@ -247,24 +166,21 @@ ExpressiveOS/
 ├── evolution-husky/                # Evolution X kit for the Pixel 8 Pro
 ├── evolution-cheetah/              # Evolution X kit for the Pixel 7 Pro
 ├── derpfest-husky/                 # DerpFest kit for the Pixel 8 Pro
-├── packages/
-│   ├── apps/                       # ExpressiveLauncher, ExpressiveHub, ExpressiveLab
-│   └── overlays/                   # Theme, nav and SystemUI overlays, boot animation
 ├── tools/
 │   ├── community_monitor/          # Daily XDA/Telegram triage
 │   ├── ota_mirror/                 # R2 mirror for the Updaters' OTA packages
-│   ├── avb/                        # AVB 2.0 key generator & Titan M enrollment
-│   ├── flash_all/                  # Fastboot flash-all scripts (Bash & Batch)
-│   └── web_flasher/                # WebUSB Fastboot web installer (Google Chrome)
+│   └── avb/, flash_all/, web_flasher/   # From the original ExpressiveOS concept; not used for these builds
+├── packages/                       # Expressive app and overlay sources from the original concept; not in these builds
 ├── research_notes/                 # Source research behind the kits
 ├── archive/                        # Posted XDA/Telegram announcements and old reply drafts
-└── docs/assets/screenshots/        # Real emulator screenshots & visual documentation
+└── docs/assets/screenshots/        # Logo and screenshots
 ```
 
 ---
 
 ## License
 
-* **Android Open Source Project (AOSP)** components are licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
-* **Expressive Launcher** components are licensed under the GNU General Public License v3.0 (GPL-3.0).
-* Proprietary Google Pixel binaries and vendor blobs are property of Google LLC.
+* AOSP, LineageOS, Evolution X and DerpFest sources keep their own licenses, mostly the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+* The kernels are GPL-2.0. Basic Call Recorder (BCR), built into DerpFest, is GPL-3.0 ([chenxiaolong/BCR](https://github.com/chenxiaolong/BCR)).
+* The Expressive app sources in `packages/` are GPL-3.0.
+* Google's proprietary Pixel binaries, vendor images and apps belong to Google LLC. They aren't in this repository.
