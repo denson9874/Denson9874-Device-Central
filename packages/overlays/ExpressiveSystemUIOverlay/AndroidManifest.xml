@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="dev.expressive.overlay.systemui">
-    <overlay
-        android:targetPackage="com.android.systemui"
-        android:priority="2000"
-        android:isStatic="true" />
-    <application android:hasCode="false" android:label="Expressive SystemUI Overlay" />
-</manifest>
