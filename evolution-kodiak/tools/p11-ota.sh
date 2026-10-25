@@ -148,6 +148,18 @@ if [ "$dev" = cheetah ] || [ "$dev" = husky ]; then
 else
 firmware=$(grep -oE '^[a-z0-9]+\.[0-9]+\.[0-9]+' $TOP/vendor/google/$dev-images/SOURCE | tr a-z A-Z)
 fi
+# cheetah ships KernelSU Next in init_boot (evolution-cheetah/tools/cheetah-ksu.sh): the OTA's
+# init_boot must carry it, or every rooted user loses root with this update
+if [ "$dev" = cheetah ]; then
+    $H/ota_extractor -payload "$OTA" -payload_offset "$off" -output_dir $T/x -partitions init_boot > $T/x.log 2>&1 \
+        || { tail -3 $T/x.log; fail "couldn't extract init_boot"; }
+    if [ -x $H/unpack_bootimg ]; then $H/unpack_bootimg --boot_img $T/x/init_boot.img --out $T/ib >/dev/null
+    else python3 $TOP/system/tools/mkbootimg/unpack_bootimg.py --boot_img $T/x/init_boot.img --out $T/ib >/dev/null; fi
+    # Not grep -q: an early exit would kill cpio with SIGPIPE under pipefail
+    { lz4 -dc $T/ib/ramdisk 2>/dev/null || gzip -dc $T/ib/ramdisk; } | cpio -t --quiet 2>/dev/null | grep -x kernelsu.ko >/dev/null \
+        || fail "the OTA's init_boot has no kernelsu.ko (KernelSU Next)"
+    echo "OK: the OTA's init_boot carries KernelSU Next"
+fi
 echo "OTA_VERIFIED $OTA (patch levels: system $system_spl, vendor/boot $boot_spl; firmware $firmware)"
 [ $UPLOAD = 1 ] || [ $PREVIEW = 1 ] || exit 0
 
@@ -234,11 +246,16 @@ fi
     echo "=============================="
     [ -n "$TAG" ] && echo "- Untested: this build has never been booted on a $MODEL. If it doesn't boot, the phone goes back to the build you had."
     echo "- The update includes the stock Pixel firmware $firmware (bootloader and radio)."
+    if [ "$dev" = "cheetah" ]; then
+        echo "- Root: KernelSU Next with susfs ships in the update, and its manager is preinstalled. Root stays across updates; no app gets it until you allow it in KernelSU Next."
+        echo "- Magisk users: before this update, remove Magisk completely (Magisk > Uninstall > Complete Uninstall), and don't use its install to inactive slot. Magisk and KernelSU Next can't both be installed, and their modules aren't interchangeable."
+    else
     echo "- Rooted? Before rebooting, install Magisk (or KernelSU) to the inactive slot, or root is gone after the update."
+    fi
     if [ "$dev" = "yogi" ]; then
         echo "- Kernel: stock Google GKI (Linux 6.12)."
     elif [ "$dev" = "cheetah" ]; then
-        echo "- Kernel: Linux 6.1, Google's signed GKI with the Pixel 7 Pro's modules and device tree built from LineageOS's gs-6.1 kernel source."
+        echo "- Kernel: Linux 6.1, Google's signed GKI with the Pixel 7 Pro's modules and device tree built from LineageOS's gs-6.1 kernel source. KernelSU Next loads as a module from init_boot."
     elif [ "$dev" = "husky" ]; then
         echo "- Kernel: Linux 6.1, Google's signed GKI with the Pixel 8 Pro's modules and device tree built from LineageOS's gs-6.1 kernel source."
     else
