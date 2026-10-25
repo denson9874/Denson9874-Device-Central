@@ -24,9 +24,12 @@ export BUILD_NUMBER=${BUILD_NUMBER:-eng.$(whoami).$(date -d @$BUILD_DATETIME +%Y
 # Pass 1: images and OTA with a stock init_boot, which cheetah-ksu.sh patches
 unset CHEETAH_KSU_INIT_BOOT
 m -j"$(nproc)" evolution || { echo "BUILD_EXIT=1"; exit 1; }
-~/evolution-cheetah/tools/cheetah-ksu.sh || { echo "cheetah-ksu.sh failed"; echo "BUILD_EXIT=1"; exit 1; }
-# Pass 2: the same build with the KernelSU Next init_boot (device/google/pantah 0011);
-# only init_boot, target-files and the signed A/B OTA package (p11-ota.sh) are redone
-export CHEETAH_KSU_INIT_BOOT=out/ksu/init_boot-ksu.img
-m -j"$(nproc)" evolution || { echo "BUILD_EXIT=1"; exit 1; }
+# CHEETAH_KSU=0: stop here, an unrooted build (cheetah-pack.sh and p11-ota.sh honour it too)
+if [ "${CHEETAH_KSU:-1}" = 1 ]; then
+    ~/evolution-cheetah/tools/cheetah-ksu.sh || { echo "cheetah-ksu.sh failed"; echo "BUILD_EXIT=1"; exit 1; }
+    # Pass 2: the same build with the KernelSU Next init_boot (device/google/pantah 0011);
+    # only init_boot, target-files and the signed A/B OTA package (p11-ota.sh) are redone
+    export CHEETAH_KSU_INIT_BOOT=out/ksu/init_boot-ksu.img
+    m -j"$(nproc)" evolution || { echo "BUILD_EXIT=1"; exit 1; }
+fi
 echo "BUILD_EXIT=0"
