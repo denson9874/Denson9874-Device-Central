@@ -249,6 +249,7 @@ fi
     echo "- The update includes the stock Pixel firmware $firmware (bootloader and radio)."
     if [ "$dev" = "cheetah" ] && [ "${CHEETAH_KSU:-1}" = 1 ]; then
         echo "- Root: KernelSU Next with susfs ships in the update, and its manager is preinstalled. Root stays across updates; no app gets it until you allow it in KernelSU Next."
+        echo "- susfs (root hiding) is off until you turn on SUSFS auto-load in KernelSU Next and restart."
         echo "- Magisk users: before this update, remove Magisk completely (Magisk > Uninstall > Complete Uninstall), and don't use its install to inactive slot. Magisk and KernelSU Next can't both be installed, and their modules aren't interchangeable."
     else
     echo "- Rooted? Before rebooting, install Magisk (or KernelSU) to the inactive slot, or root is gone after the update."
