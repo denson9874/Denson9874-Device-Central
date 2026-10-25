@@ -153,6 +153,11 @@ mkdir $T/x; unzip -q -o $ZIP -d $T/x
 for f in $T/x/*.img; do cmp -s $f $O/$(basename $f) || fail "$(basename $f) differs from out/"; done
 for f in $(ls $T/x); do grep -qiE "magisk|ROOT" <<<"$f" && fail "zip contains $f"; done
 # gs201 chains boot and system: their patch levels are in boot.img's footer and vbmeta_system.img
+# The whole AVB chain, init_boot's descriptor included: a KernelSU init_boot with
+# a stale or missing hash footer fails here, not on the phone
+$H/avbtool verify_image --image $T/x/vbmeta.img --follow_chain_partitions > $T/avb.log 2>&1 \
+    || { tail -5 $T/avb.log; fail "avbtool verify_image failed on the zip's images"; }
+echo "OK: AVB chain verifies ($(grep -c "^Verifying" $T/avb.log 2>/dev/null || true) images)"
 avb=$(for i in vbmeta vbmeta_system boot; do $H/avbtool info_image --image $T/x/$i.img; done)
 grep -q "com.android.build.boot.security_patch -> '" <<<"$avb" || fail "no boot patch level in vbmeta, vbmeta_system or boot"
 spl=$(sed -n "s/.*com.android.build.system.security_patch -> '\(.*\)'/\1/p" <<<"$avb" | head -1)
