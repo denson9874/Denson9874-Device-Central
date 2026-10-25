@@ -18,6 +18,7 @@ folder only adds what an unofficial build needs on top.
 | Kernel (Linux 6.1) | Built from source by LineageOS's `build_kernel` into `out-kernel/`, from LineageOS's gs201 kernel manifest |
 | `vendor/google/cheetah` | Evolution-X-Devices/vendor_google_cheetah `cnb`: blobs from CP3A.261005.002.A1 (since 2026-10-24; CP2A.260705.006 before), plus bootloader and radio images. **Git LFS** (GitLab, `.lfsconfig`) |
 | Firmware the OTA ships | The newest Google factory release, swapped in by `prepare.sh` (see below) |
+| Root | [KernelSU Next](https://github.com/KernelSU-Next/KernelSU-Next) (`ksu.conf`, v3.4.2) in `init_boot`, with susfs as its guard module and the manager preinstalled (see "KernelSU Next") |
 
 ## Build (on the build server)
 
@@ -31,12 +32,13 @@ repo sync -c -j4 --no-tags --no-clone-bundle \
 cp -r /path/to/evolution-cheetah ~/evolution-cheetah        # prepare.sh, apply.sh, patches
 cp ~/evolution-cheetah/tools/cheetah-{images,pack}.sh ~/
 ~/evolution-cheetah/fetch-firmware.sh                       # newest factory bootloader + radio
+~/evolution-cheetah/fetch-ksu.sh                            # KernelSU Next host ksud + manager (ksu.conf)
 ```
 
 Each build:
 
 ```bash
-~/cheetah-images.sh > ~/cheetah-build.log 2>&1   # prepare.sh, lunch lineage_cheetah-cp2a-user, build_kernel, m evolution
+~/cheetah-images.sh > ~/cheetah-build.log 2>&1   # prepare.sh, lunch, build_kernel, m evolution, cheetah-ksu.sh, m evolution again
 ~/cheetah-pack.sh                                # verify + fastboot zip in ~/releases/cheetah/check (--upload: in ~/releases/cheetah, and published)
 ~/p11-ota.sh cheetah                             # verify the signed A/B OTA (add --upload to publish it and the Updater JSON)
 ```
@@ -68,6 +70,8 @@ The weekly routine runs all of that: `~/p11-routine.sh cheetah` (see "Release sc
    | vendor/google/cheetah | `0003` | One Android System Intelligence: the Pixel 7 Pro build (`...Pixel2022`) also overrides vendor/gms's Pixel 11 build (`...Pixel2026`; its override named the old `...Pixel2025`) |
    | device/google/pantah | `0009` | Stock's TrustTokenService root keys, which gs201 `0001` dropped with the tree's GoogleConfigOverlay |
    | vendor/google/cheetah | `0002` | Don't install `gpuflag` (+ its rc and library): our policy has no `gpuflag` domain, so init's child aborted at every boot, and it targets another SoC's GPU anyway. Same as husky's vendor `0003` |
+   | device/google/pantah | `0010` | Preinstalls the KernelSU Next manager (`ksu/Android.bp`, a presigned unprivileged product app). `prepare.sh` copies in the APK `fetch-ksu.sh` pinned |
+   | device/google/pantah | `0011` | With `CHEETAH_KSU_INIT_BOOT` set, `BOARD_PREBUILT_INIT_BOOT_IMAGE` is that image: the build re-signs it with the init_boot AVB key and ships it in the images and the OTA |
 
 3. Firmware: Pixels refuse bootloader downgrades, and the OTA flashes the bootloader and radio. So the
    OTA must never carry firmware older than what users run. `fetch-firmware.sh` downloads the newest
@@ -77,6 +81,9 @@ The weekly routine runs all of that: `~/p11-routine.sh cheetah` (see "Release sc
    `vendor/google/cheetah/radio/`, rewrites the sha1s in its `Android.mk`, records the release in
    `FIRMWARE_SOURCE`, and commits locally. It's skipped if the cached release is older than what the
    vendor repo already ships.
+
+4. Copies the KernelSU Next manager APK (`~/android-dt/ksu/<version>/KernelSUNext.apk`, from
+   `fetch-ksu.sh`) into `device/google/pantah/ksu/` for patch `0010`. It stops if the APK is missing.
 
 `repo sync` drops the local commits; `prepare.sh` puts them back. Run `fetch-firmware.sh` when Google
 ships a monthly release (`--check` only reports the newest one).
@@ -93,6 +100,41 @@ sha256=<the 64-hex SHA-256 from the same row>
 
 Commit it, run the runner's `cheetah-setup` (installs the kit) and `cheetah-firmware`. Without
 `firmware.conf` the script still tries Google's page, and says what it saw if that fails.
+
+## KernelSU Next
+
+Every cheetah build, its fastboot zip and its OTA ship KernelSU Next in `init_boot` (Daryl,
+2026-10-25: KSU in every OTA, manager preinstalled). The kernel stays Google's signed GKI
+(android14-6.1); nothing in `boot` changes.
+
+- **LKM, not a patched kernel.** `kernelsu.ko` (built for the android14-6.1 KMI) and `ksuinit` go
+  into `init_boot`'s ramdisk, as the manager's own "patch a file" does. susfs is KernelSU Next's
+  `susfs_guard_lkm.ko`, which `ksud` loads at boot once the user turns on SUSFS auto-load in the
+  manager. If KernelSU Next breaks on a Google kernel update, a source-built GKI with the driver
+  and susfs v2.3.0 built in (as Espada does on 6.12) is the fallback.
+- **Pinned release.** `ksu.conf` names the version, the host `ksud`
+  (`ksud-x86_64-unknown-linux-musl`) and the manager APK, each with its SHA-256. `fetch-ksu.sh`
+  downloads them to `~/android-dt/ksu/<version>/` and refuses anything that doesn't match. A blank
+  SHA-256 makes it print the file's hash and stop: check it against the release page, then commit
+  it. To update KernelSU Next, change all four lines together.
+- **Two make passes.** `cheetah-images.sh` builds once with the normal init_boot, then
+  `tools/cheetah-ksu.sh` checks that `boot.img`'s kernel is the KMI in `ksu.conf`, patches that
+  init_boot with `ksud boot-patch --kmi android14-6.1` into `out/ksu/init_boot-ksu.img`, keeps the
+  unpatched one as `out/ksu/init_boot-stock.img`, and checks the patched ramdisk (ksuinit as `init`,
+  this build's `init` as `init.real`, `kernelsu.ko`). The second pass runs with
+  `CHEETAH_KSU_INIT_BOOT` set (patch `0011`), and both passes share `BUILD_DATETIME` and
+  `BUILD_NUMBER`, so only init_boot, target-files and the OTA should be redone.
+- **Checks.** `cheetah-pack.sh` fails unless the manager is installed, `out/.../init_boot.img` and the
+  zip's init_boot carry `kernelsu.ko` and the stock copy doesn't; it publishes
+  `<build>-init_boot-stock.img` (+ SHA-256) next to the zip for anyone who wants root gone.
+  `p11-ota.sh cheetah` fails unless the OTA's init_boot carries `kernelsu.ko`, and its changelog
+  tells Magisk users to remove Magisk completely before updating.
+- **Integrity.** susfs hides root and mounts from apps; Strong integrity still comes from Evolution
+  X's own keybox handling. Don't add TrickyStore or Play Integrity Fix modules to the build.
+
+Before the first KSU release, on a real cheetah: boot with KSU active and no module load errors,
+Play Integrity at MEETS_STRONG_INTEGRITY with the manager installed, Wallet tap-to-pay, and an OTA
+from one KSU build to the next keeping root.
 
 ## Shared patches
 

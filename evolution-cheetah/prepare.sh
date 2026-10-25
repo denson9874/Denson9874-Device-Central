@@ -25,6 +25,12 @@ done
 
 "$here/apply.sh" "$top"
 
+# KernelSU Next manager for device/google/pantah 0010 (fetch-ksu.sh, pinned in ksu.conf)
+ksu_version=$(sed -n 's/^version=//p' "$here/ksu.conf")
+ksu_apk=~/android-dt/ksu/$ksu_version/KernelSUNext.apk
+[[ -s "$ksu_apk" ]] || { echo "FAIL: no $ksu_apk (run fetch-ksu.sh)" >&2; exit 1; }
+cp "$ksu_apk" "$top/device/google/pantah/ksu/KernelSUNext.apk"
+
 # Release date of a build id such as cp3a.261005.005 -> 261005
 date_of() { cut -d. -f2 <<<"${1,,}"; }
 fw=~/android-dt/firmware/cheetah
@@ -39,4 +45,4 @@ elif [[ -n "$shipped" && "$(date_of "$cached")" < "$(date_of "$shipped")" ]]; th
 else
     "$here/update-firmware.sh" "$top" "$(ls "$fw"/bootloader-cheetah-*.img | tail -1)" "$(ls "$fw"/radio-cheetah-*.img | tail -1)" "$cached"
 fi
-echo "PREPARE_OK firmware $(cat "$vendor/FIRMWARE_SOURCE" 2>/dev/null || echo "${shipped:-unknown} (vendor repo)")"
+echo "PREPARE_OK firmware $(cat "$vendor/FIRMWARE_SOURCE" 2>/dev/null || echo "${shipped:-unknown} (vendor repo)"), KernelSU Next $ksu_version"
