@@ -1,4 +1,4 @@
-# ExpressiveOS / Evolution X: Fresh Mac Rebuild & Restoration Guide
+# Evolution X / DerpFest: Fresh Mac Rebuild & Restoration Guide
 
 This document provides complete instructions for restoring your development environment on a newly wiped Mac so you can pick back up immediately on ExpressiveOS and Evolution X for Pixel 11 Pro XL (`kodiak`) with both Claude Code and Google Antigravity.
 

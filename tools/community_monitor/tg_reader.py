@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Telegram Ingestion Reader for ExpressiveOS / Evolution X.
+Telegram Ingestion Reader for the Evolution X and DerpFest builds.
 Fetches updates from @ExpressiveLauncherFeedback and @ExpressiveGroup using Telegram Bot API.
 Uses only standard library (urllib.request, json, os, sys) to ensure portability.
 """

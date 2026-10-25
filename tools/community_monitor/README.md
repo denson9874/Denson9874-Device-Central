@@ -1,4 +1,4 @@
-# ExpressiveOS / Evolution X / DerpFest Community Review & Automated Poster
+# Evolution X / DerpFest Community Review & Automated Poster
 
 Automated suite for community feedback monitoring, issue triage, user issue acknowledgment replies, and automatic release notes publishing across XDA Forums and Telegram.
 

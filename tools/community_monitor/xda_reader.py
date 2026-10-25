@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-XDA Thread Ingestion Reader for ExpressiveOS / Evolution X.
+XDA Thread Ingestion Reader for the Evolution X and DerpFest builds.
 Extracts community posts from active XDA threads:
 - Kodiak & Grizzly (#4804712)
 - Cubs (#4804723)

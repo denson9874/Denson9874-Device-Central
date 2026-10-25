@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Telegram Reply and Release Notes Poster for ExpressiveOS / Evolution X.
+Telegram Reply and Release Notes Poster for the Evolution X and DerpFest builds.
 Automates posting replies to acknowledge user reports in @ExpressiveLauncherFeedback
 and publishing release announcements to @ExpressiveGroup.
 Supports:
