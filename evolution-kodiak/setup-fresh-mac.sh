@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # setup-fresh-mac.sh
-# Automated restoration & bootstrap script for ExpressiveOS / Evolution X on macOS.
+# Automated restoration & bootstrap script for the Evolution X / DerpFest build environment on macOS.
 #
 # Covers Steps 1-6:
 # 1. Xcode Command Line Tools & Homebrew
@@ -29,7 +29,7 @@ log_err()  { echo -e "${RED}[ERROR]${NC} $*"; }
 log_step() { echo -e "\n${BOLD}${CYAN}=== Step $1: $2 ===${NC}\n"; }
 
 echo -e "${BOLD}================================================================${NC}"
-echo -e "${BOLD}   ExpressiveOS / Evolution X Environment Bootstrap Script       ${NC}"
+echo -e "${BOLD}   Evolution X / DerpFest Environment Bootstrap Script            ${NC}"
 echo -e "${BOLD}================================================================${NC}"
 
 # ------------------------------------------------------------------------------

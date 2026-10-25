@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sunday Community Release Notes Generator for ExpressiveOS / Evolution X.
+Sunday Community Release Notes Generator for the Evolution X and DerpFest builds.
 
 Reads COMMUNITY_TRIAGE.md and lists the release items for a device: rows that are
 VERIFIED, or RESOLVED with a release date in Target Release and a category other
