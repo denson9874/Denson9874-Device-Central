@@ -129,6 +129,12 @@ Every cheetah build, its fastboot zip and its OTA ship KernelSU Next in `init_bo
   `<build>-init_boot-stock.img` (+ SHA-256) next to the zip for anyone who wants root gone.
   `p11-ota.sh cheetah` fails unless the OTA's init_boot carries `kernelsu.ko`, and its changelog
   tells Magisk users to remove Magisk completely before updating.
+- **Off switch.** `CHEETAH_KSU=0` for `cheetah-images.sh`, `cheetah-pack.sh` and `p11-ota.sh`
+  builds, checks and describes an unrooted build (one pass, stock init_boot; the manager app stays).
+- **On-device gate.** As husky: `cheetah-pack.sh` (no `--upload`) leaves the candidate in
+  `~/releases/cheetah/check/`; after flashing and testing it, write `<zip>.device-ok` there with the
+  line `sha256 <sha256 of that zip>`. `--upload` (and so the weekly `p11-routine.sh cheetah`) is
+  refused without it, or if `out/` was rebuilt since the test.
 - **Integrity.** susfs hides root and mounts from apps; Strong integrity still comes from Evolution
   X's own keybox handling. Don't add TrickyStore or Play Integrity Fix modules to the build.
 
