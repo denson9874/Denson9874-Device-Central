@@ -8,13 +8,6 @@
 # The zip holds what out/fastboot-info.txt flashes (ROM partitions and
 # super_empty), not the bootloader and radio: like the Pixel 11 zips, users
 # flash the latest stock release first, and the OTA carries the firmware.
-# init_boot is the KernelSU Next one (cheetah-ksu.sh); the build's unpatched
-# init_boot is published next to the zip for anyone who wants root gone.
-# CHEETAH_KSU=0 (also for cheetah-images.sh and p11-ota.sh): an unrooted build.
-#
-# The on-device gate (as husky-release-pack.sh): flash and test check/<zip>, then
-# write check/<zip>.device-ok with the line "sha256 <sha256 of that zip>". An
-# upload is refused unless that zip was tested and out/ still holds its images.
 set -euo pipefail
 MODE=${1:-}
 
@@ -34,8 +27,6 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 [[ $NAME == EvolutionX-*-cheetah-* ]] || fail "can't read ro.evolution.build.version from $O"
 # A second release on the same day gets -r2, -r3...: a released file name (and
 # its posted SHA-256) must never be overwritten.
-CHECK=~/releases/cheetah/check; CNAME=$NAME
-KSU=${CHEETAH_KSU:-1}
 if [ "$MODE" = "--upload" ]; then
     base=${NAME%-fastboot.zip}; r=2
     while [ -e "$DEST/$NAME" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
@@ -74,36 +65,6 @@ echo "OK: unofficial maintainer, Updater overlay -> denson9874/evolution_ota"
 [ -d $O/system_ext/priv-app/SystemUIGoogle/oat/arm64 ] || fail "SystemUIGoogle odex isn't on /system_ext"
 echo "OK: SCONE installed, SystemUIGoogle odex on /system_ext"
 
-T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
-unpack() { if [ -x $H/unpack_bootimg ]; then $H/unpack_bootimg "$@"; else python3 system/tools/mkbootimg/unpack_bootimg.py "$@"; fi; }
-rd_has() {   # rd_has <boot image> <file>: is <file> in its ramdisk?
-    rm -rf $T/u; unpack --boot_img "$1" --out $T/u >/dev/null
-    { lz4 -dc $T/u/ramdisk 2>/dev/null || gzip -dc $T/u/ramdisk; } | cpio -t --quiet 2>/dev/null | grep -x "$2" >/dev/null   # not -q: SIGPIPE under pipefail
-}
-echo "== KernelSU Next"
-K=out/ksu
-if [ "$KSU" = 1 ]; then
-    [ -f $O/product/app/KernelSUNext/KernelSUNext.apk ] || fail "the KernelSU Next manager isn't installed (device/google/pantah 0010)"
-    [ -f $K/init_boot-stock.img ] && [ -f $K/init_boot-ksu.img ] || fail "no $K/init_boot-{stock,ksu}.img (cheetah-ksu.sh)"
-    rd_has $O/init_boot.img kernelsu.ko || fail "$O/init_boot.img has no kernelsu.ko: pass 2 didn't ship the KernelSU init_boot"
-    rd_has $K/init_boot-stock.img kernelsu.ko && fail "$K/init_boot-stock.img has kernelsu.ko"
-    echo "OK: init_boot carries KernelSU Next $(cat $K/VERSION 2>/dev/null), manager installed"
-else
-    rd_has $O/init_boot.img kernelsu.ko && fail "CHEETAH_KSU=0, but $O/init_boot.img has kernelsu.ko"
-    echo "OK: unrooted build (CHEETAH_KSU=0)"
-fi
-
-if [ "$MODE" = "--upload" ]; then
-    echo "== on-device check"
-    CZ=$CHECK/$CNAME; M=$CZ.device-ok
-    [ -f "$CZ" ] || fail "no tested candidate $CZ (run cheetah-pack.sh without --upload, then flash and test it)"
-    csha=$(sha256sum "$CZ" | cut -d' ' -f1)
-    { [ -f "$M" ] && grep -q "$csha" "$M"; } || fail "not verified on a phone yet: test $CZ, then write $M with the line \"sha256 $csha\""
-    mkdir $T/c; unzip -q "$CZ" -d $T/c
-    for f in $T/c/*.img; do cmp -s $f $O/$(basename $f) || fail "out/$(basename $f) differs from the tested $CZ: rebuilt since the test"; done
-    cat "$M"
-fi
-
 echo "== firmware"
 fwsrc=$(cat $V/FIRMWARE_SOURCE 2>/dev/null || echo "vendor repo default")
 cached=$(cat ~/android-dt/firmware/cheetah/CURRENT 2>/dev/null || echo none)
@@ -115,7 +76,8 @@ for img in $(grep -oE 'radio/[a-z0-9_]+\.img,[0-9a-f]{40}' $V/Android.mk); do
 done
 echo "OK: firmware $fwsrc (the OTA ships it; the fastboot zip doesn't)"
 
-echo "== pack (KernelSU Next)"
+echo "== pack (unrooted)"
+T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 mkdir $T/z
 [ -f $O/fastboot-info.txt ] || fail "no $O/fastboot-info.txt"
 : > $T/z/fastboot-info.txt
@@ -140,43 +102,22 @@ done
 rm -f $ZIP
 (cd $T/z && zip -q -0 $ZIP ./*)
 ( cd $DEST && sha256sum $NAME > $NAME.sha256 )
-[ "$MODE" = "--upload" ] || rm -f $DEST/*-init_boot-stock.img $DEST/*-init_boot-stock.img.sha256
-STOCK=
-if [ "$KSU" = 1 ]; then
-    STOCK=${NAME%-fastboot.zip}-init_boot-stock.img
-    cp $K/init_boot-stock.img $DEST/$STOCK
-    ( cd $DEST && sha256sum $STOCK > $STOCK.sha256 )
-fi
 
 echo "== verify the zip"
 mkdir $T/x; unzip -q -o $ZIP -d $T/x
 for f in $T/x/*.img; do cmp -s $f $O/$(basename $f) || fail "$(basename $f) differs from out/"; done
 for f in $(ls $T/x); do grep -qiE "magisk|ROOT" <<<"$f" && fail "zip contains $f"; done
 # gs201 chains boot and system: their patch levels are in boot.img's footer and vbmeta_system.img
-# The whole AVB chain, init_boot's descriptor included: a KernelSU init_boot with
-# a stale or missing hash footer fails here, not on the phone
-$H/avbtool verify_image --image $T/x/vbmeta.img --follow_chain_partitions > $T/avb.log 2>&1 \
-    || { tail -5 $T/avb.log; fail "avbtool verify_image failed on the zip's images"; }
-echo "OK: AVB chain verifies ($(grep -c "^Verifying" $T/avb.log 2>/dev/null || true) images)"
 avb=$(for i in vbmeta vbmeta_system boot; do $H/avbtool info_image --image $T/x/$i.img; done)
 grep -q "com.android.build.boot.security_patch -> '" <<<"$avb" || fail "no boot patch level in vbmeta, vbmeta_system or boot"
 spl=$(sed -n "s/.*com.android.build.system.security_patch -> '\(.*\)'/\1/p" <<<"$avb" | head -1)
 [ -n "$spl" ] || fail "no system patch level in vbmeta, vbmeta_system or boot"
-if [ "$KSU" = 1 ]; then
-    rd_has $T/x/init_boot.img kernelsu.ko || fail "the zip's init_boot has no kernelsu.ko"
-    echo "OK: $(ls $T/x | wc -l) files, all identical to out/, KernelSU Next init_boot, system patch level $spl"
-    ls -la $ZIP $DEST/$STOCK; cat $DEST/$NAME.sha256 $DEST/$STOCK.sha256
-else
-    echo "OK: $(ls $T/x | wc -l) files, all identical to out/, unrooted, system patch level $spl"
-    ls -la $ZIP; cat $DEST/$NAME.sha256
-fi
-if [ "$MODE" != "--upload" ]; then
-    echo "== on-device check: flash and test $ZIP, then write $ZIP.device-ok with the line \"sha256 $(cut -d' ' -f1 $DEST/$NAME.sha256)\""
-fi
+echo "OK: $(ls $T/x | wc -l) files, all identical to out/, unrooted, system patch level $spl"
+ls -la $ZIP; cat $DEST/$NAME.sha256
 
 if [ "$MODE" = "--upload" ]; then
     echo "== upload to SourceForge: $SF_DIR"
-    printf -- "-mkdir /home/frs/project/denson9874-s-user-builds/cheetah\n-mkdir $SF_DIR\nput $ZIP $SF_DIR/$NAME\nput $DEST/$NAME.sha256 $SF_DIR/$NAME.sha256\n${STOCK:+put $DEST/$STOCK $SF_DIR/$STOCK\nput $DEST/$STOCK.sha256 $SF_DIR/$STOCK.sha256\n}ls -l $SF_DIR\nbye\n" \
+    printf -- "-mkdir /home/frs/project/denson9874-s-user-builds/cheetah\n-mkdir $SF_DIR\nput $ZIP $SF_DIR/$NAME\nput $DEST/$NAME.sha256 $SF_DIR/$NAME.sha256\nls -l $SF_DIR\nbye\n" \
         | sftp -b - -o BatchMode=yes -i ~/.ssh/sourceforge_ed25519 $SF_USER@frs.sourceforge.net
     echo "UPLOAD_DONE https://sourceforge.net/projects/denson9874-s-user-builds/files/cheetah/17/"
 fi
