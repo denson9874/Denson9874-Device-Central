@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Download the KernelSU Next release pinned in ksu.conf (host ksud + manager APK)
 # into ~/android-dt/ksu/<version>/ and check both against ksu.conf's SHA-256.
-# Run it after changing ksu.conf; prepare.sh and cheetah-ksu.sh use the result.
+# Run it after changing ksu.conf; apply-ksu.sh and tools/cheetah-ksu.sh use the result.
 #
 #   fetch-ksu.sh
 set -euo pipefail

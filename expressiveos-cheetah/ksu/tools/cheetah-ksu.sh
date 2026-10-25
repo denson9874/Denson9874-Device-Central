@@ -1,19 +1,20 @@
 #!/bin/bash
-# KernelSU Next init_boot for cheetah: patches the init_boot.img the first make
-# pass just built (cheetah-images.sh) with kernelsu.ko and ksuinit, using the
+# KernelSU Next init_boot for ExpressiveOS on cheetah: patches the init_boot.img
+# the first make pass just built (ksu-images.sh) with kernelsu.ko and ksuinit, using the
 # host ksud from fetch-ksu.sh. The kernel stays Google's signed GKI; susfs is
 # the guard module ksud loads at boot once the user turns on SUSFS auto-load in
-# the manager. cheetah-images.sh then builds again with
-# CHEETAH_KSU_INIT_BOOT=out/ksu/init_boot-ksu.img (device/google/pantah 0011),
+# the manager. ksu-images.sh then builds again with
+# CHEETAH_KSU_INIT_BOOT=out/ksu/init_boot-ksu.img (patches/device_google_pantah/0002),
 # so the images and the OTA ship it.
 #
-#   cheetah-ksu.sh     # writes out/ksu/init_boot-ksu.img and out/ksu/init_boot-stock.img
+#   cheetah-ksu.sh [top]   # default ~/expressiveos; writes out/ksu/init_boot-{ksu,stock}.img
 set -euo pipefail
-cd ~/evolution
+here="$(cd "$(dirname "$0")/.." && pwd)"
+cd "${1:-$HOME/expressiveos}"
 O=out/target/product/cheetah
 H=out/host/linux-x86/bin
 K=out/ksu
-conf=~/evolution-cheetah/ksu.conf
+conf=$here/ksu.conf
 fail() { echo "FAIL: $*" >&2; exit 1; }
 unpack() { if [ -x $H/unpack_bootimg ]; then $H/unpack_bootimg "$@"; else python3 system/tools/mkbootimg/unpack_bootimg.py "$@"; fi; }
 version=$(sed -n 's/^version=//p' $conf); kmi=$(sed -n 's/^kmi=//p' $conf)
