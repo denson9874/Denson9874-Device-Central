@@ -355,6 +355,8 @@ jobs:
           nmu=; help="$(repo sync --help 2>/dev/null || true)"; [[ "$help" == *--nmu* ]] && nmu=--nmu
           repo sync -c -j4 --no-tags --no-clone-bundle $nmu $projects 9>&- \
             || repo sync -c -j2 --no-tags --no-clone-bundle $nmu $projects 9>&-
+          # KernelSU Next release pinned in ksu.conf (prepare.sh needs its manager APK)
+          ~/evolution-cheetah/fetch-ksu.sh 9>&-
           ~/evolution-cheetah/prepare.sh ~/evolution 9>&-
           for p in $projects; do echo "== $p"; git -C $p log --oneline -3; done
           ls -la vendor/google/cheetah/radio; du -sh vendor/google/cheetah
