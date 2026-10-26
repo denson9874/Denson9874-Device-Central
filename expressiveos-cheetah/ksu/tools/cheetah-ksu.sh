@@ -66,6 +66,16 @@ sub=$(grep -Eo "^Linux version ${kmi#*-}\.[0-9]+" <<<"$uname"); sub=${sub#Linux 
 vermagic=$(strings "$ko" | sed -n 's/^vermagic=//p')
 [[ "$vermagic" == "$sub"[-\ ]* ]] || fail "$ko is built for '$vermagic', boot.img's kernel is $sub (build_kernel synced another GKI?)"
 echo "OK: $ko matches ($vermagic)"
+# ...and for its struct module, with its config. kernelsu.ko has no symbol versions, so 6.1
+# loads one built for another struct module and crashes reading past it: the first build
+# did, its module built without pahole (2026-10-26). The first-stage modules in this build
+# were built with the kernel's own config
+r=$(python3 -I "$here/tools/ko-info.py" same-struct "$ko" "$O/vendor_kernel_ramdisk/lib/modules") \
+    || fail "$ko doesn't fit this kernel's struct module (tools/ksu-module.sh)"
+echo "OK: $ko is built for the kernel's struct module (${r% *} bytes, as its ${r#* } first-stage modules)"
+python3 -I "$here/tools/ko-info.py" config-diff "$k" "$K/kbuild/.config" > "$T/config.diff" \
+    || { cat "$T/config.diff" >&2; fail "$K/kbuild/.config isn't boot.img's kernel config (tools/ksu-module.sh)"; }
+echo "OK: $ko was built with boot.img's kernel config"
 
 # The input must be this build's own init_boot, never one a previous run patched
 ramdisk "$O/init_boot.img" "$T/stock"
