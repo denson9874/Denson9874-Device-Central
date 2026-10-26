@@ -31,13 +31,20 @@ source "$here/v4a.conf" || fail "can't read $here/v4a.conf"
 
 arg=${1:-$HOME/expressiveos}
 [[ $# -le 1 ]] || fail "usage: apply-v4a.sh [top]"
-not_evo() { [[ "${1%/}" != */evolution && "${1%/}" != evolution ]] || fail "$arg is the Evolution X tree ($1); ViPER4Android RE is for the ExpressiveOS tree only"; }
+not_evo() {
+    [[ "${1%/}" != */evolution && "${1%/}" != evolution && "${1%/}" != */derpfest && "${1%/}" != derpfest ]] \
+        || fail "$arg is the Evolution X or DerpFest tree ($1); ViPER4Android RE is for the ExpressiveOS tree only"
+}
 not_evo "$arg"
 [[ -d "$arg" ]] || fail "no tree at $arg"
 top="$(cd "$arg" && pwd -P)"
 not_evo "$top"
+evo='' derp=''
 if evo="$(cd "$HOME/evolution" 2>/dev/null && pwd -P)"; then
     [[ "$top" != "$evo" ]] || fail "$arg is the Evolution X tree (~/evolution); ViPER4Android RE is for the ExpressiveOS tree only"
+fi
+if derp="$(cd "$HOME/derpfest" 2>/dev/null && pwd -P)"; then
+    [[ "$top" != "$derp" ]] || fail "$arg is the DerpFest tree (~/derpfest); ViPER4Android RE is for the ExpressiveOS tree only"
 fi
 [[ -f "$top/build/envsetup.sh" ]] || fail "$top isn't an Android tree (no build/envsetup.sh)"
 av="$top/frameworks/av"
@@ -45,15 +52,17 @@ av="$top/frameworks/av"
     || fail "$top isn't an Android tree (frameworks/av isn't a git project)"
 # What this script writes must stay in this tree, even when a folder in it is a symlink
 # (vendor/extra or frameworks/av linked from ~/evolution would change the Evolution X tree).
-in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top and not in ~/evolution
+in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top and not in ~/evolution or ~/derpfest
     local r
     r=$(realpath -m -- "$1") || fail "can't resolve $1"
     [[ "$r" == "$top"/* ]] || fail "${1#"$top"/} leads to $r, outside $top (a symlink?); this kit writes only inside the ExpressiveOS tree"
     [[ -z "$evo" || ( "$r" != "$evo" && "$r" != "$evo"/* ) ]] || fail "${1#"$top"/} leads into the Evolution X tree ($r)"
+    [[ -z "$derp" || ( "$r" != "$derp" && "$r" != "$derp"/* ) ]] || fail "${1#"$top"/} leads into the DerpFest tree ($r)"
 }
 for p in vendor/extra vendor/extra/viper4android vendor/extra/product.mk frameworks/av; do in_top "$top/$p"; done
 gd=$(git -C "$av" rev-parse --absolute-git-dir) && gd=$(realpath -- "$gd") || fail "can't find frameworks/av's git folder"
 [[ -z "$evo" || ( "$gd" != "$evo" && "$gd" != "$evo"/* ) ]] || fail "frameworks/av's git folder is in the Evolution X tree ($gd)"
+[[ -z "$derp" || ( "$gd" != "$derp" && "$gd" != "$derp"/* ) ]] || fail "frameworks/av's git folder is in the DerpFest tree ($gd)"
 # An am or rebase someone else left running in frameworks/av is theirs to finish: step 4's
 # cleanup (am --abort) would drop the commits it already made
 [[ ! -e "$gd/rebase-apply" && ! -e "$gd/rebase-merge" ]] \
