@@ -14,7 +14,9 @@ echo "== machine"
 uptime; echo "cpus: $(nproc)"
 lscpu 2>/dev/null | grep -E '^(Model name|Socket\(s\)|Core\(s\) per socket|Thread\(s\) per core|CPU\(s\)|CPU max MHz|NUMA node\(s\)|L3 cache|Hypervisor vendor|Virtualization type)' || true
 echo "virtualization: $(systemd-detect-virt 2>/dev/null || echo none)"; echo "kernel: $(uname -r)"
-echo "cpufreq governor: $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo n/a)"
+c=/sys/devices/system/cpu
+r() { cat "$1" 2>/dev/null || echo n/a; }
+echo "cpufreq governor: $(r $c/cpu0/cpufreq/scaling_governor), driver $(r $c/cpu0/cpufreq/scaling_driver), amd_pstate $(r $c/amd_pstate/status), energy preference $(r $c/cpu0/cpufreq/energy_performance_preference), boost $(r $c/cpufreq/boost)"
 awk -F: '/^cpu MHz/ { s += $2; n++ } END { if (n) printf "cpu MHz now: %.0f on average over %d cpus\n", s / n, n }' /proc/cpuinfo
 free -g; swapon --show 2>/dev/null || cat /proc/swaps
 for f in cpu io memory; do echo "pressure $f: $(tr '\n' ' ' < /proc/pressure/$f 2>/dev/null || echo n/a)"; done
