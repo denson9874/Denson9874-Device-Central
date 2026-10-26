@@ -26,6 +26,12 @@
 # disk and where it went, the host packages its scripts use, and whether its
 # folders exist yet. Names and sizes only, never file contents.
 #
+# server-cleanup-list (read-only) and server-cleanup free disk for that tree:
+# expressiveos-cheetah/tools/server-cleanup.sh lists or removes the six groups
+# of leftovers it names (old and test release copies, unpacked factory zips,
+# the emulator's output), by exact path, never what the OTA feeds serve.
+# server-cleanup removes only the groups in query, which Daryl approves.
+#
 # Never add an upload-artifact step: build output contains Google's
 # proprietary images, which must not leave the server. Logs only. `inspect`
 # prints policy excerpts, manifests and library lists, never file contents
@@ -68,7 +74,9 @@ on:
           local-commits: read-only: commits on top of the manifest revision in the
           repo projects named in query (default: cheetah's four), as patches.
           expressiveos-host: read-only: disk, host packages and folders the
-          ExpressiveOS cheetah tree needs.
+          ExpressiveOS cheetah tree needs. server-cleanup-list: read-only: what
+          server-cleanup.sh's groups hold now. server-cleanup: permanently remove
+          the groups in query.
         type: choice
         default: status
         options:
@@ -92,6 +100,8 @@ on:
           - bp-repair
           - local-commits
           - expressiveos-host
+          - server-cleanup-list
+          - server-cleanup
       tree_ref:
         description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak (sync, round) or evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, cheetah-install-routine) from
         type: string
@@ -107,7 +117,8 @@ on:
           (delete lone ',' lines the parser stops at); path relative to
           ~/evolution, e.g. vendor/google/kodiak/Android.bp. local-commits:
           space-separated project paths under device/ or vendor/ (default:
-          cheetah's four projects).
+          cheetah's four projects). server-cleanup-list (optional) and
+          server-cleanup (required): groups, e.g. 1,2,3,4,5,6.
         type: string
         default: ''
 
@@ -141,7 +152,7 @@ jobs:
           # this job, and the husky build too. Don't start on top of one.
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|server-cleanup-list|server-cleanup)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -648,3 +659,25 @@ jobs:
           echo "KernelSU Next fetched: $(cat ~/android-dt/ksu/CURRENT 2>/dev/null || echo none)"
           echo "cheetah firmware cached: $(cat ~/android-dt/firmware/cheetah/CURRENT 2>/dev/null || echo none)"
           echo "== tree lock"; if flock -n ~/.evolution-tree.lock true; then echo free; else echo "held (a routine or build is running)"; fi
+
+      # Removing release copies doesn't touch a running build; the script itself
+      # waits for an idle server before it removes the emulator's build output.
+      - name: Check out the cleanup script
+        if: inputs.action == 'server-cleanup-list' || inputs.action == 'server-cleanup'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: expressiveos-cheetah/tools
+          fetch-depth: 1
+
+      - name: Server cleanup
+        if: inputs.action == 'server-cleanup-list' || inputs.action == 'server-cleanup'
+        run: |
+          script=expressiveos-cheetah/tools/server-cleanup.sh
+          if [[ "$ACTION" = server-cleanup ]]; then
+            [[ "$QUERY" =~ ^[1-6](,[1-6])*$ ]] || { echo "::error::server-cleanup needs the approved groups in query, e.g. 1,2,3"; exit 1; }
+            bash "$script" delete "$QUERY"
+          else
+            [[ -z "$QUERY" || "$QUERY" =~ ^[1-6](,[1-6])*$ ]] || { echo "::error::query is groups, e.g. 1,2,3"; exit 1; }
+            bash "$script" list ${QUERY:+"$QUERY"}
+          fi
