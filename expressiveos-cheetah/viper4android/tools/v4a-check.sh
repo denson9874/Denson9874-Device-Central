@@ -228,10 +228,17 @@ out)
     hits=$([[ ${#vintf[@]} = 0 ]] || aidl_effect "${vintf[@]}")
     if [[ -z "$hits" ]]; then pass "built VINTF has no AIDL effect HAL"; else bad "built VINTF has AIDL effect HAL markers:"$'\n'"$hits"; fi
     configs=$(cd "$O" && find vendor odm system system_ext product -name 'audio_effects*' 2>/dev/null | sort | paste -sd' ' || true)
-    if [[ "$configs" = vendor/etc/audio_effects.xml ]]; then
-        pass "one effects config: vendor/etc/audio_effects.xml"
+    # Stock cheetah also ships AOSP's system/etc copy (framework-audio_effects.xml). Configs are
+    # read from /odm/etc, /vendor/etc, /system/etc in that order (system/media audio_config.h),
+    # so vendor's is the one used and the system one is never read.
+    if [[ "$configs" = vendor/etc/audio_effects.xml ||
+          "$configs" = "system/etc/audio_effects.xml vendor/etc/audio_effects.xml" ]]; then
+        pass "effects configs: $configs (vendor's is the one read)"
     else
-        bad "effects configs: ${configs:-none} (want only vendor/etc/audio_effects.xml)"
+        bad "effects configs: ${configs:-none} (want vendor/etc/audio_effects.xml, and at most AOSP's system/etc copy)"
+    fi
+    if [[ -f "$O/system/etc/audio_effects.xml" ]] && grep -qiE 'v4a|90380da3' "$O/system/etc/audio_effects.xml"; then
+        bad "system/etc/audio_effects.xml registers ViPER"
     fi
     if [[ -f "$O/vendor/etc/audio_effects.xml" ]] && ! grep -qiE 'v4a|90380da3' "$O/vendor/etc/audio_effects.xml"; then
         pass "vendor/etc/audio_effects.xml has no v4a lines (the loader registers ViPER once)"
