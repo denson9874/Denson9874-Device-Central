@@ -7,6 +7,7 @@
 Prints names, counts and durations only (phases, kinds of build step, the longest
 steps by output path), never file contents. Read-only.
 """
+import bisect
 import collections
 import gzip
 import json
@@ -15,7 +16,8 @@ import re
 import sys
 import time
 
-DETAILED = 3      # traces per tree shown in full; older ones get one line
+DETAILED = 2      # newest traces per tree always shown in full
+LONG = 600        # ...and every trace of a build that took this many seconds or more
 MAX_TRACES = 8
 
 
@@ -91,7 +93,7 @@ def edges_profile(edges, label_ok=True):
         k[1] += d
     print('    step time by kind:')
     for name, (n, d) in sorted(by.items(), key=lambda kv: -kv[1][1])[:16]:
-        print('      %-46s %8s  %6d steps' % (name, hms(d), n))
+        print('      %-46s %8s  %6d steps, %6.1f s each' % (name, hms(d), n, d / n if n else 0))
     other = collections.Counter()
     for s, d, o in edges:
         if kind(o) == 'other':
@@ -99,14 +101,42 @@ def edges_profile(edges, label_ok=True):
             other[m.group(1) if m else '(no extension)'] += d
     if other:
         print('      other, by extension: ' + ', '.join('%s %s' % (e, hms(d)) for e, d in other.most_common(8)))
+    # Steps running at once over time, and its running integral, so the average
+    # number of steps running beside any one step is a lookup
+    times, conc, area = [], [], [0.0]
+    cur = 0
+    for t, delta in ev:
+        if times and t == times[-1]:
+            cur += delta
+            conc[-1] = cur
+            continue
+        if times:
+            area.append(area[-1] + conc[-1] * (t - times[-1]))
+        times.append(t)
+        cur += delta
+        conc.append(cur)
+
+    def integral(t):
+        i = bisect.bisect_right(times, t) - 1
+        if i < 0:
+            return 0.0
+        return area[i] + conc[i] * (t - times[i])
+
+    def beside(s, d):
+        return (integral(s + d) - integral(s)) / d - 1 if d else 0
     print('    longest steps (and how many steps ran beside them on average):')
-    longest = sorted(edges, key=lambda e: -e[1])[:20]
+    longest = sorted(edges, key=lambda e: -e[1])[:15]
     for s, d, o in longest:
         if d < 30:
             break
-        # Average number of other steps overlapping this one
-        ov = sum(max(0.0, min(s + d, s2 + d2) - max(s, s2)) for s2, d2, o2 in edges) / d - 1
-        print('      %s  at +%s  beside %4.1f  %s' % (hms(d), hms(s - t0), ov, o[:150]))
+        print('      %s  at +%s  beside %4.1f  %s' % (hms(d), hms(s - t0), beside(s, d), o[:150]))
+    # The steps that ran (nearly) alone, in order: the build's serial part
+    big = [e for e in edges if e[1] >= 15]
+    serial = [(s, d, o) for s, d, o in big if beside(s, d) <= 1.5]
+    if serial:
+        print('    steps of 15 s or more that ran nearly alone, in order (%s in all):' % hms(sum(d for s, d, o in serial)))
+        for s, d, o in sorted(serial)[:25]:
+            print('      +%s  %s  %s' % (hms(s - t0), hms(d), o[:150]))
 
 
 def read_trace(path):
@@ -125,7 +155,7 @@ def read_trace(path):
     return events
 
 
-def trace_summary(path, detailed):
+def trace_summary(path, newest):
     try:
         events = read_trace(path)
     except (OSError, EOFError) as e:
@@ -162,10 +192,12 @@ def trace_summary(path, detailed):
     t0, t1 = min(starts), max(ends)
     start_txt = when(t0 / 1e6) if t0 > 1e15 else '?'
     tops = [p for p in phases if p[0] == 0]
-    line = '  %s: started %s, %s in all' % (os.path.basename(path), start_txt, hms((t1 - t0) / 1e6))
+    prods = collections.Counter(m.group(1) for s, d, o in edges for m in [re.match(r'out/target/product/([^/]+)/', o)] if m)
+    line = '  %s: started %s, %s in all, product %s' % (os.path.basename(path), start_txt, hms((t1 - t0) / 1e6),
+                                                      prods.most_common(1)[0][0] if prods else '?')
     line += ' | ' + ', '.join('%s %s' % (n, hms(d / 1e6)) for dep, n, s, d in sorted(tops, key=lambda p: p[2]) if d >= 1e6)
     print(line[:400])
-    if not detailed:
+    if not newest and (t1 - t0) / 1e6 < LONG:
         return
     print('    phases (5 s or more):')
     for dep, n, s, d in sorted(phases, key=lambda p: p[2]):
