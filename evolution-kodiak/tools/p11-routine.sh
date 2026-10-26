@@ -22,7 +22,8 @@
 #   5. Writes a changelog of upstream commits plus the device's community fixes from
 #      ~/COMMUNITY_TRIAGE.md (community_release_notes.py), then p11-ota.sh verifies the OTA
 #      package, uploads it and publishes builds/<dev>.json in denson9874/evolution_ota
-#      for the Updater (last). Only then is the published state recorded.
+#      for the Updater (last), with the build's pinned manifest as manifests/<dev>.xml.
+#      Only then is the published state recorded.
 #   6. Copies this run's zips, their .sha256 and the changelog to Google Drive,
 #      gdrive:EvolutionX/<dev> (evox-to-drive.sh, as derp-build.sh does for DerpFest),
 #      with or without --no-upload. A failed copy is reported but doesn't fail the routine.
@@ -183,7 +184,7 @@ if ! grep -q "BUILD_EXIT=0" "$BLOG"; then
     grep -E "FAILED:|error:|ninja: build stopped" "$BLOG" | head -30
     fail "the build failed, see $BLOG"
 fi
-echo "== release checks (association rules vs stock, stale apps in out/)"
+echo "== release checks (association rules vs stock, stale apps in out/, release properties)"
 ~/release-checks.sh "$dev" 9>&- || fail "release-checks.sh found a problem (above); nothing was packed or uploaded"
 echo "== verify and pack ($PACK)"
 if [ $UPLOAD = 1 ]; then out=$($PACK --upload 2>&1 9>&-); else out=$($PACK 2>&1 9>&-); fi
@@ -223,7 +224,7 @@ fi
 
 # The OTA package for the Updater: verified always, uploaded and announced with an upload
 echo "== OTA package (p11-ota.sh)"
-if [ $UPLOAD = 1 ]; then out=$(~/p11-ota.sh "$dev" --upload --changes "$changes" 2>&1 9>&-); else out=$(~/p11-ota.sh "$dev" 2>&1 9>&-); fi
+if [ $UPLOAD = 1 ]; then out=$(~/p11-ota.sh "$dev" --upload --changes "$changes" --manifest "$snap" 2>&1 9>&-); else out=$(~/p11-ota.sh "$dev" 2>&1 9>&-); fi
 rc=$?
 echo "$out"
 [ $rc = 0 ] || { rm -f "$snap"; fail "p11-ota.sh refused or failed (exit $rc)"; }
