@@ -85,6 +85,14 @@ for f in $logs; do
     [[ -n $r ]] && echo "$(date -r "$f" '+%F %T') ${f#"$HOME"/}: $r" | cut -c1-700
 done | head -160
 
+# The routines publish while holding the tree lock: these times show how long that takes
+echo "== releases: when each file was last written (pack zip and .sha256, OTA copy, .uploaded = SourceForge done)"
+for d in ~/releases/*/; do
+    [[ -d $d ]] || continue
+    echo "-- ${d%/}"
+    ls -lt --time-style='+%F %T' "$d" 2>/dev/null | awk 'NR > 1 { printf "  %s %s %12s %s\n", $6, $7, $5, $8 }' | head -14
+done
+
 echo "== where past builds' time went (soong_ui traces, ninja logs)"
 timeout 1200 nice -n 10 python3 -I "$here/build-timings.py" "${trees[@]}" || echo "(build-timings.py stopped: $?)"
 echo "BUILD_SPEED_DONE"
