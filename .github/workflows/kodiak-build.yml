@@ -738,6 +738,17 @@ jobs:
             done
           done
           pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-160 | head -3 || true
+          # A build or pack started some other way (by hand, from a routine) has no eos-*
+          # session: name what started it
+          p=$(pgrep -o -u "$(id -u)" -f "$HOME/expressiveos-cheetah/tools/eos-(images|pack)\.sh" || true)
+          if [[ -n $p ]]; then
+            echo "running: $p, started $(ps -o lstart= -p "$p" 2>/dev/null || echo "?"): $(ps -o args= -p "$p" 2>/dev/null | cut -c1-150 || true)"
+            q=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ' || true)
+            while [[ -n $q && $q != 0 && $q != 1 ]]; do
+              echo "  under $q: $(ps -o args= -p "$q" 2>/dev/null | cut -c1-150 || true)"
+              q=$(ps -o ppid= -p "$q" 2>/dev/null | tr -d ' ' || true)
+            done
+          fi
           echo "== kit: $(cat ~/expressiveos-cheetah/INSTALLED_FROM 2>/dev/null || echo "not installed")"
           grep -E '^EOS_(AVB_PUBKEY_SHA1|OTA_CERT_SHA256)=' ~/expressiveos-cheetah/eos.conf 2>/dev/null || true
           echo "== tree"
@@ -759,10 +770,14 @@ jobs:
           done
           ls -t ~/routine-logs 2>/dev/null | head -8 || true
           ls -lh ~/releases/expressiveos-cheetah/check 2>/dev/null || true
-          for s in setup keys build pack; do
-            log=$jobs/$s.log
+          # The runner's sessions' logs, then eos-images.sh's own (whoever started it), then
+          # the newest ExpressiveOS routine log, if a routine started one
+          for log in "$jobs"/{setup,keys,build,pack}.log ~/expressiveos-build.log $(ls -t ~/routine-logs/eos-* 2>/dev/null | head -1); do
             [[ -f $log ]] || continue
-            echo "== $s log, $(date -r "$log" '+%F %T'), $(du -h "$log" | cut -f1)"
+            echo "== ${log#"$HOME"/}, $(date -r "$log" '+%F %T'), $(du -h "$log" | cut -f1)"
+            if [[ $log == "$HOME"/routine-logs/* ]]; then
+              head -n 5 "$log" | cut -c1-300 || true
+            fi
             grep -aE '^(== |FAIL|WARNING|SETUP|FETCH_KSU|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|PACK=|VERIFY|SESSION_EXIT)|FAILED:|error:' "$log" | tail -n 25 | cut -c1-300 || true
             echo "-- last lines"
             tail -c 200000 "$log" | tr '\r' '\n' | grep -av '^[[:space:]]*$' | tail -n 15 | cut -c1-300 || true
