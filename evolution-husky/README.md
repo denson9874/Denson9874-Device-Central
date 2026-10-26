@@ -66,6 +66,8 @@ LineageOS's husky trees build unchanged on LineageOS; Evolution X adds Pixel-sty
 | device/google/shusky | `0009` | Stock's TrustTokenService root keys (`vendor_required_trust_token_roots` and timestamp), which zuma `0001` dropped with the tree's GoogleConfigOverlay |
 | vendor/google/husky | `0003` | Doesn't install `gpuflag` (+ its rc and library): our policy has no `gpuflag` domain, so init's child aborted at every boot, and it targets another SoC's GPU anyway |
 | frameworks/base | `0009`, `0010` | App Lock Recents and the Dynamic Bar island without blur (also carried by `device/google/kodiak/patches`, which every build from this tree applies) |
+| frameworks/base | `0011`-`0020` | Background power (2026-10-26, measured on cheetah): SystemUI animations that never stopped with the screen off or on AOD (Dynamic Bar charging bolt, edge light, analog clocks, charging animation, cutout ring, and the face unlock scan pulse, whose never-attached copy cost 11% of a core plus 18% in SurfaceFlinger), the colored status bar icons setting read once instead of over binder per icon, AxSpoofManager fetches only on a validated network with backoff, Extreme Charging only turns on at 50% and below. Same shared-patch path as `0009` |
+| vendor/lineage | `0002` | Drops `debug.graphics.game_default_frame_rate.disabled=true`, so games get stock's 60 fps default again |
 
 Stability, fluidity and charging capture: `tools/husky-audit.sh {baseline|fluidity|charge}` (see the plan).
 

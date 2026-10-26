@@ -1,0 +1,44 @@
+From 97df8c68ce9dc8c3177fcdda9fcbd436b969a2b9 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 09:54:48 +0100
+Subject: [PATCH] SystemUI: Face unlock icon: don't animate a copy that isn't
+ on screen
+
+KeyguardViewConfigurator builds a KeyguardIndicationAreaTop only to
+hand it to KeyguardIndicationController, which keeps its face unlock
+icon and sets it to SCANNING whenever the "recognizing" message shows.
+That copy is never attached: the icon on the lock screen comes from
+DefaultIndicationAreaTopSection. So the copy never gets doze, detach
+or stopScanning() calls, its endless scan pulse started on the first
+face scan after boot and ran until SystemUI restarted. On a Pixel 7
+Pro that was still 12% of a core on SystemUI's main thread and 16% on
+SurfaceFlinger on AOD after the previous fix.
+
+Only animate the icon while it is attached to a window; a detached
+one cancels its animations and stays hidden.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../android/systemui/statusbar/phone/FaceUnlockImageView.kt | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/FaceUnlockImageView.kt b/packages/SystemUI/src/com/android/systemui/statusbar/phone/FaceUnlockImageView.kt
+index 2269f20ddf..ea3a4193a8 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/FaceUnlockImageView.kt
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/FaceUnlockImageView.kt
+@@ -186,7 +186,11 @@ class FaceUnlockImageView @JvmOverloads constructor(
+     }
+ 
+     private fun handleAnimationForState(state: State) {
+-        if (mDozing) {
++        // KeyguardIndicationController drives a copy of this view that is never attached
++        // (KeyguardViewConfigurator only hands it over), so it gets no doze or detach callbacks
++        // and nothing could stop a scan pulse started on it.
++        if (mDozing || !isAttachedToWindow) {
++            cancelAllAnimations()
+             visibility = View.GONE
+             return
+         }
+-- 
+2.43.0
+
