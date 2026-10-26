@@ -38,8 +38,12 @@ g1=(
     "$R/cubs/test/"
     "$R/yogi/test/"
     "$R/kodiak/check/"
-    "$R/husky/check/"
-    "$R/cheetah/check/"
+    # check/ is the on-device gate's staging folder: its .device-ok records stay
+    "$R/husky/check/EvolutionX-17.0-20261024-husky-12.3-Unofficial.zip"
+    "$R/husky/check/boot-20261024.img"
+    "$R/husky/check/vendor_boot-20261024.img"
+    "$R/husky/check/recovery-20261024.sha256"
+    "$R/cheetah/check/EvolutionX-17.0-20261024-cheetah-12.3-Unofficial-fastboot.zip"
     "$R/cheetah/EvolutionX-17.0-20261018-cheetah-12.3-Unofficial-UNTESTED-fastboot.zip"
     "$R/cheetah/EvolutionX-17.0-20261018-cheetah-12.3-Unofficial-UNTESTED-r2-fastboot.zip"
 )
@@ -116,6 +120,8 @@ keep=(
     "$F/image-cheetah-cp3a.261005.002.a1.zip"
     "$F/image-husky-cp3a.261005.005.zip"
     "$F/cheetah/"
+    "$R/husky/check/EvolutionX-17.0-20261024-husky-12.3-Unofficial.zip.device-ok"
+    "$R/cheetah/check/EvolutionX-17.0-20261024-cheetah-12.3-Unofficial.zip.device-ok"
 )
 
 home=$(cd ~ && pwd -P)
