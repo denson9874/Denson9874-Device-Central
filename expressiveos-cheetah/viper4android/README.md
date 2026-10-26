@@ -122,15 +122,17 @@ its last line is `V4A_CHECK=OK`.
   GPL-2.0, and the app's GPL-3.0.
 - `device` (adb, read-only; `ANDROID_SERIAL` picks the phone): it is cheetah; the library is labelled
   `vendor_file`, has the pinned sha256, and has no 32-bit twin; the audio HAL is 64-bit; no AIDL
-  `IFactory` service; logcat shows `loadViperEffect: loaded ViPER library from
+  `IFactory` service; `audio_effects.xml` has no v4a lines. Whether libeffects loaded the driver:
+  `dumpsys media.audio_flinger --effects` lists `Library v4a_re` once under `Libraries loaded:`,
+  with ViPER's effect (`V4A_FX_UUID`), not under `Libraries NOT loaded:`, and no other library
+  with that uuid (a module's); logcat's `loadViperEffect: loaded ViPER library from
   /vendor/lib64/soundfx/libv4a_re.so` and `successfully registered ViPER4Android effect: ViPERDSP`
-  (and no `already registered`, which would mean a module registered it first); `audio_effects.xml`
-  has no v4a lines; `dumpsys media.audio_flinger --effects` lists `Library v4a_re` once under
-  `Libraries loaded:` and not under `Libraries NOT loaded:` (INFO when it shows no effects dump);
-  the app is the `/system_ext/priv-app` copy (INFO if a user update replaced it) with
-  `MODIFY_AUDIO_ROUTING: granted=true`; no privapp allowlist violation; the hidden-API sysconfig is
-  installed; no `avc: denied` for `hal_audio_default` or the app. Driver Status
-  in the app is checked by hand.
+  pass when they're there (on the first build the audio HAL's startup lines weren't in logcat at
+  all, so their absence is INFO), and `already registered` or a loader error fails. With neither
+  the dump nor those lines, it fails. Then: the app is the `/system_ext/priv-app` copy (INFO if a
+  user update replaced it) with `MODIFY_AUDIO_ROUTING: granted=true`; no privapp allowlist
+  violation; the hidden-API sysconfig is installed; no `avc: denied` for `hal_audio_default` or
+  the app. Driver Status in the app is checked by hand.
 
 ## Pins (`v4a.conf`)
 
