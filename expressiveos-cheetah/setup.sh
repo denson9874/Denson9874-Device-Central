@@ -48,6 +48,8 @@ else
     not_other "$top"
 fi
 for p in .repo .repo/manifests .repo/projects .repo/project-objects .repo/local_manifests; do in_top "$top/$p"; done
+# Not under a build someone started by hand in this tree: the sync would change its sources
+b=$(tree_build); [[ -z "$b" ]] || fail "a build is running in $top: $b"
 m="$top/.repo/manifests"
 url=$(git -C "$m" config --get remote.origin.url || true)
 [[ "${url%.git}" = "$EOS_MANIFEST_URL" ]] || fail "$top's manifest is ${url:-unknown}, not $EOS_MANIFEST_URL"
