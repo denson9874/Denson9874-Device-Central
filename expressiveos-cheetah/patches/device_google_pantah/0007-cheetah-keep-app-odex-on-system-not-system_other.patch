@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 12:23:39 +0200
+Subject: [PATCH 7/9] cheetah: keep app odex on /system, not system_other
+
+BoardConfigMainlineCommon.mk turns on BOARD_USES_SYSTEM_OTHER_ODEX, which
+moves the odex/vdex of every preopted app (SystemUIGoogle, SettingsGoogle,
+LineageParts, ...) into system_other.img (179 MB here). Google's factory
+images flash that image to the inactive slot and cppreopts copies it in on
+first boot; an OTA never writes it, so those apps start every update with
+no AOT code and SystemUI gestures hitch until background dexopt runs.
+Build them into /system instead. Same as husky's shusky 0003.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ cheetah/BoardConfig.mk | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/cheetah/BoardConfig.mk b/cheetah/BoardConfig.mk
+index d7b898b..627e904 100644
+--- a/cheetah/BoardConfig.mk
++++ b/cheetah/BoardConfig.mk
+@@ -22,3 +22,10 @@ SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += \
+ include $(DEVICE_PATH)/BoardConfigCommon.mk
+ 
+ include $(VENDOR_PATH)/BoardConfigVendor.mk
++
++# Keep app odex on /system rather than system_other. Only a factory flash
++# writes system_other to the inactive slot; zip and OTA installs never do, so
++# SystemUIGoogle, SettingsGoogle and the other preopted priv-apps lose their
++# AOT code after every update and run interpreted/JIT until background
++# dexopt catches up (~180 MB, well inside super).
++BOARD_USES_SYSTEM_OTHER_ODEX :=
+-- 
+2.43.0
+

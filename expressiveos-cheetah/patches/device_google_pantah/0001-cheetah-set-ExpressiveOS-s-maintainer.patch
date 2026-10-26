@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 12:00:00 +0000
+Subject: [PATCH 01/10] cheetah: set ExpressiveOS's maintainer
+
+ExpressiveOS is its own ROM, built on Evolution X: Settings > About names
+its maintainer instead of the official Evolution X cheetah maintainer,
+whose name the tree carries for Evolution X's official builds.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ .../res/values/evolution_strings.xml                          | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/cheetah/overlay/SettingsGoogleCheetahOverlay/res/values/evolution_strings.xml b/cheetah/overlay/SettingsGoogleCheetahOverlay/res/values/evolution_strings.xml
+index 444a3c4..0f9eff7 100644
+--- a/cheetah/overlay/SettingsGoogleCheetahOverlay/res/values/evolution_strings.xml
++++ b/cheetah/overlay/SettingsGoogleCheetahOverlay/res/values/evolution_strings.xml
+@@ -5,6 +5,6 @@
+ -->
+ <resources>
+     <!-- Android version screen, build maintainer -->
+-    <string name="build_maintainer_summary" translatable="false">nhansp</string>
+-    <string name="build_maintainer_donate_url" translatable="false">https://github.com/nhansp</string>
++    <string name="build_maintainer_summary" translatable="false">Daryl Denson</string>
++    <string name="build_maintainer_donate_url" translatable="false">https://github.com/denson9874</string>
+ </resources>
+-- 
+2.43.0
+
