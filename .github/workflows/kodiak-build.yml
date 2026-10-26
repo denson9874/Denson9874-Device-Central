@@ -782,9 +782,10 @@ jobs:
               tail -c 20000 "$log" | tr '\r' '\n' | grep -av '^[[:space:]]*$' | tail -n 3 | cut -c1-300 || true
               continue
             fi
-            # The compilers' and aidl's own warnings (WARNING: <file>:<line>) would bury the kit's lines
+            # ninja's progress lines (libthiserror:...) and the compilers' and aidl's own warnings
+            # (WARNING: <file>:<line>) would bury the kit's lines
             grep -aE '^(== |OK: |FAIL|WARNING|SETUP|FETCH_KSU|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|PACK=|VERIFY|SESSION_EXIT)|FAILED:|error:' "$log" \
-              | grep -avE '^WARNING: [^ ]+:[0-9]' | tail -n 25 | cut -c1-300 || true
+              | grep -avE '^(\[ *[0-9]+% |WARNING: [^ ]+:[0-9])' | tail -n 25 | cut -c1-300 || true
             echo "-- last lines"
             tail -c 200000 "$log" | tr '\r' '\n' | grep -av '^[[:space:]]*$' | tail -n 15 | cut -c1-300 || true
           done
