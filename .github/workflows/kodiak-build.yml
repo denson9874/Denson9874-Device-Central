@@ -621,6 +621,8 @@ jobs:
             [[ -d "$t/.repo" ]] || continue
             echo "== $t: repo depth '$(git -C "$t/.repo/manifests" config --get repo.depth || true)', frameworks/base shallow: $(git -C "$t/frameworks/base" rev-parse --is-shallow-repository 2>/dev/null || echo unknown)"
           done
+          echo "== files directly in ~/android-dt/firmware over 1 GiB, oldest first"
+          find ~/android-dt/firmware -maxdepth 1 -type f -size +1G -printf '%TY-%Tm-%Td %s %f\n' 2>/dev/null | sort | numfmt --to=iec --field=2 | head -80 || true
           echo "== files in ~/releases over 1 GiB, oldest first"
           find ~/releases -type f -size +1G -printf '%TY-%Tm-%Td %s %P\n' 2>/dev/null | sort | numfmt --to=iec --field=2 | head -80 || true
           echo "== files in /tmp over 1 GiB"
