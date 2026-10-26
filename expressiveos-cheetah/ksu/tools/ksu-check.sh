@@ -84,9 +84,11 @@ images)
     unpack() { if [[ -x $H/unpack_bootimg ]]; then "$H/unpack_bootimg" "$@"; else python3 -I "$top/system/tools/mkbootimg/unpack_bootimg.py" "$@"; fi; }
     avbtool() { if [[ -x $H/avbtool ]]; then "$H/avbtool" "$@"; else python3 -I "$top/external/avb/avbtool.py" "$@"; fi; }
     unpack --boot_img "$dir/init_boot.img" --out "$T/ib" >/dev/null || fail "can't unpack $dir/init_boot.img"
-    # Not grep -q: an early exit would kill cpio with SIGPIPE under pipefail
+    # Only the files checked here: the ramdisk's device nodes (dev/console...) need root to make
     mkdir "$T/r"
-    (cd "$T/r" && { lz4 -dc "$T/ib/ramdisk" 2>/dev/null || gzip -dc "$T/ib/ramdisk"; } | cpio -id --quiet 2>/dev/null) || true
+    (cd "$T/r" && { lz4 -dc "$T/ib/ramdisk" 2>/dev/null || gzip -dc "$T/ib/ramdisk"; } \
+        | cpio -id --quiet --no-absolute-filenames init.real kernelsu.ko) \
+        || fail "can't unpack $dir/init_boot.img's ramdisk"
     [[ -f "$T/r/kernelsu.ko" ]] || fail "$dir/init_boot.img has no kernelsu.ko (pass 2 shipped the stock init_boot?)"
     [[ -e "$T/r/init.real" ]] || fail "$dir/init_boot.img has kernelsu.ko but no init.real: ksud didn't patch it"
     # Ours, not ksud's built-in module, which never crowns the preinstalled manager
