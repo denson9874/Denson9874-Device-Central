@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Automated Community Release Notes Publisher for ExpressiveOS / Evolution X / DerpFest.
+Automated Community Release Notes Publisher for the Evolution X and DerpFest builds.
 Gathers build artifact metadata, compiles resolved community issues from COMMUNITY_TRIAGE.md,
 generates dual-platform release announcements (XDA BBCode & Telegram Markdown),
 and automatically publishes them across both platforms on Daryl's behalf.

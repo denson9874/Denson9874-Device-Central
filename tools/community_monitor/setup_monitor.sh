@@ -1,12 +1,12 @@
 #!/bin/bash
-# Setup script for ExpressiveOS Community Review & Monitor
+# Setup script for the Evolution X / DerpFest Community Review & Monitor
 # Installs Python dependencies (Playwright) and verifies configuration.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-echo "=== ExpressiveOS Community Monitor Setup ==="
+echo "=== Evolution X / DerpFest Community Monitor Setup ==="
 
 # Check Python 3
 if command -v python3 &>/dev/null; then

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Telegram Reply and Release Notes Poster for ExpressiveOS / Evolution X.
+Telegram Reply and Release Notes Poster for the Evolution X and DerpFest builds.
 Automates posting replies to acknowledge user reports in @ExpressiveLauncherFeedback
 and publishing release announcements to @ExpressiveGroup.
 Supports:
@@ -96,7 +96,7 @@ class TelegramPoster:
         req = urllib.request.Request(
             url,
             data=data_bytes,
-            headers={"Content-Type": "application/json", "User-Agent": "ExpressiveOS-Triage/1.0"}
+            headers={"Content-Type": "application/json", "User-Agent": "Device-Central-Triage/1.0"}
         )
 
         try:

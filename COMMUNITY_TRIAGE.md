@@ -1,4 +1,4 @@
-# ExpressiveOS / Evolution X — Community Issues & Requests Backlog
+# Evolution X / DerpFest — Community Issues & Requests Backlog
 
 This backlog tracks bug reports, regressions, hardware findings, and feature requests reported across Telegram (`@ExpressiveLauncherFeedback`, `@ExpressiveGroup`) and XDA threads (`kodiak`/`grizzly`, `cubs`, `yogi`, `husky`).
 

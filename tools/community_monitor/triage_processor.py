@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Triage Processor for ExpressiveOS / Evolution X Community Feedback.
+Triage Processor for Evolution X and DerpFest Community Feedback.
 Analyzes ingested posts from Telegram and XDA, classifies bugs/features/support,
 maintains the persistent backlog in COMMUNITY_TRIAGE.md, and formats daily reply drafts.
 """
