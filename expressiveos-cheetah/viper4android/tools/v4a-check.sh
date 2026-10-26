@@ -15,9 +15,10 @@
 #       only used for apksigner.
 #   v4a-check.sh device
 #       On a phone over adb (ANDROID_SERIAL picks one). Read-only. Run it soon after a
-#       boot: the logcat lines that show libeffects loaded the driver rotate out. On a user
-#       build adb shell may not read the driver or the audio HAL: those checks are INFO
-#       there (v4a-check.sh out checks the files in the build).
+#       boot, while logcat still holds the boot. Whether libeffects loaded the driver comes from
+#       dumpsys media.audio_flinger --effects. On a user build adb shell may not read the
+#       driver or the audio HAL: those checks are INFO there (v4a-check.sh out checks the
+#       files in the build).
 set -euo pipefail
 fails=0 finished=0 T=
 cleanup() {
@@ -316,7 +317,7 @@ device)
     [[ "$dev" = cheetah ]] && pass "device is cheetah" || bad "device is ${dev:-unknown}, not cheetah"
     l=$(a2 ls -lZ /vendor/lib64/soundfx/libv4a_re.so)
     if denied "$l"; then
-        info "adb shell may not read /vendor/lib64/soundfx/libv4a_re.so here (a user build): its label and sha256 aren't checked (the logcat check shows whether it loaded)"
+        info "adb shell may not read /vendor/lib64/soundfx/libv4a_re.so here (a user build): its label and sha256 aren't checked (the effects dump shows whether it loaded)"
     else
         [[ "$l" = *u:object_r:vendor_file:s0* ]] && pass "/vendor/lib64/soundfx/libv4a_re.so is labelled vendor_file" \
             || bad "/vendor/lib64/soundfx/libv4a_re.so: ${l:-missing} (want u:object_r:vendor_file:s0)"
@@ -334,17 +335,21 @@ device)
     else bad "the audio HAL isn't 64-bit: $f"; fi
     n=$(a service list | grep -c 'android.hardware.audio.effect.IFactory' || true)
     [[ "${n:-0}" = 0 ]] && pass "no AIDL effect HAL service (HIDL @7.0 is in use)" || bad "android.hardware.audio.effect.IFactory is registered: the HAL is AIDL, the non-AIDL driver won't load"
+    # Whether libeffects loaded the driver: its loader's logcat lines when they're there, and
+    # the effects dump below, which decides (on the first build the audio HAL's startup lines
+    # weren't in logcat at all, two minutes after boot)
+    loaded=0 loadfail=0
     adb logcat -b all -d > "$T/log" 2>/dev/null || true
     tr -d '\r' < "$T/log" > "$T/logs"
     if grep -qF 'loadViperEffect: ViPER effect already registered by library' "$T/logs"; then
-        bad "something registered ViPER before the built-in loader (a module patching audio_effects.xml?): $(grep -F 'already registered by library' "$T/logs" | tail -1)"
+        loadfail=1; bad "something registered ViPER before the built-in loader (a module patching audio_effects.xml?): $(grep -F 'already registered by library' "$T/logs" | tail -1)"
     elif grep -qF 'loadViperEffect: loaded ViPER library from /vendor/lib64/soundfx/libv4a_re.so' "$T/logs" \
         && grep -qF 'loadViperEffect: successfully registered ViPER4Android effect: ViPERDSP' "$T/logs"; then
-        pass "logcat: libeffects loaded /vendor/lib64/soundfx/libv4a_re.so and registered ViPERDSP"
+        loaded=1; pass "logcat: libeffects loaded /vendor/lib64/soundfx/libv4a_re.so and registered ViPERDSP"
     elif grep -qF 'loadViperEffect:' "$T/logs"; then
-        bad "logcat: loadViperEffect failed: $(grep -F 'loadViperEffect:' "$T/logs" | tail -1)"
+        loadfail=1; bad "logcat: loadViperEffect failed: $(grep -F 'loadViperEffect:' "$T/logs" | tail -1)"
     else
-        bad "logcat has no loadViperEffect lines (the buffer may have rotated: reboot and run this soon after boot)"
+        info "logcat has no loadViperEffect lines (not logged, or rotated): the effects dump decides"
     fi
     n=$(a "grep -ciE 'v4a|90380da3' /vendor/etc/audio_effects.xml")
     case "$n" in
@@ -362,17 +367,32 @@ device)
     elif ! grep -qE '^Libraries loaded:' "$T/af"; then
         info "the audio HAL wrote no effects list into dumpsys media.audio_flinger --effects here; a bug report's lists 'Library v4a_re'"
     else
-        # Count it per list: libeffects names a library that failed to load the same way,
-        # under "Libraries NOT loaded:" (media/libeffects/factory/EffectsFactory.c)
-        read -r n nf < <(awk '/^Libraries loaded:/ { s = 1; next } /^Libraries NOT loaded:/ { s = 2; next }
-            /^[^ ]/ || /^ ##/ { s = 0 } s && /^ +Library v4a_re$/ { c[s]++ } END { print c[1] + 0, c[2] + 0 }' "$T/af")
-        [[ $nf = 0 ]] || bad "dumpsys media.audio_flinger --effects lists library v4a_re under 'Libraries NOT loaded': libeffects couldn't load it"
+        # Per list, and by the effect's uuid: libeffects names a library that failed to load
+        # the same way, under "Libraries NOT loaded:", and lists each library's effects under
+        # it ("    UUID: ..."), so a module's library carrying ViPER's uuid shows up too
+        # (media/libeffects/factory/EffectsFactory.c, EffectsFactoryState.c)
+        read -r n nf u others < <(awk -v want="$V4A_FX_UUID" '
+            /^Libraries loaded:/ { s = 1; lib = ""; next }
+            /^Libraries NOT loaded:/ { s = 2; lib = ""; next }
+            /^[^ ]/ || /^ ##/ { s = 0; lib = "" }
+            s && /^ Library / { lib = $2; if (lib == "v4a_re") c[s]++; next }
+            s == 1 && lib != "" && $1 == "UUID:" && tolower($2) == want {
+                if (lib == "v4a_re") u++; else o = o (o == "" ? "" : ",") lib }
+            END { print c[1] + 0, c[2] + 0, u + 0, (o == "" ? "-" : o) }' "$T/af")
+        [[ $nf = 0 ]] || { loadfail=1; bad "dumpsys media.audio_flinger --effects lists library v4a_re under 'Libraries NOT loaded': libeffects couldn't load it"; }
+        [[ $others = - ]] || { loadfail=1; bad "dumpsys media.audio_flinger --effects lists ViPER's effect ($V4A_FX_UUID) under library $others too: a module patching audio_effects.xml registered it (remove it, reboot)"; }
         case "$n" in
-            1) pass "dumpsys media.audio_flinger --effects lists library v4a_re once under 'Libraries loaded'" ;;
-            0) bad "dumpsys media.audio_flinger --effects doesn't list library v4a_re under 'Libraries loaded': libeffects didn't load it" ;;
-            *) bad "dumpsys media.audio_flinger --effects lists library v4a_re $n times under 'Libraries loaded' (registered more than once)" ;;
+            1) if [[ $u = 1 ]]; then
+                   loaded=1; pass "dumpsys media.audio_flinger --effects lists library v4a_re once under 'Libraries loaded', with ViPER's effect"
+               else
+                   loadfail=1; bad "dumpsys media.audio_flinger --effects lists library v4a_re without ViPER's effect ($V4A_FX_UUID)"
+               fi ;;
+            0) loadfail=1; bad "dumpsys media.audio_flinger --effects doesn't list library v4a_re under 'Libraries loaded': libeffects didn't load it" ;;
+            *) loadfail=1; bad "dumpsys media.audio_flinger --effects lists library v4a_re $n times under 'Libraries loaded' (registered more than once)" ;;
         esac
     fi
+    [[ $loaded = 1 || $loadfail = 1 ]] \
+        || bad "neither logcat nor dumpsys media.audio_flinger --effects shows libeffects loaded libv4a_re.so"
     p=$(a pm list packages -f "$V4A_APP_PACKAGE" | grep -E "=$V4A_APP_PACKAGE\$" || true)
     case "$p" in
         *"/system_ext/priv-app/ViPER4Android/"*) pass "the app is the built-in /system_ext/priv-app copy" ;;
