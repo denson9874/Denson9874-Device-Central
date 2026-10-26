@@ -1,67 +1,118 @@
-#!/bin/bash
-# Release checks for an ExpressiveOS cheetah build with KernelSU Next, for the
-# kit's pack and OTA scripts. Fails (exit 1) on the first problem.
+#!/usr/bin/env bash
+# Release checks for an ExpressiveOS cheetah build with KernelSU Next, for the kit's
+# verify and pack scripts. Stops at the first problem; the last line is KSU_CHECK=OK or
+# KSU_CHECK=FAIL.
 #
-#   ksu-check.sh images <dir> --avb-key <pem> [top]
-#       <dir> holds a full set of the build's images (a fastboot zip unpacked, or
-#       out/target/product/cheetah): init_boot carries kernelsu.ko, the whole AVB
-#       chain verifies (avbtool verify_image --follow_chain_partitions), and
-#       vbmeta is signed by <pem>, ExpressiveOS's AVB key, not Evolution X's or
-#       an AOSP test key.
 #   ksu-check.sh manager [top]
-#       the KernelSU Next manager is installed in the build, signed by the key
-#       the kernel trusts (ksu.conf's manager_cert_sha256).
+#       the manager is in the build as fetch-ksu.sh downloaded it: ksu.conf's APK byte
+#       for byte (so it keeps the signature the kernel trusts), the APK's four arm64
+#       libs next to it, equal to the APK's own, and libksud.so executable (0755,
+#       root) in the build's fs_config, or the manager can't run it.
+#   ksu-check.sh images <dir> [top]
+#       <dir> holds a full set of the build's images (a fastboot zip unpacked, or
+#       out/target/product/cheetah): init_boot carries ExpressiveOS's kernelsu.ko, the
+#       whole AVB chain verifies, and vbmeta is signed by the tree's own AVB key and
+#       nobody else's (../../tools/eos-keys-check.sh vbmeta).
 #   ksu-check.sh device-ok <zip>
 #       <zip>.device-ok names <zip>'s sha256: someone flashed and tested it.
 set -euo pipefail
-here="$(cd "$(dirname "$0")/.." && pwd)"
-fail() { echo "FAIL: $*" >&2; exit 1; }
-T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
-mode=${1:-}; shift || true
+done=0 T=''
+cleanup() {
+    local rc=$?
+    [[ -z "$T" ]] || rm -rf -- "$T"
+    [[ $done = 1 ]] || echo "KSU_CHECK=FAIL"
+    exit $rc
+}
+trap cleanup EXIT
+here="$(cd "$(dirname -- "$(readlink -f -- "$0")")/.." && pwd)"
+# shellcheck source=../../lib.sh
+source "$here/../lib.sh"
+T=$(mktemp -d "${TMPDIR:-/tmp}/ksu-check.XXXXXX")
+get() { sed -n "s/^$1=//p" "$here/ksu.conf" | head -1; }
+mode=${1:-}
+usage="usage: ksu-check.sh manager [top] | images <dir> [top] | device-ok <zip>"
+lib=product/app/KernelSUNext/lib/arm64
+
 case "$mode" in
+manager)
+    [[ $# -le 2 ]] || fail "$usage"
+    eos_top "${2:-}"
+    O=$top/out/target/product/cheetah
+    d=$O/product/app/KernelSUNext
+    apk=$d/KernelSUNext.apk
+    [[ -f "$apk" ]] || fail "the KernelSU Next manager isn't in the build (apply-ksu.sh, patches/device_google_pantah/0101)"
+    [[ "$(sha256sum -- "$apk" | cut -d' ' -f1)" = "$(get manager_sha256)" ]] \
+        || fail "$apk isn't ksu.conf's manager APK byte for byte: the build changed it (re-signed, or stripped)"
+    want=$(get manager_cert_sha256)
+    have=$(python3 -I "$here/tools/apk-cert.py" "$apk") || fail "can't read $apk's signature"
+    [[ "$have" = "$want" ]] || fail "$apk is signed by $have; the kernel trusts only $want"
+    echo "OK: the manager is ksu.conf's APK, signed by $have"
+    libs=$(sed -n 's|^ *lib/arm64/\(lib[^ ]*\.so\).*|\1|p' "$here/tree/Android.mk" | sort)
+    apklibs=$(unzip -Z1 -- "$apk" 'lib/arm64-v8a/*' | sed 's|^lib/arm64-v8a/||' | sort)
+    [[ -n "$libs" && "$libs" = "$apklibs" ]] || fail "tree/Android.mk installs ($(tr '\n' ' ' <<<"$libs")), the APK has ($(tr '\n' ' ' <<<"$apklibs"))"
+    built=$(find "$d/lib/arm64" -maxdepth 1 -type f -printf '%f\n' 2>/dev/null | sort)
+    [[ "$built" = "$libs" ]] || fail "$lib holds ($(tr '\n' ' ' <<<"$built")), want ($(tr '\n' ' ' <<<"$libs"))"
+    for l in $libs; do
+        unzip -p -- "$apk" "lib/arm64-v8a/$l" > "$T/$l"
+        cmp -s -- "$T/$l" "$d/lib/arm64/$l" || fail "$lib/$l isn't the APK's lib/arm64-v8a/$l"
+    done
+    echo "OK: the APK's $(wc -w <<<"$libs") arm64 libs are installed in $lib, unchanged"
+    # The manager runs libksud.so as a program: it must be executable on the device
+    [[ -f "$O/product/etc/fs_config_files" ]] || fail "no product/etc/fs_config_files in $O (ksu/config.fs not built in)"
+    for f in "$O"/{system,product}/etc/fs_config_files; do
+        [[ -f "$f" ]] || continue
+        e=$(python3 -I "$here/tools/fs-config.py" "$f" "$lib/libksud.so") \
+            || fail "${f#"$O"/} has no entry for $lib/libksud.so (TARGET_FS_CONFIG_GEN += device/google/pantah/ksu/config.fs missing?)"
+        [[ "$e" = "755 0 0 0x0" ]] || fail "${f#"$O"/} gives $lib/libksud.so '$e' (mode uid gid caps), want '755 0 0 0x0'"
+    done
+    # And the image builder's own lookup agrees
+    fsc=$top/out/host/linux-x86/bin/fs_config
+    if [[ -x "$fsc" ]]; then
+        e=$(echo "$lib/libksud.so" | "$fsc" -C -D "$O/system")
+        [[ "$(awk '{print $2, $3, $4}' <<<"$e")" = "0 0 755" ]] || fail "the build's fs_config tool gives '$e' for $lib/libksud.so, want uid 0, gid 0, mode 755"
+    else
+        echo "note: no $fsc (host tools not built); checked the fs_config files only"
+    fi
+    echo "OK: $lib/libksud.so is root:root 0755 in the build's fs_config"
+    ;;
 images)
-    dir=${1:?}; [ "${2:-}" = --avb-key ] || fail "usage: ksu-check.sh images <dir> --avb-key <pem> [top]"
-    key=${3:?}; top=${4:-$HOME/expressiveos}
+    [[ $# -ge 2 && $# -le 3 ]] || fail "$usage"
+    dir=$2
+    eos_top "${3:-}"
+    for i in init_boot vbmeta; do [[ -f "$dir/$i.img" ]] || fail "no $i.img in $dir"; done
     H=$top/out/host/linux-x86/bin
-    unpack() { if [ -x $H/unpack_bootimg ]; then $H/unpack_bootimg "$@"; else python3 $top/system/tools/mkbootimg/unpack_bootimg.py "$@"; fi; }
-    unpack --boot_img "$dir/init_boot.img" --out $T/ib >/dev/null
+    unpack() { if [[ -x $H/unpack_bootimg ]]; then "$H/unpack_bootimg" "$@"; else python3 -I "$top/system/tools/mkbootimg/unpack_bootimg.py" "$@"; fi; }
+    avbtool() { if [[ -x $H/avbtool ]]; then "$H/avbtool" "$@"; else python3 -I "$top/external/avb/avbtool.py" "$@"; fi; }
+    unpack --boot_img "$dir/init_boot.img" --out "$T/ib" >/dev/null || fail "can't unpack $dir/init_boot.img"
     # Not grep -q: an early exit would kill cpio with SIGPIPE under pipefail
-    mkdir $T/r; (cd $T/r && { lz4 -dc $T/ib/ramdisk 2>/dev/null || gzip -dc $T/ib/ramdisk; } | cpio -id --quiet 2>/dev/null) || true
-    [ -f $T/r/kernelsu.ko ] || fail "$dir/init_boot.img has no kernelsu.ko"
+    mkdir "$T/r"
+    (cd "$T/r" && { lz4 -dc "$T/ib/ramdisk" 2>/dev/null || gzip -dc "$T/ib/ramdisk"; } | cpio -id --quiet 2>/dev/null) || true
+    [[ -f "$T/r/kernelsu.ko" ]] || fail "$dir/init_boot.img has no kernelsu.ko (pass 2 shipped the stock init_boot?)"
+    [[ -e "$T/r/init.real" ]] || fail "$dir/init_boot.img has kernelsu.ko but no init.real: ksud didn't patch it"
     # Ours, not ksud's built-in module, which never crowns the preinstalled manager
-    strings $T/r/kernelsu.ko | grep -x /product/app/KernelSUNext/KernelSUNext.apk >/dev/null \
+    strings "$T/r/kernelsu.ko" | grep -x /product/app/KernelSUNext/KernelSUNext.apk >/dev/null \
         || fail "$dir/init_boot.img's kernelsu.ko isn't ExpressiveOS's (tools/ksu-module.sh)"
     echo "OK: init_boot carries ExpressiveOS's KernelSU Next module"
-    $H/avbtool verify_image --image "$dir/vbmeta.img" --follow_chain_partitions > $T/avb.log 2>&1 \
-        || { tail -5 $T/avb.log >&2; fail "avbtool verify_image failed on $dir"; }
-    echo "OK: AVB chain verifies"
-    [ -f "$key" ] || fail "no AVB key $key"
-    sha1() { $H/avbtool extract_public_key --key "$1" --output $T/pk 2>/dev/null && sha1sum $T/pk | cut -d' ' -f1; }
-    want=$(sha1 "$key")
-    for t in "$top"/external/avb/test/data/testkey_rsa*.pem; do
-        [ -f "$t" ] && [ "$(sha1 "$t")" = "$want" ] && fail "$key is an AOSP test key"
-    done
-    for e in ~/evolution/vendor/evolution-priv/keys/avb*.pem; do
-        [ -f "$e" ] && [ "$(sha1 "$e")" = "$want" ] && fail "$key is Evolution X's AVB key ($e)"
-    done
-    have=$($H/avbtool info_image --image "$dir/vbmeta.img" | sed -n 's/^Public key (sha1): *//p')
-    [ "$have" = "$want" ] || fail "vbmeta is signed by key sha1 ${have:-none}, want ExpressiveOS's $want"
-    echo "OK: vbmeta signed by ExpressiveOS's AVB key ($want)"
-    ;;
-manager)
-    top=${1:-$HOME/expressiveos}
-    apk=$top/out/target/product/cheetah/product/app/KernelSUNext/KernelSUNext.apk
-    [ -f "$apk" ] || fail "the KernelSU Next manager isn't installed (patches/device_google_pantah/0001)"
-    want=$(sed -n 's/^manager_cert_sha256=//p' "$here/ksu.conf")
-    have=$(python3 -I "$here/tools/apk-cert.py" "$apk") || fail "can't read $apk's signature"
-    [ "$have" = "$want" ] || fail "$apk is signed by $have, the kernel trusts only $want (was it re-signed?)"
-    echo "OK: KernelSU Next manager installed, signed by $have"
+    (cd "$dir" && avbtool verify_image --image vbmeta.img --follow_chain_partitions) > "$T/avb.log" 2>&1 \
+        || { tail -5 "$T/avb.log" >&2; fail "avbtool verify_image failed on $dir"; }
+    # verify_image only checks what vbmeta lists: init_boot must be one of them
+    avbtool info_image --image "$dir/vbmeta.img" > "$T/avb.info" 2>&1 || fail "avbtool can't read $dir/vbmeta.img"
+    grep -qE '^ +Partition Name: +init_boot$' "$T/avb.info" || fail "$dir/vbmeta.img doesn't cover init_boot"
+    echo "OK: the AVB chain verifies, init_boot included"
+    "$here/../tools/eos-keys-check.sh" vbmeta "$dir/vbmeta.img" "$top" > "$T/keys.log" 2>&1 || true
+    tail -1 "$T/keys.log" | grep -qxE 'KEYS_CHECK=(OK|UNPINNED)' \
+        || { grep -E '^FAIL' "$T/keys.log" >&2 || tail -3 "$T/keys.log" >&2; fail "vbmeta isn't signed by ExpressiveOS's own AVB key"; }
+    grep -E '^(OK|UNPINNED)' "$T/keys.log"
     ;;
 device-ok)
-    zip=${1:?}; m=$zip.device-ok
-    sha=$(sha256sum "$zip" | cut -d' ' -f1)
-    { [ -f "$m" ] && grep -q "$sha" "$m"; } || fail "not verified on a phone yet: flash and test $zip, then write $m with the line \"sha256 $sha\""
-    echo "OK: on-device check: $(cat "$m")"
+    [[ $# -eq 2 ]] || fail "$usage"
+    zip=$2; m=$zip.device-ok
+    [[ -f "$zip" ]] || fail "no $zip"
+    sha=$(sha256sum -- "$zip" | cut -d' ' -f1)
+    { [[ -f "$m" ]] && grep -qF -- "$sha" "$m"; } || fail "not verified on a phone yet: flash and test $zip, then write $m with the line \"sha256 $sha\""
+    echo "OK: on-device check: $(head -c 300 "$m")"
     ;;
-*) fail "usage: ksu-check.sh images|manager|device-ok ..." ;;
+*) fail "$usage" ;;
 esac
+done=1
+echo "KSU_CHECK=OK"
