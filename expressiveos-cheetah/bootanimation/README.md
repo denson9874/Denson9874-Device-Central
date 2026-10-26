@@ -56,12 +56,12 @@ read before `vendor/lineage/bootanimation/Android.mk`, which copies `TARGET_BOOT
 `/product/media/bootanimation.zip` and links `bootanimation-dark.zip` to it. `vendor/extra`
 isn't a repo project, so `repo sync` leaves it alone.
 
-The ExpressiveOS build script should also `export TARGET_INCLUDE_BOOT_ANIMATIONS=false`.
-Otherwise Evolution X's 12 other styles (about 190 MiB) also ship in `/product/media`.
-`vendor/extra` can't turn them off, because `common.mk` sets `TARGET_INCLUDE_BOOT_ANIMATIONS ?= true`
-before it inherits our file.
+Evolution X's 12 other styles (about 190 MiB) must stay out of `/product/media`. `vendor/extra` can't
+turn them off, because `common.mk` sets `TARGET_INCLUDE_BOOT_ANIMATIONS ?= true` before it inherits our
+file, so `../patches/device_google_pantah/0010` sets it to false in `lineage_cheetah.mk`, and
+`../tools/eos-images.sh` also exports `TARGET_INCLUDE_BOOT_ANIMATIONS=false`.
 
-After a build, check:
+`../tools/eos-verify.sh` checks both after every build. By hand:
 
 ```
 sha256sum out/target/product/cheetah/product/media/bootanimation.zip   # the sha256 in bootanim.conf

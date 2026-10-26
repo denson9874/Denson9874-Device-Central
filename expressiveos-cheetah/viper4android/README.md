@@ -87,8 +87,9 @@ $K/tools/v4a-check.sh device
 back. `git am` needs a committer identity in `~/expressiveos/frameworks/av` (as `evolution-cheetah/apply.sh`
 does on the Evolution X tree).
 
-**The ExpressiveOS OTA script must run `tools/v4a-check.sh out <product_out> <host_out>` before packing**
-and stop when its last line isn't `V4A_CHECK=OK`, the same way it calls `ksu/tools/ksu-check.sh`.
+`../tools/eos-images.sh` runs `apply-v4a.sh` on every build, and `../tools/eos-verify.sh` (which the
+build and `eos-pack.sh` both run) runs `tools/v4a-check.sh out <product_out> <host_out>` and stops unless
+its last line is `V4A_CHECK=OK`.
 `device` is the release gate for the first build that ships V4A, and for any build that bumps a pin.
 
 ### What the checks cover
@@ -272,7 +273,5 @@ and fake build outputs, never with a download, a real build or a phone.
       or an in-app EQ turns on (patch 0002), speaker, wired, A2DP/LE Audio and USB, calls, Spatial
       Audio, battery, Play Integrity and banking apps, installing the GitHub 2.1.1 APK over the built-in
       copy, and a module flashed on top being registered only once (patch 0001).
-- [ ] The ExpressiveOS OTA script calling `tools/v4a-check.sh out` before packing (that script isn't
-      in this repo yet).
 - [ ] Whether anything else in `~/expressiveos` defines a module named `ViPER4Android` or `libv4a_re`
       (only the cheetah trees and `packages/apps/ViPER4AndroidFX` are checked).
