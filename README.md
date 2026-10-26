@@ -1,8 +1,5 @@
-# ExpressiveOS: Source Trees, Patches, & Build Kits for Unofficial Android 17
+# denson9874 Device Central: Source Trees, Patches, & Build Kits for Unofficial Android 17
 
-<div align="center">
-  <img src="docs/assets/screenshots/logo.png" alt="ExpressiveOS Logo" width="128" />
-  <h1>ExpressiveOS</h1>
   <p><strong>Central source repository for device trees, patches, build kits, and release tooling for unofficial Android 17 builds (Evolution X 12.3 & DerpFest v17) for the Pixel 11 series, Pixel 8 Pro, and Pixel 7 Pro.</strong></p>
 
   <p>
