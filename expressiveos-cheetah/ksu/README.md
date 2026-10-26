@@ -29,11 +29,19 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
   `is_manager_apk()` check and `com.rifsxd.ksunext` is in `packages.list`. The script builds the
   module from the pinned source against the GKI source `build_kernel` synced
   (`out-kernel/google/gs-6.1/common/gki`, the tag Google's prebuilt GKI comes from) with that tree's
-  own clang (`CLANG_VERSION` in `build.config.constants`): `gki_defconfig`, `modules_prepare`,
-  `CONFIG_KSU=m`. The patch isn't committed, so the module keeps the release's version (33355, the
+  own clang (`CLANG_VERSION` in `build.config.constants`) and pahole
+  (`prebuilts/kernel-build-tools/linux-x86/bin/pahole`, v1.23 like Google's): `gki_defconfig`,
+  `modules_prepare`, `CONFIG_KSU=m`. pahole matters: its version turns on
+  `CONFIG_DEBUG_INFO_BTF_MODULES`, which adds 64 bytes to `struct module`. The first build
+  (2026-10-26) had no pahole, so its module was built for a 1,024-byte `struct module` where the
+  kernel's is 1,088. The module has no symbol versions, so 6.1 loaded it anyway, and the phone
+  panicked in `load_module` on every boot. The patch isn't committed, so the module keeps the release's version (33355, the
   manager's); debug info is stripped (about 430 KB). `ksuinit` loads it by resolving symbols from
   `/proc/kallsyms`, so it needs the same struct layout as Google's kernel, not a matching build ID:
-  `cheetah-ksu.sh` checks its sublevel against `boot.img`'s kernel. Tested here by building it against
+  `cheetah-ksu.sh` checks its sublevel against `boot.img`'s kernel, its `struct module` against
+  the first-stage modules of the same build (`vendor_kernel_ramdisk/lib/modules`), and its whole
+  `.config` against the one built into `boot.img`'s kernel (`tools/ko-info.py`; only options that
+  describe Google's build host are left out). Tested here by building it against
   android14-6.1-2025-09_r9 (6.1.145) with clang 18.
 - **Tree patches** (`patches/device_google_pantah/0101`-`0102`, applied by `apply-ksu.sh` after the
   kit's own pantah patches `0001`-`0010`, which `../prepare.sh` puts in first):
@@ -69,7 +77,8 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
     the kernel trusts), its four arm64 libs are installed unchanged, and the build's fs_config makes
     `libksud.so` root:root 0755 (`tools/fs-config.py` reads `fs_config_files`).
   - `images <dir> [top]`: init_boot carries our `kernelsu.ko` (with the `/product/app` fallback, not
-    `ksud`'s built-in one) and `init.real`; `avbtool verify_image --follow_chain_partitions` passes and
+    `ksud`'s built-in one), built for the same `struct module` as `vendor_kernel_boot`'s modules, and
+    `init.real`; `avbtool verify_image --follow_chain_partitions` passes and
     vbmeta covers init_boot; vbmeta is signed by the tree's own AVB key and nobody else's
     (`../tools/eos-keys-check.sh vbmeta`).
   - `device-ok <zip>`: `<zip>.device-ok` names the zip's sha256. `eos-pack.sh --release` stops

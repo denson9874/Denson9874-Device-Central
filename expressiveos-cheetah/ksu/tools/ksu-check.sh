@@ -10,9 +10,10 @@
 #       root) in the build's fs_config, or the manager can't run it.
 #   ksu-check.sh images <dir> [top]
 #       <dir> holds a full set of the build's images (a fastboot zip unpacked, or
-#       out/target/product/cheetah): init_boot carries ExpressiveOS's kernelsu.ko, the
-#       whole AVB chain verifies, and vbmeta is signed by the tree's own AVB key and
-#       nobody else's (../../tools/eos-keys-check.sh vbmeta).
+#       out/target/product/cheetah): init_boot carries ExpressiveOS's kernelsu.ko, built
+#       for the same struct module as vendor_kernel_boot's modules, the whole AVB chain
+#       verifies, and vbmeta is signed by the tree's own AVB key and nobody else's
+#       (../../tools/eos-keys-check.sh vbmeta).
 #   ksu-check.sh device-ok <zip>
 #       <zip>.device-ok names <zip>'s sha256: someone flashed and tested it.
 set -euo pipefail
@@ -95,6 +96,20 @@ images)
     strings "$T/r/kernelsu.ko" | grep -x /product/app/KernelSUNext/KernelSUNext.apk >/dev/null \
         || fail "$dir/init_boot.img's kernelsu.ko isn't ExpressiveOS's (tools/ksu-module.sh)"
     echo "OK: init_boot carries ExpressiveOS's KernelSU Next module"
+    # Built for the kernel's struct module, as vendor_kernel_boot's modules are: 6.1 loads a
+    # kernelsu.ko built for another one and crashes at boot (tools/ko-info.py)
+    [[ -f "$dir/vendor_kernel_boot.img" ]] || fail "no vendor_kernel_boot.img in $dir"
+    unpack --boot_img "$dir/vendor_kernel_boot.img" --out "$T/vkb" >/dev/null || fail "can't unpack $dir/vendor_kernel_boot.img"
+    mkdir "$T/m"
+    for rd in "$T"/vkb/vendor_ramdisk*; do   # vendor_ramdisk00, 01... (header v4) or vendor_ramdisk (v3)
+        [[ -f $rd ]] || continue
+        (cd "$T/m" && { lz4 -dc "$rd" 2>/dev/null || gzip -dc "$rd"; } \
+            | cpio -id --quiet --no-absolute-filenames 'lib/modules/*.ko') \
+            || fail "can't unpack ${rd##*/} from $dir/vendor_kernel_boot.img"
+    done
+    r=$(python3 -I "$here/tools/ko-info.py" same-struct "$T/r/kernelsu.ko" "$T/m") \
+        || fail "init_boot's kernelsu.ko doesn't fit the kernel's struct module (tools/ksu-module.sh)"
+    echo "OK: kernelsu.ko is built for the kernel's struct module (${r% *} bytes, as vendor_kernel_boot's ${r#* } modules)"
     (cd "$dir" && avbtool verify_image --image vbmeta.img --follow_chain_partitions) > "$T/avb.log" 2>&1 \
         || { tail -5 "$T/avb.log" >&2; fail "avbtool verify_image failed on $dir"; }
     # verify_image only checks what vbmeta lists: init_boot must be one of them
