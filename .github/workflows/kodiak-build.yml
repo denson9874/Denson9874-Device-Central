@@ -746,6 +746,11 @@ jobs:
           echo "== keys: $(find "$top/vendor/evolution-priv/keys" -maxdepth 1 -name '*.pk8' 2>/dev/null | wc -l) .pk8 files in expressiveos/vendor/evolution-priv/keys"
           ls -l ~/expressiveos-keys-*.tar.gz 2>/dev/null || echo "no key backup archive on the server"
           echo "== build: $(cat "$top/out/eos/build.ok" 2>/dev/null || echo "no complete build (out/eos/build.ok)")"
+          echo "== Evolution X routines (they share the tree lock): newest result per device"
+          for f in ~/routine-logs/*-latest.out; do
+            [[ -f $f ]] || continue
+            echo "$(basename "$f" -latest.out): $(date -r "$f" '+%F %T'), $(grep -a '^ROUTINE_RESULT=' "$f" | tail -1 || true)"
+          done
           ls -lh ~/releases/expressiveos-cheetah/check 2>/dev/null || true
           for s in setup keys build pack; do
             log=$jobs/$s.log
@@ -820,6 +825,9 @@ jobs:
               [[ -f $top/$f ]] || fail "$f is missing from the tree"
             done
             [[ -x $top/external/avb/avbtool.py ]] || fail "external/avb/avbtool.py isn't executable (keys.sh runs it)"
+            if grep -qE '^EOS_(AVB_PUBKEY_SHA1|OTA_CERT_SHA256)=.' "$kit/eos.conf"; then
+              fail "eos.conf pins ExpressiveOS's keys already: restore vendor/evolution-priv/keys from the backup, never make new ones"
+            fi
             priv=$top/vendor/evolution-priv
             if [[ -e $priv || -L $priv ]]; then
               ls -la "$priv" | head -20
