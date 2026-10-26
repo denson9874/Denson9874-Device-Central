@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Read-only: why a product's next build would redo the big framework steps (the API
-# stubs, SystemUI, Settings, services), from ninja's own dry run of that product's
-# build graph against the out/ the last build left: `ninja -n -d explain` runs no
-# command and writes no log. With other products, it also compares their commands for
+# Read-only: why builds redo the big framework steps (the API stubs, SystemUI,
+# Settings, services). Where siso runs the builds, from what siso wrote about each
+# recent build (out/siso_explain*); elsewhere, from ninja's own dry run of the
+# product's graph against the out/ the last build left (`ninja -n -d explain` runs no
+# command and writes no log). With other products, it also compares their commands for
 # the same steps with the first product's (word by word: what only one side has).
 #
 #   build-explain.sh <evolution|derpfest|expressiveos> <product> [<other product>...]
@@ -19,7 +20,7 @@ cd "$top" || fail "no $top"
 ninja=prebuilts/build-tools/linux-x86/bin/ninja
 [[ -x $ninja ]] || fail "no $top/$ninja"
 for p in "${@:2}"; do [[ -f out/combined-$p.ninja ]] || fail "no out/combined-$p.ninja (that product hasn't been built in $top)"; done
-pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' >/dev/null && fail "a build is running; try again when it's done"
+pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja|linux-x86/siso' >/dev/null && fail "a build is running; try again when it's done"
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 
 # The steps to look at, as the last build recorded them
@@ -54,34 +55,52 @@ grep -h -iE 'PARTIAL' "out/soong/soong.environment.used.$p1" out/soong/soong.env
 echo "-- rules in $p1's Soong graph whose command runs that wrapper"
 for f in "out/soong/build.$p1.ninja" out/soong/build."$p1".[0-9]*.ninja; do [[ -f $f ]] && cat "$f"; done 2>/dev/null \
     | awk '/^rule /{ r = $2 } /use_partial_compile/ && r != "" { print r; r = "" }' | sed -E 's/[0-9]+$//' | sort | uniq -c | sort -rn | head -25
-echo "== $p1: ninja -n -d explain (nothing runs, no log is written)"
-tm=(); [[ -x /usr/bin/time ]] && tm=(/usr/bin/time -f "(ninja: %e s, %M KB peak)")
-start=$SECONDS
-"${tm[@]}" timeout 1500 nice -n 10 "$ninja" -f "out/combined-$p1.ninja" -n -d explain "${targets[@]}" > "$T/explain" 2>&1
-echo "exit $?, $((SECONDS - start)) s; $(grep -c 'ninja explain:' "$T/explain") explain lines, $(grep -cE '^\[[0-9]+/[0-9]+\]' "$T/explain") steps would run"
-grep -E '^\(ninja:|^ninja: (error|warning|no work)' "$T/explain" | head -5
-# Root causes are the lines that don't just pass dirtiness up ("X is dirty because Y are dirty")
-awk '/^ninja explain: / && !/ is dirty because / && !/ is dirty$/ { sub(/^ninja explain: /, ""); print }' "$T/explain" > "$T/roots"
-echo "-- root causes ($(wc -l < "$T/roots") lines), by kind and by folder"
-awk '{
-    k = "other"; p = ""
-    if ($0 ~ /^command line changed for /)            { k = "command line changed";         p = $5 }
-    else if ($0 ~ /^command line not found in log for /) { k = "command line not in the log"; p = $8 }
-    else if ($0 ~ /^output .* older than most recent input /) { k = "older than an input"; p = $2 }
-    else if ($0 ~ /^recorded mtime of .* older than most recent input /) { k = "recorded mtime older than an input"; p = $4 }
-    else if ($0 ~ /^deps for .* are missing/)          { k = "deps missing";                 p = $3 }
-    else if ($0 ~ / doesn.t exist$/)                   { k = "output missing";               p = $2 }
-    gsub(/\x27/, "", p); n = split(p, a, "/"); d = a[1]; for (i = 2; i <= (n < 5 ? n - 1 : 5); i++) d = d "/" a[i]
-    print k " | " d
-}' "$T/roots" | sort | uniq -c | sort -rn | head -30
-echo "-- inputs newer than what was built from them, most often named"
-grep -oE 'older than most recent input [^ ]+' "$T/roots" | awk '{ print $6 }' | sort | uniq -c | sort -rn | head -20
-echo "-- command line changed: the first 25 (deepest first)"
-grep '^command line changed' "$T/roots" | head -25 | cut -c1-300
-echo "-- other root causes: the first 25 that aren't about host tools' Go packages"
-grep -v '^command line changed' "$T/roots" | grep -v '/bin/go/' | head -25 | cut -c1-300
-echo "-- what it says about the steps themselves"
-for t in "${targets[@]}"; do grep -F -- "$t" "$T/explain" | grep -v ' is dirty$' | head -2 | cut -c1-400; done
+# Siso keeps its own logs and deps, so ninja's dry run would only see stale ones. Siso
+# writes why it ran each step into out/siso_explain (rotated: .0 is the build before).
+if [[ -e out/.siso_deps ]]; then
+    echo "== siso runs the builds here: what it wrote about why it ran each step (newest first)"
+    ex=$(ls -t out/siso_explain* 2>/dev/null | head -6)
+    for f in $ex; do echo "  $(date -r "$f" '+%F %T') $f: $(wc -l < "$f") lines"; done
+    for f in $ex; do
+        echo "-- $f: kinds of line (paths shown as P), most frequent first"
+        sed -E 's#[^ ]*/[^ ]*#P#g; s/[0-9]+/N/g' "$f" | cut -c1-160 | sort | uniq -c | sort -rn | head -12
+        echo "-- $f: lines about the framework steps"
+        for pat in "${pats[@]}"; do grep -F -- "$pat" "$f" | head -2 | cut -c1-600; done
+        echo "-- $f: folders named most often (first 5 parts of the first path on a line)"
+        grep -oE '(out|frameworks|packages|vendor|device|system|external|build|prebuilts|hardware|libcore|art)/[^ :,]*' "$f" \
+            | awk -F/ '{ d = $1; for (i = 2; i <= (NF < 5 ? NF - 1 : 5); i++) d = d "/" $i; print d }' | sort | uniq -c | sort -rn | head -12
+    done
+else
+    echo "== $p1: ninja -n -d explain (nothing runs, no log is written)"
+    tm=(); [[ -x /usr/bin/time ]] && tm=(/usr/bin/time -f "(ninja: %e s, %M KB peak)")
+    start=$SECONDS
+    "${tm[@]}" timeout 1500 nice -n 10 "$ninja" -f "out/combined-$p1.ninja" -n -d explain "${targets[@]}" > "$T/explain" 2>&1
+    echo "exit $?, $((SECONDS - start)) s; $(grep -c 'ninja explain:' "$T/explain") explain lines, $(grep -cE '^\[[0-9]+/[0-9]+\]' "$T/explain") steps would run"
+    grep -E '^\(ninja:|^ninja: (error|warning|no work)' "$T/explain" | head -5
+    # Root causes are the lines that don't just pass dirtiness up ("X is dirty because Y are dirty")
+    awk '/^ninja explain: / && !/ is dirty because / && !/ is dirty$/ { sub(/^ninja explain: /, ""); print }' "$T/explain" > "$T/roots"
+    echo "-- root causes ($(wc -l < "$T/roots") lines), by kind and by folder"
+    awk '{
+        k = "other"; p = ""
+        if ($0 ~ /^command line changed for /)            { k = "command line changed";         p = $5 }
+        else if ($0 ~ /^command line not found in log for /) { k = "command line not in the log"; p = $8 }
+        else if ($0 ~ /^output .* older than most recent input /) { k = "older than an input"; p = $2 }
+        else if ($0 ~ /^recorded mtime of .* older than most recent input /) { k = "recorded mtime older than an input"; p = $4 }
+        else if ($0 ~ /^deps for .* are missing/)          { k = "deps missing";                 p = $3 }
+        else if ($0 ~ / doesn.t exist$/)                   { k = "output missing";               p = $2 }
+        gsub(/\x27/, "", p); n = split(p, a, "/"); d = a[1]; for (i = 2; i <= (n < 5 ? n - 1 : 5); i++) d = d "/" a[i]
+        print k " | " d
+    }' "$T/roots" | sort | uniq -c | sort -rn | head -30
+    echo "-- inputs newer than what was built from them, most often named"
+    grep -oE 'older than most recent input [^ ]+' "$T/roots" | awk '{ print $6 }' | sort | uniq -c | sort -rn | head -20
+    echo "-- command line changed: the first 25 (deepest first)"
+    grep '^command line changed' "$T/roots" | head -25 | cut -c1-300
+    echo "-- other root causes: the first 25 that aren't about host tools' Go packages"
+    grep -v '^command line changed' "$T/roots" | grep -v '/bin/go/' | head -25 | cut -c1-300
+    echo "-- what it says about the steps themselves"
+    for t in "${targets[@]}"; do grep -F -- "$t" "$T/explain" | grep -v ' is dirty$' | head -2 | cut -c1-400; done
+
+fi
 
 # One load of each product's graph: the final command of every step, one line each
 commands() { timeout 900 nice -n 10 "$ninja" -f "out/combined-$1.ninja" -t commands -s "${targets[@]}" 2>/dev/null; }
