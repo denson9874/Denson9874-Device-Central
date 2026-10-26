@@ -60,6 +60,22 @@ Never `evolution-cheetah/apply.sh` or its pantah 0001/0002: they point the Updat
 5. **KernelSU Next:** `~/expressiveos-cheetah/ksu/fetch-ksu.sh`, again after every change to
    `ksu/ksu.conf`. ViPER4Android fetches its own files during the build.
 
+Or from the runner (`.github/workflows/kodiak-build.yml`, with `tree_ref` the branch to install the kit
+from), without a shell on the server:
+
+| Action | What it does |
+|---|---|
+| `expressiveos-status` | Read-only: the sessions, locks, kit, tree, keys, build and the end of each log |
+| `expressiveos-setup` | Installs `tree_ref`'s kit as `~/expressiveos-cheetah`, then runs `setup.sh` and `ksu/fetch-ksu.sh` in tmux session `eos-setup` |
+| `expressiveos-keys` | "Keys" below, once, never over an existing `vendor/evolution-priv`, and a backup archive `~/expressiveos-keys-<time>.tar.gz` (mode 600) to copy off the server |
+| `expressiveos-build` | Installs the kit, then `tools/eos-images.sh` and `tools/eos-pack.sh` in `eos-build` (query: `kernel-only`, `kernel-sync`) |
+| `expressiveos-pack` | Installs the kit, then `tools/eos-pack.sh` in `eos-pack` |
+
+The sessions run outside the job (a first build outlasts its 4 hours) with a fresh login's environment, and
+a committer identity for `git am` when git has none. Each logs to `~/expressiveos-jobs/<name>.log`, ending
+`SESSION_EXIT=<n>`; on the server, `tmux attach -t eos-build` watches one. No action starts while an
+ExpressiveOS session or script is running.
+
 ## Keys
 
 The keys are what make ExpressiveOS its own ROM: every ExpressiveOS phone trusts them for updates from
@@ -168,7 +184,6 @@ and never removes a folder holding a `.device-ok` record. Release zips don't nee
   `evolution-kodiak/tools/p11-ota.sh` with ExpressiveOS's own feed and folders. Never publish
   `ota_property_files`: the Updater's package check is the only thing keeping Evolution X packages off
   ExpressiveOS phones.
-- Runner actions for ExpressiveOS builds.
 - Freezing the tree: 318 projects follow branch heads. After the first good build, rebuild from its
   `out/eos/manifest.xml` until moving on is a decision.
 - Decisions still open: patch-level properties in cheetah's vbmeta, ExpressiveLauncher as the default
