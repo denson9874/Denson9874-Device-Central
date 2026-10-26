@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Download the KernelSU Next release pinned in ksu.conf (host ksud + manager APK)
-# into ~/android-dt/ksu/<version>/ and check both against ksu.conf's SHA-256.
-# Run it after changing ksu.conf; apply-ksu.sh and tools/cheetah-ksu.sh use the result.
+# into ~/android-dt/ksu/<version>/ and check both against ksu.conf's SHA-256, and
+# check out its source (for tools/ksu-module.sh) at ksu.conf's src_commit.
+# Run it after changing ksu.conf; apply-ksu.sh and the tools/ scripts use the result.
 #
 #   fetch-ksu.sh
 set -euo pipefail
@@ -38,24 +39,21 @@ fetch manager KernelSUNext.apk
 [[ $fail = 0 ]] || exit 1
 # The kernel module trusts only KernelSU Next's own signer: check the APK's v2 signing cert
 want_cert=$(get manager_cert_sha256)
-have_cert=$(python3 -I - "$dir/KernelSUNext.apk" <<'PY'
-import hashlib, struct, sys
-d = open(sys.argv[1], "rb").read()
-eocd = d.rfind(b"PK\x05\x06"); cd = struct.unpack("<I", d[eocd + 16:eocd + 20])[0]
-if d[cd - 16:cd] != b"APK Sig Block 42": sys.exit("no APK signing block")
-size = struct.unpack("<Q", d[cd - 24:cd - 16])[0]; blk = d[cd - size - 8:cd - 24]; pos = 8
-def lp(b, o): n = struct.unpack("<I", b[o:o + 4])[0]; return b[o + 4:o + 4 + n], o + 4 + n
-while pos < len(blk):
-    n, i = struct.unpack("<QI", blk[pos:pos + 12]); v = blk[pos + 12:pos + 8 + n]
-    if i == 0x7109871a:   # APK Signature Scheme v2: signers > signer > signed data > certificates
-        signer, _ = lp(lp(v, 0)[0], 0); sd, _ = lp(signer, 0); _, o = lp(sd, 0); cert, _ = lp(lp(sd, o)[0], 0)
-        print(hashlib.sha256(cert).hexdigest()); sys.exit()
-    pos += 8 + n
-sys.exit("no v2 signature")
-PY
-)
+have_cert=$(python3 -I "$here/tools/apk-cert.py" "$dir/KernelSUNext.apk") || true
 [[ -n "$want_cert" && "$have_cert" == "$want_cert" ]] || { echo "FAIL: manager signer is ${have_cert:-unreadable}, ksu.conf wants ${want_cert:-nothing}" >&2; exit 1; }
 echo "OK: manager signed by KernelSU Next ($have_cert)"
+# Source for our own kernelsu.ko. Not shallow: the module's version counts the commits.
+src_url=$(get src_url); src_commit=$(get src_commit)
+[[ "$src_url" == https://github.com/KernelSU-Next/KernelSU-Next.git && "$src_commit" =~ ^[0-9a-f]{40}$ ]] \
+    || { echo "ksu.conf: src_url must be KernelSU-Next's repo and src_commit a full commit hash" >&2; exit 1; }
+[[ -d "$dir/src/.git" ]] || git clone -q --filter=blob:none "$src_url" "$dir/src"
+git -C "$dir/src" fetch -q --tags origin
+tag=$(git -C "$dir/src" rev-parse "refs/tags/$version^{commit}")
+[[ "$tag" == "$src_commit" ]] || { echo "FAIL: tag $version is $tag, ksu.conf wants $src_commit" >&2; exit 1; }
+git -C "$dir/src" reset -q --hard
+git -C "$dir/src" clean -qfdx
+git -C "$dir/src" checkout -q --detach "$src_commit"
+echo "OK: source $version ($src_commit)"
 chmod +x "$dir/ksud"
 "$dir/ksud" --version
 echo "$version" > ~/android-dt/ksu/CURRENT
