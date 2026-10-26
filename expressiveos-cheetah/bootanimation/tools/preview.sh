@@ -8,9 +8,10 @@ seq=$(mktemp -d "${TMPDIR:-/tmp}/bootanim-preview.XXXXXX")
 trap 'rm -rf -- "$seq"' EXIT
 n=0
 put() { ln -s "$(cd "$(dirname -- "$1")" && pwd)/${1##*/}" "$seq/$(printf 'f%05d.png' $n)"; n=$((n + 1)); }
-last=
-while read -r type plays pause part _; do
+last= bg=
+while read -r type plays pause part colour _; do
     [[ $type = [cp] ]] || continue
+    bg=${colour#\#}
     [[ $plays = 0 ]] && plays=$loops
     for ((r = 0; r < plays; r++)); do
         for f in "$src/$part"/img*.png; do put "$f"; last=$f; done
@@ -19,6 +20,6 @@ while read -r type plays pause part _; do
 done < "$src/desc.txt"
 for ((i = 0; i < 30; i++)); do put "$last"; done
 ffmpeg -loglevel error -y -framerate 30 -i "$seq/f%05d.png" \
-    -vf "pad=1080:2340:0:510:color=0x141228,scale=720:1560:flags=lanczos" \
+    -vf "pad=1080:2340:0:510:color=0x$bg,scale=720:1560:flags=lanczos" \
     -c:v libx264 -preset slow -crf 16 -pix_fmt yuv420p -movflags +faststart "$out"
 echo "$out: $n frames ($((n / 30)).$((n % 30 * 10 / 30)) s)"

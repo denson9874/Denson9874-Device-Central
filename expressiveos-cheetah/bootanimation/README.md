@@ -17,8 +17,9 @@ the Evolution X tree** (`~/evolution`): `apply-bootanim.sh` refuses it.
 | `part1` | `c 0 20` | One clockwise turn of the logo with a slight swell, then rest. Repeats until boot completes. | 34 frames + 20 held = 1.8 s a loop |
 | `part2` | `c 1 0` | When boot completes: a double ripple, the logo swells and the wordmark brightens, then everything settles at rest. | 26 frames = 0.9 s |
 
-`1080 1320 30`: a 1080x1320 canvas at 30 fps (4 refreshes a frame at 120 Hz), background
-`#141228`, which is the logo's own. The petals and wordmark use the logo's colours.
+`1080 1320 30`: a 1080x1320 canvas at 30 fps (4 refreshes a frame at 120 Hz) on black
+(`#000000`, also the colour of the screen around the canvas), with a faint neutral lift behind
+the logo. The petals and wordmark use the logo's colours.
 
 How Evolution X plays it (`frameworks/base` `cnb`, `cmds/bootanimation/BootAnimation.cpp`):
 
@@ -34,7 +35,7 @@ How Evolution X plays it (`frameworks/base` `cnb`, `cmds/bootanimation/BootAnima
 
 ## Files
 
-- `bootanimation.zip`: the build input, 31 MB. Its sha256 is pinned in `bootanim.conf`.
+- `bootanimation.zip`: the build input, 29 MB. Its sha256 is pinned in `bootanim.conf`.
 - `bootanimation.mk`: sets `TARGET_BOOTANIMATION` for `lineage_cheetah`.
 - `apply-bootanim.sh [top]`: puts both into `vendor/extra/bootanimation` in the ExpressiveOS
   tree (default `~/expressiveos`), checks the zip against `bootanim.conf`, and adds

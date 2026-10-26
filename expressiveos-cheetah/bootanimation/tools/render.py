@@ -14,7 +14,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 W, H, FPS = 1080, 1320, 30
-BG = (20, 18, 40)                      # #141228
+BG = (0, 0, 0)                         # #000000, so the screen around the canvas is black too
 CX, CY = 540.0, 588.0                  # pinwheel centre on the canvas
 MARK_W = 456.0                         # mark width at rest
 WORD = "ExpressiveOS"
@@ -168,7 +168,7 @@ class Wordmark:
 yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
 RR = np.hypot(xx - CX, yy - CY)
 BGA = np.array(BG, np.float32)
-HALO_C = np.array([46, 42, 82], np.float32)
+HALO_C = np.array([22, 22, 22], np.float32)   # neutral: a tinted lift reads as a coloured background
 
 def halo(strength):
     # soft lift behind the mark, gone by r = 480
