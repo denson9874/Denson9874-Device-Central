@@ -30,7 +30,10 @@
 # (CPU, memory, disks, ccache's settings and hit rate, the kernel build's caches) and
 # how long past builds took and where the time went (soong_ui's build traces, ninja's
 # logs, the result lines in the build logs). Names, sizes and timings only, never
-# file contents beyond the build scripts' ccache and jobs lines.
+# file contents beyond the build scripts' ccache and jobs lines. build-explain (read-only)
+# asks ninja, in a dry run that runs and writes nothing, why a product's next build in a
+# tree would redo the big framework steps, and how other products' commands for them
+# differ (tools/build_speed/build-explain.sh; query: tree, product, other products).
 #
 # server-cleanup-list (read-only) and server-cleanup free disk for that tree:
 # expressiveos-cheetah/tools/server-cleanup.sh lists or removes the seven groups
@@ -92,7 +95,9 @@ on:
           repo projects named in query (default: cheetah's four), as patches.
           expressiveos-host: read-only: disk, host packages and folders the
           ExpressiveOS cheetah tree needs. build-speed: read-only: CPU, memory,
-          disks, ccache and past build timings. server-cleanup-list: read-only: what
+          disks, ccache and past build timings. build-explain: read-only: why a
+          product's next build redoes the framework steps (see query).
+          server-cleanup-list: read-only: what
           server-cleanup.sh's groups hold now. server-cleanup: permanently remove
           the groups in query. expressiveos-status: read-only: the ExpressiveOS
           sessions, logs, keys and build. expressiveos-setup: install tree_ref's
@@ -124,6 +129,7 @@ on:
           - local-commits
           - expressiveos-host
           - build-speed
+          - build-explain
           - server-cleanup-list
           - server-cleanup
           - expressiveos-status
@@ -149,7 +155,9 @@ on:
           cheetah's four projects). server-cleanup-list (optional) and
           server-cleanup (required): groups, e.g. 1,2,3,4,5,6,7.
           expressiveos-build (optional): kernel-only (build_kernel and kernelsu.ko,
-          no pack), kernel-sync (sync the kernel source again).
+          no pack), kernel-sync (sync the kernel source again). build-explain
+          (required): tree, product, then up to two products to compare, e.g.
+          'evolution lineage_yogi lineage_cubs'.
         type: string
         default: ''
 
@@ -718,6 +726,21 @@ jobs:
       - name: Build speed check
         if: inputs.action == 'build-speed'
         run: bash tools/build_speed/build-speed.sh
+
+      # Not while a build runs (Preflight): ninja loads a product's whole graph
+      - name: Check out the build-explain script
+        if: inputs.action == 'build-explain'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: tools/build_speed
+          fetch-depth: 1
+
+      - name: Build explain
+        if: inputs.action == 'build-explain'
+        run: |
+          read -r -a q <<< "$QUERY"
+          bash tools/build_speed/build-explain.sh "${q[@]}"
 
       # The script removes only while it holds the tree lock (no routine or build
       # starts meanwhile), and skips the emulator's build output while a build runs.
