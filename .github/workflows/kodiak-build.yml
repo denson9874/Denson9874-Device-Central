@@ -30,7 +30,8 @@
 # expressiveos-cheetah/tools/server-cleanup.sh lists or removes the seven groups
 # of files it names (local copies of released and test builds, unpacked factory
 # zips, the emulator's output), by exact path; the image zips the pack scripts
-# read stay. server-cleanup removes only the groups in query, which Daryl approves.
+# read stay. server-cleanup removes only the groups in query, which Daryl approves,
+# and only while the tree lock is free (it holds it while it removes).
 #
 # Never add an upload-artifact step: build output contains Google's
 # proprietary images, which must not leave the server. Logs only. `inspect`
@@ -660,8 +661,8 @@ jobs:
           echo "cheetah firmware cached: $(cat ~/android-dt/firmware/cheetah/CURRENT 2>/dev/null || echo none)"
           echo "== tree lock"; if flock -n ~/.evolution-tree.lock true; then echo free; else echo "held (a routine or build is running)"; fi
 
-      # Removing release copies doesn't touch a running build; the script itself
-      # waits for an idle server before it removes the emulator's build output.
+      # The script removes only while it holds the tree lock (no routine or build
+      # starts meanwhile), and skips the emulator's build output while a build runs.
       - name: Check out the cleanup script
         if: inputs.action == 'server-cleanup-list' || inputs.action == 'server-cleanup'
         uses: actions/checkout@v4

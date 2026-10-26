@@ -6,16 +6,20 @@
 #   2  older releases the feeds have replaced  6  older personal kodiak builds
 #   3  same-day fastboot rebuilds              7  the local copies of the current builds
 #   4  factory zips already unpacked
-# Exact paths only, never a pattern. Deleting is permanent, so `delete` runs only the
-# groups Daryl approved (all seven, 2026-10-26: released builds live on SourceForge,
-# Google Drive and R2, not here). The image-*.zip files the pack scripts read for every
-# fastboot zip, the firmware cache and the on-device gate's .device-ok records are on the
-# keep list: nothing on it, or holding it, is ever removed.
+# Exact paths only, never a pattern. It's the one script in this kit that removes files
+# outside the ExpressiveOS tree (copies of Evolution X and DerpFest builds, and Evolution
+# X's emulator output), and deleting is permanent, so `delete` runs only the groups Daryl
+# approved (all seven, 2026-10-26: released builds live on SourceForge, Google Drive and
+# R2, not here), and only while it holds the tree lock the routines and builds take, so
+# nothing is removed from under a routine packing into a release folder. The image-*.zip
+# files the pack scripts read for every fastboot zip and the firmware cache are on the
+# keep list, and no folder holding an on-device gate's .device-ok record is removed:
+# nothing kept, or holding it, ever goes.
 #
 #   server-cleanup.sh list [groups]       # what's there now, with sizes; changes nothing
 #   server-cleanup.sh delete <groups>     # e.g. delete 1,2,3,4,5,6,7
 #
-# The last line is CLEANUP=LISTED, OK, PARTIAL (group 5 waited for a build) or FAIL.
+# The last line is CLEANUP=LISTED, OK, PARTIAL (group 5 skipped: a build was running) or FAIL.
 set -euo pipefail
 done=0
 trap '[[ $done = 1 ]] || echo "CLEANUP=FAIL"' EXIT
@@ -173,6 +177,8 @@ for n in "${chosen[@]}"; do
         if [[ "$r" != "$T" ]] || ! allowed "$r"; then fail "$T resolves to $r, outside the folders this may clean (nothing was removed)"; fi
         if [[ "$t" = */ ]]; then
             [[ -d "$T" ]] || fail "$T should be a folder (nothing was removed)"
+            [[ -z "$(find "$T" -name '*.device-ok' -print -quit)" ]] \
+                || fail "$T holds an on-device gate's .device-ok record; not removing it (nothing was removed)"
         else
             [[ -f "$T" ]] || fail "$T should be a file (nothing was removed)"
         fi
@@ -180,6 +186,11 @@ for n in "${chosen[@]}"; do
     unset -n list
 done
 
+if [[ "$mode" = delete ]]; then
+    # Held to the end: no routine or build starts while files go
+    exec 9>"$home/.evolution-tree.lock"
+    flock -n 9 || fail "the tree lock is held (a routine or build is running); run delete again later (nothing was removed)"
+fi
 echo "== $mode, groups $groups ($(df -h --output=avail ~ | tail -1 | tr -d ' ') free)"
 total=0 skipped=0
 for n in "${chosen[@]}"; do
@@ -203,12 +214,9 @@ for n in "${chosen[@]}"; do
         fi
         if [[ "$mode" = delete ]]; then
             if [[ $n = 5 ]]; then
-                # The emulator's output only while nothing builds in ~/evolution
+                # The emulator's output only while nothing builds in ~/evolution, even by hand
                 if build_running; then echo "SKIPPED  $t: a build is running; run group 5 again when the server is idle"; skipped=1; continue; fi
-                exec 9>"$home/.evolution-tree.lock"
-                flock -n 9 || { echo "SKIPPED  $t: the tree lock is held; run group 5 again later"; exec 9>&-; skipped=1; continue; }
                 rm -rf --one-file-system -- "$T"
-                exec 9>&-
             elif [[ -d "$T" ]]; then
                 rm -rf --one-file-system -- "$T"
             else
