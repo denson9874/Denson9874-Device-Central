@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 00:41:30 +0000
+Subject: [PATCH 1/2] libeffects: don't register ViPER twice
+
+loadViperEffect() runs after the effects XML has loaded and registers
+libv4a_re.so as library "v4a_re" without checking whether its effect
+uuid (90380da3-8536-4744-a6a3-5731970e640f) is already known. When a
+ViPER4Android module also adds the library and effect to
+audio_effects.xml, the factory ends up with two libraries for one
+effect and lists the effect twice. Return early when findEffect()
+already has the uuid.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_019koBAc5T4WjFHL6bYvou5m
+---
+ media/libeffects/factory/EffectsFactory.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/media/libeffects/factory/EffectsFactory.c b/media/libeffects/factory/EffectsFactory.c
+index 3bd8b87d26..2ae304e000 100644
+--- a/media/libeffects/factory/EffectsFactory.c
++++ b/media/libeffects/factory/EffectsFactory.c
+@@ -643,6 +643,14 @@ void loadViperEffect() {
+     void *libHandle = NULL;
+     audio_effect_library_t *libDesc = NULL;
+     const char *libPath = NULL;
++    lib_entry_t *registeredLib = NULL;
++
++    // An audio_effects.xml entry (e.g. from a ViPER module) may have registered it already
++    if (findEffect(NULL, &kViperImplUuid, &registeredLib, NULL) == 0) {
++        ALOGI("loadViperEffect: ViPER effect already registered by library %s, skipping",
++              registeredLib->name);
++        return;
++    }
+ 
+     for (int i = 0; kViperLibPaths[i] != NULL; i++) {
+         if (access(kViperLibPaths[i], R_OK) == 0) {
+-- 
+2.43.0
+

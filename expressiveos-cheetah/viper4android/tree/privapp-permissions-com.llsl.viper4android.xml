@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ViPER4Android (/system_ext/priv-app/ViPER4Android): its one privileged permission.
+     MODIFY_AUDIO_ROUTING lets Per-App mode see every app's audio session without root. -->
+<permissions>
+    <privapp-permissions package="com.llsl.viper4android">
+        <permission name="android.permission.MODIFY_AUDIO_ROUTING" />
+    </privapp-permissions>
+</permissions>
