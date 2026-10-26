@@ -1,0 +1,137 @@
+From 300cb07fc462ed1b12609e245814e295758b0d99 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 06:30:54 +0100
+Subject: [PATCH 13/16] SystemUI: Clocks: tick the analog clocks once a second,
+ not every frame
+
+The Nothing clock face invalidated itself from onDraw every 16 ms, so
+it redrew at 60 fps for as long as it was shown, AOD included, although
+its hands only move once a second. The plain analog face posted its
+1 Hz redraw from the constructor and removed it on detach, so it ticked
+before it was ever attached and never ticked again after a re-attach.
+
+Redraw the Nothing face at the start of the next second, and start the
+analog face's 1 Hz tick when it is attached. While dozing neither face
+asks for frames on its own: ClockStyle already refreshes its text
+clocks from its once-a-minute AOD tick and TIME_TICK, and now redraws
+the analog face there too, which also brings the hands up to date when
+the screen wakes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../systemui/clocks/AnalogClockView.java      | 28 ++++++++++++++-----
+ .../com/android/systemui/clocks/ClockStyle.kt |  2 ++
+ .../clocks/NothingAnalogClockView.java        | 12 ++++++--
+ 3 files changed, 33 insertions(+), 9 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/clocks/AnalogClockView.java b/packages/SystemUI/src/com/android/systemui/clocks/AnalogClockView.java
+index 274701adaf..a618f0adb9 100644
+--- a/packages/SystemUI/src/com/android/systemui/clocks/AnalogClockView.java
++++ b/packages/SystemUI/src/com/android/systemui/clocks/AnalogClockView.java
+@@ -8,12 +8,27 @@ import android.os.Looper;
+ import android.util.AttributeSet;
+ import android.view.View;
+ 
++import com.android.systemui.Dependency;
++import com.android.systemui.plugins.statusbar.StatusBarStateController;
++
+ import java.util.Calendar;
+ 
+ public class AnalogClockView extends View {
+     private Paint mPaint;
+     private float centerX, centerY, radius;
+     private final Handler handler = new Handler(Looper.getMainLooper());
++    private final StatusBarStateController mStatusBarStateController =
++            Dependency.get(StatusBarStateController.class);
++    private final Runnable mTicker = new Runnable() {
++        @Override
++        public void run() {
++            // On AOD ClockStyle redraws the clock with its minute tick
++            if (!mStatusBarStateController.isDozing()) {
++                invalidate(); // Redraw the view
++            }
++            handler.postDelayed(this, 1000); // Update every second
++        }
++    };
+ 
+     public AnalogClockView(Context context) {
+         super(context);
+@@ -33,13 +48,6 @@ public class AnalogClockView extends View {
+     private void init() {
+         mPaint = new Paint();
+         mPaint.setAntiAlias(true);  // Smooth edges
+-        handler.postDelayed(new Runnable() {
+-            @Override
+-            public void run() {
+-                invalidate(); // Redraw the view
+-                handler.postDelayed(this, 1000); // Update every second
+-            }
+-        }, 1000);
+     }
+ 
+     @Override
+@@ -92,6 +100,12 @@ public class AnalogClockView extends View {
+         canvas.restore();
+     }
+ 
++    @Override
++    protected void onAttachedToWindow() {
++        super.onAttachedToWindow();
++        handler.postDelayed(mTicker, 1000); // Start updates when attached
++    }
++
+     @Override
+     protected void onDetachedFromWindow() {
+         super.onDetachedFromWindow();
+diff --git a/packages/SystemUI/src/com/android/systemui/clocks/ClockStyle.kt b/packages/SystemUI/src/com/android/systemui/clocks/ClockStyle.kt
+index fc75525515..816234f6fe 100644
+--- a/packages/SystemUI/src/com/android/systemui/clocks/ClockStyle.kt
++++ b/packages/SystemUI/src/com/android/systemui/clocks/ClockStyle.kt
+@@ -409,6 +409,8 @@ class ClockStyle @JvmOverloads constructor(
+         for (i in textClocks.indices) {
+             textClocks[i].refreshTime()
+         }
++        // The analog faces only redraw themselves while awake; on AOD this redraws them.
++        currentClockView?.findViewById<View?>(R.id.analog_clock)?.invalidate()
+         lastUpdateTimeMillis = System.currentTimeMillis()
+     }
+ 
+diff --git a/packages/SystemUI/src/com/android/systemui/clocks/NothingAnalogClockView.java b/packages/SystemUI/src/com/android/systemui/clocks/NothingAnalogClockView.java
+index 8faeb31fe5..5dbbd296d8 100644
+--- a/packages/SystemUI/src/com/android/systemui/clocks/NothingAnalogClockView.java
++++ b/packages/SystemUI/src/com/android/systemui/clocks/NothingAnalogClockView.java
+@@ -6,12 +6,17 @@ import android.graphics.Paint;
+ import android.util.AttributeSet;
+ import android.view.View;
+ 
++import com.android.systemui.Dependency;
++import com.android.systemui.plugins.statusbar.StatusBarStateController;
++
+ import java.util.Calendar;
+ 
+ public class NothingAnalogClockView extends View {
+ 
+     private Paint mPaint;
+     private float centerX, centerY, width, height;
++    private final StatusBarStateController mStatusBarStateController =
++            Dependency.get(StatusBarStateController.class);
+ 
+     public NothingAnalogClockView(Context context) {
+         super(context);
+@@ -70,8 +75,11 @@ public class NothingAnalogClockView extends View {
+         // Draw second hand
+         drawSecondHand(canvas, second);
+ 
+-        // Trigger continuous updates
+-        postInvalidateDelayed(16); // Smooth 60 FPS animation
++        // Redraw at the start of the next second. On AOD ClockStyle redraws the clock with its
++        // minute tick instead, so don't ask for a frame every second there.
++        if (!mStatusBarStateController.isDozing()) {
++            postInvalidateDelayed(1000 - calendar.get(Calendar.MILLISECOND));
++        }
+     }
+ 
+     private void drawRectangularTicks(Canvas canvas) {
+-- 
+2.43.0
+

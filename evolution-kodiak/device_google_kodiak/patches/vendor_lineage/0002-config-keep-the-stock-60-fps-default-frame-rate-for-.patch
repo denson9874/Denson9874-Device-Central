@@ -1,0 +1,46 @@
+From 4ef57bb75c9612ce81fdb7967ab56c463303ad05 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 07:46:32 +0100
+Subject: [PATCH] config: keep the stock 60 fps default frame rate for games
+
+Evolution X carries "config: Disable default frame rate limit for
+games" (HeCheng Yu, 74a5857d76c5), which sets
+debug.graphics.game_default_frame_rate.disabled=true. It was added
+because Android 15 holds games at 60 fps unless the developer option
+"Disable default frame rate for games" is turned on by hand, and the
+prop turns that option on for everyone. Upstream LineageOS doesn't set
+it, and neither does stock Pixel firmware.
+
+With the prop set, GameManagerService never passes
+ro.surface_flinger.game_default_frame_rate_override (60, from AOSP's
+base_system.mk) on to SurfaceFlinger. Games that don't pick a frame
+rate themselves then run up to the panel's peak refresh rate, with the
+heat and battery drain that comes with it.
+
+Drop the prop so games start at 60 fps again, as on stock. Games that
+set their own frame rate still get it, and the developer option still
+lifts the limit until the next reboot.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ config/common.mk | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/config/common.mk b/config/common.mk
+index 6c855c88..c5974b1f 100644
+--- a/config/common.mk
++++ b/config/common.mk
+@@ -228,10 +228,6 @@ PRODUCT_COPY_FILES += \
+ PRODUCT_PACKAGES += \
+     SimpleSettingsConfig
+ 
+-# Disable default frame rate limit for games
+-PRODUCT_PRODUCT_PROPERTIES += \
+-    debug.graphics.game_default_frame_rate.disabled=true
+-
+ # Disable RescueParty due to high risk of data loss
+ PRODUCT_PRODUCT_PROPERTIES += \
+     persist.sys.disable_rescue=true
+-- 
+2.43.0
+

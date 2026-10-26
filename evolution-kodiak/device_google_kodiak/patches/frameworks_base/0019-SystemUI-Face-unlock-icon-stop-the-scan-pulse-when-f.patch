@@ -1,0 +1,119 @@
+From 740270fb7e10034298fa7cfe33dddf2861169f96 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 08:03:26 +0100
+Subject: [PATCH] SystemUI: Face unlock icon: stop the scan pulse when face
+ auth stops
+
+The face unlock icon's scanning state runs a scale pulse that repeats
+forever. Only a face success or a "not recognized" help message ended
+it: unlocking with the fingerprint or PIN, face auth timing out, or the
+screen going to AOD left it running on the hidden icon. Going to AOD
+only set the icon GONE, and the animator kept asking for a frame on
+every vsync. On a Pixel 7 Pro that was 11% of a core on SystemUI's main
+thread and 18% on SurfaceFlinger, on battery and on the charger, from
+the first face scan after boot.
+
+Cancelling didn't help either: each step of the icon's animation chain
+added an end listener that was never removed and also ran on cancel,
+so cancelling the start animation started the endless pulse again.
+
+Stop the animations when dozing starts and when the icon is detached,
+hide the icon when face auth stops without a result, and run each
+chain step's end action once, and only when the step really finished.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../statusbar/phone/FaceUnlockController.kt   |  6 +++++
+ .../statusbar/phone/FaceUnlockImageView.kt    | 23 ++++++++++++++++++-
+ .../phone/StatusBarKeyguardViewManager.java   |  1 +
+ 3 files changed, 29 insertions(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/FaceUnlockController.kt b/packages/SystemUI/src/com/android/systemui/statusbar/phone/FaceUnlockController.kt
+index 28a7251c62..9d7ac84d07 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/FaceUnlockController.kt
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/FaceUnlockController.kt
+@@ -13,6 +13,12 @@ class FaceUnlockController private constructor() {
+             faceUnlockImageView?.setState(state)
+         }, 100)
+     }
++
++    fun stopScanning() {
++        faceUnlockImageView?.postDelayed({
++            faceUnlockImageView?.stopScanning()
++        }, 100)
++    }
+     
+     companion object {
+         @Volatile
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/FaceUnlockImageView.kt b/packages/SystemUI/src/com/android/systemui/statusbar/phone/FaceUnlockImageView.kt
+index c0b7b54c64..2269f20ddf 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/FaceUnlockImageView.kt
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/FaceUnlockImageView.kt
+@@ -72,6 +72,10 @@ class FaceUnlockImageView @JvmOverloads constructor(
+             }
+             mDozing = dozing
+             if (mDozing) {
++                // The scan pulse repeats forever; hidden on AOD it still asked for a frame on
++                // every vsync until the next face result.
++                cancelAllAnimations()
++                currentState = State.HIDDEN
+                 visibility = View.GONE
+             }
+         }
+@@ -93,6 +97,7 @@ class FaceUnlockImageView @JvmOverloads constructor(
+     override fun onDetachedFromWindow() {
+         super.onDetachedFromWindow()
+         statusBarStateController.removeCallback(statusBarStateListener)
++        cancelAllAnimations()
+     }
+ 
+     fun updateColor() {
+@@ -108,6 +113,13 @@ class FaceUnlockImageView @JvmOverloads constructor(
+         }
+     }
+ 
++    /** Face auth stopped without a result, e.g. unlocked another way or timed out. */
++    fun stopScanning() {
++        if (currentState == State.SCANNING) {
++            setState(State.HIDDEN)
++        }
++    }
++
+     fun updateFaceIconState() {
+         if (mDozing) {
+             visibility = View.GONE
+@@ -201,9 +213,18 @@ class FaceUnlockImageView @JvmOverloads constructor(
+     }
+ 
+     private fun ObjectAnimator.startWithEndAction(endAction: () -> Unit) {
++        // Once only, and not when cancelled: cancelAllAnimations() would otherwise start the
++        // next step of the chain, the endless scan pulse, right after stopping this one.
+         addListener(object : AnimatorListenerAdapter() {
++            private var cancelled = false
++
++            override fun onAnimationCancel(animation: Animator) {
++                cancelled = true
++            }
++
+             override fun onAnimationEnd(animation: Animator) {
+-                endAction()
++                animation.removeListener(this)
++                if (!cancelled) endAction()
+             }
+         })
+         start()
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarKeyguardViewManager.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarKeyguardViewManager.java
+index 9a10893981..8917ec7325 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarKeyguardViewManager.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarKeyguardViewManager.java
+@@ -379,6 +379,7 @@ public class StatusBarKeyguardViewManager implements RemoteInputController.Callb
+                 mFaceRecognitionRunning = running;
+                 if (!mFaceRecognitionRunning) {
+                     mFaceRecognizingHandler.removeCallbacksAndMessages(null);
++                    FaceUnlockProxy.INSTANCE().stopScanning();
+                 }else{
+                     mFaceRecognizingHandler.postDelayed(() -> showFaceRecognizingMessage(), 100);
+                 }
+-- 
+2.43.0
+

@@ -97,8 +97,13 @@ Commit it, run the runner's `cheetah-setup` (installs the kit) and `cheetah-firm
 ## Shared patches
 
 `device/google/kodiak/apply-patches.sh` patches shared projects (build/make, frameworks/base,
-system/memory/lmkd, vendor/gms) for every build from this tree, cheetah's included. None of them
-depends on the Pixel 11:
+system/memory/lmkd, vendor/gms, vendor/lineage) for every build from this tree, cheetah's included.
+None of them depends on the Pixel 11:
+
+- frameworks/base `0011`-`0020` (2026-10-26) stop SystemUI animations that ran forever with the
+  screen off or on AOD. The big one was the face unlock scan pulse on an icon copy that's never on
+  screen: on this phone SystemUI went from 11% of a core to 2% on AOD, and SurfaceFlinger from 16-18%
+  to 0.7%. vendor/lineage `0002` restores stock's 60 fps game default.
 
 - The Extreme Charging tile hides itself where the power HAL has no BODEGA hint, as on cheetah (no
   charge-thermal profile yet: it changes charging temperature limits on a phone that runs warm, so it
