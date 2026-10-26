@@ -1,0 +1,58 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 12:00:00 +0000
+Subject: [PATCH 1/1] version: name builds ExpressiveOS 1.0
+
+ExpressiveOS is its own ROM, built on Evolution X 12.3: the OTA zip is
+ExpressiveOS-17.0-<date>-<device>-1.0-<type>.zip, and Settings and the
+Updater show v1.0-<date>. ro.evolution.* keep their names, so Evolution X's
+apps read them unchanged.
+
+The date is the build's own (BUILD_DATETIME_FILE, UTC) instead of the
+host's date at each make run, so a build that runs make twice (KernelSU
+Next's init_boot needs a second pass) names one zip, even across midnight.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ config/version.mk | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/config/version.mk b/config/version.mk
+index 0839786..cc61fcd 100644
+--- a/config/version.mk
++++ b/config/version.mk
+@@ -11,17 +11,27 @@ else
+ $(error EVO_BUILD_TYPE must be Official or Unofficial. Current value: $(EVO_BUILD_TYPE))
+ endif
+ 
++# ExpressiveOS's own version, which the zip name, Settings and the Updater show.
++# EVO_VERSION_BASE stays: it's the Evolution X release this tree is built on.
++EXPRESSIVE_VERSION := 1.0
++
+ ifeq ($(WITH_GMS),true)
+-EVO_VERSION := $(EVO_VERSION_BASE)
++EVO_VERSION := $(EXPRESSIVE_VERSION)
+ else
+-EVO_VERSION := $(EVO_VERSION_BASE)-Vanilla
++EVO_VERSION := $(EXPRESSIVE_VERSION)-Vanilla
+ endif
+ 
++# The build's own date, the one build.prop carries: soong_ui writes BUILD_DATETIME
++# (or now) to BUILD_DATETIME_FILE before product config, and BUILD_DATETIME itself
++# can't be read here. Both make passes of a build then name the same zip, even
++# across midnight.
++EXPRESSIVE_DATE := $(shell f=$(BUILD_DATETIME_FILE); if [ -s "$$f" ]; then date -ud @$$(cat "$$f") +%Y%m%d; else date -u +%Y%m%d; fi)
++
+ # Internal version
+-LINEAGE_VERSION := EvolutionX-$(PRODUCT_VERSION_MAJOR).$(PRODUCT_VERSION_MINOR)-$(shell date +%Y%m%d)-$(LINEAGE_BUILD)-$(EVO_VERSION)-$(EVO_BUILD_TYPE)
++LINEAGE_VERSION := ExpressiveOS-$(PRODUCT_VERSION_MAJOR).$(PRODUCT_VERSION_MINOR)-$(EXPRESSIVE_DATE)-$(LINEAGE_BUILD)-$(EVO_VERSION)-$(EVO_BUILD_TYPE)
+ 
+ # Display version
+-LINEAGE_DISPLAY_VERSION := v$(EVO_VERSION)-$(shell date +%Y%m%d)
++LINEAGE_DISPLAY_VERSION := v$(EVO_VERSION)-$(EXPRESSIVE_DATE)
+ 
+ # Evolution X version properties
+ PRODUCT_PRODUCT_PROPERTIES += \
+-- 
+2.43.0
+
