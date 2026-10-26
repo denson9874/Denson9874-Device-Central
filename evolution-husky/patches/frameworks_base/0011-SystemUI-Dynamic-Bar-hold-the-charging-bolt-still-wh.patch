@@ -1,0 +1,159 @@
+From c2d07240b4b26d6bf4c3b153e40ec4d76972cfc1 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 04:48:02 +0100
+Subject: [PATCH] SystemUI: Dynamic Bar: hold the charging bolt still while the
+ screen is off
+
+The lock-screen battery chip shows for as long as the phone is plugged
+in, and its charging bolt pulses with an infinite transition. Nothing
+stops it while dozing or with the display off, and the chip host keeps
+its lifecycle started because the shade window stays visible. So the
+transition asked for a frame on every vsync for the whole charge: on a
+Pixel 7 Pro, SystemUI held 11% of a core with the display off, and
+SurfaceFlinger composed its frames on AOD.
+
+Pulse the bolt only while the screen is on and not dozing; on AOD and
+with the screen off it is drawn at full strength and still.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../ui/AxDynamicBarChipViewModel.kt           | 13 +++++++
+ .../ui/compose/AxDynamicBarKeyguardChip.kt    | 37 +++++++++++++------
+ ...kscreenLowerRegionElementProviderKosmos.kt |  1 +
+ 3 files changed, 39 insertions(+), 12 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/axdynamicbar/ui/AxDynamicBarChipViewModel.kt b/packages/SystemUI/src/com/android/systemui/axdynamicbar/ui/AxDynamicBarChipViewModel.kt
+index 60d4e47b65..ffff5057b0 100644
+--- a/packages/SystemUI/src/com/android/systemui/axdynamicbar/ui/AxDynamicBarChipViewModel.kt
++++ b/packages/SystemUI/src/com/android/systemui/axdynamicbar/ui/AxDynamicBarChipViewModel.kt
+@@ -8,6 +8,7 @@ import com.android.systemui.biometrics.AuthController
+ import com.android.systemui.biometrics.domain.interactor.UdfpsOverlayInteractor
+ import com.android.systemui.dagger.SysUISingleton
+ import com.android.systemui.dagger.qualifiers.Application
++import com.android.systemui.power.domain.interactor.PowerInteractor
+ import com.android.systemui.statusbar.KeyguardIndicationController
+ import com.android.systemui.statusbar.pipeline.battery.domain.interactor.BatteryInteractor
+ import com.android.systemui.statusbar.policy.BatteryController
+@@ -53,6 +54,7 @@ constructor(
+     private val batteryController: BatteryController,
+     authController: AuthController,
+     udfpsOverlayInteractor: UdfpsOverlayInteractor,
++    powerInteractor: PowerInteractor,
+     private val keyguardIndicationController: KeyguardIndicationController,
+     val keyguardExpansion: AxDynamicBarKeyguardExpansion,
+     val statusBarExpansion: AxDynamicBarStatusBarExpansion,
+@@ -93,6 +95,17 @@ constructor(
+     val mediaUseWaveform: StateFlow<Boolean> = interactor.mediaUseWaveform
+     val chipStyle: StateFlow<Int> = interactor.settings.chipStyle
+ 
++    /**
++     * False while the screen is off or dozing. An endless animation requests a frame on every
++     * vsync even when the display is off and nothing gets drawn, which keeps the main thread busy.
++     */
++    val animationsAllowed: StateFlow<Boolean> =
++        combine(powerInteractor.isInteractive, interactor.isDozing) { interactive, dozing ->
++                interactive && !dozing
++            }
++            .distinctUntilChanged()
++            .stateIn(applicationScope, SharingStarted.Eagerly, true)
++
+     val keyguardBatteryInfo: StateFlow<KeyguardBatteryInfo> =
+         combine(
+             batteryInteractor.level,
+diff --git a/packages/SystemUI/src/com/android/systemui/axdynamicbar/ui/compose/AxDynamicBarKeyguardChip.kt b/packages/SystemUI/src/com/android/systemui/axdynamicbar/ui/compose/AxDynamicBarKeyguardChip.kt
+index 39924023c8..8fe4016c18 100644
+--- a/packages/SystemUI/src/com/android/systemui/axdynamicbar/ui/compose/AxDynamicBarKeyguardChip.kt
++++ b/packages/SystemUI/src/com/android/systemui/axdynamicbar/ui/compose/AxDynamicBarKeyguardChip.kt
+@@ -182,6 +182,7 @@ fun AxDynamicBarKeyguardChip(
+     val isKeyguardExpanded by viewModel.isKeyguardExpanded.collectAsStateWithLifecycle()
+     val touchSlop = LocalViewConfiguration.current.touchSlop
+     val batteryString by viewModel.batteryString.collectAsStateWithLifecycle()
++    val animationsAllowed by viewModel.animationsAllowed.collectAsStateWithLifecycle()
+ 
+     val motionScheme = MaterialTheme.motionScheme
+     val expandableController = rememberExpandableController(color = Color.Transparent, shape = ChipShape)
+@@ -298,6 +299,7 @@ fun AxDynamicBarKeyguardChip(
+                         keyguardBatteryChipMode,
+                         batteryString,
+                         blurAlpha = chipBlurAlpha,
++                        animate = animationsAllowed,
+                     )
+                     return@AnimatedVisibility
+                 }
+@@ -369,6 +371,7 @@ fun AxDynamicBarKeyguardChip(
+                     keyguardBatteryChipMode,
+                     batteryString,
+                     blurAlpha = chipBlurAlpha,
++                    animate = animationsAllowed,
+                 )
+             }
+         }
+@@ -641,6 +644,7 @@ private fun KeyguardBatteryChip(
+     keyguardBatteryChipMode: Int,
+     batteryString: String,
+     blurAlpha: Float,
++    animate: Boolean,
+ ) {
+     if (keyguardBatteryChipMode <= 0) return
+ 
+@@ -671,7 +675,7 @@ private fun KeyguardBatteryChip(
+         ) {
+             
+             if (info.isCharging) {
+-                AnimatedChargingBoltIcon(accent, BatteryIconSize)
++                AnimatedChargingBoltIcon(accent, BatteryIconSize, animate)
+             } else {
+                 AnimatedBatteryFillIcon(info.level, accent, BatteryIconSize)
+             }
+@@ -753,17 +757,26 @@ private fun KeyguardBatteryChip(
+ }
+ 
+ @Composable
+-private fun AnimatedChargingBoltIcon(color: Color, iconSize: Dp = BatteryIconSize) {
+-    val transition = rememberInfiniteTransition(label = "kg_bolt")
+-    val glow by transition.animateFloat(
+-        initialValue = 0.5f,
+-        targetValue = 1f,
+-        animationSpec = infiniteRepeatable(
+-            tween(800, easing = FastOutSlowInEasing),
+-            RepeatMode.Reverse,
+-        ),
+-        label = "kg_bolt_glow",
+-    )
++private fun AnimatedChargingBoltIcon(
++    color: Color,
++    iconSize: Dp = BatteryIconSize,
++    animate: Boolean = true,
++) {
++    // The chip stays on the lock screen for as long as the phone is plugged in, AOD and screen
++    // off included, so only pulse the bolt while someone can see it.
++    val glow by if (animate) {
++        rememberInfiniteTransition(label = "kg_bolt").animateFloat(
++            initialValue = 0.5f,
++            targetValue = 1f,
++            animationSpec = infiniteRepeatable(
++                tween(800, easing = FastOutSlowInEasing),
++                RepeatMode.Reverse,
++            ),
++            label = "kg_bolt_glow",
++        )
++    } else {
++        rememberUpdatedState(1f)
++    }
+     val boltPath = remember { Path() }
+     Canvas(modifier = Modifier.size(iconSize)) {
+         val w = size.width
+diff --git a/packages/SystemUI/tests/utils/src/com/android/systemui/keyguard/ui/lockscreen/elementproviders/LockscreenLowerRegionElementProviderKosmos.kt b/packages/SystemUI/tests/utils/src/com/android/systemui/keyguard/ui/lockscreen/elementproviders/LockscreenLowerRegionElementProviderKosmos.kt
+index 5d3eee0af5..1633f165bb 100644
+--- a/packages/SystemUI/tests/utils/src/com/android/systemui/keyguard/ui/lockscreen/elementproviders/LockscreenLowerRegionElementProviderKosmos.kt
++++ b/packages/SystemUI/tests/utils/src/com/android/systemui/keyguard/ui/lockscreen/elementproviders/LockscreenLowerRegionElementProviderKosmos.kt
+@@ -121,5 +121,6 @@ private fun hiddenAxDynamicBarChipViewModel(): AxDynamicBarChipViewModel {
+         whenever(this.keyguardBatteryInfo)
+             .thenReturn(MutableStateFlow(KeyguardBatteryInfo(0, false, false, false, null)))
+         whenever(this.batteryString).thenReturn(MutableStateFlow(""))
++        whenever(this.animationsAllowed).thenReturn(MutableStateFlow(false))
+     }
+ }
+-- 
+2.43.0
+
