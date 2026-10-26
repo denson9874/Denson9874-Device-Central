@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Pixel 7 Pro (cheetah) for ExpressiveOS: Evolution X's own cnb device trees and blobs
+     (Evolution-X-Devices), plus LineageOS's pantah kernel module lists. The kernel itself is
+     built with build_kernel. The same projects as evolution-cheetah/local_manifests/cheetah.xml;
+     ExpressiveOS's changes are local commits (apply.sh). -->
+<manifest>
+  <remote name="evox-devices" fetch="https://github.com/Evolution-X-Devices" revision="cnb" />
+  <remote name="lineage-pantah" fetch="https://github.com/LineageOS" revision="lineage-24.0" />
+
+  <project path="device/google/pantah" name="device_google_pantah" remote="evox-devices" />
+  <project path="device/google/gs201" name="device_google_gs201" remote="evox-devices" />
+  <project path="device/google/pantah-kernels" name="android_device_google_pantah-kernels" remote="lineage-pantah" />
+  <!-- Blobs and firmware; radio/ and a few large APKs are Git LFS objects (gitlab.com) -->
+  <project path="vendor/google/cheetah" name="vendor_google_cheetah" remote="evox-devices" clone-depth="1" />
+</manifest>

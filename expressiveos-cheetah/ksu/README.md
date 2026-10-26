@@ -4,8 +4,8 @@ ExpressiveOS's cheetah (Pixel 7 Pro) builds ship [KernelSU Next](https://github.
 with susfs in `init_boot`, in the fastboot zip and in every OTA, with the manager preinstalled
 (Daryl, 2026-10-25). This folder is only the KernelSU Next part of the ExpressiveOS kit; the tree,
 keys, names and OTA feed are the kit's own. **None of it applies to the Evolution X cheetah build**
-(`evolution-cheetah/`), which stays unrooted: `apply-ksu.sh` and `ksu-images.sh` refuse
-`~/evolution`.
+(`evolution-cheetah/`), which stays unrooted: every script here refuses
+`~/evolution` and `~/derpfest`.
 
 ## How it works
 
@@ -35,31 +35,48 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
   `/proc/kallsyms`, so it needs the same struct layout as Google's kernel, not a matching build ID:
   `cheetah-ksu.sh` checks its sublevel against `boot.img`'s kernel. Tested here by building it against
   android14-6.1-2025-09_r9 (6.1.145) with clang 18.
-- **Tree patches** (`patches/device_google_pantah/`, applied by `apply-ksu.sh` after the tree's own
-  patches, with the manager APK copied in). They sit on top of `evolution-cheetah`'s pantah patches
-  `0001`-`0009` (tested on Evolution-X-Devices `cnb`); if ExpressiveOS's own patches change
-  `device-cheetah.mk`'s tail, regenerate `0001`:
+- **Tree patches** (`patches/device_google_pantah/0101`-`0102`, applied by `apply-ksu.sh` after the
+  kit's own pantah patches `0001`-`0010`, which `../prepare.sh` puts in first):
 
   | Patch | Change |
   |---|---|
-  | `0001` | Preinstalls the manager (`ksu/Android.bp`: presigned, unprivileged product app) |
-  | `0002` | With `CHEETAH_KSU_INIT_BOOT` set, `BOARD_PREBUILT_INIT_BOOT_IMAGE` is that image: the build re-signs it with the tree's init_boot AVB key and ships it in target-files, so in the images and the OTA |
+  | `0101` | Adds `KernelSUNext` to `PRODUCT_PACKAGES` and `ksu/config.fs` to `TARGET_FS_CONFIG_GEN`, so `libksud.so` is installed root:root 0755 (the manager runs it as a program) |
+  | `0102` | With `CHEETAH_KSU_INIT_BOOT` set, `BOARD_PREBUILT_INIT_BOOT_IMAGE` is that image: the build re-signs it with the tree's init_boot AVB key and ships it in target-files, so in the images and the OTA |
 
-- **Two make passes** (`tools/ksu-images.sh <lunch target> [top]`): lunch, `build_kernel`,
-  `ksu-module.sh`, pass 1 with a stock init_boot, then `tools/cheetah-ksu.sh` checks `boot.img`'s
-  kernel is the KMI in `ksu.conf` and our module's sublevel, patches that init_boot with
+- **The manager module** (`tree/Android.mk`, staged by `apply-ksu.sh` as `vendor/extra/ksu` with the
+  APK `fetch-ksu.sh` verified, its LICENSE and the APK's four arm64 libs). A Make prebuilt, not Soong:
+  `android_app_import` can't install an app's JNI libs, and it rewrites a presigned APK's libs, which
+  drops the v2 signature the kernel checks. Android never unpacks native libs for a system app it
+  hasn't updated, so the libs go in the app's own `lib/arm64`. Make files aren't allowed under
+  `device/google/`, hence `vendor/extra`, which `repo sync` leaves alone. `Android.mk` is removed
+  first and written last, so make never sees it without its files.
+- **Two make passes** (`tools/ksu-images.sh [top]`, which `../tools/eos-images.sh` runs; the lunch
+  target is `EOS_LUNCH` in `../eos.conf`): lunch, `build_kernel`, `ksu-module.sh`, pass 1 with a stock
+  init_boot, then `tools/cheetah-ksu.sh` checks `boot.img`'s kernel is the KMI in `ksu.conf` and our
+  module's sublevel, patches that init_boot with
   `ksud boot-patch --kmi android14-6.1 -m out/ksu/kernelsu.ko` into
   `out/ksu/init_boot-ksu.img` (the unpatched one stays as `out/ksu/init_boot-stock.img`) and checks
   the patched ramdisk (ksuinit as `init`, this build's `init` as `init.real`, our `kernelsu.ko`); pass 2
-  runs with `CHEETAH_KSU_INIT_BOOT`. Both passes share `BUILD_DATETIME` and `BUILD_NUMBER`.
-- **Release checks** (`tools/ksu-check.sh`, for the kit's pack and OTA scripts):
-  - `images <dir> --avb-key <pem>`: init_boot carries our `kernelsu.ko` (with the `/product/app`
-    fallback, not `ksud`'s built-in one); `avbtool verify_image
-    --follow_chain_partitions` passes; vbmeta's public key is ExpressiveOS's, and that key is
-    neither an AOSP test key nor Evolution X's.
-  - `manager`: the manager is in the build, still signed by the key the kernel trusts.
-  - `device-ok <zip>`: `<zip>.device-ok` names the zip's sha256. Publishing (zip and OTA JSON)
-    must stop without it, as on husky.
+  runs with `CHEETAH_KSU_INIT_BOOT`. Both passes share `BUILD_DATETIME` and `BUILD_NUMBER`, and
+  pass 1's package is deleted so it can't be taken for the release. The last line is
+  `MAKE_EXIT=0` only if pass 2 shipped the patched init_boot (`ksu-check.sh images`). `TOP`, `OUT`
+  and the other variables a shell set up for another tree are cleared first, and lunch must land in
+  `~/expressiveos`. The kernel source follows branch heads, so it is synced once (lunch runs
+  `build_kernel`), then `SKIP_KERNEL_SYNC=1`; its `repo manifest -r` goes to
+  `out/eos/kernel-manifest.xml` for the GPL source offer.
+- **Release checks** (`tools/ksu-check.sh`; the last line is `KSU_CHECK=OK` or `KSU_CHECK=FAIL`):
+  - `manager [top]`: the APK in the build is `ksu.conf`'s byte for byte (so it keeps the signature
+    the kernel trusts), its four arm64 libs are installed unchanged, and the build's fs_config makes
+    `libksud.so` root:root 0755 (`tools/fs-config.py` reads `fs_config_files`).
+  - `images <dir> [top]`: init_boot carries our `kernelsu.ko` (with the `/product/app` fallback, not
+    `ksud`'s built-in one) and `init.real`; `avbtool verify_image --follow_chain_partitions` passes and
+    vbmeta covers init_boot; vbmeta is signed by the tree's own AVB key and nobody else's
+    (`../tools/eos-keys-check.sh vbmeta`).
+  - `device-ok <zip>`: `<zip>.device-ok` names the zip's sha256. `eos-pack.sh --release` stops
+    without it, as on husky.
+
+  `ksu-images.sh` runs `images` on out/, `../tools/eos-verify.sh` runs `manager` and `images`, and
+  `../tools/eos-pack.sh` runs `images` on the unpacked fastboot zip and `device-ok` before a release.
 
 ## Install notes (for the release post and changelog)
 
@@ -79,10 +96,11 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
 ## Open before the first release
 
 - [ ] First real `ksu-module.sh` run on the build server against the synced
-      android14-6.1-2026-03_r24 source and its clang (needs `flex`, `bison` and `libssl-dev`).
-- [ ] The kit's OTA script (modelled on `derpfest-husky/tools/derp-ota.sh`: its own feed, R2 prefix
-      `expressiveos/cheetah/` and SourceForge folder) calls `ksu-check.sh images` and `device-ok`
-      before publishing.
+      android14-6.1-2026-03_r24 source and its clang (flex, bison, libssl-dev and libelf-dev are
+      installed; the script checks).
+- [ ] The kit's OTA publish script for the Updater feed (modelled on `evolution-kodiak/tools/p11-ota.sh`,
+      Evo's feed format, with its own feed, R2 prefix `expressiveos/cheetah/` and SourceForge folder).
+      `eos-verify.sh` already checks the package and the init_boot inside its payload.
 - [ ] Compare `ksud_sha256` with the release page.
 - [ ] GPL source links for KernelSU Next (the pinned commit plus `kernel-patches/`) and susfs in the
       release post.

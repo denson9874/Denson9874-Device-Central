@@ -1,0 +1,393 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 12:54:33 +0200
+Subject: [PATCH 8/9] cheetah: values stock sets that our build left at the
+ AOSP default
+
+A stock-vs-build comparison of every static overlay's values (stock
+CP3A.261005.002.A1 against the target packages' effective values in our
+build) found these left at the AOSP default. Each overlay copies stock's
+values from its APKs (rro2xml.py), priority 1:
+- framework: pin the camera app, compile Play Store in pre-reboot dexopt's
+  synchronous phase, update the operator name once the carrier config has
+  loaded, and Play Protect's dynamic instrumentation consumer (OdadPrebuilt)
+- SystemUI: the screenshot Edit button opens Markup, the Files button opens
+  Files by Google, Quick Share copy, the avatar picker we ship
+  (com.google.android.avatarpicker, not com.android.avatarpicker), and Google
+  Home first in device controls
+- Settings: Google search and TalkBack slices, network list aggregation
+- Wi-Fi: stock's 5 GHz scoring thresholds (bad -80, entry -77; AOSP -90/-85
+  kept a weak 5 GHz network much longer)
+- Connectivity: actively prefer a bad Wi-Fi network, as stock
+- Photo picker: Google Photos as the cloud media provider
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ .../ConnectivityOverlayStockCheetah/Android.bp    |  9 +++++++++
+ .../AndroidManifest.xml                           | 14 ++++++++++++++
+ .../res/values-mcc204-mnc4/stock.xml              |  5 +++++
+ .../res/values/stock.xml                          |  5 +++++
+ .../FrameworkResOverlayStockCheetah/Android.bp    |  9 +++++++++
+ .../AndroidManifest.xml                           | 13 +++++++++++++
+ .../res/values/stock.xml                          | 10 ++++++++++
+ .../MediaProviderOverlayStockCheetah/Android.bp   |  9 +++++++++
+ .../AndroidManifest.xml                           | 14 ++++++++++++++
+ .../res/values/stock.xml                          |  6 ++++++
+ .../SettingsOverlayStockCheetah/Android.bp        |  9 +++++++++
+ .../AndroidManifest.xml                           | 13 +++++++++++++
+ .../res/values/stock.xml                          | 15 +++++++++++++++
+ .../SystemUIOverlayStockCheetah/Android.bp        |  9 +++++++++
+ .../AndroidManifest.xml                           | 13 +++++++++++++
+ .../res/values/stock.xml                          | 11 +++++++++++
+ .../overlay/WifiOverlayStockCheetah/Android.bp    |  9 +++++++++
+ .../WifiOverlayStockCheetah/AndroidManifest.xml   | 14 ++++++++++++++
+ .../WifiOverlayStockCheetah/res/values/stock.xml  |  6 ++++++
+ device-cheetah.mk                                 |  9 +++++++++
+ 20 files changed, 202 insertions(+)
+ create mode 100644 cheetah/overlay/ConnectivityOverlayStockCheetah/Android.bp
+ create mode 100644 cheetah/overlay/ConnectivityOverlayStockCheetah/AndroidManifest.xml
+ create mode 100644 cheetah/overlay/ConnectivityOverlayStockCheetah/res/values-mcc204-mnc4/stock.xml
+ create mode 100644 cheetah/overlay/ConnectivityOverlayStockCheetah/res/values/stock.xml
+ create mode 100644 cheetah/overlay/FrameworkResOverlayStockCheetah/Android.bp
+ create mode 100644 cheetah/overlay/FrameworkResOverlayStockCheetah/AndroidManifest.xml
+ create mode 100644 cheetah/overlay/FrameworkResOverlayStockCheetah/res/values/stock.xml
+ create mode 100644 cheetah/overlay/MediaProviderOverlayStockCheetah/Android.bp
+ create mode 100644 cheetah/overlay/MediaProviderOverlayStockCheetah/AndroidManifest.xml
+ create mode 100644 cheetah/overlay/MediaProviderOverlayStockCheetah/res/values/stock.xml
+ create mode 100644 cheetah/overlay/SettingsOverlayStockCheetah/Android.bp
+ create mode 100644 cheetah/overlay/SettingsOverlayStockCheetah/AndroidManifest.xml
+ create mode 100644 cheetah/overlay/SettingsOverlayStockCheetah/res/values/stock.xml
+ create mode 100644 cheetah/overlay/SystemUIOverlayStockCheetah/Android.bp
+ create mode 100644 cheetah/overlay/SystemUIOverlayStockCheetah/AndroidManifest.xml
+ create mode 100644 cheetah/overlay/SystemUIOverlayStockCheetah/res/values/stock.xml
+ create mode 100644 cheetah/overlay/WifiOverlayStockCheetah/Android.bp
+ create mode 100644 cheetah/overlay/WifiOverlayStockCheetah/AndroidManifest.xml
+ create mode 100644 cheetah/overlay/WifiOverlayStockCheetah/res/values/stock.xml
+
+diff --git a/cheetah/overlay/ConnectivityOverlayStockCheetah/Android.bp b/cheetah/overlay/ConnectivityOverlayStockCheetah/Android.bp
+new file mode 100644
+index 0000000..4efc75f
+--- /dev/null
++++ b/cheetah/overlay/ConnectivityOverlayStockCheetah/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "ConnectivityOverlayStockCheetah",
++    product_specific: true,
++}
+diff --git a/cheetah/overlay/ConnectivityOverlayStockCheetah/AndroidManifest.xml b/cheetah/overlay/ConnectivityOverlayStockCheetah/AndroidManifest.xml
+new file mode 100644
+index 0000000..20e0f23
+--- /dev/null
++++ b/cheetah/overlay/ConnectivityOverlayStockCheetah/AndroidManifest.xml
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.android.connectivity.resources.overlay.stock.cheetah">
++    <!-- Values stock cheetah (CP3A.261005.002.A1) sets and our build didn't; priority 1, above the tree's own overlays. -->
++    <overlay
++        android:isStatic="true"
++        android:priority="1"
++        android:targetName="ServiceConnectivityResourcesConfig"
++        android:targetPackage="com.android.connectivity.resources" />
++</manifest>
+diff --git a/cheetah/overlay/ConnectivityOverlayStockCheetah/res/values-mcc204-mnc4/stock.xml b/cheetah/overlay/ConnectivityOverlayStockCheetah/res/values-mcc204-mnc4/stock.xml
+new file mode 100644
+index 0000000..5a0ed46
+--- /dev/null
++++ b/cheetah/overlay/ConnectivityOverlayStockCheetah/res/values-mcc204-mnc4/stock.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Generated by tools/rro2xml.py from the stock yogi CD1A.261005.003 overlays. -->
++<resources>
++    <integer name="config_activelyPreferBadWifi">0</integer>
++</resources>
+diff --git a/cheetah/overlay/ConnectivityOverlayStockCheetah/res/values/stock.xml b/cheetah/overlay/ConnectivityOverlayStockCheetah/res/values/stock.xml
+new file mode 100644
+index 0000000..d0c31a9
+--- /dev/null
++++ b/cheetah/overlay/ConnectivityOverlayStockCheetah/res/values/stock.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Generated by tools/rro2xml.py from the stock cheetah CP3A.261005.002.A1 overlays: PixelConnectivityOverlay2022.apk. -->
++<resources>
++    <integer name="config_activelyPreferBadWifi">1</integer>
++</resources>
+diff --git a/cheetah/overlay/FrameworkResOverlayStockCheetah/Android.bp b/cheetah/overlay/FrameworkResOverlayStockCheetah/Android.bp
+new file mode 100644
+index 0000000..7a91d22
+--- /dev/null
++++ b/cheetah/overlay/FrameworkResOverlayStockCheetah/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "FrameworkResOverlayStockCheetah",
++    product_specific: true,
++}
+diff --git a/cheetah/overlay/FrameworkResOverlayStockCheetah/AndroidManifest.xml b/cheetah/overlay/FrameworkResOverlayStockCheetah/AndroidManifest.xml
+new file mode 100644
+index 0000000..de60c15
+--- /dev/null
++++ b/cheetah/overlay/FrameworkResOverlayStockCheetah/AndroidManifest.xml
+@@ -0,0 +1,13 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="android.overlay.stock.cheetah">
++    <!-- Values stock cheetah (CP3A.261005.002.A1) sets and our build didn't; priority 1, above the tree's own overlays. -->
++    <overlay
++        android:isStatic="true"
++        android:priority="1"
++        android:targetPackage="android" />
++</manifest>
+diff --git a/cheetah/overlay/FrameworkResOverlayStockCheetah/res/values/stock.xml b/cheetah/overlay/FrameworkResOverlayStockCheetah/res/values/stock.xml
+new file mode 100644
+index 0000000..f335afa
+--- /dev/null
++++ b/cheetah/overlay/FrameworkResOverlayStockCheetah/res/values/stock.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Generated by tools/rro2xml.py from the stock cheetah CP3A.261005.002.A1 overlays: framework-res__cheetah__auto_generated_rro_vendor.apk, PixelConfigOverlayCommon.apk. -->
++<resources>
++    <bool name="config_pinnerCameraApp">true</bool>
++    <bool name="config_update_operator_name_after_carrier_config_loaded">true</bool>
++    <string name="config_dynamicInstrumentationEventConsumer" translatable="false">com.google.android.odad/com.google.android.apps.miphone.odad.hb.HummingbirdEventService</string>
++    <string-array name="config_pr_dexopt_sync_forced_packages">
++        <item>com.android.vending</item>
++    </string-array>
++</resources>
+diff --git a/cheetah/overlay/MediaProviderOverlayStockCheetah/Android.bp b/cheetah/overlay/MediaProviderOverlayStockCheetah/Android.bp
+new file mode 100644
+index 0000000..a7e0926
+--- /dev/null
++++ b/cheetah/overlay/MediaProviderOverlayStockCheetah/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "MediaProviderOverlayStockCheetah",
++    product_specific: true,
++}
+diff --git a/cheetah/overlay/MediaProviderOverlayStockCheetah/AndroidManifest.xml b/cheetah/overlay/MediaProviderOverlayStockCheetah/AndroidManifest.xml
+new file mode 100644
+index 0000000..44b174e
+--- /dev/null
++++ b/cheetah/overlay/MediaProviderOverlayStockCheetah/AndroidManifest.xml
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.android.providers.media.module.overlay.stock.cheetah">
++    <!-- Values stock cheetah (CP3A.261005.002.A1) sets and our build didn't; priority 1, above the tree's own overlays. -->
++    <overlay
++        android:isStatic="true"
++        android:priority="1"
++        android:targetName="MediaProviderConfig"
++        android:targetPackage="com.android.providers.media.module" />
++</manifest>
+diff --git a/cheetah/overlay/MediaProviderOverlayStockCheetah/res/values/stock.xml b/cheetah/overlay/MediaProviderOverlayStockCheetah/res/values/stock.xml
+new file mode 100644
+index 0000000..dd3445e
+--- /dev/null
++++ b/cheetah/overlay/MediaProviderOverlayStockCheetah/res/values/stock.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Generated by tools/rro2xml.py from the stock cheetah CP3A.261005.002.A1 overlays: MediaProviderOverlay.apk. -->
++<resources>
++    <string name="config_default_cloud_media_provider_package" translatable="false">com.google.android.apps.photos</string>
++    <string name="config_default_cloud_provider_authority" translatable="false">com.google.android.apps.photos.cloudpicker</string>
++</resources>
+diff --git a/cheetah/overlay/SettingsOverlayStockCheetah/Android.bp b/cheetah/overlay/SettingsOverlayStockCheetah/Android.bp
+new file mode 100644
+index 0000000..11df31a
+--- /dev/null
++++ b/cheetah/overlay/SettingsOverlayStockCheetah/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "SettingsOverlayStockCheetah",
++    product_specific: true,
++}
+diff --git a/cheetah/overlay/SettingsOverlayStockCheetah/AndroidManifest.xml b/cheetah/overlay/SettingsOverlayStockCheetah/AndroidManifest.xml
+new file mode 100644
+index 0000000..0bb9079
+--- /dev/null
++++ b/cheetah/overlay/SettingsOverlayStockCheetah/AndroidManifest.xml
+@@ -0,0 +1,13 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.android.settings.overlay.stock.cheetah">
++    <!-- Values stock cheetah (CP3A.261005.002.A1) sets and our build didn't; priority 1, above the tree's own overlays. -->
++    <overlay
++        android:isStatic="true"
++        android:priority="1"
++        android:targetPackage="com.android.settings" />
++</manifest>
+diff --git a/cheetah/overlay/SettingsOverlayStockCheetah/res/values/stock.xml b/cheetah/overlay/SettingsOverlayStockCheetah/res/values/stock.xml
+new file mode 100644
+index 0000000..5989fec
+--- /dev/null
++++ b/cheetah/overlay/SettingsOverlayStockCheetah/res/values/stock.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Generated by tools/rro2xml.py from the stock cheetah CP3A.261005.002.A1 overlays: SettingsGoogle__cheetah__auto_generated_rro_product.apk, SettingsGoogle__cheetah__auto_generated_rro_vendor.apk. -->
++<resources>
++    <bool name="config_network_selection_list_aggregation_enabled">true</bool>
++    <string-array name="config_settings_slices_accessibility_components">
++        <item>com.google.android.marvin.talkback/com.android.switchaccess.SwitchAccessService</item>
++        <item>com.google.android.marvin.talkback/com.google.android.marvin.talkback.TalkBackService</item>
++        <item>com.google.android.marvin.talkback/com.google.android.accessibility.selecttospeak.SelectToSpeakService</item>
++        <item>com.google.android.marvin.talkback/com.google.android.accessibility.accessibilitymenu.AccessibilityMenuService</item>
++    </string-array>
++    <string-array name="slice_allowlist_package_names">
++        <item>com.google.android.gms</item>
++        <item>com.google.android.googlequicksearchbox</item>
++    </string-array>
++</resources>
+diff --git a/cheetah/overlay/SystemUIOverlayStockCheetah/Android.bp b/cheetah/overlay/SystemUIOverlayStockCheetah/Android.bp
+new file mode 100644
+index 0000000..9ea9544
+--- /dev/null
++++ b/cheetah/overlay/SystemUIOverlayStockCheetah/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "SystemUIOverlayStockCheetah",
++    product_specific: true,
++}
+diff --git a/cheetah/overlay/SystemUIOverlayStockCheetah/AndroidManifest.xml b/cheetah/overlay/SystemUIOverlayStockCheetah/AndroidManifest.xml
+new file mode 100644
+index 0000000..78dc787
+--- /dev/null
++++ b/cheetah/overlay/SystemUIOverlayStockCheetah/AndroidManifest.xml
+@@ -0,0 +1,13 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.android.systemui.overlay.stock.cheetah">
++    <!-- Values stock cheetah (CP3A.261005.002.A1) sets and our build didn't; priority 1, above the tree's own overlays. -->
++    <overlay
++        android:isStatic="true"
++        android:priority="1"
++        android:targetPackage="com.android.systemui" />
++</manifest>
+diff --git a/cheetah/overlay/SystemUIOverlayStockCheetah/res/values/stock.xml b/cheetah/overlay/SystemUIOverlayStockCheetah/res/values/stock.xml
+new file mode 100644
+index 0000000..3bb217c
+--- /dev/null
++++ b/cheetah/overlay/SystemUIOverlayStockCheetah/res/values/stock.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Generated by tools/rro2xml.py from the stock cheetah CP3A.261005.002.A1 overlays: SystemUIGoogle__cheetah__auto_generated_rro_product.apk. -->
++<resources>
++    <string name="config_avatar_picker_package" translatable="false">com.google.android.avatarpicker</string>
++    <string name="config_remoteCopyPackage" translatable="false">com.google.android.gms/.nearby.sharing.RemoteCopyShareSheetActivity</string>
++    <string name="config_screenshotEditor" translatable="false">com.google.android.markup/com.google.android.markup.AnnotateActivity</string>
++    <string name="config_screenshotFilesApp" translatable="false">com.google.android.apps.nbu.files/com.google.android.apps.nbu.files.home.HomeActivity</string>
++    <string-array name="config_controlsPreferredPackages">
++        <item>com.google.android.apps.chromecast.app</item>
++    </string-array>
++</resources>
+diff --git a/cheetah/overlay/WifiOverlayStockCheetah/Android.bp b/cheetah/overlay/WifiOverlayStockCheetah/Android.bp
+new file mode 100644
+index 0000000..1e355c5
+--- /dev/null
++++ b/cheetah/overlay/WifiOverlayStockCheetah/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "WifiOverlayStockCheetah",
++    product_specific: true,
++}
+diff --git a/cheetah/overlay/WifiOverlayStockCheetah/AndroidManifest.xml b/cheetah/overlay/WifiOverlayStockCheetah/AndroidManifest.xml
+new file mode 100644
+index 0000000..930c2f5
+--- /dev/null
++++ b/cheetah/overlay/WifiOverlayStockCheetah/AndroidManifest.xml
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.android.wifi.resources.overlay.stock.cheetah">
++    <!-- Values stock cheetah (CP3A.261005.002.A1) sets and our build didn't; priority 1, above the tree's own overlays. -->
++    <overlay
++        android:isStatic="true"
++        android:priority="1"
++        android:targetName="WifiCustomization"
++        android:targetPackage="com.android.wifi.resources" />
++</manifest>
+diff --git a/cheetah/overlay/WifiOverlayStockCheetah/res/values/stock.xml b/cheetah/overlay/WifiOverlayStockCheetah/res/values/stock.xml
+new file mode 100644
+index 0000000..316eafe
+--- /dev/null
++++ b/cheetah/overlay/WifiOverlayStockCheetah/res/values/stock.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Generated by tools/rro2xml.py from the stock cheetah CP3A.261005.002.A1 overlays: PixelWifiOverlay2022_C10.apk. -->
++<resources>
++    <integer name="config_wifi_framework_wifi_score_bad_rssi_threshold_5GHz">-80</integer>
++    <integer name="config_wifi_framework_wifi_score_entry_rssi_threshold_5GHz">-77</integer>
++</resources>
+diff --git a/device-cheetah.mk b/device-cheetah.mk
+index ba53a13..762825f 100644
+--- a/device-cheetah.mk
++++ b/device-cheetah.mk
+@@ -88,3 +88,12 @@ PRODUCT_PACKAGES += \
+ # Keep Google Play services from preparing Google's OTAs (sysconfig/disable-google-ota.xml).
+ PRODUCT_COPY_FILES += \
+     $(DEVICE_PATH)/sysconfig/disable-google-ota.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/sysconfig/disable-google-ota.xml
++
++# Values stock cheetah (CP3A.261005.002.A1) sets that our build left at the AOSP default
++PRODUCT_PACKAGES += \
++    ConnectivityOverlayStockCheetah \
++    FrameworkResOverlayStockCheetah \
++    MediaProviderOverlayStockCheetah \
++    SettingsOverlayStockCheetah \
++    SystemUIOverlayStockCheetah \
++    WifiOverlayStockCheetah
+-- 
+2.43.0
+

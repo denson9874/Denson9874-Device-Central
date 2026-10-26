@@ -1,0 +1,738 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Thu, 15 Oct 2026 02:50:01 +0200
+Subject: [PATCH 06/10] Extreme Charging: implement Bodega mode controller and
+ QS tile
+
+Stock Pixel 11 series (kodiak, grizzly, cubs, yogi) introduces
+Extreme Charging mode ("Bodega"), allowing relaxed charging thermal
+limits and battery priority charging when fast charging under 50% SoC.
+
+Stock SystemUIGoogle implements this via IPowerExt.setMode("BODEGA", on),
+which requires hal_power_client permissions not granted to AOSP's
+platform_app SystemUI.
+
+Implement a complete, secure architecture:
+1. ExtremeChargingController in system_server (com.android.server.power):
+   - Acts as a power HAL client querying the Pixel Power HAL extension
+     (google.hardware.power.extension.pixel.IPowerExt).
+   - On boot, verifies IPowerExt.isModeSupported("BODEGA"). On devices
+     supporting Bodega (Pixel 11 series), sets Settings.Global bodega_supported=1;
+     on unsupported devices (e.g. Pixel 8/husky), safely disables itself.
+   - Observes Settings.Global bodega_enabled to engage or disengage Bodega
+     mode in the Power HAL.
+   - Listens to battery updates via BatteryService, managing eligibility
+     (plugged in, <= 50%, not full, not charge-limited) in Settings.Global
+     bodega_eligible, and automatically turning off Bodega when unplugged
+     or when battery reaches 100%.
+   - Exposes state dump via 'dumpsys battery'.
+2. ExtremeChargingTile in SystemUI:
+   - QS tile (spec 'extremecharging') providing intuitive toggle and status.
+   - Shows Active (on), Ready (eligible, off), or Unavailable (unplugged or
+     battery > 50%).
+   - Hidden automatically via isAvailable() on devices where bodega_supported is 0.
+   - Uses stock Pixel 11 vector charging icon.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ .../res/drawable/ic_qs_extreme_charging.xml   |  24 ++
+ packages/SystemUI/res/values/config.xml       |   2 +-
+ .../SystemUI/res/values/evolution_strings.xml |   7 +
+ .../android/systemui/lineage/LineageModule.kt |  23 ++
+ .../qs/tiles/ExtremeChargingTile.java         | 200 ++++++++++++
+ .../com/android/server/BatteryService.java    |  19 ++
+ .../power/ExtremeChargingController.java      | 300 ++++++++++++++++++
+ 7 files changed, 574 insertions(+), 1 deletion(-)
+ create mode 100644 packages/SystemUI/res/drawable/ic_qs_extreme_charging.xml
+ create mode 100644 packages/SystemUI/src/com/android/systemui/qs/tiles/ExtremeChargingTile.java
+ create mode 100644 services/core/java/com/android/server/power/ExtremeChargingController.java
+
+diff --git a/packages/SystemUI/res/drawable/ic_qs_extreme_charging.xml b/packages/SystemUI/res/drawable/ic_qs_extreme_charging.xml
+new file mode 100644
+index 000000000000..f690d6a2f36b
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/ic_qs_extreme_charging.xml
+@@ -0,0 +1,24 @@
++<!--
++Copyright (C) 2026 The Evolution X Project
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++     http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++-->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24">
++    <path
++        android:fillColor="#FFFFFFFF"
++        android:pathData="M14,14L12.39,21.57C12.18,22.56 10.74,22.51 10.6,21.51L9.6,14.5L3.48,14.5C2.52,14.5 2.01,13.37 2.64,12.65L12.07,1.88C12.75,1.1 14,1.58 14,2.61L14,9.5L19.5,9.5C20.39,9.5 20.89,10.53 20.34,11.23L17.75,14.5L14,14Z" />
++</vector>
+diff --git a/packages/SystemUI/res/values/config.xml b/packages/SystemUI/res/values/config.xml
+index fbac5c08f714..8b37a46e0b36 100644
+--- a/packages/SystemUI/res/values/config.xml
++++ b/packages/SystemUI/res/values/config.xml
+@@ -107,7 +107,7 @@
+ 
+     <!-- Tiles native to System UI. Order should match "quick_settings_tiles_default" -->
+     <string name="quick_settings_tiles_stock" translatable="false">
+-        internet,wifi,bt,flashlight,dnd,modes_dnd,alarm,airplane,nfc,controls,wallet,rotation,battery,cast,screenrecord,mictoggle,cameratoggle,location,hotspot,inversion,saver,dark,work,night,reverse,reduce_brightness,qr_code_scanner,onehanded,color_correction,font_scaling,record_issue,hearing_devices,notes,desktopeffects,cell,ambient_display,aod,caffeine,heads_up,powershare,profiles,reading_mode,sync,usb_tether,vpn,sound,dataswitch,volume_panel,locale,preferred_network,refresh_rate,compass,screenshot,dns,cpuinfo,fpsinfo,autobrightness,vpn_tethering,smart_pixels,onthego,weather,blur
++        internet,wifi,bt,flashlight,dnd,modes_dnd,alarm,airplane,nfc,controls,wallet,rotation,battery,cast,screenrecord,mictoggle,cameratoggle,location,hotspot,inversion,saver,dark,work,night,reverse,reduce_brightness,qr_code_scanner,onehanded,color_correction,font_scaling,record_issue,hearing_devices,notes,desktopeffects,cell,ambient_display,aod,caffeine,heads_up,powershare,extremecharging,profiles,reading_mode,sync,usb_tether,vpn,sound,dataswitch,volume_panel,locale,preferred_network,refresh_rate,compass,screenshot,dns,cpuinfo,fpsinfo,autobrightness,vpn_tethering,smart_pixels,onthego,weather,blur
+     </string>
+ 
+     <!-- The tiles to display in QuickSettings -->
+diff --git a/packages/SystemUI/res/values/evolution_strings.xml b/packages/SystemUI/res/values/evolution_strings.xml
+index 2b48d7e050ab..c9584ccc8786 100644
+--- a/packages/SystemUI/res/values/evolution_strings.xml
++++ b/packages/SystemUI/res/values/evolution_strings.xml
+@@ -308,6 +308,13 @@
+     <string name="force_stop_dlg_title">Force stop?</string>
+     <string name="force_stop_dlg_text">If you force stop an app, it may misbehave.</string>
+ 
++    <!-- Extreme Charging (Bodega) Tile -->
++    <string name="quick_settings_extreme_charging_label">Extreme Charging</string>
++    <string name="quick_settings_extreme_charging_active">Active</string>
++    <string name="quick_settings_extreme_charging_ready">Ready</string>
++    <string name="quick_settings_extreme_charging_unplugged">Plug in charger</string>
++    <string name="quick_settings_extreme_charging_unavailable">Available below 50%</string>
++
+     <!-- Notification counter -->
+     <string name="status_bar_notification_info_overflow" translatable="false">\u221E</string>
+ 
+diff --git a/packages/SystemUI/src/com/android/systemui/lineage/LineageModule.kt b/packages/SystemUI/src/com/android/systemui/lineage/LineageModule.kt
+index e2952de83ecf..ef94ffef0bc7 100644
+--- a/packages/SystemUI/src/com/android/systemui/lineage/LineageModule.kt
++++ b/packages/SystemUI/src/com/android/systemui/lineage/LineageModule.kt
+@@ -25,6 +25,7 @@ import com.android.systemui.qs.tiles.AODTile
+ import com.android.systemui.qs.tiles.AutoBrightnessTile
+ import com.android.systemui.qs.tiles.BlurTile
+ import com.android.systemui.qs.tiles.CPUInfoTile
++import com.android.systemui.qs.tiles.ExtremeChargingTile
+ import com.android.systemui.qs.tiles.CaffeineTile
+ import com.android.systemui.qs.tiles.CompassTile
+ import com.android.systemui.qs.tiles.DataSwitchTile
+@@ -130,6 +131,12 @@ interface LineageModule {
+     @StringKey(OnTheGoTile.TILE_SPEC)
+     fun bindOnTheGoTile(onTheGoTile: OnTheGoTile): QSTileImpl<*>
+ 
++    /** Inject ExtremeChargingTile into tileMap in QSModule */
++    @Binds
++    @IntoMap
++    @StringKey(ExtremeChargingTile.TILE_SPEC)
++    fun bindExtremeChargingTile(extremeChargingTile: ExtremeChargingTile): QSTileImpl<*>
++
+     /** Inject PowerShareTile into tileMap in QSModule */
+     @Binds
+     @IntoMap
+@@ -225,6 +232,7 @@ interface LineageModule {
+         const val FPS_INFO_TILE_SPEC = "fpsinfo"
+         const val HEADS_UP_TILE_SPEC = "heads_up"
+         const val LOCALE_TILE_SPEC = "locale"
++        const val EXTREME_CHARGING_TILE_SPEC = "extremecharging"
+         const val POWERSHARE_TILE_SPEC = "powershare"
+         const val PREFERRED_NETWORK_TILE_SPEC = "preferred_network"
+         const val PROFILES_TILE_SPEC = "profiles"
+@@ -329,6 +337,21 @@ interface LineageModule {
+                 category = TileCategory.ACCESSIBILITY,
+             )
+ 
++        @Provides
++        @IntoMap
++        @StringKey(EXTREME_CHARGING_TILE_SPEC)
++        fun provideExtremeChargingTileConfig(uiEventLogger: QsEventLogger): QSTileConfig =
++            QSTileConfig(
++                tileSpec = TileSpec.create(EXTREME_CHARGING_TILE_SPEC),
++                uiConfig =
++                    QSTileUIConfig.Resource(
++                        iconRes = R.drawable.ic_qs_extreme_charging,
++                        labelRes = R.string.quick_settings_extreme_charging_label
++                    ),
++                instanceId = uiEventLogger.getNewInstanceId(),
++                category = TileCategory.UTILITIES,
++            )
++
+         @Provides
+         @IntoMap
+         @StringKey(POWERSHARE_TILE_SPEC)
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/tiles/ExtremeChargingTile.java b/packages/SystemUI/src/com/android/systemui/qs/tiles/ExtremeChargingTile.java
+new file mode 100644
+index 000000000000..67e4777253af
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/qs/tiles/ExtremeChargingTile.java
+@@ -0,0 +1,200 @@
++/*
++ * Copyright (C) 2026 The Evolution X Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.systemui.qs.tiles;
++
++import android.content.Intent;
++import android.os.Handler;
++import android.os.Looper;
++import android.service.quicksettings.Tile;
++
++import androidx.annotation.Nullable;
++
++import com.android.internal.logging.MetricsLogger;
++import com.android.internal.logging.nano.MetricsProto.MetricsEvent;
++import com.android.systemui.animation.Expandable;
++import com.android.systemui.dagger.qualifiers.Background;
++import com.android.systemui.dagger.qualifiers.Main;
++import com.android.systemui.plugins.ActivityStarter;
++import com.android.systemui.plugins.FalsingManager;
++import com.android.systemui.plugins.statusbar.StatusBarStateController;
++import com.android.systemui.plugins.qs.QSTile.BooleanState;
++import com.android.systemui.plugins.qs.QSTile.Icon;
++import com.android.systemui.qs.QSHost;
++import com.android.systemui.qs.QsEventLogger;
++import com.android.systemui.qs.logging.QSLogger;
++import com.android.systemui.qs.tileimpl.QSTileImpl;
++import com.android.systemui.res.R;
++import com.android.systemui.statusbar.policy.BatteryController;
++import com.android.systemui.util.settings.GlobalSettings;
++import com.android.systemui.util.settings.SettingObserver;
++
++import javax.inject.Inject;
++
++public class ExtremeChargingTile extends QSTileImpl<BooleanState>
++        implements BatteryController.BatteryStateChangeCallback {
++
++    public static final String TILE_SPEC = "extremecharging";
++
++    private final GlobalSettings mGlobalSettings;
++    private final BatteryController mBatteryController;
++    private final SettingObserver mBodegaEnabledSetting;
++    private final SettingObserver mBodegaEligibleSetting;
++    private final SettingObserver mBodegaSupportedSetting;
++    private final Icon mIcon = ResourceIcon.get(R.drawable.ic_qs_extreme_charging);
++    private boolean mListening;
++
++    @Inject
++    public ExtremeChargingTile(
++            QSHost host,
++            QsEventLogger uiEventLogger,
++            @Background Looper backgroundLooper,
++            @Main Handler mainHandler,
++            FalsingManager falsingManager,
++            MetricsLogger metricsLogger,
++            StatusBarStateController statusBarStateController,
++            ActivityStarter activityStarter,
++            QSLogger qsLogger,
++            GlobalSettings globalSettings,
++            BatteryController batteryController
++    ) {
++        super(host, uiEventLogger, backgroundLooper, mainHandler, falsingManager, metricsLogger,
++                statusBarStateController, activityStarter, qsLogger);
++        mGlobalSettings = globalSettings;
++        mBatteryController = batteryController;
++
++        mBodegaEnabledSetting = new SettingObserver(globalSettings, mHandler, "bodega_enabled") {
++            @Override
++            protected void handleValueChanged(int value, boolean observedChange) {
++                refreshState();
++            }
++        };
++
++        mBodegaEligibleSetting = new SettingObserver(globalSettings, mHandler, "bodega_eligible") {
++            @Override
++            protected void handleValueChanged(int value, boolean observedChange) {
++                refreshState();
++            }
++        };
++
++        mBodegaSupportedSetting = new SettingObserver(globalSettings, mHandler, "bodega_supported") {
++            @Override
++            protected void handleValueChanged(int value, boolean observedChange) {
++                refreshState();
++            }
++        };
++
++        mBatteryController.addCallback(this);
++    }
++
++    @Override
++    public boolean isAvailable() {
++        return mGlobalSettings.getInt("bodega_supported", 0) == 1;
++    }
++
++    @Override
++    public BooleanState newTileState() {
++        BooleanState state = new BooleanState();
++        state.handlesLongClick = false;
++        return state;
++    }
++
++    @Override
++    public void handleClick(@Nullable Expandable expandable) {
++        if (!isAvailable()) {
++            return;
++        }
++
++        int enabled = mGlobalSettings.getInt("bodega_enabled", 0);
++        int eligible = mGlobalSettings.getInt("bodega_eligible", 0);
++
++        if (enabled == 1) {
++            mGlobalSettings.putInt("bodega_enabled", 0);
++        } else if (eligible == 1) {
++            mGlobalSettings.putInt("bodega_enabled", 1);
++        } else {
++            return;
++        }
++        refreshState();
++    }
++
++    @Override
++    public Intent getLongClickIntent() {
++        return new Intent(Intent.ACTION_POWER_USAGE_SUMMARY);
++    }
++
++    @Override
++    public CharSequence getTileLabel() {
++        return mContext.getString(R.string.quick_settings_extreme_charging_label);
++    }
++
++    @Override
++    protected void handleUpdateState(BooleanState state, Object arg) {
++        if (!isAvailable()) {
++            state.state = Tile.STATE_UNAVAILABLE;
++            return;
++        }
++
++        state.icon = mIcon;
++        state.label = mContext.getString(R.string.quick_settings_extreme_charging_label);
++        state.hasLongClickEffect = false;
++
++        boolean enabled = mGlobalSettings.getInt("bodega_enabled", 0) == 1;
++        boolean eligible = mGlobalSettings.getInt("bodega_eligible", 0) == 1;
++        boolean plugged = mBatteryController.isPluggedIn();
++
++        state.value = enabled;
++
++        if (enabled) {
++            state.state = Tile.STATE_ACTIVE;
++            state.secondaryLabel = mContext.getString(R.string.quick_settings_extreme_charging_active);
++        } else if (eligible) {
++            state.state = Tile.STATE_INACTIVE;
++            state.secondaryLabel = mContext.getString(R.string.quick_settings_extreme_charging_ready);
++        } else {
++            state.state = Tile.STATE_UNAVAILABLE;
++            if (!plugged) {
++                state.secondaryLabel = mContext.getString(R.string.quick_settings_extreme_charging_unplugged);
++            } else {
++                state.secondaryLabel = mContext.getString(R.string.quick_settings_extreme_charging_unavailable);
++            }
++        }
++        state.contentDescription = state.label + ", " + state.secondaryLabel;
++    }
++
++    @Override
++    public int getMetricsCategory() {
++        return MetricsEvent.VIEW_UNKNOWN;
++    }
++
++    @Override
++    public void onBatteryLevelChanged(int level, boolean pluggedIn, boolean charging) {
++        refreshState();
++    }
++
++    @Override
++    public void handleSetListening(boolean listening) {
++        super.handleSetListening(listening);
++        if (mListening == listening) return;
++        mListening = listening;
++        if (listening) {
++            refreshState();
++        }
++        mBodegaEnabledSetting.setListening(listening);
++        mBodegaEligibleSetting.setListening(listening);
++        mBodegaSupportedSetting.setListening(listening);
++    }
++}
+diff --git a/services/core/java/com/android/server/BatteryService.java b/services/core/java/com/android/server/BatteryService.java
+index 964caf24c455..6a794eb5083e 100644
+--- a/services/core/java/com/android/server/BatteryService.java
++++ b/services/core/java/com/android/server/BatteryService.java
+@@ -92,6 +92,7 @@ import com.android.server.lights.LogicalLight;
+ 
+ import org.lineageos.internal.notification.LedValues;
+ import org.lineageos.internal.notification.LineageBatteryLights;
++import com.android.server.power.ExtremeChargingController;
+ 
+ import java.io.BufferedReader;
+ import java.io.File;
+@@ -388,6 +389,7 @@ public final class BatteryService extends SystemService {
+     private MetricsLogger mMetricsLogger;
+ 
+     private LineageBatteryLights mLineageBatteryLights;
++    private ExtremeChargingController mExtremeChargingController;
+ 
+     private static final int MSG_BROADCAST_BATTERY_CHANGED = 1;
+     private static final int MSG_BROADCAST_POWER_CONNECTION_CHANGED = 2;
+@@ -565,6 +567,15 @@ public final class BatteryService extends SystemService {
+                 updateBatteryWarningLevelLocked();
+             }
+         } else if (phase == PHASE_BOOT_COMPLETED) {
++            mExtremeChargingController = new ExtremeChargingController(mContext, mHandler);
++            mExtremeChargingController.init();
++            synchronized (mLock) {
++                if (mHealthInfo != null) {
++                    mExtremeChargingController.onBatteryValuesChanged(
++                            mPlugType, mHealthInfo.batteryLevel, mHealthInfo.batteryStatus, mHealthInfo.chargingState);
++                }
++            }
++
+             mLineageBatteryLights = new LineageBatteryLights(mContext,
+                     new LineageBatteryLights.LedUpdater() {
+                 public void update() {
+@@ -1043,6 +1054,11 @@ public final class BatteryService extends SystemService {
+             // Update the battery LED
+             mLed.updateLightsLocked();
+ 
++            if (mExtremeChargingController != null) {
++                mExtremeChargingController.onBatteryValuesChanged(
++                        mPlugType, mHealthInfo.batteryLevel, mHealthInfo.batteryStatus, mHealthInfo.chargingState);
++            }
++
+             // This needs to be done after sendIntent() so that we get the lastest battery stats.
+             if (logOutlier && dischargeDuration != 0) {
+                 logOutlierLocked(dischargeDuration);
+@@ -1761,6 +1777,9 @@ public final class BatteryService extends SystemService {
+                 pw.println("  Capacity level: " + mHealthInfo.batteryCapacityLevel);
+                 pw.println("  Maximum capacity: " + mHealthInfo.batteryFullChargeUah);
+                 pw.println("  Design capacity: " + mHealthInfo.batteryFullChargeDesignCapacityUah);
++                if (mExtremeChargingController != null) {
++                    mExtremeChargingController.dump(pw);
++                }
+             } else {
+                 Shell shell = new Shell();
+                 shell.exec(mBinderService, null, fd, null, args, null, new ResultReceiver(null));
+diff --git a/services/core/java/com/android/server/power/ExtremeChargingController.java b/services/core/java/com/android/server/power/ExtremeChargingController.java
+new file mode 100644
+index 000000000000..19716be78954
+--- /dev/null
++++ b/services/core/java/com/android/server/power/ExtremeChargingController.java
+@@ -0,0 +1,300 @@
++/*
++ * Copyright (C) 2026 The Evolution X Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the License);
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an AS IS BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.power;
++
++import android.content.ContentResolver;
++import android.content.Context;
++import android.database.ContentObserver;
++import android.os.BatteryManager;
++import android.os.Handler;
++import android.os.IBinder;
++import android.os.Parcel;
++import android.os.RemoteException;
++import android.os.ServiceManager;
++import android.os.UserHandle;
++import android.provider.Settings;
++import android.util.Slog;
++
++import java.io.PrintWriter;
++
++/**
++ * ExtremeChargingController manages Google Pixel "Extreme Charging" ("Bodega") mode.
++ *
++ * It acts as an observer and power HAL client for the Pixel Power HAL extension interface
++ * (google.hardware.power.extension.pixel.IPowerExt).
++ *
++ * On devices where the HAL extension supports the "BODEGA" mode hint (Pixel 11 series:
++ * kodiak, grizzly, cubs, yogi), activating Bodega relaxes charging thermal throttle
++ * ceilings and engages battery priority charging (/sys/class/power_supply/battery/priority_charging_enable).
++ *
++ * When the battery reaches 100%, becomes FULL, or is disconnected from power, the controller
++ * automatically deactivates Bodega mode and updates Settings.Global state.
++ */
++public class ExtremeChargingController {
++    private static final String TAG = "ExtremeChargingController";
++
++    public static final String SETTING_BODEGA_ENABLED = "bodega_enabled";
++    public static final String SETTING_BODEGA_ELIGIBLE = "bodega_eligible";
++    public static final String SETTING_BODEGA_SUPPORTED = "bodega_supported";
++    public static final String SETTING_BODEGA_TIMESTAMP_MS = "bodega_enabled_timestamp_ms";
++
++    private static final String POWER_HAL_SERVICE = "android.hardware.power.IPower/default";
++    private static final String POWER_EXT_DESCRIPTOR = "google.hardware.power.extension.pixel.IPowerExt";
++    private static final int TRANSACTION_SET_MODE = IBinder.FIRST_CALL_TRANSACTION; // 1
++    private static final int TRANSACTION_IS_MODE_SUPPORTED = IBinder.FIRST_CALL_TRANSACTION + 1; // 2
++    private static final String MODE_BODEGA = "BODEGA";
++
++    private final Context mContext;
++    private final Handler mHandler;
++    private final ContentResolver mResolver;
++    private final Object mLock = new Object();
++
++    private IBinder mPowerExt;
++    private boolean mSupported = false;
++    private boolean mInitialized = false;
++
++    private boolean mEnabled = false;
++    private boolean mEligible = false;
++    private int mLastPlugType = 0;
++    private int mLastLevel = -1;
++    private int mLastStatus = BatteryManager.BATTERY_STATUS_UNKNOWN;
++    private int mLastChargingState = 0;
++
++    private final ContentObserver mSettingObserver;
++
++    public ExtremeChargingController(Context context, Handler handler) {
++        mContext = context;
++        mHandler = handler;
++        mResolver = context.getContentResolver();
++
++        mSettingObserver = new ContentObserver(mHandler) {
++            @Override
++            public void onChange(boolean selfChange) {
++                synchronized (mLock) {
++                    handleSettingChangedLocked();
++                }
++            }
++        };
++    }
++
++    public void init() {
++        synchronized (mLock) {
++            if (mInitialized) {
++                return;
++            }
++            mInitialized = true;
++
++            mSupported = queryModeSupported(MODE_BODEGA);
++            Settings.Global.putInt(mResolver, SETTING_BODEGA_SUPPORTED, mSupported ? 1 : 0);
++
++            if (!mSupported) {
++                Slog.i(TAG, "Extreme Charging mode (Bodega) is not supported on this platform");
++                Settings.Global.putInt(mResolver, SETTING_BODEGA_ELIGIBLE, 0);
++                Settings.Global.putInt(mResolver, SETTING_BODEGA_ENABLED, 0);
++                Settings.Global.putString(mResolver, SETTING_BODEGA_TIMESTAMP_MS, "0");
++                return;
++            }
++
++            Slog.i(TAG, "Extreme Charging mode (Bodega) supported. Initializing state...");
++            // Ensure HAL and settings start in clean disabled state
++            setHalMode(MODE_BODEGA, false);
++            mEnabled = false;
++            Settings.Global.putInt(mResolver, SETTING_BODEGA_ENABLED, 0);
++            Settings.Global.putString(mResolver, SETTING_BODEGA_TIMESTAMP_MS, "0");
++
++            mResolver.registerContentObserver(
++                    Settings.Global.getUriFor(SETTING_BODEGA_ENABLED),
++                    false,
++                    mSettingObserver,
++                    UserHandle.USER_ALL);
++        }
++    }
++
++    public boolean isSupported() {
++        synchronized (mLock) {
++            return mSupported;
++        }
++    }
++
++    public void onBatteryValuesChanged(int plugType, int level, int status, int chargingState) {
++        synchronized (mLock) {
++            if (!mSupported) {
++                return;
++            }
++
++            mLastPlugType = plugType;
++            mLastLevel = level;
++            mLastStatus = status;
++            mLastChargingState = chargingState;
++
++            boolean plugged = (plugType != 0);
++            boolean full = (status == BatteryManager.BATTERY_STATUS_FULL || level >= 100);
++            boolean chargeLimitReached = (chargingState == 4 && level >= 80);
++
++            // Auto-disable if active and condition violated
++            if (mEnabled) {
++                if (!plugged || full || chargeLimitReached) {
++                    Slog.i(TAG, "Extreme Charging auto-deactivated: plugged=" + plugged
++                            + ", level=" + level + ", status=" + status + ", chargingState=" + chargingState);
++                    updateEnabledLocked(false);
++                }
++            }
++
++            // Update eligibility: plugged in, level <= 50%, not full, not charge-limited
++            boolean eligible = plugged && (level <= 50) && !full && !chargeLimitReached;
++            if (eligible != mEligible) {
++                mEligible = eligible;
++                Settings.Global.putInt(mResolver, SETTING_BODEGA_ELIGIBLE, eligible ? 1 : 0);
++            }
++        }
++    }
++
++    private void handleSettingChangedLocked() {
++        if (!mSupported) {
++            return;
++        }
++
++        int settingVal = Settings.Global.getInt(mResolver, SETTING_BODEGA_ENABLED, 0);
++        boolean requestedEnable = (settingVal == 1);
++
++        if (requestedEnable == mEnabled) {
++            return;
++        }
++
++        if (requestedEnable) {
++            boolean plugged = (mLastPlugType != 0);
++            boolean full = (mLastStatus == BatteryManager.BATTERY_STATUS_FULL || mLastLevel >= 100);
++            boolean chargeLimitReached = (mLastChargingState == 4 && mLastLevel >= 80);
++
++            if (!plugged || full || chargeLimitReached) {
++                Slog.w(TAG, "Cannot activate Extreme Charging: device is not eligible (plugged="
++                        + plugged + ", level=" + mLastLevel + ", status=" + mLastStatus + ")");
++                Settings.Global.putInt(mResolver, SETTING_BODEGA_ENABLED, 0);
++                return;
++            }
++
++            updateEnabledLocked(true);
++        } else {
++            updateEnabledLocked(false);
++        }
++    }
++
++    private void updateEnabledLocked(boolean enable) {
++        if (mEnabled == enable) {
++            return;
++        }
++
++        mEnabled = enable;
++        setHalMode(MODE_BODEGA, enable);
++
++        Settings.Global.putInt(mResolver, SETTING_BODEGA_ENABLED, enable ? 1 : 0);
++        Settings.Global.putString(mResolver, SETTING_BODEGA_TIMESTAMP_MS,
++                enable ? String.valueOf(System.currentTimeMillis()) : "0");
++
++        // Recompute eligibility
++        boolean plugged = (mLastPlugType != 0);
++        boolean full = (mLastStatus == BatteryManager.BATTERY_STATUS_FULL || mLastLevel >= 100);
++        boolean chargeLimitReached = (mLastChargingState == 4 && mLastLevel >= 80);
++        boolean eligible = plugged && (mLastLevel <= 50) && !full && !chargeLimitReached;
++        if (eligible != mEligible) {
++            mEligible = eligible;
++            Settings.Global.putInt(mResolver, SETTING_BODEGA_ELIGIBLE, eligible ? 1 : 0);
++        }
++
++        Slog.i(TAG, "Extreme Charging mode (Bodega) " + (enable ? "ACTIVATED" : "DEACTIVATED"));
++    }
++
++    private synchronized IBinder getExtensionLocked() {
++        if (mPowerExt != null && mPowerExt.isBinderAlive() && mPowerExt.pingBinder()) {
++            return mPowerExt;
++        }
++        mPowerExt = null;
++        try {
++            IBinder powerService = ServiceManager.getService(POWER_HAL_SERVICE);
++            if (powerService == null) {
++                Slog.w(TAG, "Power HAL service not found: " + POWER_HAL_SERVICE);
++                return null;
++            }
++            mPowerExt = powerService.getExtension();
++            if (mPowerExt != null) {
++                mPowerExt.linkToDeath(() -> {
++                    synchronized (ExtremeChargingController.this) {
++                        Slog.w(TAG, "Power HAL extension binder died, clearing reference");
++                        mPowerExt = null;
++                    }
++                }, 0);
++            }
++        } catch (RemoteException e) {
++            Slog.e(TAG, "Failed to get power extension binder", e);
++        }
++        return mPowerExt;
++    }
++
++    private boolean queryModeSupported(String mode) {
++        IBinder ext = getExtensionLocked();
++        if (ext == null) {
++            return false;
++        }
++        Parcel data = Parcel.obtain();
++        Parcel reply = Parcel.obtain();
++        try {
++            data.writeInterfaceToken(POWER_EXT_DESCRIPTOR);
++            data.writeString(mode);
++            ext.transact(TRANSACTION_IS_MODE_SUPPORTED, data, reply, 0);
++            reply.readException();
++            return reply.readBoolean();
++        } catch (RemoteException e) {
++            Slog.e(TAG, "Failed to query mode support for " + mode, e);
++            return false;
++        } finally {
++            data.recycle();
++            reply.recycle();
++        }
++    }
++
++    private void setHalMode(String mode, boolean enabled) {
++        IBinder ext = getExtensionLocked();
++        if (ext == null) {
++            Slog.w(TAG, "Cannot set mode " + mode + ": Power HAL extension unavailable");
++            return;
++        }
++        Parcel data = Parcel.obtain();
++        try {
++            data.writeInterfaceToken(POWER_EXT_DESCRIPTOR);
++            data.writeString(mode);
++            data.writeBoolean(enabled);
++            ext.transact(TRANSACTION_SET_MODE, data, null, IBinder.FLAG_ONEWAY);
++        } catch (RemoteException e) {
++            Slog.e(TAG, "Failed to send setMode transaction for " + mode, e);
++        } finally {
++            data.recycle();
++        }
++    }
++
++    public void dump(PrintWriter pw) {
++        synchronized (mLock) {
++            pw.println("Extreme Charging (Bodega) State:");
++            pw.println("  Supported: " + mSupported);
++            pw.println("  Enabled: " + mEnabled);
++            pw.println("  Eligible: " + mEligible);
++            pw.println("  Last Plugged: " + (mLastPlugType != 0));
++            pw.println("  Last Level: " + mLastLevel);
++            pw.println("  Last Status: " + mLastStatus);
++            pw.println("  Last ChargingState: " + mLastChargingState);
++        }
++    }
++}
+-- 
+2.43.0
+

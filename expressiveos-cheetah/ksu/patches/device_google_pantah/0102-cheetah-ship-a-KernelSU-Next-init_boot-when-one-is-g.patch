@@ -1,7 +1,8 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
-Date: Sun, 25 Oct 2026 23:29:03 +0000
-Subject: [PATCH 2/2] cheetah: ship a KernelSU Next init_boot when one is given
+Date: Mon, 26 Oct 2026 12:00:00 +0000
+Subject: [PATCH 102/102] cheetah: ship a KernelSU Next init_boot when one is
+ given
 
 With CHEETAH_KSU_INIT_BOOT set, init_boot is that prebuilt (the build's own
 init_boot patched by KernelSU Next's ksud) instead of one made from the
@@ -10,19 +11,19 @@ puts it in target-files, so the fastboot images and the OTA both carry it and
 root survives updates. Unset, nothing changes. Only ExpressiveOS's build
 sets it.
 
-Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+Co-Authored-By: Claude <noreply@anthropic.com>
 ---
  cheetah/BoardConfig.mk | 9 +++++++++
  1 file changed, 9 insertions(+)
 
 diff --git a/cheetah/BoardConfig.mk b/cheetah/BoardConfig.mk
-index 627e904..83ccb28 100644
+index 9b505ca..e7661be 100644
 --- a/cheetah/BoardConfig.mk
 +++ b/cheetah/BoardConfig.mk
-@@ -29,3 +29,12 @@ include $(VENDOR_PATH)/BoardConfigVendor.mk
- # AOT code after every update and run interpreted/JIT until background
- # dexopt catches up (~180 MB, well inside super).
- BOARD_USES_SYSTEM_OTHER_ODEX :=
+@@ -32,3 +32,12 @@ BOARD_USES_SYSTEM_OTHER_ODEX :=
+ 
+ # KernelSU Next manager (ExpressiveOS only): libksud.so is a program
+ TARGET_FS_CONFIG_GEN += device/google/pantah/ksu/config.fs
 +
 +# KernelSU Next (ExpressiveOS only): expressiveos-cheetah/ksu/tools/ksu-images.sh
 +# builds once, patches that build's init_boot with KernelSU Next
@@ -32,3 +33,6 @@ index 627e904..83ccb28 100644
 +ifneq ($(CHEETAH_KSU_INIT_BOOT),)
 +BOARD_PREBUILT_INIT_BOOT_IMAGE := $(CHEETAH_KSU_INIT_BOOT)
 +endif
+-- 
+2.43.0
+

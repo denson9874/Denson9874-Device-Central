@@ -1,53 +1,76 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Build ExpressiveOS's own kernelsu.ko: the KernelSU Next source fetch-ksu.sh
 # checked out, plus kernel-patches/*.patch (the kernel crowns the manager
 # preinstalled in /product/app), compiled against the GKI source build_kernel
 # synced, with that tree's own clang. cheetah-ksu.sh puts it in init_boot in place
-# of the module built into ksud, and checks it matches boot.img's kernel.
+# of the module built into ksud, and checks it matches boot.img's kernel. The last
+# line is KSU_MODULE_EXIT=0 or KSU_MODULE_EXIT=1.
 #
 #   ksu-module.sh [top]   # after build_kernel; default ~/expressiveos; writes out/ksu/kernelsu.ko
 #
-#   KSU_KERNEL_TREE=<dir>   the Kleaf tree build_kernel synced (default out-kernel/google/gs-6.1)
+#   KSU_KERNEL_TREE=<dir>   the Kleaf tree build_kernel synced, inside the tree
+#                           (default out-kernel/google/gs-6.1)
 set -euo pipefail
-here="$(cd "$(dirname "$0")/.." && pwd)"
-top=${1:-$HOME/expressiveos}
+done=0
+# Quiet while run_locked's marker is there: the run waiting for the locks prints it then
+trap '[[ $done = 1 || -e "${EOS_STARTED:-}" ]] || echo "KSU_MODULE_EXIT=1"' EXIT
+here="$(cd "$(dirname -- "$(readlink -f -- "$0")")/.." && pwd)"
+# shellcheck source=../../lib.sh
+source "$here/../lib.sh"
+[[ $# -le 1 ]] || fail "usage: ksu-module.sh [top]"
+eos_top "${1:-}"
+# Run alone, this runs again under eos_lock (the locks eos-images.sh holds) and exits with it
+run_locked KSU_MODULE_EXIT=1 "$0" "$top"
 cd "$top"
-top=$(pwd -P)
-conf=$here/ksu.conf
-fail() { echo "FAIL: $*" >&2; exit 1; }
-get() { sed -n "s/^$1=//p" "$conf" | head -1; }
+get() { sed -n "s/^$1=//p" "$here/ksu.conf" | head -1; }
 version=$(get version); kmi=$(get kmi)
-src=~/android-dt/ksu/$version/src
-[ -d $src/.git ] || fail "no KernelSU Next source in $src (run fetch-ksu.sh)"
-[ "$(git -C $src rev-parse HEAD)" = "$(get src_commit)" ] || fail "$src isn't at ksu.conf's src_commit (run fetch-ksu.sh)"
+# What a kernel module build needs from the host, beyond the tree's own clang
+for c in make bc flex bison perl strings; do
+    command -v "$c" >/dev/null || fail "$c isn't installed (a kernel module build needs bc, bison, flex, libelf-dev, libssl-dev, make and perl)"
+done
+for h in openssl/opensslv.h gelf.h; do
+    [[ -f /usr/include/$h ]] || fail "no /usr/include/$h: install ${h%%/*}-dev (libssl-dev, libelf-dev)"
+done
+src=$HOME/android-dt/ksu/$version/src
+[[ -d "$src/.git" ]] || fail "no KernelSU Next source in $src (run fetch-ksu.sh)"
+[[ "$(git -C "$src" rev-parse HEAD)" = "$(get src_commit)" ]] || fail "$src isn't at ksu.conf's src_commit (run fetch-ksu.sh)"
 tree=${KSU_KERNEL_TREE:-out-kernel/google/gs-6.1}
-kernel=$tree/common/gki
-[ -f $kernel/Makefile ] || fail "no GKI source in $kernel (run build_kernel first)"
-kv=$(sed -n 's/^VERSION = //p;s/^PATCHLEVEL = //p' $kernel/Makefile | paste -sd.)
-[ "$kv" = "${kmi#*-}" ] || fail "$kernel is Linux $kv, not $kmi"
-clang_version=$(sed -n 's/^CLANG_VERSION=//p' $kernel/build.config.constants)
-clang=$(pwd -P)/$tree/prebuilts/clang/host/linux-x86/clang-$clang_version/bin
-[ -x $clang/clang ] || fail "no clang-$clang_version in $tree/prebuilts (the GKI's own compiler)"
+in_top "$top/$tree"
+kernel=$top/$tree/common/gki
+[[ -f "$kernel/Makefile" ]] || fail "no GKI source in $kernel (run build_kernel first)"
+kv=$(sed -n 's/^VERSION = //p;s/^PATCHLEVEL = //p' "$kernel/Makefile" | paste -sd.)
+[[ "$kv" = "${kmi#*-}" ]] || fail "$kernel is Linux $kv, not $kmi"
+clang_version=$(sed -n 's/^CLANG_VERSION=//p' "$kernel/build.config.constants")
+clang=$top/$tree/prebuilts/clang/host/linux-x86/clang-$clang_version/bin
+[[ -x "$clang/clang" ]] || fail "no clang-$clang_version in $tree/prebuilts (the GKI's own compiler)"
 
 K=$top/out/ksu; B=$K/kbuild; M=$K/ksn
-mkdir -p $K; rm -rf "${M:?}" "${B:?}"; rm -f $K/kernelsu.ko
+in_top "$K"
+mkdir -p -- "$K"; rm -rf -- "${M:?}" "${B:?}"; rm -f -- "$K/kernelsu.ko" "$K/kernelsu.ko.info"
 # A copy with its git history: the module's version is 30000 + the commit count,
 # which must equal the manager's (33355 for v3.4.2), so the patches aren't committed
-cp -a $src $M
-for p in $here/kernel-patches/*.patch; do git -C $M apply "$p"; echo "OK: applied $(basename "$p")"; done
+cp -a -- "$src" "$M"
+for p in "$here"/kernel-patches/*.patch; do
+    git -C "$M" apply "$p" || fail "${p##*/} doesn't apply to KernelSU Next $version (regenerate it)"
+    echo "OK: applied ${p##*/}"
+done
 mk() { PATH=$clang:$PATH make -C "$1" ARCH=arm64 LLVM=1 LLVM_IAS=1 "${@:2}"; }
-mk $kernel O=$B gki_defconfig > $K/kbuild.log 2>&1 || { tail -20 $K/kbuild.log >&2; fail "gki_defconfig"; }
-mk $kernel O=$B -j"$(nproc)" modules_prepare >> $K/kbuild.log 2>&1 || { tail -20 $K/kbuild.log >&2; fail "modules_prepare"; }
+log=$K/kbuild.log
+mk "$kernel" O="$B" gki_defconfig > "$log" 2>&1 || { tail -20 "$log" >&2; fail "gki_defconfig"; }
+mk "$kernel" O="$B" -j"$(nproc)" modules_prepare >> "$log" 2>&1 || { tail -20 "$log" >&2; fail "modules_prepare"; }
 # KernelSU includes SELinux's private headers; flask.h is generated by a full kernel build
-mkdir -p $B/security/selinux
-$B/scripts/selinux/genheaders/genheaders $B/security/selinux/flask.h $B/security/selinux/av_permissions.h
-mk $B M=$M/kernel CONFIG_KSU=m -j"$(nproc)" modules >> $K/kbuild.log 2>&1 || { tail -20 $K/kbuild.log >&2; fail "kernelsu.ko didn't build (log: $K/kbuild.log)"; }
-want=$((30000 + $(git -C $src rev-list --count HEAD)))
-grep -x -- "-- KernelSU-Next version: $want" $K/kbuild.log >/dev/null || fail "kernelsu.ko isn't version $want (see $K/kbuild.log)"
+mkdir -p -- "$B/security/selinux"
+"$B/scripts/selinux/genheaders/genheaders" "$B/security/selinux/flask.h" "$B/security/selinux/av_permissions.h"
+mk "$B" M="$M/kernel" CONFIG_KSU=m -j"$(nproc)" modules >> "$log" 2>&1 || { tail -20 "$log" >&2; fail "kernelsu.ko didn't build (log: $log)"; }
+want=$((30000 + $(git -C "$src" rev-list --count HEAD)))
+grep -x -- "-- KernelSU-Next version: $want" "$log" >/dev/null || fail "kernelsu.ko isn't version $want (see $log)"
 # Debug info would make it ~6 MB, too big for the 8 MB init_boot with a ramdisk
-$clang/llvm-strip --strip-debug -o $K/kernelsu.ko $M/kernel/kernelsu.ko
-strings $K/kernelsu.ko | grep -x /product/app/KernelSUNext/KernelSUNext.apk >/dev/null || fail "kernelsu.ko lacks the /product/app patch"
-vermagic=$(strings $K/kernelsu.ko | sed -n 's/^vermagic=//p')
-echo "$version $want $(git -C $src rev-parse --short HEAD) $(cd $here && ls kernel-patches | paste -sd,) | $vermagic" > $K/kernelsu.ko.info
-echo "OK: $K/kernelsu.ko ($(stat -c %s $K/kernelsu.ko) bytes, KernelSU Next $version ($want), vermagic $vermagic)"
+"$clang/llvm-strip" --strip-debug -o "$K/kernelsu.ko" "$M/kernel/kernelsu.ko"
+# Not grep -q: an early exit would kill strings with SIGPIPE under pipefail
+strings "$K/kernelsu.ko" | grep -x /product/app/KernelSUNext/KernelSUNext.apk >/dev/null || fail "kernelsu.ko lacks the /product/app patch"
+vermagic=$(strings "$K/kernelsu.ko" | sed -n 's/^vermagic=//p')
+patches=$(find "$here/kernel-patches" -maxdepth 1 -name '*.patch' -printf '%f\n' | sort | paste -sd,)
+echo "$version $want $(git -C "$src" rev-parse --short HEAD) $patches | $vermagic" > "$K/kernelsu.ko.info"
+echo "OK: $K/kernelsu.ko ($(stat -c %s "$K/kernelsu.ko") bytes, KernelSU Next $version ($want), vermagic $vermagic)"
+done=1
 echo "KSU_MODULE_EXIT=0"
