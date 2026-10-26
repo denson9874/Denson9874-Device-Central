@@ -729,7 +729,13 @@ jobs:
           echo "== machine"; uptime; free -g | head -2; df -h ~ | sed 1d
           echo "== sessions"; tmux ls 2>/dev/null | grep -E '^eos-' || echo "no ExpressiveOS session running"
           for l in ~/.expressiveos.lock ~/.evolution-tree.lock; do
-            if flock -n "$l" true; then echo "${l#"$HOME"/}: free"; else echo "${l#"$HOME"/}: held"; fi
+            if flock -n "$l" true; then echo "${l#"$HOME"/}: free"; continue; fi
+            echo "${l#"$HOME"/}: held"
+            # Who holds it: /proc/locks names the process and the file's inode
+            i=$(stat -c %i "$l")
+            for p in $(awk -v i="$i" '$2 != "->" { split($6, f, ":"); if (f[3] == i) print $5 }' /proc/locks 2>/dev/null | sort -u); do
+              echo "  by $p, started $(ps -o lstart= -p "$p" 2>/dev/null || echo "?"): $(ps -o args= -p "$p" 2>/dev/null | cut -c1-150 || true)"
+            done
           done
           pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-160 | head -3 || true
           echo "== kit: $(cat ~/expressiveos-cheetah/INSTALLED_FROM 2>/dev/null || echo "not installed")"
@@ -751,6 +757,7 @@ jobs:
             [[ -f $f ]] || continue
             echo "$(basename "$f" -latest.out): $(date -r "$f" '+%F %T'), $(grep -a '^ROUTINE_RESULT=' "$f" | tail -1 || true)"
           done
+          ls -t ~/routine-logs 2>/dev/null | head -8 || true
           ls -lh ~/releases/expressiveos-cheetah/check 2>/dev/null || true
           for s in setup keys build pack; do
             log=$jobs/$s.log
