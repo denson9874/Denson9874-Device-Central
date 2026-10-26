@@ -1,15 +1,17 @@
-# Unofficial Evolution X and DerpFest builds for Google Pixel
+# denson9874 Device Central: Source Trees, Patches, & Build Kits for Unofficial Android 17
 
 <div align="center">
-  <p><strong>Unofficial Android 17 builds of Evolution X and DerpFest for the Pixel 11 series, Pixel 8 Pro and Pixel 7 Pro.</strong></p>
+  <p><strong>Central source repository for device trees, patches, build kits, and release tooling for unofficial Android 17 builds (Evolution X 12.3 & DerpFest v17) for the Pixel 11 series, Pixel 8 Pro, and Pixel 7 Pro.</strong></p>
 
   <p>
+    <a href="#overview">Overview</a> •
+    <a href="#repository-structure">Repository Structure</a> •
+    <a href="#building-from-source">Building from Source</a> •
     <a href="#major-features">Features</a> •
     <a href="#downloads">Downloads</a> •
     <a href="#installation">Installation</a> •
     <a href="#updating">Updating</a> •
-    <a href="#reporting-bugs">Reporting Bugs</a> •
-    <a href="#building-from-source">Building</a>
+    <a href="#reporting-bugs">Reporting Bugs</a>
   </p>
 </div>
 
@@ -17,12 +19,48 @@
 
 ## Overview
 
-These are unofficial builds maintained by Daryl Denson (@daryldenson), each under its own ROM's name. They aren't official Evolution X or DerpFest builds, so report bugs in this project's threads, not to those teams.
+Central source repository for device trees, patches, build kits, and release tooling for unofficial Android 17 Evolution X 12.3 and DerpFest v17 builds for the Pixel 11 series (kodiak, grizzly, cubs, yogi), Pixel 8 Pro (husky), and Pixel 7 Pro (cheetah).
+
+These are unofficial builds maintained by Daryl Denson (@daryldenson). They aren't official Evolution X or DerpFest builds, so report bugs in this project's threads, not to those teams.
 
 * **Evolution X 12.3** (`cnb`, based on LineageOS 24.0) for the Pixel 11 Pro XL, Pixel 11 Pro, Pixel 11, Pixel 11 Pro Fold, Pixel 8 Pro and Pixel 7 Pro.
 * **DerpFest v17** (based on LineageOS 24.0) for the Pixel 8 Pro.
 
-This repository holds the device trees, patches and release tools the builds are made from. It's also where [ExpressiveOS](#expressiveos), a separate ROM for the Pixel 7 Pro, is being built. ExpressiveOS isn't any of the builds above and hasn't been released.
+This repository holds the device trees, patches and release tools the builds are made from.
+
+---
+
+## Repository Structure
+
+```
+Denson9874-Device-Central/
+├── evolution-kodiak/          # Evolution X kit for the Pixel 11 series (kodiak, grizzly, cubs, yogi), plus shared release tools
+├── evolution-husky/           # Evolution X kit for the Pixel 8 Pro (husky)
+├── evolution-cheetah/         # Evolution X kit for the Pixel 7 Pro (cheetah)
+├── derpfest-husky/            # DerpFest kit for the Pixel 8 Pro (husky)
+├── tools/
+│   ├── community_monitor/     # Daily XDA/Telegram triage
+│   └── ota_mirror/            # R2 mirror for the Updaters' OTA packages
+├── research_notes/            # Source research behind the kits
+├── archive/                   # Posted XDA/Telegram announcements and old reply drafts
+└── docs/assets/screenshots/   # Logo
+```
+
+---
+
+## Building from Source
+
+Builds run on the build server from the per-ROM kits below. Each kit's README covers its trees, patches, build and release steps:
+
+* **Evolution X, Pixel 11 series** (kodiak, grizzly, cubs, yogi): [`evolution-kodiak/`](evolution-kodiak/README.md)
+* **Evolution X, Pixel 8 Pro** (husky): [`evolution-husky/`](evolution-husky/README.md)
+* **Evolution X, Pixel 7 Pro** (cheetah): [`evolution-cheetah/`](evolution-cheetah/README.md)
+* **DerpFest, Pixel 8 Pro** (husky): [`derpfest-husky/`](derpfest-husky/README.md)
+
+### Tooling & Research
+* **Community Monitor**: [`tools/community_monitor/`](tools/community_monitor/) for daily XDA/Telegram triage.
+* **OTA Mirror**: [`tools/ota_mirror/`](tools/ota_mirror/) for Updaters' OTA package mirroring.
+* **Research Notes**: [`research_notes/`](research_notes/) for source research behind the kits.
 
 ---
 
@@ -30,22 +68,15 @@ This repository holds the device trees, patches and release tools the builds are
 
 ### 📱 Builds
 
-#### Evolution X 12.3 (unofficial)
-
-| Device | Kernel | Updates |
-| :--- | :--- | :--- |
-| Pixel 11 Pro XL (`kodiak`) | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
-| Pixel 11 Pro (`grizzly`) | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
-| Pixel 11 (`cubs`) | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
-| Pixel 11 Pro Fold (`yogi`) | Google's stock GKI 6.12 | System updates in Settings |
-| Pixel 8 Pro (`husky`) | Linux 6.1 (Google's GKI, LineageOS's device modules) | System updates in Settings (from the 2026-10-24 build) |
-| Pixel 7 Pro (`cheetah`) | Linux 6.1 (Google's GKI, LineageOS's device modules) | System updates in Settings |
-
-#### DerpFest v17 (unofficial)
-
-| Device | Kernel | Updates |
-| :--- | :--- | :--- |
-| Pixel 8 Pro (`husky`) | Linux 6.1 (GKI android14-6.1, LineageOS's gs-6.1 sources) | DerpFest's Updater |
+| Device | ROM | Kernel | Updates |
+| :--- | :--- | :--- | :--- |
+| Pixel 11 Pro XL (`kodiak`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
+| Pixel 11 Pro (`grizzly`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
+| Pixel 11 (`cubs`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
+| Pixel 11 Pro Fold (`yogi`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
+| Pixel 8 Pro (`husky`) | Evolution X 12.3 | Linux 6.1 (Google's GKI, LineageOS's device modules) | System updates in Settings (from the 2026-10-24 build) |
+| Pixel 7 Pro (`cheetah`) | Evolution X 12.3 | Linux 6.1 (Google's GKI, LineageOS's device modules) | System updates in Settings |
+| Pixel 8 Pro (`husky`) | DerpFest v17 | Linux 6.1 (GKI android14-6.1, LineageOS's gs-6.1 sources) | DerpFest's Updater |
 
 All builds are unofficial Android 17 builds: user builds signed with private release keys, Google apps included, not rooted. Evolution X and DerpFest are separate ROMs with their own keys, so moving between them takes a clean install.
 
@@ -77,39 +108,30 @@ All builds are unofficial Android 17 builds: user builds signed with private rel
 
 Every download folder has the SHA-256 checksums: check the zip before you flash it.
 
-#### Evolution X
-
 | Device | Download | XDA thread |
 | :--- | :--- | :--- |
 | Pixel 11 Pro XL (`kodiak`) | [SourceForge: kodiak/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/kodiak/17/) | [kodiak / grizzly](https://xdaforums.com/t/4804712/) |
 | Pixel 11 Pro (`grizzly`) | [SourceForge: grizzly/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/grizzly/17/) | [kodiak / grizzly](https://xdaforums.com/t/4804712/) |
 | Pixel 11 (`cubs`) | [SourceForge: cubs/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/cubs/17/) | [cubs](https://xdaforums.com/t/4804723/) |
 | Pixel 11 Pro Fold (`yogi`) | [SourceForge: yogi/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/yogi/17/) | [yogi](https://xdaforums.com/t/4804826/) |
-| Pixel 8 Pro (`husky`) | [SourceForge: husky/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/husky/17/) | [husky](https://xdaforums.com/t/4805239/) |
+| Pixel 8 Pro (`husky`), Evolution X | [SourceForge: husky/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/husky/17/) | [husky](https://xdaforums.com/t/4805239/) |
 | Pixel 7 Pro (`cheetah`) | [SourceForge: cheetah/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/cheetah/17/) | [cheetah](https://xdaforums.com/t/4806248/) |
-
-#### DerpFest
-
-| Device | Download | XDA thread |
-| :--- | :--- | :--- |
-| Pixel 8 Pro (`husky`) | [SourceForge: derpfest/husky](https://sourceforge.net/projects/denson9874-s-user-builds/files/derpfest/husky/) | [husky DerpFest](https://xdaforums.com/t/4805779/) |
-
-Release announcements: Telegram [@ExpressiveGroup](https://t.me/ExpressiveGroup).
+| Pixel 8 Pro (`husky`), DerpFest | [SourceForge: derpfest/husky](https://sourceforge.net/projects/denson9874-s-user-builds/files/derpfest/husky/) | [husky DerpFest](https://xdaforums.com/t/4805779/) |
 
 ---
 
 ## Installation
 
-### Before you start
-1. **Unlock the bootloader.** Unlocking wipes the phone.
+### 1. Requirements
+1. **Unlock the bootloader**: unlocking wipes the phone.
 2. **Install the latest platform-tools** (`adb` and `fastboot`).
 3. **Put the phone on the right stock firmware** with the [Android Flash Tool](https://flash.android.com/):
 
-   | Device | Stock firmware | Notes |
-   | :--- | :--- | :--- |
-   | Pixel 11 series | CD1A.261005.003 (October 2026) | The zip doesn't flash a bootloader or radio, so the phone must already be on this release |
-   | Pixel 7 Pro | CP3A.261005.002.A1 (October 2026) or newer | The zip doesn't flash a bootloader or radio; later OTAs include them |
-   | Pixel 8 Pro | CP3A.261005.005 (October 2026) | The zip includes this firmware, but the phone should already be on it |
+| Device | Stock firmware | Notes |
+| :--- | :--- | :--- |
+| Pixel 11 series | CD1A.261005.003 (October 2026) | The zip doesn't flash a bootloader or radio, so the phone must already be on this release |
+| Pixel 7 Pro | CP3A.261005.002.A1 (October 2026) or newer | The zip doesn't flash a bootloader or radio; later OTAs include them |
+| Pixel 8 Pro | CP3A.261005.005 (October 2026) | The zip includes this firmware, but the phone should already be on it |
 
 4. **Coming from any other ROM, a clean install is required**, including between Evolution X and DerpFest. Each build is signed with its own keys, so updates from one won't install over another.
 
@@ -151,57 +173,12 @@ These builds don't support a locked bootloader. Locking it with a custom ROM ins
 ## Reporting Bugs
 
 * **No logs, no report.** Reports without a logcat are flagged for deletion. Capture one right after the problem happens, and post it with your build date and the steps to reproduce:
-  ```sh
-  adb logcat -b all -d > log.txt
-  ```
+```sh
+adb logcat -b all -d > log.txt
+```
 * **Custom setups get limited to no support.** That covers root modules, Xposed/LSPosed, kernels other than the build's own or Espada, and apps from APKMirror and similar sites that don't match the build (Google system apps especially). Reproduce the problem on a clean install without them first.
 * Post in your device's XDA thread (see [Downloads](#downloads)).
 
 ---
 
-## Building from Source
-
-Builds run on the build server from the per-ROM kits below. Each kit's README covers its trees, patches, build and release steps:
-
-* Evolution X, Pixel 11 series (kodiak, grizzly, cubs, yogi): [`evolution-kodiak/`](evolution-kodiak/README.md)
-* Evolution X, Pixel 8 Pro (husky): [`evolution-husky/`](evolution-husky/README.md)
-* Evolution X, Pixel 7 Pro (cheetah): [`evolution-cheetah/`](evolution-cheetah/README.md)
-* DerpFest, Pixel 8 Pro (husky): [`derpfest-husky/`](derpfest-husky/README.md)
-
-ExpressiveOS gets its own kit, `expressiveos-cheetah/`, with its own build tree and keys (see [ExpressiveOS](#expressiveos)).
-
----
-
-## ExpressiveOS
-
-<img src="docs/assets/screenshots/logo.png" alt="ExpressiveOS logo" width="96" align="right" />
-
-ExpressiveOS is a standalone ROM for the Pixel 7 Pro (`cheetah`), in development. It's built from Evolution X's source, with selected DerpFest features, KernelSU Next with susfs, and ViPER4Android added. It has its own name, release keys, update server and XDA thread, so it installs only with a clean flash and never updates from, or to, the Evolution X or DerpFest builds above.
-
-The Evolution X build for the Pixel 7 Pro keeps shipping alongside it under the Evolution X name.
-
----
-
-## Repository Structure
-
-```
-ExpressiveOS/
-├── evolution-kodiak/               # Evolution X kit for the Pixel 11 series, plus the shared release tools
-├── evolution-husky/                # Evolution X kit for the Pixel 8 Pro
-├── evolution-cheetah/              # Evolution X kit for the Pixel 7 Pro
-├── derpfest-husky/                 # DerpFest kit for the Pixel 8 Pro
-├── tools/
-│   ├── community_monitor/          # Daily XDA/Telegram triage
-│   └── ota_mirror/                 # R2 mirror for the Updaters' OTA packages
-├── research_notes/                 # Source research behind the kits
-├── archive/                        # Posted XDA/Telegram announcements and old reply drafts
-└── docs/assets/screenshots/        # Logo
-```
-
----
-
 ## License
-
-* AOSP, LineageOS, Evolution X and DerpFest sources keep their own licenses, mostly the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
-* The kernels are GPL-2.0. Basic Call Recorder (BCR), built into DerpFest, is GPL-3.0 ([chenxiaolong/BCR](https://github.com/chenxiaolong/BCR)).
-* Google's proprietary Pixel binaries, vendor images and apps belong to Google LLC. They aren't in this repository.

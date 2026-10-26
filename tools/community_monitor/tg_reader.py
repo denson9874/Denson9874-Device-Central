@@ -194,7 +194,7 @@ class TelegramReader:
 
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": "ExpressiveOS-Triage/1.0"}
+            headers={"User-Agent": "Device-Central-Triage/1.0"}
         )
 
         try:
@@ -294,7 +294,7 @@ class TelegramReader:
     def _download_file(self, file_id: str, file_name: str, dest_dir: str) -> Optional[str]:
         try:
             info_url = f"{self.api_base}/getFile?file_id={file_id}"
-            req = urllib.request.Request(info_url, headers={"User-Agent": "ExpressiveOS-Triage/1.0"})
+            req = urllib.request.Request(info_url, headers={"User-Agent": "Device-Central-Triage/1.0"})
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
             if not data.get("ok"):

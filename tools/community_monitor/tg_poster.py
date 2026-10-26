@@ -96,7 +96,7 @@ class TelegramPoster:
         req = urllib.request.Request(
             url,
             data=data_bytes,
-            headers={"Content-Type": "application/json", "User-Agent": "ExpressiveOS-Triage/1.0"}
+            headers={"Content-Type": "application/json", "User-Agent": "Device-Central-Triage/1.0"}
         )
 
         try:
