@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ViPER4Android creates its effect through the @hide AudioEffect(UUID, UUID, int, int)
+     constructor and reads @SystemApi AudioPlaybackConfiguration getters. As a system app on
+     this list it has no hidden-API restrictions, whatever its own unsealing does on Android 17. -->
+<config>
+    <hidden-api-whitelisted-app package="com.llsl.viper4android" />
+</config>

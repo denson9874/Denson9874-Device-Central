@@ -1,0 +1,88 @@
+// ViPER4Android RE for ExpressiveOS (cheetah): the unmodified upstream app and its
+// HIDL effect driver. expressiveos-cheetah/viper4android/apply-v4a.sh stages this folder
+// into vendor/extra/viper4android: the binaries first, this file last.
+// README.md has the sources, the pins and the credits.
+
+soong_namespace {
+}
+
+// The app: GPL-3.0 (LICENSE.app is its LICENSE, verbatim, with no "only" or "or later").
+license {
+    name: "viper4android_app_license",
+    visibility: [":__subpackages__"],
+    license_kinds: ["SPDX-license-identifier-GPL-3.0"],
+    license_text: ["LICENSE.app"],
+}
+
+// The driver. The zip's LICENSE is GPL-2.0, but the DSP compiled into libv4a_re.so is
+// ViPERDSP: reverse-engineered, "All Rights Reserved", personal and non-commercial use
+// only (NOTICE.viperdsp). It also carries PFFFT/FFTPACK, whose binary redistributions must
+// reproduce its notice (NOTICE.pffft).
+license {
+    name: "viper4android_re_license",
+    visibility: [":__subpackages__"],
+    license_kinds: ["legacy_restricted"],
+    license_text: [
+        "LICENSE.driver",
+        "NOTICE.viperdsp",
+        "NOTICE.pffft",
+    ],
+}
+
+// /system_ext/priv-app/ViPER4Android/ViPER4Android.apk, byte for byte: targetSdk 37 and
+// v2-signed, so it must be preprocessed (the build then copies it and keeps its signature,
+// and GitHub updates install over it).
+android_app_import {
+    name: "ViPER4Android",
+    licenses: ["viper4android_app_license"],
+    apk: "ViPER4Android.apk",
+    preprocessed: true,
+    presigned: true,
+    privileged: true,
+    system_ext_specific: true,
+    // The manifest's <uses-library required="false"> tags, in the same order, as the build's
+    // uses-library check requires.
+    optional_uses_libs: [
+        "androidx.window.extensions",
+        "androidx.window.sidecar",
+    ],
+    required: [
+        "privapp-permissions-com.llsl.viper4android.xml",
+        "hiddenapi-com.llsl.viper4android.xml",
+    ],
+}
+
+prebuilt_etc {
+    name: "privapp-permissions-com.llsl.viper4android.xml",
+    src: "privapp-permissions-com.llsl.viper4android.xml",
+    sub_dir: "permissions",
+    system_ext_specific: true,
+}
+
+prebuilt_etc {
+    name: "hiddenapi-com.llsl.viper4android.xml",
+    src: "hiddenapi-com.llsl.viper4android.xml",
+    sub_dir: "sysconfig",
+    system_ext_specific: true,
+}
+
+// /vendor/lib64/soundfx/libv4a_re.so, the path Evolution X's libeffects loads by itself
+// (frameworks/av EffectsFactory.c loadViperEffect()), so audio_effects.xml stays stock.
+// 64-bit only: cheetah's audio HAL is 64-bit. Not stripped, so its sha256 stays upstream's.
+cc_prebuilt_library_shared {
+    name: "libv4a_re",
+    licenses: ["viper4android_re_license"],
+    vendor: true,
+    relative_install_path: "soundfx",
+    compile_multilib: "64",
+    arch: {
+        arm64: {
+            srcs: ["libv4a_re_arm64-v8a.so"],
+        },
+    },
+    // NEEDED is liblog plus libc, libm and libdl, which are the default system_shared_libs.
+    shared_libs: ["liblog"],
+    strip: {
+        none: true,
+    },
+}
