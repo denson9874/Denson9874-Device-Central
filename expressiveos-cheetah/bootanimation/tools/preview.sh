@@ -11,7 +11,8 @@ put() { ln -s "$(cd "$(dirname -- "$1")" && pwd)/${1##*/}" "$seq/$(printf 'f%05d
 last='' bg=''
 while read -r type plays pause part colour _; do
     [[ $type = [cp] ]] || continue
-    bg=${colour#\#}
+    # As BootAnimation.cpp: the colour is optional (' #rrggbb'), black when it's missing
+    bg=${colour#\#}; [[ $colour = \#* && $bg =~ ^[0-9A-Fa-f]{6}$ ]] || bg=000000
     [[ $plays = 0 ]] && plays=$loops
     for ((r = 0; r < plays; r++)); do
         for f in "$src/$part"/img*.png; do put "$f"; last=$f; done
