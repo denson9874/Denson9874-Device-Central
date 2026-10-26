@@ -29,7 +29,7 @@
 # Runner setup (once, on the build server, as the `build` user, no sudo):
 #   1. GitHub: Settings > Actions > Runners > New self-hosted runner > Linux x64.
 #      Run the download commands it shows in ~/actions-runner.
-#   2. ./config.sh --url https://github.com/denson9874/ExpressiveOS \
+#   2. ./config.sh --url https://github.com/denson9874/Denson9874-Device-Central \
 #        --token <token from that page> --name kodiak-build-server \
 #        --labels kodiak-build --work _work --unattended
 #   3. Start it (no sudo needed):
@@ -253,7 +253,7 @@ jobs:
             git -C "$dst" diff --cached --stat
             ident=()
             git -C "$dst" config user.email > /dev/null || ident=(-c user.name=kodiak-runner -c user.email=build@kodiak-build-server)
-            git -C "$dst" ${ident[@]+"${ident[@]}"} commit -q -m "sync from ExpressiveOS $TREE_REF@$sha"
+            git -C "$dst" ${ident[@]+"${ident[@]}"} commit -q -m "sync from Denson9874-Device-Central $TREE_REF@$sha"
             if git -C "$dst" diff --name-only HEAD~1 HEAD | grep -q '^proprietary-files'; then
               echo "::warning::proprietary-files changed: run extract before building"
             fi

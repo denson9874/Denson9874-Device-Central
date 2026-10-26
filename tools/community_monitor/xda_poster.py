@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-XDA Thread Reply and Release Notes Poster for ExpressiveOS / Evolution X.
+XDA Thread Reply and Release Notes Poster for the Evolution X and DerpFest builds.
 Automates posting replies to acknowledge community issues and publishing release notes.
 Supports:
 1. Google Chrome Canary via AppleScript (uses Daryl's authenticated denson9874 session).

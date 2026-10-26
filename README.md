@@ -1,5 +1,6 @@
 # denson9874 Device Central: Source Trees, Patches, & Build Kits for Unofficial Android 17
 
+<div align="center">
   <p><strong>Central source repository for device trees, patches, build kits, and release tooling for unofficial Android 17 builds (Evolution X 12.3 & DerpFest v17) for the Pixel 11 series, Pixel 8 Pro, and Pixel 7 Pro.</strong></p>
 
   <p>
@@ -32,7 +33,7 @@ This repository holds the device trees, patches and release tools the builds are
 ## Repository Structure
 
 ```
-ExpressiveOS/
+Denson9874-Device-Central/
 ├── evolution-kodiak/          # Evolution X kit for the Pixel 11 series (kodiak, grizzly, cubs, yogi), plus shared release tools
 ├── evolution-husky/           # Evolution X kit for the Pixel 8 Pro (husky)
 ├── evolution-cheetah/         # Evolution X kit for the Pixel 7 Pro (cheetah)
@@ -72,7 +73,7 @@ Builds run on the build server from the per-ROM kits below. Each kit's README co
 | Pixel 11 Pro XL (`kodiak`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
 | Pixel 11 Pro (`grizzly`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
 | Pixel 11 (`cubs`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
-| Pixel 11 Pro Fold (`yogi`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
+| Pixel 11 Pro Fold (`yogi`) | Evolution X 12.3 | Google's stock GKI 6.12 | System updates in Settings |
 | Pixel 8 Pro (`husky`) | Evolution X 12.3 | Linux 6.1 (Google's GKI, LineageOS's device modules) | System updates in Settings (from the 2026-10-24 build) |
 | Pixel 7 Pro (`cheetah`) | Evolution X 12.3 | Linux 6.1 (Google's GKI, LineageOS's device modules) | System updates in Settings |
 | Pixel 8 Pro (`husky`) | DerpFest v17 | Linux 6.1 (GKI android14-6.1, LineageOS's gs-6.1 sources) | DerpFest's Updater |
@@ -115,7 +116,7 @@ Every download folder has the SHA-256 checksums: check the zip before you flash 
 | Pixel 11 Pro Fold (`yogi`) | [SourceForge: yogi/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/yogi/17/) | [yogi](https://xdaforums.com/t/4804826/) |
 | Pixel 8 Pro (`husky`), Evolution X | [SourceForge: husky/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/husky/17/) | [husky](https://xdaforums.com/t/4805239/) |
 | Pixel 7 Pro (`cheetah`) | [SourceForge: cheetah/17](https://sourceforge.net/projects/denson9874-s-user-builds/files/cheetah/17/) | [cheetah](https://xdaforums.com/t/4806248/) |
-| Pixel 8 Pro (`husky`), DerpFest | [SourceForge: derpfest/husky](https://sourceforge.net/projects/denson9874-s-user-builds/files/derpfest/husky/) | [husky DerpFest](https://xdaforums.com/t/4805240/) |
+| Pixel 8 Pro (`husky`), DerpFest | [SourceForge: derpfest/husky](https://sourceforge.net/projects/denson9874-s-user-builds/files/derpfest/husky/) | [husky DerpFest](https://xdaforums.com/t/4805779/) |
 
 ---
 
