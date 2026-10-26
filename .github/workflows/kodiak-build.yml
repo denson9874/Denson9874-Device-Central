@@ -607,6 +607,13 @@ jobs:
             echo "== $t: source, out, kernel out (GiB)"
             nice -n 19 ionice -c2 -n7 du -x -s -BG "$t/.repo" "$t/out" "$t"/out-kernel 2>/dev/null || true
           done
+          for d in ~/evolution/out ~/evolution/out/target/product ~/derpfest/out/target/product ~/releases ~/android-dt; do
+            [[ -d "$d" ]] || continue
+            echo "== $d (GiB)"
+            nice -n 19 ionice -c2 -n7 du -x -d1 -BG "$d" 2>/dev/null | sort -rn | head -15 || true
+          done
+          echo "== files in ~/releases over 1 GiB, oldest first"
+          find ~/releases -type f -size +1G -printf '%TY-%Tm-%Td %s %P\n' 2>/dev/null | sort | numfmt --to=iec --field=2 | head -80 || true
           echo "== files in /tmp over 1 GiB"
           find /tmp -maxdepth 1 -type f -size +1G -printf '%s %p\n' 2>/dev/null | sort -rn | numfmt --to=iec --field=1 || true
           echo "== ccache"
