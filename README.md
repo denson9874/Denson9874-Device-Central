@@ -73,7 +73,7 @@ Builds run on the build server from the per-ROM kits below. Each kit's README co
 | Pixel 11 Pro XL (`kodiak`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
 | Pixel 11 Pro (`grizzly`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
 | Pixel 11 (`cubs`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
-| Pixel 11 Pro Fold (`yogi`) | Evolution X 12.3 | Espada v3.5 (Linux 6.12.96) | System updates in Settings |
+| Pixel 11 Pro Fold (`yogi`) | Evolution X 12.3 | Google's stock GKI 6.12 | System updates in Settings |
 | Pixel 8 Pro (`husky`) | Evolution X 12.3 | Linux 6.1 (Google's GKI, LineageOS's device modules) | System updates in Settings (from the 2026-10-24 build) |
 | Pixel 7 Pro (`cheetah`) | Evolution X 12.3 | Linux 6.1 (Google's GKI, LineageOS's device modules) | System updates in Settings |
 | Pixel 8 Pro (`husky`) | DerpFest v17 | Linux 6.1 (GKI android14-6.1, LineageOS's gs-6.1 sources) | DerpFest's Updater |
