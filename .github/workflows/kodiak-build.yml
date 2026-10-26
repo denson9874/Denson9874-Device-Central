@@ -183,6 +183,18 @@ jobs:
             fi
             echo "::notice::a build is running on the server"
           fi
+          # An ExpressiveOS build or pack runs in tmux, outside this job and its
+          # concurrency group, for hours, with stretches where no soong_ui or ninja
+          # runs (the kernel build, verify, pack): count it as a running build too.
+          # Its setup (a repo sync of its own tree) doesn't count
+          for s in eos-build eos-pack; do
+            tmux has-session -t "=$s" 2>/dev/null || continue
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|server-cleanup-list|server-cleanup|expressiveos-status)$ ]]; then
+              echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
+              exit 1
+            fi
+            echo "::notice::the ExpressiveOS tmux session $s is running"
+          done
           echo "host $(hostname), user $(id -un), action $ACTION, tree_ref $TREE_REF"
 
       - name: Status
@@ -785,8 +797,17 @@ jobs:
             fail "$kit wasn't installed by the runner (no INSTALLED_FROM); move it away first"
           fi
           sha=$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)
-          rsync -a --delete --exclude .git "$src/" "$kit/"
-          echo "$TREE_REF@$sha" > "$kit/INSTALLED_FROM"
+          # Copied beside it, then swapped in: a copy that fails half way (a full disk)
+          # leaves the installed kit as it was
+          new=$(mktemp -d ~/.expressiveos-cheetah.new.XXXXXX)
+          trap 'rm -rf -- "$new"' EXIT
+          rsync -a --exclude .git "$src/" "$new/"
+          echo "$TREE_REF@$sha" > "$new/INSTALLED_FROM"
+          old=
+          if [[ -e $kit ]]; then old=$(mktemp -u ~/.expressiveos-cheetah.old.XXXXXX); mv -- "$kit" "$old"; fi
+          mv -- "$new" "$kit"
+          trap - EXIT
+          [[ -z $old ]] || rm -rf -- "$old"
           echo "kit $TREE_REF@${sha:0:7} installed in ~/expressiveos-cheetah"
           mkdir -p "$jobs"; chmod 700 "$jobs"
 
