@@ -21,6 +21,11 @@
 # evolution-cheetah/patches before a repo sync drops them. Binary changes are
 # listed by name, never included.
 #
+# expressiveos-host is read-only too: what the ExpressiveOS cheetah tree
+# (expressiveos-cheetah/) needs from the server before its first sync: free
+# disk and where it went, the host packages its scripts use, and whether its
+# folders exist yet. Names and sizes only, never file contents.
+#
 # Never add an upload-artifact step: build output contains Google's
 # proprietary images, which must not leave the server. Logs only. `inspect`
 # prints policy excerpts, manifests and library lists, never file contents
@@ -62,6 +67,8 @@ on:
           state. bp-repair: fix the one Android.bp named in query (see query).
           local-commits: read-only: commits on top of the manifest revision in the
           repo projects named in query (default: cheetah's four), as patches.
+          expressiveos-host: read-only: disk, host packages and folders the
+          ExpressiveOS cheetah tree needs.
         type: choice
         default: status
         options:
@@ -84,6 +91,7 @@ on:
           - bp-check
           - bp-repair
           - local-commits
+          - expressiveos-host
       tree_ref:
         description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak (sync, round) or evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, cheetah-install-routine) from
         type: string
@@ -133,7 +141,7 @@ jobs:
           # this job, and the husky build too. Don't start on top of one.
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -587,3 +595,38 @@ jobs:
             head -6000 "$RUNNER_TEMP/lc.patch"
             (( lines <= 6000 )) || echo "(cut after 6000 of $lines lines)"
           done
+
+      - name: ExpressiveOS host check
+        if: inputs.action == 'expressiveos-host'
+        run: |
+          echo "== disk"; df -h ~ /tmp | sed 1d; df -i ~ | sed 1d
+          echo "== biggest folders in ~ (GiB; du runs at low priority and can take a while)"
+          nice -n 19 ionice -c2 -n7 du -x -d1 -BG ~ 2>/dev/null | sort -rn | head -20 || true
+          for t in ~/evolution ~/derpfest; do
+            [[ -d "$t" ]] || continue
+            echo "== $t: source, out, kernel out (GiB)"
+            nice -n 19 ionice -c2 -n7 du -x -s -BG "$t/.repo" "$t/out" "$t"/out-kernel 2>/dev/null || true
+          done
+          echo "== files in /tmp over 1 GiB"
+          find /tmp -maxdepth 1 -type f -size +1G -printf '%s %p\n' 2>/dev/null | sort -rn | numfmt --to=iec --field=1 || true
+          echo "== ccache"
+          ccache -s 2>/dev/null | grep -iE 'cache directory|cache size' || echo "(no ccache stats)"
+          echo "== host packages the ExpressiveOS scripts use"
+          if command -v dpkg-query > /dev/null; then
+            for p in bc bison flex libelf-dev libssl-dev zlib1g-dev binutils lz4 cpio openssl git-lfs zip unzip rsync curl python3 ccache tmux; do
+              if [[ "$(dpkg-query -W -f='${db:Status-Abbrev}' "$p" 2>/dev/null || true)" == ii* ]]; then echo "ok       $p"; else echo "MISSING  $p"; fi
+            done
+          else
+            echo "(no dpkg-query: not a Debian or Ubuntu host)"
+          fi
+          for c in repo git-lfs lz4 cpio openssl flex bison bc strings zip unzip sftp tmux; do
+            if command -v "$c" > /dev/null || [[ -x ~/bin/$c ]]; then echo "ok       $c (command)"; else echo "MISSING  $c (command)"; fi
+          done
+          echo "groups: $(id -nG) (installing packages needs an admin, or sudo in these)"
+          echo "== ExpressiveOS folders"
+          for p in ~/expressiveos ~/expressiveos/.repo ~/expressiveos-cheetah ~/releases/expressiveos-cheetah ~/android-dt/ksu ~/android-dt/firmware/cheetah; do
+            if [[ -e "$p" ]]; then echo "exists   $p"; else echo "absent   $p"; fi
+          done
+          echo "KernelSU Next fetched: $(cat ~/android-dt/ksu/CURRENT 2>/dev/null || echo none)"
+          echo "cheetah firmware cached: $(cat ~/android-dt/firmware/cheetah/CURRENT 2>/dev/null || echo none)"
+          echo "== tree lock"; if flock -n ~/.evolution-tree.lock true; then echo free; else echo "held (a routine or build is running)"; fi
