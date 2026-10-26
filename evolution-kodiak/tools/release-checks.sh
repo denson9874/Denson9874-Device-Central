@@ -13,10 +13,14 @@
 #      build installs (listed in obj/PACKAGING/<part>_intermediates/file_list.txt). A SystemUI.apk left in out/
 #      from 10-15 shipped next to SystemUIGoogle and won, crashing SystemUI after
 #      fingerprint unlock (ISS-20261020-01). Also flags SystemUI next to SystemUIGoogle.
+#   3. Release properties: a user build with ro.adb.secure=1, ro.secure=1 and ro.debuggable=0
+#      everywhere they're set, no AOSP test-keys tags, adb off by default, no permissive SELinux
+#      on the kernel command line or in bootconfig, and security patch levels under a year old
+#      (Play Integrity STRONG). DerpFest shipped ro.adb.secure=0 for a week (HANDOFF 2al).
 #
 #   release-checks.sh <kodiak|grizzly|cubs|yogi|cheetah|husky>
 #
-# Exit 0 and RELEASE_CHECKS=OK when both pass; exit 1 and RELEASE_CHECKS=FAILED otherwise.
+# Exit 0 and RELEASE_CHECKS=OK when all three pass; exit 1 and RELEASE_CHECKS=FAILED otherwise.
 set -uo pipefail
 
 dev=${1:?usage: release-checks.sh <device>}
@@ -117,6 +121,87 @@ if 'SystemUI' in dirs and 'SystemUIGoogle' in dirs:
 if checked < 3:
     print(f'   only {checked} partitions had a file list (expected system, system_ext, product)')
     bad += 1
+
+# 3. Release properties: what a user build must ship with. DerpFest shipped ro.adb.secure=0 and adb
+# on by default from 10-17 to 10-23 (vendor/lineage common.mk, HANDOFF 2al) and nothing caught it.
+# Every definition counts, in any partition's build.prop or prop.default: one bad line is enough.
+import datetime
+print('== release properties')
+props = {}
+for rel in ('system/build.prop', 'system/system/build.prop', 'system/etc/prop.default',
+            'system/system/etc/prop.default', 'system_ext/etc/build.prop', 'product/etc/build.prop',
+            'vendor/build.prop', 'vendor/default.prop', 'odm/etc/build.prop', 'vendor_dlkm/etc/build.prop',
+            'system_dlkm/etc/build.prop'):
+    f = f'{out}/{rel}'
+    if not os.path.isfile(f):
+        continue
+    for line in open(f, errors='replace'):
+        line = line.strip()
+        if '=' in line and not line.startswith('#'):
+            k, v = line.split('=', 1)
+            props.setdefault(k.strip(), []).append((v.strip(), rel))
+def vals(k):
+    return props.get(k, [])
+pbad = 0
+def no(msg):
+    global pbad
+    print(f'   BAD: {msg}')
+    pbad += 1
+if not props:
+    no('no build.prop found in out/')
+for k, want in (('ro.build.type', 'user'), ('ro.adb.secure', '1'), ('ro.secure', '1')):
+    if not vals(k):
+        if k != 'ro.secure':   # older trees set ro.secure only in the ramdisk
+            no(f'{k} is not set anywhere (want {want})')
+    for v, where in vals(k):
+        if v != want:
+            no(f'{k}={v} in {where} (want {want})')
+for v, where in vals('ro.debuggable'):
+    if v != '0':
+        no(f'ro.debuggable={v} in {where} (want 0)')
+for v, where in vals('ro.build.tags'):
+    if 'test-keys' in v:
+        no(f'ro.build.tags={v} in {where}: signed with AOSP test keys?')
+for k in ('persist.service.adb.enable', 'persist.sys.usb.config', 'persist.adb.notify'):
+    for v, where in vals(k):
+        if (k == 'persist.sys.usb.config' and 'adb' in v.split(',')) or (k == 'persist.service.adb.enable' and v == '1'):
+            no(f'{k}={v} in {where}: adb on by default')
+# SELinux: permissive on the kernel command line or in bootconfig, in any boot image
+for img in ('boot.img', 'init_boot.img', 'vendor_boot.img', 'vendor_kernel_boot.img'):
+    f = f'{out}/{img}'
+    if os.path.isfile(f):
+        # Only the header (kernel command line) and the tail (vendor_boot's bootconfig): the
+        # kernel and ramdisks in between are binary and could match by chance
+        with open(f, 'rb') as fh:
+            data = fh.read()
+        data = data[:65536] + data[-65536:]
+        for bad_arg in (b'androidboot.selinux=permissive', b'enforcing=0'):
+            if bad_arg in data:
+                no(f'{img} carries {bad_arg.decode()}')
+# Security patch levels: Play Integrity's STRONG verdict wants a patch from the last 12 months
+today = datetime.date.today()
+for k in ('ro.build.version.security_patch', 'ro.vendor.build.security_patch'):
+    seen = vals(k)
+    if not seen:
+        no(f'{k} is not set')
+    for v, where in seen:
+        try:
+            age = (today - datetime.date.fromisoformat(v)).days
+        except ValueError:
+            no(f'{k}={v} in {where} is not a date')
+            continue
+        if age > 365:
+            no(f'{k}={v} in {where} is {age} days old (STRONG integrity needs under a year)')
+        elif age > 62:
+            print(f'   note: {k}={v} is {age} days old')
+        else:
+            print(f'   {k}={v}')
+tags = sorted({v for v, _ in vals('ro.build.tags')})
+print(f'   ro.build.type={",".join(sorted({v for v, _ in vals("ro.build.type")}))} ro.build.tags={",".join(tags) or "unset"}')
+if pbad:
+    bad += 1
+else:
+    print('   OK')
 
 print('RELEASE_CHECKS=' + ('FAILED' if bad else 'OK'))
 sys.exit(1 if bad else 0)

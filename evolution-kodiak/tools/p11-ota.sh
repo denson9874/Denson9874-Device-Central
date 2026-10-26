@@ -6,9 +6,12 @@
 # denson9874/evolution_ota (the repo the device tree's UpdaterOverlay points at). The JSON
 # goes out last, so it never points at a file that isn't downloadable yet.
 #
-#   p11-ota.sh <kodiak|grizzly|cubs|yogi|cheetah|husky> [--upload | --preview] [--changes <file>]
+#   p11-ota.sh <kodiak|grizzly|cubs|yogi|cheetah|husky> [--upload | --preview] [--changes <file>] [--manifest <file>]
 #
 # --preview prints the JSON and changelog an upload would publish, without uploading.
+# --manifest: the build's `repo manifest -r` snapshot. It's published with the JSON as
+# manifests/<dev>.xml (private projects left out), so every release can be rebuilt from the
+# exact revisions it came from; the evolution_ota history keeps one per release.
 #
 # Checks: the package is A/B, for this device and from this build; its zip and payload
 # signatures verify against the build's own otacerts.zip; the payload carries every
@@ -19,12 +22,13 @@
 set -euo pipefail
 
 dev=${1:-}; [ $# -gt 0 ] && shift
-UPLOAD=0; PREVIEW=0; CHANGES=
+UPLOAD=0; PREVIEW=0; CHANGES=; MANIFEST=
 while [ $# -gt 0 ]; do
     case $1 in
         --upload) UPLOAD=1 ;;
         --preview) PREVIEW=1 ;;
         --changes) CHANGES=${2:-}; shift ;;
+        --manifest) MANIFEST=${2:-}; shift ;;
         *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
     shift
@@ -38,7 +42,7 @@ case $dev in
     cheetah) MODEL="Pixel 7 Pro";       FORUM=https://xdaforums.com/t/4806248/; TAG= ;;
     # LineageOS's trees and TheMuppets' blobs (evolution-husky/)
     husky)   MODEL="Pixel 8 Pro";       FORUM=https://xdaforums.com/t/4805239/; TAG= ;;
-    *) echo "usage: p11-ota.sh <kodiak|grizzly|cubs|yogi|cheetah|husky> [--upload | --preview] [--changes <file>]" >&2; exit 2 ;;
+    *) echo "usage: p11-ota.sh <kodiak|grizzly|cubs|yogi|cheetah|husky> [--upload | --preview] [--changes <file>] [--manifest <file>]" >&2; exit 2 ;;
 esac
 
 TOP=~/evolution; O=$TOP/out/target/product/$dev; H=$TOP/out/host/linux-x86/bin
@@ -259,13 +263,42 @@ fi
     echo "=============================="
     if [ -n "$CHANGES" ] && [ -s "$CHANGES" ]; then cat "$CHANGES"; else echo "None recorded"; fi
 } > "$OUT/changelogs/$dev.txt"
+# The pinned manifest this release was built from, without private projects (signing keys and
+# the like: their names and revisions aren't for a public repo)
+# A missing or bad snapshot is reported, never a reason to hold back the release.
+if [ -n "$MANIFEST" ] && [ ! -s "$MANIFEST" ]; then echo "WARNING: no manifest snapshot at $MANIFEST; publishing without it"; MANIFEST=; fi
+if [ -n "$MANIFEST" ]; then
+    mkdir -p "$OUT/manifests"
+    python3 -I - "$MANIFEST" "$OUT/manifests/$dev.xml" "$NAME" <<'EOF' || { echo "WARNING: manifests/$dev.xml not updated (above); publishing without it"; git -C "$OUT" checkout -q -- "manifests/$dev.xml" 2>/dev/null || rm -f "$OUT/manifests/$dev.xml"; MANIFEST=; }
+import re, sys, xml.etree.ElementTree as ET
+src, dst, name = sys.argv[1:4]
+tree = ET.parse(src); root = tree.getroot()
+dropped = 0
+for p in list(root.iter('project')):
+    if re.search(r'priv', (p.get('path') or '') + ' ' + p.get('name', ''), re.I):
+        root.remove(p); dropped += 1
+used = {p.get('remote') for p in root.iter('project')} | {d.get('remote') for d in root.iter('default')}
+for r in list(root.iter('remote')):
+    if r.get('name') not in used:
+        root.remove(r)
+pinned = sum(1 for p in root.iter('project') if re.fullmatch(r'[0-9a-f]{40}', p.get('revision') or ''))
+total = sum(1 for p in root.iter('project'))
+if total == 0 or pinned < total:
+    sys.exit(f'manifest: {total - pinned} of {total} projects have no pinned revision (use repo manifest -r)')
+root.insert(0, ET.Comment(f' {name}: revisions this release was built from ({dropped} private projects left out) '))
+tree.write(dst, encoding='UTF-8', xml_declaration=True)
+print(f'manifests/{dst.rsplit("/", 1)[-1]}: {total} projects pinned, {dropped} private left out')
+EOF
+fi
 if [ $PREVIEW = 1 ]; then
     cat "$OUT/builds/$dev.json"; echo "----- changelogs/$dev.txt"; cat "$OUT/changelogs/$dev.txt"
+    [ -z "$MANIFEST" ] || { echo "----- manifests/$dev.xml"; head -5 "$OUT/manifests/$dev.xml"; }
     exit 0
 fi
 export GIT_AUTHOR_NAME="Daryl Denson" GIT_AUTHOR_EMAIL="9751141+denson9874@users.noreply.github.com"
 export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME" GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
 git -C "$REPO" add "builds/$dev.json" "changelogs/$dev.txt"
+[ -z "$MANIFEST" ] || git -C "$REPO" add "manifests/$dev.xml"
 git -C "$REPO" commit -q -m "$dev: $NAME" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 git -C "$REPO" push -q origin cnb || fail "pushing the JSON failed"
 git -C $DEVTREE rev-parse $DEVHEAD > "$DEST/LAST_DEVICE_COMMIT"
