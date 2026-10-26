@@ -176,7 +176,9 @@ stock=out/ksu/init_boot-stock.img
 [[ -f $stock ]] || fail "no $stock (cheetah-ksu.sh keeps the stock init_boot for users who want no root)"
 ramdisk "$stock" "$T/ib-stock"
 mkdir -- "$T/r"
-(cd "$T/r" && { lz4 -dc "$T/ib-stock/ramdisk" 2>/dev/null || gzip -dc "$T/ib-stock/ramdisk"; } | cpio -id --quiet 2>/dev/null) || true
+# Only the files checked here: the ramdisk's device nodes (dev/console...) need root to make
+(cd "$T/r" && { lz4 -dc "$T/ib-stock/ramdisk" 2>/dev/null || gzip -dc "$T/ib-stock/ramdisk"; } \
+    | cpio -id --quiet --no-absolute-filenames init kernelsu.ko) || fail "can't unpack $stock's ramdisk"
 [[ -e $T/r/init && ! -e $T/r/kernelsu.ko ]] || fail "$stock isn't a stock init_boot (no init, or kernelsu.ko in it)"
 # verify_image looks for the partition's image by its name, next to the one it checks
 mkdir -- "$T/sv"; cp -- "$stock" "$T/sv/init_boot.img"
