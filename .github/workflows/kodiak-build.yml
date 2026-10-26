@@ -776,9 +776,15 @@ jobs:
             [[ -f $log ]] || continue
             echo "== ${log#"$HOME"/}, $(date -r "$log" '+%F %T'), $(du -h "$log" | cut -f1)"
             if [[ $log == "$HOME"/routine-logs/* ]]; then
+              # Mostly the same run as ~/expressiveos-build.log: how it began, and its end
               head -n 5 "$log" | cut -c1-300 || true
+              echo "-- last lines"
+              tail -c 20000 "$log" | tr '\r' '\n' | grep -av '^[[:space:]]*$' | tail -n 3 | cut -c1-300 || true
+              continue
             fi
-            grep -aE '^(== |FAIL|WARNING|SETUP|FETCH_KSU|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|PACK=|VERIFY|SESSION_EXIT)|FAILED:|error:' "$log" | tail -n 25 | cut -c1-300 || true
+            # The compilers' and aidl's own warnings (WARNING: <file>:<line>) would bury the kit's lines
+            grep -aE '^(== |OK: |FAIL|WARNING|SETUP|FETCH_KSU|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|PACK=|VERIFY|SESSION_EXIT)|FAILED:|error:' "$log" \
+              | grep -avE '^WARNING: [^ ]+:[0-9]' | tail -n 25 | cut -c1-300 || true
             echo "-- last lines"
             tail -c 200000 "$log" | tr '\r' '\n' | grep -av '^[[:space:]]*$' | tail -n 15 | cut -c1-300 || true
           done
