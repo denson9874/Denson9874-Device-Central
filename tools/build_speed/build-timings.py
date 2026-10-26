@@ -101,6 +101,18 @@ def edges_profile(edges, label_ok=True):
             other[m.group(1) if m else '(no extension)'] += d
     if other:
         print('      other, by extension: ' + ', '.join('%s %s' % (e, hms(d)) for e, d in other.most_common(8)))
+    # ccache hits are the short compiles, misses the long ones
+    cc = [d for s, d, o in edges if kind(o) == 'C/C++ compile']
+    if len(cc) >= 100:
+        cuts = (0.1, 0.25, 0.5, 1, 2, 5)
+        hist = [[0, 0.0] for _ in range(len(cuts) + 1)]
+        for d in cc:
+            h = hist[bisect.bisect_right(cuts, d)]
+            h[0] += 1
+            h[1] += d
+        names = ['< %gs' % cuts[0]] + ['%g-%gs' % ab for ab in zip(cuts, cuts[1:])] + ['%gs+' % cuts[-1]]
+        print('      C/C++ compiles by duration: ' + ', '.join(
+            '%s %d (%s)' % (nm, n, hms(t)) for nm, (n, t) in zip(names, hist) if n))
     # Steps running at once over time, and its running integral, so the average
     # number of steps running beside any one step is a lookup
     times, conc, area = [], [], [0.0]
