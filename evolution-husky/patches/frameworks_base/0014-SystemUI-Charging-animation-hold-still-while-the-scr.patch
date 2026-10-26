@@ -1,0 +1,139 @@
+From e0de6d817958bccc6700ed31f27260d9fcdd37f7 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 06:30:54 +0100
+Subject: [PATCH 14/16] SystemUI: Charging animation: hold still while the
+ screen is off or on AOD
+
+Every charging animation style, and the rainbow colour cycle, runs on
+animators that repeat forever and invalidate the view on every frame,
+and nothing paused them. With "show on AOD" set, the view also stayed
+up while dozing when always-on display was off, and the lock-screen
+animation kept going after the screen turned off, so the animators
+asked for a frame on every vsync for the whole charge with the screen
+dark (1.4% of a core on an emulator with the display off).
+
+Show the animation while dozing only when always-on display is really
+enabled (DozeParameters, so AOD turned off by battery saver counts as
+off), and pause its animators while dozing or with the screen off. The
+view keeps its last frame on the AOD, and the animation carries on
+from there on wake.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../charging/ChargingAnimationView.kt         | 20 +++++++++++++++++++
+ .../ChargingAnimationViewController.kt        | 19 +++++++++++++++++-
+ 2 files changed, 38 insertions(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/charging/ChargingAnimationView.kt b/packages/SystemUI/src/com/android/systemui/charging/ChargingAnimationView.kt
+index 5aa2e3c9d5..8734a79f3f 100644
+--- a/packages/SystemUI/src/com/android/systemui/charging/ChargingAnimationView.kt
++++ b/packages/SystemUI/src/com/android/systemui/charging/ChargingAnimationView.kt
+@@ -293,6 +293,17 @@ class ChargingAnimationView(context: Context) : FrameLayout(context) {
+         get() = isVisible
+         set(value) { isVisible = value }
+ 
++    /**
++     * False while dozing. The effects below repeat forever, so on AOD they would ask for a frame
++     * on every vsync for the whole charge; paused, they hold their last frame instead.
++     */
++    var animationsAllowed: Boolean = true
++        set(value) {
++            if (field == value) return
++            field = value
++            applyAnimationsAllowed()
++        }
++
+     init {
+         layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+@@ -599,6 +610,15 @@ class ChargingAnimationView(context: Context) : FrameLayout(context) {
+             STYLE_DIGITAL_MATRIX -> startDigitalMatrixAnimation()
+             STYLE_GEOFLOW -> startGeoFlowAnimation()
+         }
++
++        if (!animationsAllowed) applyAnimationsAllowed()
++    }
++
++    private fun applyAnimationsAllowed() {
++        listOfNotNull(
++            bubbleAnimator, neonAnimator, beamAnimator, plasmaAnimator, quantumAnimator,
++            nebulaAnimator, matrixAnimator, geoflowAnimator, rainbowAnimator
++        ).forEach { if (animationsAllowed) it.resume() else it.pause() }
+     }
+ 
+     private fun startRainbowAnimation() {
+diff --git a/packages/SystemUI/src/com/android/systemui/charging/ChargingAnimationViewController.kt b/packages/SystemUI/src/com/android/systemui/charging/ChargingAnimationViewController.kt
+index 4a6933a853..09979f41fb 100644
+--- a/packages/SystemUI/src/com/android/systemui/charging/ChargingAnimationViewController.kt
++++ b/packages/SystemUI/src/com/android/systemui/charging/ChargingAnimationViewController.kt
+@@ -24,6 +24,7 @@ import android.util.Log
+ import android.widget.FrameLayout
+ import com.android.settingslib.Utils
+ import com.android.systemui.dagger.SysUISingleton
++import com.android.systemui.statusbar.phone.DozeParameters
+ import com.android.systemui.util.ScrimUtils
+ import kotlinx.coroutines.*
+ import kotlinx.coroutines.flow.*
+@@ -34,6 +35,7 @@ class ChargingAnimationViewController
+ @Inject
+ constructor(
+     private val context: Context,
++    private val dozeParameters: DozeParameters,
+ ) : ScrimUtils.ScrimEventListener {
+ 
+     private val chargingView = ChargingAnimationView(context)
+@@ -48,6 +50,7 @@ constructor(
+     private var isKeyguardShowing: Boolean = false
+     private var isKeyguardGoingAway: Boolean = false
+     private var isDozing: Boolean = false
++    private var isScreenOff: Boolean = false
+     private var wasCharging: Boolean = false
+ 
+     private var shouldShowAnimation: Boolean = false
+@@ -200,7 +203,8 @@ constructor(
+ 
+         val shouldShow = when {
+             !isPanelCollapsed -> false
+-            isDozing -> currentSettings.showOnAod
++            // With AOD off the display is dark while dozing, so there is nothing to show it on.
++            isDozing -> currentSettings.showOnAod && dozeParameters.alwaysOn
+             isKeyguardShowing -> currentSettings.showOnLockscreen
+             else -> false
+         }
+@@ -234,6 +238,7 @@ constructor(
+ 
+     override fun onDozingChanged(dozing: Boolean) {
+         isDozing = dozing
++        updateAnimationsAllowed()
+         updateVisibility()
+     }
+ 
+@@ -256,13 +261,25 @@ constructor(
+     }
+ 
+     override fun onStartedWakingUp() {
++        isScreenOff = false
++        updateAnimationsAllowed()
+         updateVisibility()
+     }
+ 
+     override fun onScreenTurnedOff() {
++        // Without any ambient display the phone never dozes, so the lock-screen animation
++        // would keep running with the screen off.
++        isScreenOff = true
++        updateAnimationsAllowed()
+         updateVisibility()
+     }
+ 
++    private fun updateAnimationsAllowed() {
++        val allowed = !isDozing && !isScreenOff
++        // Animators are paused and resumed on the thread that runs them.
++        chargingView.post { chargingView.animationsAllowed = allowed }
++    }
++
+     fun cleanup() {
+         try {
+             context.unregisterReceiver(batteryReceiver)
+-- 
+2.43.0
+
