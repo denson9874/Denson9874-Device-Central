@@ -172,10 +172,12 @@ jobs:
             [[ -d "$p" ]] || { echo "::error::missing $p"; exit 1; }
           done
           # Builds started by hand (or by another agent) share ~/evolution with
-          # this job, and the husky build too. Don't start on top of one.
+          # this job, and the husky build too. Don't start on top of one. The
+          # read-only actions run anyway, and so does expressiveos-setup: a repo
+          # sync of its own tree, ~/expressiveos (network and disk, no build)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|server-cleanup-list|server-cleanup|expressiveos-status)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-setup)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
