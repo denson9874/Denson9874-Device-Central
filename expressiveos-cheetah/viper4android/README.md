@@ -125,10 +125,11 @@ its last line is `V4A_CHECK=OK`.
   `IFactory` service; logcat shows `loadViperEffect: loaded ViPER library from
   /vendor/lib64/soundfx/libv4a_re.so` and `successfully registered ViPER4Android effect: ViPERDSP`
   (and no `already registered`, which would mean a module registered it first); `audio_effects.xml`
-  has no v4a lines; `dumpsys media.audio_flinger` lists `Library v4a_re` once (INFO when it lists
-  none: that dump format is unverified); the app is the `/system_ext/priv-app` copy (INFO if a user
-  update replaced it) with `MODIFY_AUDIO_ROUTING: granted=true`; no privapp allowlist violation; the
-  hidden-API sysconfig is installed; no `avc: denied` for `hal_audio_default` or the app. Driver Status
+  has no v4a lines; `dumpsys media.audio_flinger --effects` lists `Library v4a_re` once under
+  `Libraries loaded:` and not under `Libraries NOT loaded:` (INFO when it shows no effects dump);
+  the app is the `/system_ext/priv-app` copy (INFO if a user update replaced it) with
+  `MODIFY_AUDIO_ROUTING: granted=true`; no privapp allowlist violation; the hidden-API sysconfig is
+  installed; no `avc: denied` for `hal_audio_default` or the app. Driver Status
   in the app is checked by hand.
 
 ## Pins (`v4a.conf`)
