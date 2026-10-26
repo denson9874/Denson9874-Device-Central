@@ -1,0 +1,72 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 00:20:35 +0000
+Subject: [PATCH] kernel: crown the manager preinstalled in /product/app
+
+ExpressiveOS ships the KernelSU Next manager as a system app in
+/product/app/KernelSUNext. A system app has no copy under /data/app
+until it is updated, so search_manager() never finds it and the
+manager can't get root on a fresh install.
+
+When the /data/app search crowns nobody, check that fixed path: it is
+crowned only if is_manager_apk() accepts its signature, as for any
+other manager, and its package (com.rifsxd.ksunext) is in packages.list.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ kernel/manager/throne_tracker.c | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+diff --git a/kernel/manager/throne_tracker.c b/kernel/manager/throne_tracker.c
+index d506c77a..e7d27958 100644
+--- a/kernel/manager/throne_tracker.c
++++ b/kernel/manager/throne_tracker.c
+@@ -32,6 +32,36 @@ struct uid_data {
+ 	char package[KSU_MAX_PACKAGE_NAME];
+ };
+ 
++// ExpressiveOS preinstalls the manager as a system app. A system app never
++// appears under /data/app until it gets an update, so check its fixed path too.
++#define KSU_PRODUCT_MANAGER_APK "/product/app/KernelSUNext/KernelSUNext.apk"
++#define KSU_PRODUCT_MANAGER_PKG "com.rifsxd.ksunext"
++
++static void crown_product_manager(struct list_head *uid_data)
++{
++	char apk[] = KSU_PRODUCT_MANAGER_APK;
++	struct uid_data *np;
++	struct path p;
++
++	if (kern_path(apk, 0, &p))
++		return;
++	path_put(&p);
++
++	if (!is_manager_apk(apk)) {
++		pr_err("%s is not signed by the manager key, ignoring it\n", apk);
++		return;
++	}
++
++	list_for_each_entry (np, uid_data, list) {
++		if (strncmp(np->package, KSU_PRODUCT_MANAGER_PKG, KSU_MAX_PACKAGE_NAME) == 0) {
++			pr_info("Crowning preinstalled manager: %s(uid=%d)\n", apk, np->uid);
++			ksu_set_manager_appid(np->uid);
++			strscpy(cached_manager_apk_path, apk, sizeof(cached_manager_apk_path));
++			return;
++		}
++	}
++}
++
+ static void crown_manager(const char *apk, struct list_head *uid_data)
+ {
+ 	struct list_head *list = (struct list_head *)uid_data;
+@@ -387,6 +417,8 @@ void track_throne(bool prune_only)
+ 		pr_info("Searching manager...\n");
+ #endif
+ 		search_manager("/data/app", 2, &uid_list);
++		if (!ksu_is_manager_appid_valid())
++			crown_product_manager(&uid_list);
+ 		pr_info("Search manager finished\n");
+ 	}
+ 
+-- 
+2.43.0
+
