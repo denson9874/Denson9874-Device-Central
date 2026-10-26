@@ -12,7 +12,7 @@ When the /data/app search crowns nobody, check that fixed path: it is
 crowned only if is_manager_apk() accepts its signature, as for any
 other manager, and its package (com.rifsxd.ksunext) is in packages.list.
 
-Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+Co-Authored-By: Claude <noreply@anthropic.com>
 ---
  kernel/manager/throne_tracker.c | 32 ++++++++++++++++++++++++++++++++
  1 file changed, 32 insertions(+)
