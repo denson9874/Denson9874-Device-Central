@@ -1,6 +1,6 @@
 # Evolution X / DerpFest: Fresh Mac Rebuild & Restoration Guide
 
-This document provides complete instructions for restoring your development environment on a newly wiped Mac so you can pick back up immediately on ExpressiveOS and Evolution X for Pixel 11 Pro XL (`kodiak`) with both Claude Code and Google Antigravity.
+This document provides complete instructions for restoring your development environment on a newly wiped Mac so you can pick back up immediately on the Evolution X builds for Pixel 11 Pro XL (`kodiak`) with both Claude Code and Google Antigravity.
 
 ---
 
@@ -28,7 +28,7 @@ Before you erase your Mac, verify the following:
 | **Server User** | `build` | Account has no passwordless sudo |
 | **Server Source** | `/home/build/evolution` | Android 17 (branch `cnb`) Evolution X source |
 | **Server Device Tree** | `/home/build/android-dt/trees/device_google_kodiak` | Maintained in git |
-| **GitHub Repo** | `https://github.com/denson9874/ExpressiveOS.git` | Private repository |
+| **GitHub Repo** | `https://github.com/denson9874/Denson9874-Device-Central.git` (named ExpressiveOS until 2026-10-25; clone it into `~/Developer/ExpressiveOS`, the path the tools expect) | Private repository |
 | **Key Branches** | `evolution/kodiak-port`, `claude/wizardly-hopper-gnqtlx` | Synced with local work |
 | **Test Device** | Google Pixel 11 Pro XL (`kodiak`) | Serial `66020DLDV0049F`, bootloader unlocked, slot `b` |
 | **Firmware Target** | `CD1A.261005.003` | Bootloader `spacecraft-17.4-16262255` |
@@ -115,7 +115,7 @@ git config --global pull.rebase true
 ### Step 7: Clone ExpressiveOS Repository
 ```bash
 mkdir -p ~/Developer && cd ~/Developer
-git clone https://github.com/denson9874/ExpressiveOS.git
+git clone https://github.com/denson9874/Denson9874-Device-Central.git ExpressiveOS
 cd ExpressiveOS
 git checkout evolution/kodiak-port
 ```

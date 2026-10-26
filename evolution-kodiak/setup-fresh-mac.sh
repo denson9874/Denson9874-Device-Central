@@ -255,7 +255,7 @@ if [[ -d "$REPO_DIR/.git" ]]; then
     git -C "$REPO_DIR" pull || true
 else
     log_info "Cloning ExpressiveOS into $REPO_DIR..."
-    git clone https://github.com/denson9874/ExpressiveOS.git "$REPO_DIR"
+    git clone https://github.com/denson9874/Denson9874-Device-Central.git "$REPO_DIR"
     git -C "$REPO_DIR" checkout evolution/kodiak-port
     log_ok "Checked out branch 'evolution/kodiak-port'."
 fi
