@@ -27,10 +27,10 @@
 # folders exist yet. Names and sizes only, never file contents.
 #
 # server-cleanup-list (read-only) and server-cleanup free disk for that tree:
-# expressiveos-cheetah/tools/server-cleanup.sh lists or removes the six groups
-# of leftovers it names (old and test release copies, unpacked factory zips,
-# the emulator's output), by exact path, never what the OTA feeds serve.
-# server-cleanup removes only the groups in query, which Daryl approves.
+# expressiveos-cheetah/tools/server-cleanup.sh lists or removes the seven groups
+# of files it names (local copies of released and test builds, unpacked factory
+# zips, the emulator's output), by exact path; the image zips the pack scripts
+# read stay. server-cleanup removes only the groups in query, which Daryl approves.
 #
 # Never add an upload-artifact step: build output contains Google's
 # proprietary images, which must not leave the server. Logs only. `inspect`
@@ -118,7 +118,7 @@ on:
           ~/evolution, e.g. vendor/google/kodiak/Android.bp. local-commits:
           space-separated project paths under device/ or vendor/ (default:
           cheetah's four projects). server-cleanup-list (optional) and
-          server-cleanup (required): groups, e.g. 1,2,3,4,5,6.
+          server-cleanup (required): groups, e.g. 1,2,3,4,5,6,7.
         type: string
         default: ''
 
@@ -675,9 +675,9 @@ jobs:
         run: |
           script=expressiveos-cheetah/tools/server-cleanup.sh
           if [[ "$ACTION" = server-cleanup ]]; then
-            [[ "$QUERY" =~ ^[1-6](,[1-6])*$ ]] || { echo "::error::server-cleanup needs the approved groups in query, e.g. 1,2,3"; exit 1; }
+            [[ "$QUERY" =~ ^[1-7](,[1-7])*$ ]] || { echo "::error::server-cleanup needs the approved groups in query, e.g. 1,2,3"; exit 1; }
             bash "$script" delete "$QUERY"
           else
-            [[ -z "$QUERY" || "$QUERY" =~ ^[1-6](,[1-6])*$ ]] || { echo "::error::query is groups, e.g. 1,2,3"; exit 1; }
+            [[ -z "$QUERY" || "$QUERY" =~ ^[1-7](,[1-7])*$ ]] || { echo "::error::query is groups, e.g. 1,2,3"; exit 1; }
             bash "$script" list ${QUERY:+"$QUERY"}
           fi

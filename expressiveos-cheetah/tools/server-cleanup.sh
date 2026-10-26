@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 # Free disk on the build server for the ExpressiveOS tree (about 450 GB with full history).
-# Removes only the leftovers in the six groups below, which come from the runner's listing
-# of 2026-10-26 (sizes then: 67, 56, 36, 68, 47 and 15 GB):
-#   1  test, check and scratch copies          4  factory zips already unpacked
-#   2  older releases the feeds have replaced  5  the emulator's build output
-#   3  same-day fastboot rebuilds              6  older personal kodiak builds
+# Removes only the files in the seven groups below, which come from the runner's listing
+# of 2026-10-26 (sizes then: 67, 56, 35, 65, 51, 15 and 65 GB):
+#   1  test, check and scratch copies          5  the emulator's build output
+#   2  older releases the feeds have replaced  6  older personal kodiak builds
+#   3  same-day fastboot rebuilds              7  the local copies of the current builds
+#   4  factory zips already unpacked
 # Exact paths only, never a pattern. Deleting is permanent, so `delete` runs only the
-# groups Daryl approved. The builds the OTA feeds serve, the newest fastboot zip of each
-# device, the newest personal builds and the image-*.zip files the pack scripts read are
-# on the keep list: nothing on it, or holding it, is ever removed.
+# groups Daryl approved (all seven, 2026-10-26: released builds live on SourceForge,
+# Google Drive and R2, not here). The image-*.zip files the pack scripts read for every
+# fastboot zip, the firmware cache and the on-device gate's .device-ok records are on the
+# keep list: nothing on it, or holding it, is ever removed.
 #
 #   server-cleanup.sh list [groups]       # what's there now, with sizes; changes nothing
-#   server-cleanup.sh delete <groups>     # e.g. delete 1,2,3,4,5,6
+#   server-cleanup.sh delete <groups>     # e.g. delete 1,2,3,4,5,6,7
 #
 # The last line is CLEANUP=LISTED, OK, PARTIAL (group 5 waited for a build) or FAIL.
 set -euo pipefail
@@ -20,10 +22,10 @@ trap '[[ $done = 1 ]] || echo "CLEANUP=FAIL"' EXIT
 fail() { echo "ERROR: $*" >&2; exit 1; }
 
 mode=${1:-}
-groups=${2:-1,2,3,4,5,6}
+groups=${2:-1,2,3,4,5,6,7}
 [[ "$mode" = list || "$mode" = delete ]] && [[ $# -le 2 ]] || fail "usage: server-cleanup.sh list [groups] | delete <groups>"
 [[ "$mode" = list || $# -eq 2 ]] || fail "delete needs the groups, e.g. delete 1,2"
-[[ "$groups" =~ ^[1-6](,[1-6])*$ ]] || fail "groups are numbers 1-6 separated by commas, not '$groups'"
+[[ "$groups" =~ ^[1-7](,[1-7])*$ ]] || fail "groups are numbers 1-7 separated by commas, not '$groups'"
 
 # The groups are read through a nameref (g$n)
 R=releases
@@ -93,8 +95,9 @@ g6=(
     "$R/kodiak-personal/EvolutionX-17.0-20261013-kodiak-12.3-Unofficial-personal-keep-initboot.zip"
     "$R/kodiak-personal/EvolutionX-17.0-20261014-kodiak-12.3-Unofficial-personal-keep-initboot.zip"
 )
-keep=(
-    # What evolution_ota and derpfest_ota serve (2026-10-26)
+# shellcheck disable=SC2034
+g7=(
+    # What evolution_ota and derpfest_ota serve (2026-10-26); the published copies stay
     "$R/cheetah/EvolutionX-17.0-20261024-cheetah-12.3-Unofficial.zip"
     "$R/cubs/EvolutionX-17.0-20261024-cubs-12.3-Unofficial-r2.zip"
     "$R/grizzly/EvolutionX-17.0-20261024-grizzly-12.3-Unofficial-r2.zip"
@@ -112,6 +115,8 @@ keep=(
     "$R/cheetah/personal/EvolutionX-17.0-20261019-cheetah-12.3-Unofficial-personal-magisk-fastboot.zip"
     "$R/kodiak-personal/EvolutionX-17.0-20261015-kodiak-12.3-Unofficial-personal-keep-initboot.zip"
     "$R/emulator/EvolutionX-emulator-POWERFIX-20261024-0353.zip"
+)
+keep=(
     # Firmware the pack scripts and fetch-firmware.sh use
     "$F/image-kodiak-cd1a.261005.003.zip"
     "$F/image-yogi-cd1a.261005.003.zip"
@@ -144,7 +149,7 @@ human() { numfmt --to=iec --suffix=B "$1"; }
 # Nothing on the keep list may be a target, or inside one
 for k in "${keep[@]}"; do
     K=$(abs "$k")
-    for n in 1 2 3 4 5 6; do
+    for n in 1 2 3 4 5 6 7; do
         declare -n list="g$n"
         for t in "${list[@]}"; do
             T=$(abs "$t")
