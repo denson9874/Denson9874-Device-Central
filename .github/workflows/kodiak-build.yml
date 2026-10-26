@@ -26,6 +26,12 @@
 # disk and where it went, the host packages its scripts use, and whether its
 # folders exist yet. Names and sizes only, never file contents.
 #
+# build-speed is read-only too: what decides how long builds take on the server
+# (CPU, memory, disks, ccache's settings and hit rate, the kernel build's caches) and
+# how long past builds took and where the time went (soong_ui's build traces, ninja's
+# logs, the result lines in the build logs). Names, sizes and timings only, never
+# file contents beyond the build scripts' ccache and jobs lines.
+#
 # server-cleanup-list (read-only) and server-cleanup free disk for that tree:
 # expressiveos-cheetah/tools/server-cleanup.sh lists or removes the seven groups
 # of files it names (local copies of released and test builds, unpacked factory
@@ -85,7 +91,8 @@ on:
           local-commits: read-only: commits on top of the manifest revision in the
           repo projects named in query (default: cheetah's four), as patches.
           expressiveos-host: read-only: disk, host packages and folders the
-          ExpressiveOS cheetah tree needs. server-cleanup-list: read-only: what
+          ExpressiveOS cheetah tree needs. build-speed: read-only: CPU, memory,
+          disks, ccache and past build timings. server-cleanup-list: read-only: what
           server-cleanup.sh's groups hold now. server-cleanup: permanently remove
           the groups in query. expressiveos-status: read-only: the ExpressiveOS
           sessions, logs, keys and build. expressiveos-setup: install tree_ref's
@@ -116,6 +123,7 @@ on:
           - bp-repair
           - local-commits
           - expressiveos-host
+          - build-speed
           - server-cleanup-list
           - server-cleanup
           - expressiveos-status
@@ -178,7 +186,7 @@ jobs:
           # expressiveos-keys (two minutes of openssl in that tree)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-setup|expressiveos-keys)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -190,7 +198,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|server-cleanup-list|server-cleanup|expressiveos-status)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|server-cleanup-list|server-cleanup|expressiveos-status)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -697,6 +705,19 @@ jobs:
           echo "KernelSU Next fetched: $(cat ~/android-dt/ksu/CURRENT 2>/dev/null || echo none)"
           echo "cheetah firmware cached: $(cat ~/android-dt/firmware/cheetah/CURRENT 2>/dev/null || echo none)"
           echo "== tree lock"; if flock -n ~/.evolution-tree.lock true; then echo free; else echo "held (a routine or build is running)"; fi
+
+      # Read-only, so it runs beside a build too (its numbers then include that build's load)
+      - name: Check out the build-speed scripts
+        if: inputs.action == 'build-speed'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: tools/build_speed
+          fetch-depth: 1
+
+      - name: Build speed check
+        if: inputs.action == 'build-speed'
+        run: bash tools/build_speed/build-speed.sh
 
       # The script removes only while it holds the tree lock (no routine or build
       # starts meanwhile), and skips the emulator's build output while a build runs.
