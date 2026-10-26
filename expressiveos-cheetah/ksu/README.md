@@ -63,12 +63,14 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
 
 ## Install notes (for the release post and changelog)
 
-- ExpressiveOS is a clean install: unlock, flash the latest stock firmware, then the fastboot zip,
-  and wipe data. It doesn't update from Evolution X or other ROMs.
+- ExpressiveOS is a clean install only: unlock, flash the latest stock firmware, then the fastboot
+  zip with a data wipe (`fastboot -w update <zip>`). The zip writes every partition, init_boot
+  included, so whatever was on the phone before (another ROM, Magisk) is simply replaced; there's
+  nothing to remove first. Updates from other ROMs aren't supported.
 - Root: KernelSU Next with susfs ships in the ROM and its manager is preinstalled. No app gets root
   until you allow it in KernelSU Next. Root stays across updates.
 - susfs (root hiding) is off until you turn on SUSFS auto-load in KernelSU Next and restart.
-- Don't install Magisk: it and KernelSU Next can't both be installed.
+- Don't install Magisk afterwards: it and KernelSU Next can't both be installed.
 - KernelSU Next updates come with ExpressiveOS updates. Don't use the manager's "Install" to patch
   init_boot yourself: it puts back the stock module, which doesn't see the preinstalled manager.
 - No root: flash the build's `<build>-init_boot-stock.img` to both slots (`fastboot flash
