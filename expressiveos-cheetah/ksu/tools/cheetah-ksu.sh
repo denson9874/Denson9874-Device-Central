@@ -41,10 +41,13 @@ ko=$K/kernelsu.ko
 [[ -s $ko ]] || fail "no $ko (run $here/tools/ksu-module.sh)"
 [[ -f $O/init_boot.img && -f $O/boot.img ]] || fail "no init_boot.img or boot.img in $O"
 T=$(mktemp -d "${TMPDIR:-/tmp}/cheetah-ksu.XXXXXX")
-ramdisk() {   # ramdisk <boot image> <dir>: unpack its ramdisk into <dir>
+ramdisk() {   # ramdisk <boot image> <dir>: unpack init, init.real and kernelsu.ko from its ramdisk into <dir>
     unpack --boot_img "$1" --out "$T/u" >/dev/null || fail "can't unpack $1"
     mkdir -p "$2"
-    (cd "$2" && { lz4 -dc "$T/u/ramdisk" 2>/dev/null || gzip -dc "$T/u/ramdisk"; } | cpio -id --quiet) \
+    # Only the files the checks read: an Android ramdisk also holds device nodes (dev/console,
+    # dev/null...), and making those needs root
+    (cd "$2" && { lz4 -dc "$T/u/ramdisk" 2>/dev/null || gzip -dc "$T/u/ramdisk"; } \
+        | cpio -id --quiet --no-absolute-filenames init init.real kernelsu.ko) \
         || fail "can't unpack $1's ramdisk"
     rm -rf -- "$T/u"
 }
