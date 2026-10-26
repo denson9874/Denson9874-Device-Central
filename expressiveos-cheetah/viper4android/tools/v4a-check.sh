@@ -16,8 +16,8 @@
 #   v4a-check.sh device
 #       On a phone over adb (ANDROID_SERIAL picks one). Read-only. Run it soon after a
 #       boot: the logcat lines that show libeffects loaded the driver rotate out. On a user
-#       build adb shell may not read the driver or the audio HAL, nor see the effects dump:
-#       those checks are INFO there (v4a-check.sh out checks the files in the build).
+#       build adb shell may not read the driver or the audio HAL: those checks are INFO
+#       there (v4a-check.sh out checks the files in the build).
 set -euo pipefail
 fails=0 finished=0 T=
 cleanup() {
@@ -352,17 +352,25 @@ device)
         ''|*[!0-9]*) info "can't read /vendor/etc/audio_effects.xml from adb shell" ;;
         *) bad "/vendor/etc/audio_effects.xml has $n v4a lines: a ViPER module is installed (remove it, reboot)" ;;
     esac
-    # The effects dump (" ## BEGIN effects dump", "Libraries loaded:", " Library v4a_re") is
-    # only shown to root: a bug report has it, adb shell on a user build doesn't
-    a dumpsys media.audio_flinger > "$T/af"
+    # The effects dump (" ## BEGIN effects dump", then the audio HAL's "Libraries loaded:" and
+    # " Library v4a_re"): audio_flinger prints it only when asked (--effects; a bug report
+    # passes -a), and the HAL writes its part into adb shell's pipe, which policy allows
+    # (hal_audio.te: shell:fd use, shell:fifo_file write)
+    a dumpsys media.audio_flinger --effects > "$T/af"
     if ! grep -qF 'BEGIN effects dump' "$T/af"; then
-        info "dumpsys media.audio_flinger shows adb shell no effects dump here (a user build); a bug report's lists 'Library v4a_re'"
+        info "dumpsys media.audio_flinger --effects shows no effects dump here; a bug report's lists 'Library v4a_re'"
+    elif ! grep -qE '^Libraries loaded:' "$T/af"; then
+        info "the audio HAL wrote no effects list into dumpsys media.audio_flinger --effects here; a bug report's lists 'Library v4a_re'"
     else
-        n=$(grep -cE '^ *Library v4a_re$' "$T/af" || true)
-        case "${n:-0}" in
-            1) pass "dumpsys media.audio_flinger lists library v4a_re once" ;;
-            0) bad "dumpsys media.audio_flinger's effects dump doesn't list library v4a_re: libeffects didn't load it" ;;
-            *) bad "dumpsys media.audio_flinger lists library v4a_re $n times (registered more than once)" ;;
+        # Count it per list: libeffects names a library that failed to load the same way,
+        # under "Libraries NOT loaded:" (media/libeffects/factory/EffectsFactory.c)
+        read -r n nf < <(awk '/^Libraries loaded:/ { s = 1; next } /^Libraries NOT loaded:/ { s = 2; next }
+            /^[^ ]/ || /^ ##/ { s = 0 } s && /^ +Library v4a_re$/ { c[s]++ } END { print c[1] + 0, c[2] + 0 }' "$T/af")
+        [[ $nf = 0 ]] || bad "dumpsys media.audio_flinger --effects lists library v4a_re under 'Libraries NOT loaded': libeffects couldn't load it"
+        case "$n" in
+            1) pass "dumpsys media.audio_flinger --effects lists library v4a_re once under 'Libraries loaded'" ;;
+            0) bad "dumpsys media.audio_flinger --effects doesn't list library v4a_re under 'Libraries loaded': libeffects didn't load it" ;;
+            *) bad "dumpsys media.audio_flinger --effects lists library v4a_re $n times under 'Libraries loaded' (registered more than once)" ;;
         esac
     fi
     p=$(a pm list packages -f "$V4A_APP_PACKAGE" | grep -E "=$V4A_APP_PACKAGE\$" || true)

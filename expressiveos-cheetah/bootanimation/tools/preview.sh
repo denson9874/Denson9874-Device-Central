@@ -8,7 +8,7 @@ seq=$(mktemp -d "${TMPDIR:-/tmp}/bootanim-preview.XXXXXX")
 trap 'rm -rf -- "$seq"' EXIT
 n=0
 put() { ln -s "$(cd "$(dirname -- "$1")" && pwd)/${1##*/}" "$seq/$(printf 'f%05d.png' $n)"; n=$((n + 1)); }
-last= bg=
+last='' bg=''
 while read -r type plays pause part colour _; do
     [[ $type = [cp] ]] || continue
     bg=${colour#\#}
