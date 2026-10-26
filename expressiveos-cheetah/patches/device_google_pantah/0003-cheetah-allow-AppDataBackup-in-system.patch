@@ -1,0 +1,40 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 21:45:00 +0000
+Subject: [PATCH 3/9] cheetah: allow AppDataBackup in /system
+
+Evolution X installs AppDataBackup in /system, which generic_system.mk's
+artifact-path check forbids for device makefiles, so soong_build stops:
+"Device makefile produces files inside
+build/make/target/product/generic_system.mk's artifact path requirement"
+(system/etc/permissions/privapp-permissions-appbackup.xml,
+system/priv-app/AppDataBackup/AppDataBackup.apk). AppDataBackup's
+skip-on-Pixel check reads PRODUCT_MANUFACTURER, which inherited product
+makefiles never see. Allow-list its files, as device/google/shusky does
+for husky.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ lineage_cheetah.mk | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/lineage_cheetah.mk b/lineage_cheetah.mk
+index d476562..b6c20c3 100644
+--- a/lineage_cheetah.mk
++++ b/lineage_cheetah.mk
+@@ -33,4 +33,12 @@ PRODUCT_BUILD_PROP_OVERRIDES += \
+     BuildSystemFingerprint=google/generic_system_google/generic:17/CP3A.261005.002.A1/16269273:user/release-keys \
+     DeviceProduct=$(DEVICE_CODENAME)
+ 
++# Evolution X puts AppDataBackup in /system, which generic_system.mk's artifact-path
++# rules forbid for device makefiles (its skip-on-Pixel check reads
++# PRODUCT_MANUFACTURER, which inherited product makefiles never see). Allow it, as
++# LineageOS does for its own /system additions.
++PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \
++    system/etc/permissions/privapp-permissions-appbackup.xml \
++    system/priv-app/AppDataBackup/%
++
+ $(call inherit-product, $(VENDOR_PATH)/$(DEVICE_CODENAME)-vendor.mk)
+-- 
+2.43.0
+

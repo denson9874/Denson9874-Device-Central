@@ -20,14 +20,20 @@ source "$here/bootanim.conf" || fail "can't read $here/bootanim.conf"
 
 arg=${1:-$HOME/expressiveos}
 [[ $# -le 1 ]] || fail "usage: apply-bootanim.sh [top]"
-not_evo() { [[ "${1%/}" != */evolution && "${1%/}" != evolution ]] || fail "$arg is the Evolution X tree ($1); the ExpressiveOS boot animation is for the ExpressiveOS tree only"; }
+not_evo() {
+    [[ "${1%/}" != */evolution && "${1%/}" != evolution && "${1%/}" != */derpfest && "${1%/}" != derpfest ]] \
+        || fail "$arg is the Evolution X or DerpFest tree ($1); the ExpressiveOS boot animation is for the ExpressiveOS tree only"
+}
 not_evo "$arg"
 [[ -d "$arg" ]] || fail "no tree at $arg"
 top="$(cd "$arg" && pwd -P)"
 not_evo "$top"
-evo=
+evo='' derp=''
 if evo="$(cd "$HOME/evolution" 2>/dev/null && pwd -P)"; then
     [[ "$top" != "$evo" ]] || fail "$arg is the Evolution X tree (~/evolution); the ExpressiveOS boot animation is for the ExpressiveOS tree only"
+fi
+if derp="$(cd "$HOME/derpfest" 2>/dev/null && pwd -P)"; then
+    [[ "$top" != "$derp" ]] || fail "$arg is the DerpFest tree (~/derpfest); the ExpressiveOS boot animation is for the ExpressiveOS tree only"
 fi
 [[ -f "$top/build/envsetup.sh" ]] || fail "$top isn't an Android tree (no build/envsetup.sh)"
 bmk="$top/vendor/lineage/bootanimation/Android.mk"
@@ -35,11 +41,12 @@ grep -q 'TARGET_BOOTANIMATION' "$bmk" 2>/dev/null \
     || fail "$bmk is missing or no longer reads TARGET_BOOTANIMATION; check how Evolution X installs its boot animation now"
 grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/lineage/config/common.mk" 2>/dev/null \
     || fail "vendor/lineage/config/common.mk no longer inherits vendor/extra/product.mk: the boot animation would silently not ship"
-in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top and not in ~/evolution
+in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top and not in ~/evolution or ~/derpfest
     local r
     r=$(realpath -m -- "$1") || fail "can't resolve $1"
     [[ "$r" == "$top"/* ]] || fail "${1#"$top"/} leads to $r, outside $top (a symlink?); this kit writes only inside the ExpressiveOS tree"
     [[ -z "$evo" || ( "$r" != "$evo" && "$r" != "$evo"/* ) ]] || fail "${1#"$top"/} leads into the Evolution X tree ($r)"
+    [[ -z "$derp" || ( "$r" != "$derp" && "$r" != "$derp"/* ) ]] || fail "${1#"$top"/} leads into the DerpFest tree ($r)"
 }
 for p in vendor/extra vendor/extra/bootanimation vendor/extra/product.mk; do in_top "$top/$p"; done
 echo "== ExpressiveOS boot animation -> $top"

@@ -1,0 +1,42 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <daryldenson0405@gmail.com>
+Date: Wed, 21 Oct 2026 10:30:00 +0200
+Subject: [PATCH 2/4] cheetah: don't install gpuflag
+
+The vendor blob's gpuflag.rc runs /vendor/bin/gpuflag as
+exec_background u:r:gpuflag:s0, but our policy has no gpuflag domain:
+init's child fails setexeccon('u:r:gpuflag:s0') and aborts (SIGABRT,
+"Fatal signal 6 ... (init)") on every boot before running it. gpuflag
+(vendor/google/graphics/gpuflag) only sets power/autosuspend_delay_ms on
+/sys/devices/genpd:0:34f00000.gpu0, which this SoC doesn't have
+(gs201's Mali is genpd:0:28000000.mali), so it would exit "unsupported device" anyway.
+Stop installing gpuflag.rc, gpuflag and libgpuflag_aconfig_rust.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ cheetah-vendor.mk | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/cheetah-vendor.mk b/cheetah-vendor.mk
+index 8e0ac25..82bdbbf 100644
+--- a/cheetah-vendor.mk
++++ b/cheetah-vendor.mk
+@@ -974,7 +974,6 @@ PRODUCT_COPY_FILES += \
+     vendor/google/cheetah/proprietary/vendor/etc/init/dump_power.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/dump_power.rc \
+     vendor/google/cheetah/proprietary/vendor/etc/init/fingerprint-goodix.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/fingerprint-goodix.rc \
+     vendor/google/cheetah/proprietary/vendor/etc/init/google.hardware.media.c2@1.0-service.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/google.hardware.media.c2@1.0-service.rc \
+-    vendor/google/cheetah/proprietary/vendor/etc/init/gpuflag.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/gpuflag.rc \
+     vendor/google/cheetah/proprietary/vendor/etc/init/hw/init.cheetah.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/hw/init.cheetah.rc \
+     vendor/google/cheetah/proprietary/vendor/etc/init/hw/init.gs201.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/hw/init.gs201.rc \
+     vendor/google/cheetah/proprietary/vendor/etc/init/hw/init.gs201.storage.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/hw/init.gs201.storage.rc \
+@@ -2748,7 +2747,6 @@ PRODUCT_PACKAGES += \
+     libedgetpu_util \
+     libexynosdisplay \
+     libgf_hal \
+-    libgpuflag_aconfig_rust \
+     libgril_oem-google \
+     libgxp \
+     libmemtrack-pixel \
+-- 
+2.43.0
+

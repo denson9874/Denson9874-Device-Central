@@ -21,6 +21,28 @@
 # evolution-cheetah/patches before a repo sync drops them. Binary changes are
 # listed by name, never included.
 #
+# expressiveos-host is read-only too: what the ExpressiveOS cheetah tree
+# (expressiveos-cheetah/) needs from the server before its first sync: free
+# disk and where it went, the host packages its scripts use, and whether its
+# folders exist yet. Names and sizes only, never file contents.
+#
+# server-cleanup-list (read-only) and server-cleanup free disk for that tree:
+# expressiveos-cheetah/tools/server-cleanup.sh lists or removes the seven groups
+# of files it names (local copies of released and test builds, unpacked factory
+# zips, the emulator's output), by exact path; the image zips the pack scripts
+# read stay. server-cleanup removes only the groups in query, which Daryl approves,
+# and only while the tree lock is free (it holds it while it removes).
+#
+# The other expressiveos-* actions run the ExpressiveOS cheetah build in its own tree,
+# ~/expressiveos (expressiveos-cheetah/README.md), with tree_ref's kit installed as
+# ~/expressiveos-cheetah. setup (repo sync, then KernelSU Next's files), build and
+# pack run for hours, past this job's limit, so each runs in a tmux session of its own
+# (eos-setup, eos-build, eos-pack) with a clean environment, outside the job: the job
+# starts it and returns, and expressiveos-status (read-only) shows how it's going.
+# expressiveos-keys makes ExpressiveOS's signing keys, once and never over existing
+# ones, plus a backup archive on the server (mode 600) for copying off it by scp; its
+# log shows counts, sizes and public fingerprints, never key material.
+#
 # Never add an upload-artifact step: build output contains Google's
 # proprietary images, which must not leave the server. Logs only. `inspect`
 # prints policy excerpts, manifests and library lists, never file contents
@@ -62,6 +84,15 @@ on:
           state. bp-repair: fix the one Android.bp named in query (see query).
           local-commits: read-only: commits on top of the manifest revision in the
           repo projects named in query (default: cheetah's four), as patches.
+          expressiveos-host: read-only: disk, host packages and folders the
+          ExpressiveOS cheetah tree needs. server-cleanup-list: read-only: what
+          server-cleanup.sh's groups hold now. server-cleanup: permanently remove
+          the groups in query. expressiveos-status: read-only: the ExpressiveOS
+          sessions, logs, keys and build. expressiveos-setup: install tree_ref's
+          expressiveos-cheetah, then setup.sh and ksu/fetch-ksu.sh in tmux.
+          expressiveos-keys: make ExpressiveOS's keys (once) and a backup archive.
+          expressiveos-build: install the kit, then eos-images.sh and eos-pack.sh in
+          tmux. expressiveos-pack: install the kit, then eos-pack.sh in tmux.
         type: choice
         default: status
         options:
@@ -84,8 +115,16 @@ on:
           - bp-check
           - bp-repair
           - local-commits
+          - expressiveos-host
+          - server-cleanup-list
+          - server-cleanup
+          - expressiveos-status
+          - expressiveos-setup
+          - expressiveos-keys
+          - expressiveos-build
+          - expressiveos-pack
       tree_ref:
-        description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak (sync, round) or evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, cheetah-install-routine) from
+        description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak (sync, round), evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, cheetah-install-routine) or expressiveos-cheetah (expressiveos-setup, -keys, -build, -pack) from
         type: string
         default: evolution/kodiak-port
       query:
@@ -99,7 +138,10 @@ on:
           (delete lone ',' lines the parser stops at); path relative to
           ~/evolution, e.g. vendor/google/kodiak/Android.bp. local-commits:
           space-separated project paths under device/ or vendor/ (default:
-          cheetah's four projects).
+          cheetah's four projects). server-cleanup-list (optional) and
+          server-cleanup (required): groups, e.g. 1,2,3,4,5,6,7.
+          expressiveos-build (optional): kernel-only (build_kernel and kernelsu.ko,
+          no pack), kernel-sync (sync the kernel source again).
         type: string
         default: ''
 
@@ -130,15 +172,30 @@ jobs:
             [[ -d "$p" ]] || { echo "::error::missing $p"; exit 1; }
           done
           # Builds started by hand (or by another agent) share ~/evolution with
-          # this job, and the husky build too. Don't start on top of one.
+          # this job, and the husky build too. Don't start on top of one. The
+          # read-only actions run anyway, and so do expressiveos-setup (a repo sync
+          # of its own tree, ~/expressiveos: network and disk, no build) and
+          # expressiveos-keys (two minutes of openssl in that tree)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-setup|expressiveos-keys)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
             echo "::notice::a build is running on the server"
           fi
+          # An ExpressiveOS build or pack runs in tmux, outside this job and its
+          # concurrency group, for hours, with stretches where no soong_ui or ninja
+          # runs (the kernel build, verify, pack): count it as a running build too.
+          # Its setup (a repo sync of its own tree) doesn't count
+          for s in eos-build eos-pack; do
+            tmux has-session -t "=$s" 2>/dev/null || continue
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|server-cleanup-list|server-cleanup|expressiveos-status)$ ]]; then
+              echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
+              exit 1
+            fi
+            echo "::notice::the ExpressiveOS tmux session $s is running"
+          done
           echo "host $(hostname), user $(id -un), action $ACTION, tree_ref $TREE_REF"
 
       - name: Status
@@ -587,3 +644,275 @@ jobs:
             head -6000 "$RUNNER_TEMP/lc.patch"
             (( lines <= 6000 )) || echo "(cut after 6000 of $lines lines)"
           done
+
+      - name: ExpressiveOS host check
+        if: inputs.action == 'expressiveos-host'
+        run: |
+          echo "== disk"; df -h ~ /tmp | sed 1d; df -i ~ | sed 1d
+          echo "== biggest folders in ~ (GiB; du runs at low priority and can take a while)"
+          nice -n 19 ionice -c2 -n7 du -x -d1 -BG ~ 2>/dev/null | sort -rn | head -20 || true
+          for t in ~/evolution ~/derpfest; do
+            [[ -d "$t" ]] || continue
+            echo "== $t: source, out, kernel out (GiB)"
+            nice -n 19 ionice -c2 -n7 du -x -s -BG "$t/.repo" "$t/out" "$t"/out-kernel 2>/dev/null || true
+          done
+          for d in ~/evolution/out ~/evolution/out/target/product ~/derpfest/out/target/product ~/releases ~/android-dt; do
+            [[ -d "$d" ]] || continue
+            echo "== $d (GiB)"
+            nice -n 19 ionice -c2 -n7 du -x -d1 -BG "$d" 2>/dev/null | sort -rn | head -15 || true
+          done
+          for d in ~/android-dt/firmware ~/android-dt/dumps; do
+            [[ -d "$d" ]] || continue
+            echo "== $d, two levels (GiB)"
+            nice -n 19 ionice -c2 -n7 du -x -d2 -BG "$d" 2>/dev/null | sort -rn | head -30 || true
+          done
+          for t in ~/evolution ~/derpfest; do
+            [[ -d "$t/.repo" ]] || continue
+            echo "== $t: repo depth '$(git -C "$t/.repo/manifests" config --get repo.depth || true)', frameworks/base shallow: $(git -C "$t/frameworks/base" rev-parse --is-shallow-repository 2>/dev/null || echo unknown)"
+          done
+          echo "== files directly in ~/android-dt/firmware over 1 GiB, oldest first"
+          find ~/android-dt/firmware -maxdepth 1 -type f -size +1G -printf '%TY-%Tm-%Td %s %f\n' 2>/dev/null | sort | numfmt --to=iec --field=2 | head -80 || true
+          echo "== files in ~/releases over 1 GiB, oldest first"
+          find ~/releases -type f -size +1G -printf '%TY-%Tm-%Td %s %P\n' 2>/dev/null | sort | numfmt --to=iec --field=2 | head -80 || true
+          echo "== files in /tmp over 1 GiB"
+          find /tmp -maxdepth 1 -type f -size +1G -printf '%s %p\n' 2>/dev/null | sort -rn | numfmt --to=iec --field=1 || true
+          echo "== ccache"
+          ccache -s 2>/dev/null | grep -iE 'cache directory|cache size' || echo "(no ccache stats)"
+          echo "== host packages the ExpressiveOS scripts use"
+          if command -v dpkg-query > /dev/null; then
+            for p in bc bison flex libelf-dev libssl-dev zlib1g-dev binutils lz4 cpio openssl git-lfs zip unzip rsync curl python3 ccache tmux; do
+              if [[ "$(dpkg-query -W -f='${db:Status-Abbrev}' "$p" 2>/dev/null || true)" == ii* ]]; then echo "ok       $p"; else echo "MISSING  $p"; fi
+            done
+          else
+            echo "(no dpkg-query: not a Debian or Ubuntu host)"
+          fi
+          for c in repo git-lfs lz4 cpio openssl flex bison bc strings zip unzip sftp tmux; do
+            if command -v "$c" > /dev/null || [[ -x ~/bin/$c ]]; then echo "ok       $c (command)"; else echo "MISSING  $c (command)"; fi
+          done
+          echo "groups: $(id -nG) (installing packages needs an admin, or sudo in these)"
+          echo "== ExpressiveOS folders"
+          for p in ~/expressiveos ~/expressiveos/.repo ~/expressiveos-cheetah ~/releases/expressiveos-cheetah ~/android-dt/ksu ~/android-dt/firmware/cheetah; do
+            if [[ -e "$p" ]]; then echo "exists   $p"; else echo "absent   $p"; fi
+          done
+          echo "KernelSU Next fetched: $(cat ~/android-dt/ksu/CURRENT 2>/dev/null || echo none)"
+          echo "cheetah firmware cached: $(cat ~/android-dt/firmware/cheetah/CURRENT 2>/dev/null || echo none)"
+          echo "== tree lock"; if flock -n ~/.evolution-tree.lock true; then echo free; else echo "held (a routine or build is running)"; fi
+
+      # The script removes only while it holds the tree lock (no routine or build
+      # starts meanwhile), and skips the emulator's build output while a build runs.
+      - name: Check out the cleanup script
+        if: inputs.action == 'server-cleanup-list' || inputs.action == 'server-cleanup'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: expressiveos-cheetah/tools
+          fetch-depth: 1
+
+      - name: Server cleanup
+        if: inputs.action == 'server-cleanup-list' || inputs.action == 'server-cleanup'
+        run: |
+          script=expressiveos-cheetah/tools/server-cleanup.sh
+          if [[ "$ACTION" = server-cleanup ]]; then
+            [[ "$QUERY" =~ ^[1-7](,[1-7])*$ ]] || { echo "::error::server-cleanup needs the approved groups in query, e.g. 1,2,3"; exit 1; }
+            bash "$script" delete "$QUERY"
+          else
+            [[ -z "$QUERY" || "$QUERY" =~ ^[1-7](,[1-7])*$ ]] || { echo "::error::query is groups, e.g. 1,2,3"; exit 1; }
+            bash "$script" list ${QUERY:+"$QUERY"}
+          fi
+
+      # ---- ExpressiveOS for cheetah: expressiveos-cheetah/README.md ---------------
+
+      - name: ExpressiveOS status
+        if: inputs.action == 'expressiveos-status'
+        run: |
+          top=~/expressiveos jobs=~/expressiveos-jobs
+          echo "== machine"; uptime; free -g | head -2; df -h ~ | sed 1d
+          echo "== sessions"; tmux ls 2>/dev/null | grep -E '^eos-' || echo "no ExpressiveOS session running"
+          for l in ~/.expressiveos.lock ~/.evolution-tree.lock; do
+            if flock -n "$l" true; then echo "${l#"$HOME"/}: free"; continue; fi
+            echo "${l#"$HOME"/}: held"
+            # Who holds it: /proc/locks names the process and the file's inode
+            i=$(stat -c %i "$l")
+            for p in $(awk -v i="$i" '$2 != "->" { split($6, f, ":"); if (f[3] == i) print $5 }' /proc/locks 2>/dev/null | sort -u); do
+              echo "  by $p, started $(ps -o lstart= -p "$p" 2>/dev/null || echo "?"): $(ps -o args= -p "$p" 2>/dev/null | cut -c1-150 || true)"
+            done
+          done
+          pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-160 | head -3 || true
+          echo "== kit: $(cat ~/expressiveos-cheetah/INSTALLED_FROM 2>/dev/null || echo "not installed")"
+          grep -E '^EOS_(AVB_PUBKEY_SHA1|OTA_CERT_SHA256)=' ~/expressiveos-cheetah/eos.conf 2>/dev/null || true
+          echo "== tree"
+          if [[ -d $top/.repo ]]; then
+            n=$(cd "$top" && export PATH=~/bin:$PATH && { repo list --all 2>/dev/null || repo list 2>/dev/null; } | wc -l || true)
+            f=$(find "$top/.repo/project-objects" -name '*.git' -prune -type d 2>/dev/null | wc -l || true)
+            echo "projects: $n in the manifest, $f fetched"
+            echo "~/expressiveos/.repo: $(timeout 300 nice -n 19 du -sh "$top/.repo" 2>/dev/null | cut -f1 || echo "(du took too long)")"
+          else
+            echo "not set up yet"
+          fi
+          echo "== keys: $(find "$top/vendor/evolution-priv/keys" -maxdepth 1 -name '*.pk8' 2>/dev/null | wc -l) .pk8 files in expressiveos/vendor/evolution-priv/keys"
+          ls -l ~/expressiveos-keys-*.tar.gz 2>/dev/null || echo "no key backup archive on the server"
+          echo "== build: $(cat "$top/out/eos/build.ok" 2>/dev/null || echo "no complete build (out/eos/build.ok)")"
+          echo "== Evolution X routines (they share the tree lock): newest result per device"
+          for f in ~/routine-logs/*-latest.out; do
+            [[ -f $f ]] || continue
+            echo "$(basename "$f" -latest.out): $(date -r "$f" '+%F %T'), $(grep -a '^ROUTINE_RESULT=' "$f" | tail -1 || true)"
+          done
+          ls -t ~/routine-logs 2>/dev/null | head -8 || true
+          ls -lh ~/releases/expressiveos-cheetah/check 2>/dev/null || true
+          for s in setup keys build pack; do
+            log=$jobs/$s.log
+            [[ -f $log ]] || continue
+            echo "== $s log, $(date -r "$log" '+%F %T'), $(du -h "$log" | cut -f1)"
+            grep -aE '^(== |FAIL|WARNING|SETUP|FETCH_KSU|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|PACK=|VERIFY|SESSION_EXIT)|FAILED:|error:' "$log" | tail -n 25 | cut -c1-300 || true
+            echo "-- last lines"
+            tail -c 200000 "$log" | tr '\r' '\n' | grep -av '^[[:space:]]*$' | tail -n 15 | cut -c1-300 || true
+          done
+
+      - name: Check out expressiveos-cheetah
+        if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack"]'), inputs.action)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tree_ref }}
+          sparse-checkout: expressiveos-cheetah
+          fetch-depth: 1
+
+      - name: ExpressiveOS
+        if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack"]'), inputs.action)
+        run: |
+          fail() { echo "::error::$*"; exit 1; }
+          kit=~/expressiveos-cheetah jobs=~/expressiveos-jobs
+          read -r -a opts <<< "$QUERY"
+          envs=()
+          for o in ${opts[@]+"${opts[@]}"}; do
+            case "$ACTION:$o" in
+              expressiveos-build:kernel-only) envs+=(KERNEL_ONLY=1) ;;
+              expressiveos-build:kernel-sync) envs+=(EOS_KERNEL_SYNC=1) ;;
+              *) fail "query '$o' isn't for $ACTION (only expressiveos-build takes one: kernel-only, kernel-sync)" ;;
+            esac
+          done
+          # Nothing of ExpressiveOS's may be running: the kit is replaced below, and bash
+          # reads a script while it runs it
+          for s in eos-setup eos-build eos-pack; do
+            if tmux has-session -t "=$s" 2>/dev/null; then fail "tmux session $s is still running (expressiveos-status shows its log)"; fi
+          done
+          if pgrep -u "$(id -u)" -f -- "$kit/" > /dev/null; then
+            pgrep -a -u "$(id -u)" -f -- "$kit/" | cut -c1-200
+            fail "an ExpressiveOS script is running"
+          fi
+          exec 8>~/.expressiveos.lock
+          flock -n 8 || fail "~/.expressiveos.lock is held (an ExpressiveOS setup, build or pack is running)"
+
+          src=$GITHUB_WORKSPACE/expressiveos-cheetah
+          [[ -f $src/eos.conf && -f $src/lib.sh ]] || fail "$TREE_REF has no expressiveos-cheetah/"
+          [[ ! -L $kit ]] || fail "$kit is a symlink; move it away first"
+          # Only ever replace a copy this action installed (rsync --delete)
+          if [[ -d $kit && ! -f $kit/INSTALLED_FROM && -n "$(ls -A "$kit")" ]]; then
+            fail "$kit wasn't installed by the runner (no INSTALLED_FROM); move it away first"
+          fi
+          sha=$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)
+          # Copied beside it, then swapped in: a copy that fails half way (a full disk)
+          # leaves the installed kit as it was
+          new=$(mktemp -d ~/.expressiveos-cheetah.new.XXXXXX)
+          trap 'rm -rf -- "$new"' EXIT
+          rsync -a --exclude .git "$src/" "$new/"
+          echo "$TREE_REF@$sha" > "$new/INSTALLED_FROM"
+          old=
+          if [[ -e $kit ]]; then old=$(mktemp -u ~/.expressiveos-cheetah.old.XXXXXX); mv -- "$kit" "$old"; fi
+          mv -- "$new" "$kit"
+          trap - EXIT
+          [[ -z $old ]] || rm -rf -- "$old"
+          echo "kit $TREE_REF@${sha:0:7} installed in ~/expressiveos-cheetah"
+          mkdir -p "$jobs"; chmod 700 "$jobs"
+
+          if [[ $ACTION = expressiveos-keys ]]; then
+            # README.md, "Keys", while holding ~/.expressiveos.lock: no setup or build meanwhile
+            top=$(bash -c 'source "$1/lib.sh" && eos_top && echo "$top"' _ "$kit") || fail "no ExpressiveOS tree to make the keys in"
+            grep -qa '^SETUP_OK ' "$jobs/setup.log" 2>/dev/null || fail "the tree isn't set up: run expressiveos-setup and wait for SETUP_OK (expressiveos-status)"
+            for f in external/avb/avbtool.py development/tools/make_key build/make/target/product/security/testkey.pk8; do
+              [[ -f $top/$f ]] || fail "$f is missing from the tree"
+            done
+            [[ -x $top/external/avb/avbtool.py ]] || fail "external/avb/avbtool.py isn't executable (keys.sh runs it)"
+            if grep -qE '^EOS_(AVB_PUBKEY_SHA1|OTA_CERT_SHA256)=.' "$kit/eos.conf"; then
+              fail "eos.conf pins ExpressiveOS's keys already: restore vendor/evolution-priv/keys from the backup, never make new ones"
+            fi
+            priv=$top/vendor/evolution-priv
+            if [[ -e $priv || -L $priv ]]; then
+              ls -la "$priv" | head -20
+              fail "expressiveos/vendor/evolution-priv already exists: never make keys over it"
+            fi
+            umask 077
+            # Evolution X's template at the commit whose keys.sh and make_key.sh were read
+            tmpl=fed6526d27440d6c1317b465ea399a287313ba19
+            # Cloned beside the tree first, so a failed clone leaves nothing in it (the
+            # clone holds no keys yet, so removing it is safe)
+            clone=$(mktemp -d "$jobs/keys-template.XXXXXX")
+            trap 'rm -rf -- "$clone"' EXIT
+            git clone -q https://github.com/Evolution-X/vendor_evolution-priv_keys-template "$clone/keys"
+            git -C "$clone/keys" -c advice.detachedHead=false checkout -q "$tmpl"
+            [[ "$(git -C "$clone/keys" rev-parse HEAD)" = "$tmpl" ]] || fail "the template isn't at $tmpl"
+            git -C "$clone/keys" remote remove origin
+            mkdir -p "$top/vendor"
+            mkdir "$priv"
+            mv "$clone/keys" "$priv/keys"
+            cd "$priv/keys" || fail "can't cd to $priv/keys"
+            # About 2 minutes, no prompts; it always exits 1 (make_key's trap). Its output
+            # (openssl's progress and the file names) stays on the server
+            ./keys.sh > "$jobs/keys.log" 2>&1 || true
+            chmod 700 . && chmod 600 ./*.pk8
+            echo "$(find . -maxdepth 1 -name '*.pk8' -type f | wc -l) private keys, $(find . -maxdepth 1 -name '*.x509.pem' -type f | wc -l) certificates"
+            bash "$kit/tools/eos-keys-check.sh" tree "$top" 2>&1 | tee "$jobs/keys-check.log" || true
+            [[ "$(tail -1 "$jobs/keys-check.log")" = KEYS_CHECK=UNPINNED ]] || fail "the new keys don't pass eos-keys-check.sh tree (above); nothing was archived"
+            bak=~/expressiveos-keys-$(date -u +%Y%m%d-%H%M%S).tar.gz
+            tar -C "$priv" -czf "$bak" keys
+            chmod 600 "$bak"
+            n=$(tar -tzf "$bak" | grep -c '\.pk8$')
+            {
+              echo "ExpressiveOS keys made in ~/expressiveos/vendor/evolution-priv/keys."
+              echo "Backup archive on the server: \`$bak\`, $(stat -c %s "$bak") bytes, $n .pk8 entries, sha256 \`$(sha256sum "$bak" | cut -d' ' -f1)\`. Copy it off the server by scp; never into git."
+              sed -n 's/^UNPINNED: \(.*\) is \([0-9A-F]*\)\. Once.*/- \1: `\2`/p' "$jobs/keys-check.log"
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # setup, build and pack take ~/.expressiveos.lock themselves
+          exec 8>&-
+          ident=()
+          if ! git config --global user.name > /dev/null || ! git config --global user.email > /dev/null; then
+            # git am (the kit's tree patches) needs a committer; set for the session, not globally
+            who="ExpressiveOS build" mail="$(id -un)@$(hostname -s)"
+            ident=(GIT_AUTHOR_NAME="$who" GIT_AUTHOR_EMAIL="$mail" GIT_COMMITTER_NAME="$who" GIT_COMMITTER_EMAIL="$mail")
+          fi
+          # A fresh login's environment: none of this job's variables (when the job ends the
+          # runner kills every process that carries its RUNNER_TRACKING_ID), nothing
+          # envsetup.sh set for another tree
+          clean=(env -i HOME="$HOME" USER="$(id -un)" LOGNAME="$(id -un)" SHELL=/bin/bash LANG=C.UTF-8
+                 TERM=screen PATH="$HOME/bin:$PATH" ${ident[@]+"${ident[@]}"})
+          launch() {   # launch <name> <command>: run it in tmux session eos-<name>, outside this job, logged to ~/expressiveos-jobs/<name>.log
+            local s=eos-$1 job=$jobs/$1.sh log=$jobs/$1.log q
+            printf -v q '%q ' "${clean[@]}"
+            {
+              echo '#!/bin/bash'
+              echo "# $ACTION from the runner, kit $TREE_REF@${sha:0:7}, $(date -u '+%F %T') UTC"
+              echo 'cd ~ || exit 1'
+              echo "{ echo \"== $s, \$(date -u '+%F %T') UTC\"; $2; echo \"SESSION_EXIT=\$?\"; } 2>&1 | tee -- $(printf %q "$log")"
+            } > "$job"
+            [[ ! -f $log ]] || mv -f -- "$log" "$log.1"
+            "${clean[@]}" tmux new-session -d -s "$s" "${q}bash --noprofile --norc $(printf %q "$job")"
+            sleep 15
+            if ! tmux has-session -t "=$s" 2>/dev/null; then
+              tail -n 30 "$log" 2>/dev/null || true
+              fail "$s ended at once (its log is above)"
+            fi
+            tail -n 5 "$log" || true
+            echo "started tmux session $s, kit $TREE_REF@${sha:0:7}: expressiveos-status shows how it's going (on the server: tmux attach -t $s, log ~/expressiveos-jobs/$1.log)" | tee -a "$GITHUB_STEP_SUMMARY"
+          }
+          e=
+          (( ${#envs[@]} == 0 )) || printf -v e '%q ' "${envs[@]}"
+          case $ACTION in
+            expressiveos-setup) launch setup "$kit/setup.sh && $kit/ksu/fetch-ksu.sh" ;;
+            expressiveos-build)
+              pack=" && $kit/tools/eos-pack.sh"
+              [[ " ${envs[*]-} " != *" KERNEL_ONLY=1 "* ]] || pack=
+              launch build "env ${e}$kit/tools/eos-images.sh$pack" ;;
+            expressiveos-pack) launch pack "$kit/tools/eos-pack.sh" ;;
+          esac
