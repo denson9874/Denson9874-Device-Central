@@ -100,7 +100,8 @@ for d in "$kit"/patches/* "$kit"/ksu/patches/* "$kit"/viper4android/patches/*; d
 done
 {
     echo "ExpressiveOS $EOS_VERSION $EOS_BUILD_TYPE, cheetah, $(date -u '+%F %T') UTC"
-    echo "kit: $(git -C "$kit" rev-parse HEAD 2>/dev/null || echo "not a git checkout")$([[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || echo " (with local changes)")"
+    # A copy the runner installed (rsync, no .git) names the commit it came from
+    echo "kit: $(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")$([[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || echo " (with local changes)")"
     echo "KernelSU Next: $(sed -n 's/^version=//p' "$kit/ksu/ksu.conf") $(sed -n 's/^src_commit=//p' "$kit/ksu/ksu.conf")"
     echo "Patched projects: upstream revision (repo's m/$EOS_MANIFEST_BRANCH), then HEAD with the kit's commits"
     printf '%s\n' "${projects[@]}" | sort -u
