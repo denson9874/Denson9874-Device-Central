@@ -379,7 +379,7 @@ device)
             s == 1 && lib != "" && $1 == "UUID:" && tolower($2) == want {
                 if (lib == "v4a_re") u++; else o = o (o == "" ? "" : ",") lib }
             END { print c[1] + 0, c[2] + 0, u + 0, (o == "" ? "-" : o) }' "$T/af")
-        [[ $nf = 0 ]] || { loadfail=1; bad "dumpsys media.audio_flinger --effects lists library v4a_re under 'Libraries NOT loaded': libeffects couldn't load it"; }
+        [[ $nf = 0 ]] || { loadfail=1; bad "dumpsys media.audio_flinger --effects lists library v4a_re under 'Libraries NOT loaded': an effects config (audio_effects.xml in /odm/etc, /vendor/etc or /system/etc, likely a ViPER module's) names a v4a_re that libeffects couldn't load"; }
         [[ $others = - ]] || { loadfail=1; bad "dumpsys media.audio_flinger --effects lists ViPER's effect ($V4A_FX_UUID) under library $others too: a module patching audio_effects.xml registered it (remove it, reboot)"; }
         case "$n" in
             1) if [[ $u = 1 ]]; then
