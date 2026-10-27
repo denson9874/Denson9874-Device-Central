@@ -921,11 +921,12 @@ jobs:
           # incremental base line eos-pack.sh --release looks for
           v=$top/out/eos/verify.log
           if [[ -f $v ]]; then
-            echo "== out/eos/verify.log, $(date -r "$v" '+%F %T'): warnings, notes, incremental base"
-            grep -aE '^(WARNING|note|OK: incremental base)' "$v" | cut -c1-300 | head -n 30 || true
+            echo "== out/eos/verify.log, $(date -r "$v" '+%F %T'): warnings, notes, incremental base, verdict"
+            grep -aE '^(WARNING|note|OK: incremental base|FAIL|VERIFY=)' "$v" | cut -c1-300 | head -n 30 || true
           fi
-          # Names only (eos-pack.sh --upload needs EOS_R2_REMOTE's)
-          if command -v rclone > /dev/null; then echo "== rclone remotes: $(rclone listremotes 2>/dev/null | tr '\n' ' ')"; else echo "== no rclone"; fi
+          # Names only. The kit and the routines call ~/bin/rclone (eos-pack.sh --upload needs
+          # EOS_R2_REMOTE's remote), which this step's PATH doesn't have
+          if [[ -x ~/bin/rclone ]]; then echo "== ~/bin/rclone remotes: $(~/bin/rclone listremotes 2>/dev/null | tr '\n' ' ')"; else echo "== no ~/bin/rclone"; fi
           echo "== Evolution X routines (they share the tree lock): newest result per device"
           for f in ~/routine-logs/*-latest.out; do
             [[ -f $f ]] || continue
