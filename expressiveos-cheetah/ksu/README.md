@@ -147,8 +147,10 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
   turns every module off for good, NeoZygisk included: remove the bad module in the manager, then
   turn NeoZygisk (and any other module you want) back on and restart.
 - Flashing over a phone that already ran an older build (no data wipe) doesn't turn susfs on or
-  install NeoZygisk; turn them on in the manager, or run
+  install NeoZygisk; turn them on in the manager, or allow Shell in KernelSU Next's Superuser list
+  (adb shell gets no root until then), run
   `adb shell "su -c 'rm -f /data/adb/eos/done; touch /data/adb/eos/pending'"` (quoted once, so `su` runs both) and restart twice.
+  Turn Shell off again afterwards if you don't use root over adb.
 - Don't install Magisk afterwards: it and KernelSU Next can't both be installed.
 - KernelSU Next updates come with ExpressiveOS updates. Don't use the manager's "Install" to patch
   init_boot yourself: it puts back the stock module, which doesn't see the preinstalled manager.
