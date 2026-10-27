@@ -41,7 +41,7 @@ Tree patches (`apply.sh`, as local commits; `repo sync` drops them and the next 
 |---|---|
 | `device_google_pantah` 0001, 0002, 0010 | ExpressiveOS's own: maintainer, update feed, only ExpressiveOS's boot animation |
 | `device_google_pantah` 0003-0009, `device_google_gs201` 0001-0005, `vendor_google_cheetah` | `evolution-cheetah`'s, copied unchanged |
-| `device_google_gs201` 0006 | ExpressiveOS's own: target-files takes the images the build made (`COPY_IMAGES_FOR_TARGET_FILES_ZIP`) instead of making them again with other file times, so the fastboot zip and the OTA carry the same images and an incremental OTA applies on phones installed either way |
+| `device_google_gs201` 0006 | ExpressiveOS's own: target-files takes the system, vendor, product and other dynamic partition images the build made (`COPY_IMAGES_FOR_TARGET_FILES_ZIP`) instead of making them again with other file times, so the fastboot zip and the OTA carry the same ones and an incremental OTA can patch them on phones installed either way (target-files still signs its own boot images and vbmeta, which an incremental writes whole) |
 | `frameworks_base` 0001-0010 | The fixes the Evolution X tree carries, refreshed for today's frameworks/base: they apply without history too |
 | `frameworks_base` 0011-0020 | evolution-kodiak's background-power fixes (2026-10-26), copied: SystemUI animations that kept running with the screen off or on AOD, the colored status bar icons setting, AxSpoofManager's fetches, Extreme Charging's 50% limit |
 | `vendor_lineage` 0001 | ExpressiveOS 1.0 names, and the build's own date, so both make passes name one zip |
@@ -164,9 +164,11 @@ vbmeta and vbmeta_system are ExpressiveOS's, patch levels), KernelSU Next and th
 ViPER4Android, the boot animation, the wallpaper, the branding (`tools/brand-check.py`: no app, framework string or
 tombstone header names Evolution X, apart from the few links it lists on purpose), the firmware and the
 fastboot files, and the target-files zip (`tools/eos-target-files.sh`: the package's, with out/'s KernelSU
-Next init_boot, and a WARNING if any image the fastboot zip flashes isn't byte for byte its copy there:
-an incremental OTA from this build couldn't patch it on phones installed from the fastboot zip, so
-`eos-pack.sh --release` refuses such a build, though it still packs as a candidate).
+Next init_boot, and a WARNING if a dynamic partition image the fastboot zip flashes, system, vendor,
+product and the rest, isn't byte for byte its copy there: an incremental OTA from this build couldn't
+patch it on phones installed from the fastboot zip, so `eos-pack.sh --release` refuses such a build,
+though it still packs as a candidate; a note lists the other images, which target-files signs again
+with its own AVB salts and an incremental writes whole).
 
 ## Test and release
 
@@ -187,7 +189,7 @@ an incremental OTA from this build couldn't patch it on phones installed from th
    release the same day gets `-r2`), and `--upload` also uploads it to SourceForge, where a name that
    holds another zip is never overwritten either (even once the server's copy is gone; if SourceForge
    can't be checked, nothing is released). Both need the keys pinned and repack out/ to check it's byte
-   for byte the zip that was tested, whose images must be its target-files' (above). The release folder must be `~/releases/expressiveos-cheetah` itself,
+   for byte the zip that was tested, whose dynamic partition images must be its target-files' (above). The release folder must be `~/releases/expressiveos-cheetah` itself,
    not a symlink. The release keeps its target-files in `target-files/`, named after the release
    (`target-files/LATEST` names the newest), and `--upload` sends them to R2's
    `expressiveos/cheetah/target-files/` (`EOS_R2_REMOTE`, `~/bin/rclone`), or with `EOS_R2_REMOTE=` empty to
@@ -205,9 +207,10 @@ never removes a folder holding a `.device-ok` record, and never the newest Expre
 target-files (`target-files/LATEST`). Release zips don't need to stay on the server
 (they're on SourceForge, Google Drive or R2); anything else needs Daryl's OK before it goes.
 
-A target-files zip takes several GB (about 8, until the first build measures it): one in `check/`, one per
-release in `target-files/` (a hard link to `check/`'s while that's the same build), and while `m evolution`
-packages it, its unpacked copy in `out/` too. An older release's can go once its `.uploaded` marker is there.
+A target-files zip takes several GB (about 8, until the first build measures it): one in `out/` (kept
+until the next build starts), a copy in `check/`, one per release in `target-files/` (a hard link to
+`check/`'s while that's the same build), and while `m evolution` packages it, its unpacked copy in `out/`
+too. An older release's can go once its `.uploaded` marker is there.
 
 ## Not done yet
 
@@ -217,12 +220,16 @@ packages it, its unpacked copy in `out/` too. An older release's can go once its
   signed with ExpressiveOS's key even when it streams one, but that has to be seen on a 1.0 phone first:
   `update_engine_client --verify` must refuse an Evolution X cheetah OTA's metadata
   (`kDownloadMetadataSignatureMismatch`) and take ExpressiveOS's ("Payload is applicable"). It writes
-  no partition; root comes from KernelSU Next:
+  no partition; root comes from KernelSU Next. A user build doesn't install `update_engine_client`, so
+  build it in the same tree (`m update_engine_client`), copy
+  `out/target/product/cheetah/system/bin/update_engine_client` out and delete it there, so the next
+  system.img doesn't ship it (`eos-verify.sh` warns about a build that has it). Run each OTA's metadata in
+  turn (the remote command is quoted once, so `su` covers all of it):
 
   ```bash
   python3 -I -c 'import sys,struct,zipfile; f=zipfile.ZipFile(sys.argv[1]).open("payload.bin"); h=f.read(24); _,_,m,s=struct.unpack(">4sQQI",h); open(sys.argv[2],"wb").write(h+f.read(m+s))' <ota.zip> meta.bin
-  adb push meta.bin /data/local/tmp/eos-meta.bin
-  adb shell su -c 'cp /data/local/tmp/eos-meta.bin /data/ota_package/eos-meta.bin; update_engine_client --verify --metadata=/data/ota_package/eos-meta.bin; echo rc=$?; rm -f /data/ota_package/eos-meta.bin'
+  adb push update_engine_client meta.bin /data/local/tmp/
+  adb shell "su -c 'chmod 755 /data/local/tmp/update_engine_client; cp /data/local/tmp/meta.bin /data/ota_package/eos-meta.bin; /data/local/tmp/update_engine_client --verify --metadata=/data/ota_package/eos-meta.bin; echo rc=\$?; rm -f /data/ota_package/eos-meta.bin'"
   adb logcat -d | grep -E 'Failed to validate metadata signature|Payload is (not )?applicable'
   ```
 - The incremental OTA script: `ota_from_target_files -i` from a release's target-files to the next, signed
