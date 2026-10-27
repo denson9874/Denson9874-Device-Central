@@ -101,9 +101,10 @@ On the phone, after a clean install: the lock and home screens show Bloom with b
 and setting Dawn (pushed as above) turns them peach. `adb logcat -s ThemeOverlayController` shows `Default
 seed color read from home wallpaper` on first boot when the hardware-colour defaults are on. A phone
 flashed without a wipe that has a wallpaper of its own keeps it and its colours. One still on the old
-default wallpaper shows Bloom afterwards (the default is looked up again on every load), but keeps the
-colour source it stored on its first boot: an earlier candidate's `#0049c7` preset stays, and setting a
-wallpaper doesn't recolour it until the colours are set to follow the wallpaper in Wallpaper & style.
+default wallpaper shows Bloom afterwards (the default is looked up again on every load), but keeps any
+colour source its first boot stored: an earlier candidate that booted with the hardware-colour defaults
+on stored a `#0049c7` preset, which stays, and setting a wallpaper doesn't recolour it until the colours
+are set to follow the wallpaper in Wallpaper & style. Without a stored preset, Bloom's colours follow.
 Only a clean install (`fastboot -w`) shows the first-boot colours as intended.
 
 ## Changing them

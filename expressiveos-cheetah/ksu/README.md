@@ -135,14 +135,15 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
   nothing to remove first. Updates from other ROMs aren't supported.
 - Root: KernelSU Next with susfs ships in the ROM and its manager is preinstalled. No app gets root
   until you allow it in KernelSU Next. Root stays across updates.
-- susfs (root hiding) is on from the first boot; turn off SUSFS auto-load in KernelSU Next if you
-  don't want it. Zygisk (NeoZygisk) is installed on the first boot and works from the second: restart
-  once after setup. Zygisk modules such as LSPosed (Vector) work with it. Don't install Zygisk Next
-  (it replaces NeoZygisk, same module id) or ReZygisk (a second Zygisk) alongside it. NeoZygisk's
-  install log warns "KernelSU version too large"; that's expected. If you disable or remove
-  NeoZygisk, turn KernelSU Next's "Umount modules" back on.
-- If a module stops the phone booting: press volume down three times (three separate presses, not
-  held) while it boots, before the boot animation. That's KernelSU safe mode, which skips susfs and
+- susfs (root hiding) and Zygisk (NeoZygisk) are switched on during the first boot and work from the
+  second: restart once after setup, before signing in to banking or payment apps. Turn off SUSFS
+  auto-load in KernelSU Next if you don't want it. Zygisk modules such as LSPosed (Vector) work with
+  NeoZygisk. Don't install Zygisk Next (it replaces NeoZygisk, same module id) or ReZygisk (a second
+  Zygisk) alongside it. NeoZygisk's install log warns "KernelSU version too large"; that's expected.
+  If you disable or remove NeoZygisk, turn KernelSU Next's "Umount modules" back on.
+- If a module stops the phone booting: press volume down three times or more, one press at a time,
+  between the Google logo and the boot animation (don't hold it at power-on: on a Pixel that opens
+  the bootloader). That's KernelSU safe mode, which skips susfs and
   turns every module off for good, NeoZygisk included: remove the bad module in the manager, then
   turn NeoZygisk (and any other module you want) back on and restart.
 - Flashing over a phone that already ran an older build (no data wipe) doesn't turn susfs on or
