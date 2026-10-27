@@ -31,7 +31,7 @@ holding the lock the Evolution X routines take (`~/.evolution-tree.lock`). The o
 | `tools/eos-verify.sh` | Checks a finished build offline |
 | `tools/eos-pack.sh` | The fastboot zip, the release gate and the SourceForge upload |
 | `tools/server-cleanup.sh` | Frees disk on the build server (runner actions `server-cleanup-list` and `server-cleanup`) |
-| `lib.sh`, `tools/payload.py` | Shared guards and helpers |
+| `lib.sh`, `tools/payload.py`, `tools/payload-sig.py` | Shared guards and helpers; `payload-sig.py` checks a payload's signatures without update_engine's code |
 
 Tree patches (`apply.sh`, as local commits; `repo sync` drops them and the next build puts them back):
 
@@ -44,7 +44,13 @@ Tree patches (`apply.sh`, as local commits; `repo sync` drops them and the next 
 | `vendor_lineage` 0001 | ExpressiveOS 1.0 names, and the build's own date, so both make passes name one zip |
 | `vendor_lineage` 0002 | evolution-kodiak's, copied: games get stock's 60 fps default again |
 | `frameworks_base` 0021-0024, `packages_apps_Settings`, `packages_apps_Evolver`, `packages_apps_Updater`, `lineage-sdk`, `packages_apps_LineageParts`, `packages_apps_EvoEgg`, `packages_apps_Sandbox`, `vendor_pixel-style`, `system_core`, `bootable_recovery` | ExpressiveOS's branding (Daryl, 2026-10-27: "ExpressiveOS only, no mention"): every screen, icon, link and the crash report header say ExpressiveOS, the Evolver is "Expressive Studio", the crash dialog copies the log instead of uploading it to Evolution X's paste site, recovery shows ExpressiveOS's mark. Made at the server's revisions of 2026-10-26; the images come from [`branding/`](branding/README.md) |
+| `system_update_engine` 0001 | update_engine checks payload and metadata signatures again (Daryl, 2026-10-27); Evolution X's 59fbd47 skips them, on the phone and in the host's `delta_generator` |
+| `system_update_engine` 0002 | No OTA downgrades on user builds again (59fbd47's other half): going back to an older build means fastboot |
+| `system_update_engine` 0003 | Recovery's sideload checks payload signatures too (LineageOS's 27c007a skips them, and Evolution X's recovery has no package check at all) |
 | `ksu/patches`, `viper4android/patches` | Their kits' own (see their READMEs) |
+
+A folder is named after its project's path with `_` for `/`; a project whose name has a `_` of its own
+(`system/update_engine`) names itself in the folder's `PROJECT` file.
 
 Never `evolution-cheetah/apply.sh` or its pantah 0001/0002: they point the Updater at Evolution X's feed.
 
@@ -143,7 +149,9 @@ They're the record of what the build was made from, for the GPL source offer.
 `eos-verify.sh` checks, without a phone: the package (the build's own, A/B, for cheetah), the identity
 (cheetah, Pixel 7 Pro, user build, every kit patch in, the Updater on ExpressiveOS's feed), the keys
 (every image vbmeta chains, otacerts, and the package's zip and payload signatures; recovery's otacerts
-also hold LineageOS's release certificate, which Evolution X adds there, and nothing else), the payload (every
+also hold LineageOS's release certificate, which Evolution X adds there, and nothing else; the payload is
+signed with the pinned OTA key, `delta_generator` refuses AOSP's test key for it, and update_engine and
+recovery's update_engine_sideload carry the signature and downgrade checks), the payload (every
 partition plus the nine firmware images, its init_boot is out/'s KernelSU Next one, its boot, init_boot,
 vbmeta and vbmeta_system are ExpressiveOS's, patch levels), KernelSU Next and the stock init_boot,
 ViPER4Android, the boot animation, the branding (`tools/brand-check.py`: no app, framework string or
@@ -184,9 +192,19 @@ and never removes a folder holding a `.device-ok` record. Release zips don't nee
 ## Not done yet
 
 - The OTA publish script (feed JSON in Evolution X's Updater format, changelog, R2 upload), modelled on
-  `evolution-kodiak/tools/p11-ota.sh` with ExpressiveOS's own feed and folders. Never publish
-  `ota_property_files`: the Updater's package check is the only thing keeping Evolution X packages off
-  ExpressiveOS phones.
+  `evolution-kodiak/tools/p11-ota.sh` with ExpressiveOS's own feed and folders. Don't publish
+  `ota_property_files` yet. With `system_update_engine` 0001, update_engine refuses a payload that isn't
+  signed with ExpressiveOS's key even when it streams one, but that has to be seen on a 1.0 phone first:
+  `update_engine_client --verify` must refuse an Evolution X cheetah OTA's metadata
+  (`kDownloadMetadataSignatureMismatch`) and take ExpressiveOS's ("Payload is applicable"). It writes
+  no partition; root comes from KernelSU Next:
+
+  ```bash
+  python3 -I -c 'import sys,struct,zipfile; f=zipfile.ZipFile(sys.argv[1]).open("payload.bin"); h=f.read(24); _,_,m,s=struct.unpack(">4sQQI",h); open(sys.argv[2],"wb").write(h+f.read(m+s))' <ota.zip> meta.bin
+  adb push meta.bin /data/local/tmp/eos-meta.bin
+  adb shell su -c 'cp /data/local/tmp/eos-meta.bin /data/ota_package/eos-meta.bin; update_engine_client --verify --metadata=/data/ota_package/eos-meta.bin; echo rc=$?; rm -f /data/ota_package/eos-meta.bin'
+  adb logcat -d | grep -E 'Failed to validate metadata signature|Payload is (not )?applicable'
+  ```
 - Freezing the tree: 318 projects follow branch heads. After the first good build, rebuild from its
   `out/eos/manifest.xml` until moving on is a decision.
 - Decisions still open: patch-level properties in cheetah's vbmeta, purging the old keystore from this

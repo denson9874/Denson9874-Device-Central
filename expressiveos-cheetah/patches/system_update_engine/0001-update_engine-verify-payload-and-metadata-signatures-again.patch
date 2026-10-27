@@ -1,0 +1,53 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 01:00:00 +0000
+Subject: [PATCH] update_engine: verify payload and metadata signatures again
+
+Evolution X's 59fbd47 ("update_engine: Always disable signature and
+downgrade checks") makes PayloadVerifier::VerifySignature() return true
+without looking at the signature. Every payload and metadata signature
+check goes through it: update_engine on the phone (DeltaPerformer's
+VerifyPayload and PayloadMetadata::ValidateMetadataSignature) and the
+host delta_generator --public_key that check_ota_package_signature runs.
+So the phone installs a payload signed with any key, or none, and the
+host check reports "Payload signatures VERIFIED" for any payload.
+
+Put back AOSP's VerifySignature() (android-17.0.0_r1, as LineageOS
+lineage-24.0 has it): a payload installs only if its signatures verify
+against a key in /system/etc/security/otacerts.zip, and fails with
+ErrorCode::kDownloadPayloadPubKeyVerificationError (18) or
+kDownloadMetadataSignatureMismatch (26) otherwise.
+
+This is the signature half of 59fbd47; 0002 puts back the downgrade
+check it also removed.
+---
+ payload_consumer/payload_verifier.cc |    6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/payload_consumer/payload_verifier.cc b/payload_consumer/payload_verifier.cc
+index 9c135f45..83ef8c9e 100644
+--- a/payload_consumer/payload_verifier.cc
++++ b/payload_consumer/payload_verifier.cc
+@@ -95,9 +95,7 @@ std::unique_ptr<PayloadVerifier> PayloadVerifier::CreateInstanceFromZipPath(
+ 
+ bool PayloadVerifier::VerifySignature(
+     const string& signature_proto, const brillo::Blob& sha256_hash_data) const {
+-  LOG(INFO) << "Payload signature verification skipped";
+-  return true;
+-  /*TEST_AND_RETURN_FALSE(!public_keys_.empty());
++  TEST_AND_RETURN_FALSE(!public_keys_.empty());
+ 
+   Signatures signatures;
+   LOG(INFO) << "signature blob size = " << signature_proto.size();
+@@ -142,7 +140,7 @@ bool PayloadVerifier::VerifySignature(
+   for (const auto& sig_hash_data : tested_hashes) {
+     utils::HexDumpVector(sig_hash_data);
+   }
+-  return false;*/
++  return false;
+ }
+ 
+ bool PayloadVerifier::VerifyRawSignature(
+-- 
+2.43.0
+

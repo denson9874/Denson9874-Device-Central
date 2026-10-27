@@ -11,7 +11,9 @@
 #   2. identity: cheetah, Pixel 7 Pro, a user build, every kit patch in its project, the
 #      Updater on ExpressiveOS's feed and never Evolution X's;
 #   3. keys: eos-keys-check.sh out, and the package's zip and payload signatures verify
-#      against the one certificate the build trusts for updates;
+#      against the one certificate the build trusts for updates, which is the pinned one;
+#      update_engine checks payload signatures again (and refuses older builds, and checks
+#      in recovery too, with patches/system_update_engine 0002 and 0003);
 #   4. the payload: every partition the build lists plus the firmware; its init_boot
 #      carries the same KernelSU Next ramdisk as out/; its vbmeta (and every partition it
 #      chains), boot, init_boot and vbmeta_system are ExpressiveOS's; its patch levels are
@@ -130,6 +132,37 @@ certs=("$T"/otacerts/*)
 "$H/check_ota_package_signature" "${certs[0]}" "$ota" > "$T/sig.log" 2>&1 || { tail -5 "$T/sig.log" >&2; fail "the package's signature doesn't verify against otacerts.zip"; }
 grep -q "Payload signatures VERIFIED" "$T/sig.log" || fail "the payload signatures aren't verified"
 echo "OK: the package's zip and payload signatures verify against the build's otacerts"
+# Evolution X's update_engine took any payload signature (59fbd47), and so did the host's
+# delta_generator, built from the same payload_verifier.cc, under the check above. So
+# payload-sig.py checks both signatures without update_engine's code, against the pinned
+# certificate, and delta_generator must refuse a key that didn't sign the payload.
+pin=${EOS_OTA_CERT_SHA256:-$(openssl x509 -in "${certs[0]}" -noout -fingerprint -sha256 | sed 's/.*=//; s/://g')}
+r=$(python3 -I "$kit/tools/payload-sig.py" "$ota" "$O/system/etc/security/otacerts.zip" 2>&1 | tail -1) || true
+[[ $r = "PAYLOAD_SIG=OK $pin" ]] || fail "payload.bin isn't signed with ExpressiveOS's OTA key $pin ($r)"
+unzip -p -- "$ota" payload.bin > "$T/payload.bin" || fail "can't extract payload.bin from $ota"
+openssl x509 -in build/make/target/product/security/testkey.x509.pem -noout -pubkey > "$T/aosp.pub.pem" \
+    || fail "can't read AOSP's test key (build/make/target/product/security/testkey.x509.pem)"
+if "$H/delta_generator" --in_file="$T/payload.bin" --public_key="$T/aosp.pub.pem" > "$T/dg.log" 2>&1; then
+    fail "delta_generator takes AOSP's test key for this payload: the tree's payload_verifier.cc checks no signature (patches/system_update_engine 0001)"
+fi
+rm -f -- "$T/payload.bin"
+ue=$O/system/bin/update_engine
+[[ -f $ue ]] || fail "no $ue"
+! grep -aqF 'Payload signature verification skipped' "$ue" || fail "$ue still skips payload signatures (patches/system_update_engine 0001)"
+grep -aqF ' signatures is correct. Expected hash before padding:' "$ue" || fail "$ue has no payload signature check (patches/system_update_engine 0001)"
+ue_checks="payload signatures"
+if compgen -G "$kit/patches/system_update_engine/0002-*.patch" > /dev/null; then
+    grep -aqF ro.ota.allow_downgrade "$ue" || fail "$ue installs older builds (patches/system_update_engine 0002)"
+    ue_checks+=", no downgrades"
+fi
+if compgen -G "$kit/patches/system_update_engine/0003-*.patch" > /dev/null; then
+    ues=$O/recovery/root/system/bin/update_engine_sideload
+    [[ -f $ues ]] || fail "no $ues"
+    ! grep -aqF 'Payload signature verification skipped' "$ues" || fail "$ues still skips payload signatures (patches/system_update_engine 0001)"
+    grep -aqF 'Public key verification failed, thus update failed.' "$ues" || fail "$ues doesn't check payload signatures in recovery (patches/system_update_engine 0003)"
+    ue_checks+=", and in recovery's sideload too"
+fi
+echo "OK: payload.bin is signed with the pinned OTA key, and update_engine checks $ue_checks"
 
 echo "== payload"
 off=$(python3 -I "$kit/tools/payload.py" offset "$ota") || fail "can't find payload.bin in $ota"

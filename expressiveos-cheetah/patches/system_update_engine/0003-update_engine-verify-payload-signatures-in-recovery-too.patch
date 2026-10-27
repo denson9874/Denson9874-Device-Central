@@ -1,0 +1,59 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 01:00:00 +0000
+Subject: [PATCH] update_engine: verify payload signatures in recovery too
+
+LineageOS's 27c007a ("Don't verify payload signatures in recovery")
+skips the metadata and payload signature checks in
+update_engine_sideload. LineageOS keeps the whole-package signature
+check in front of it (with its "Install anyway?" prompt), but Evolution
+X's recovery drops that check too (bb139f0, "recovery: Skip verifying
+packages altogether"), so adb sideload installs any A/B package that
+names the device, signed or not. Put back AOSP's checks in recovery: a
+sideloaded payload must verify against recovery's
+/system/etc/security/otacerts.zip, or update_engine_sideload refuses it
+before it writes a partition. Packages without a payload (add-on zips)
+are not affected.
+---
+ payload_consumer/delta_performer.cc |    7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
+
+diff --git a/payload_consumer/delta_performer.cc b/payload_consumer/delta_performer.cc
+index 53d4a8fc..dab6b5da 100644
+--- a/payload_consumer/delta_performer.cc
++++ b/payload_consumer/delta_performer.cc
+@@ -401,15 +401,12 @@ MetadataParseResult DeltaPerformer::ParsePayloadMetadata(
+     if (perform_verification) {
+       return MetadataParseResult::kError;
+     }
+-  }
+-#ifndef __ANDROID_RECOVERY__
+-  else {
++  } else {
+     // We have the full metadata in |payload|. Verify its integrity
+     // and authenticity based on the information we have in Omaha response.
+     *error = payload_metadata_.ValidateMetadataSignature(
+         payload, payload_->metadata_signature, *payload_verifier);
+   }
+-#endif
+   if (*error != ErrorCode::kSuccess) {
+     if (install_plan_->hash_checks_mandatory) {
+       // The autoupdate_CatchBadSignatures test checks for this string
+@@ -1441,14 +1438,12 @@ ErrorCode DeltaPerformer::VerifyPayload(
+   TEST_AND_RETURN_VAL(ErrorCode::kDownloadPayloadPubKeyVerificationError,
+                       hash_data.size() == kSHA256Size);
+ 
+-#ifndef __ANDROID_RECOVERY__
+   if (!payload_verifier->VerifySignature(signatures_message_data_, hash_data)) {
+     // The autoupdate_CatchBadSignatures test checks for this string
+     // in log-files. Keep in sync.
+     LOG(ERROR) << "Public key verification failed, thus update failed.";
+     return ErrorCode::kDownloadPayloadPubKeyVerificationError;
+   }
+-#endif
+ 
+   LOG(INFO) << "Payload hash matches value in payload.";
+   return ErrorCode::kSuccess;
+-- 
+2.43.0
+

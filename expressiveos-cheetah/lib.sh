@@ -61,8 +61,15 @@ project_ok() {   # project_ok <dir>: a git project of its own in this tree, git 
         || fail "${d#"$top"/} has a git am or rebase in progress ($gd); finish it or abort it yourself, then run this again"
 }
 
-patch_project() {   # patch_project <patches/dir>: the tree project it patches (its path with _ for /)
+patch_project() {   # patch_project <patches/dir>: the tree project it patches (<dir>/PROJECT, else its path with _ for /)
     local p=${1%/}
+    # A project whose own name has a _ (system/update_engine) names itself in PROJECT
+    if [[ -f $p/PROJECT ]]; then
+        p=$(sed -n 1p -- "$p/PROJECT")
+        [[ $p =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ && /$p/ != */../* ]] || fail "${1%/}/PROJECT doesn't name a tree project: '$p'"
+        printf '%s\n' "$p"
+        return
+    fi
     p=${p##*/}
     printf '%s\n' "${p//_//}"
 }
