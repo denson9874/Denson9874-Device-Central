@@ -61,6 +61,12 @@ project_ok() {   # project_ok <dir>: a git project of its own in this tree, git 
         || fail "${d#"$top"/} has a git am or rebase in progress ($gd); finish it or abort it yourself, then run this again"
 }
 
+patch_project() {   # patch_project <patches/dir>: the tree project it patches (its path with _ for /)
+    local p=${1%/}
+    p=${p##*/}
+    printf '%s\n' "${p//_//}"
+}
+
 subject_of() {   # subject_of <patch>: its Subject:, folded lines joined, [PATCH n/m] dropped
     awk '/^Subject: /{s=substr($0,10); while ((getline l) > 0 && l ~ /^ /) s = s l; print s; exit}' "$1" | sed 's/^\[PATCH[^]]*\] //'
 }

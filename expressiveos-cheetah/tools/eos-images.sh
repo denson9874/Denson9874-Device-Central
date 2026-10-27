@@ -87,14 +87,8 @@ repo manifest -r -o out/eos/manifest.xml >/dev/null || fail "repo manifest -r fa
 projects=()
 for d in "$kit"/patches/* "$kit"/ksu/patches/* "$kit"/viper4android/patches/*; do
     [[ -d $d ]] || continue
-    p=${d##*/}
-    case $p in
-        device_google_*) p=device/google/${p#device_google_} ;;
-        vendor_google_*) p=vendor/google/${p#vendor_google_} ;;
-        vendor_lineage) p=vendor/lineage ;;
-        frameworks_*) p=frameworks/${p#frameworks_} ;;
-        *) fail "don't know which project $d patches" ;;
-    esac
+    p=$(patch_project "$d")
+    [[ -d $p ]] || fail "${d#"$kit"/} patches $p, which this tree doesn't have"
     head=$(git -C "$p" rev-parse HEAD) || fail "can't read $p's HEAD"
     projects+=("  $p $(git -C "$p" rev-parse "m/$EOS_MANIFEST_BRANCH" 2>/dev/null || echo unknown) $head")
 done
