@@ -107,7 +107,9 @@ am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local co
         before=$(git -C "$d" rev-parse HEAD)
         # --keep-cr: some files have CRLF line ends (SystemUI's clocks/AnalogClockView.java),
         # and git am would strip the CRs from the patch so it no longer matches them
-        if git -C "$d" am -q --keep-cr --3way "$patch"; then
+        # merge.renames: git am's 3-way merge follows renames even where git config turns them
+        # off, as same_change's does
+        if git -C "$d" -c merge.renames=true am -q --keep-cr --3way "$patch"; then
             # git am exits 0 without a commit when the tree already has the change
             [[ "$(git -C "$d" rev-parse HEAD)" != "$before" && "$(git -C "$d" log -1 --format=%s)" = "$subject" ]] || {
                 rm -f -- "$log"
@@ -135,8 +137,9 @@ same_change() {   # same_change <dir> <commit> <patch>: 0 if git am of the patch
     [[ "$t" = /* ]] || t=$PWD/$t   # git -C below would read a relative one from the project
     mkdir -p "$t/mail" "$t/objects"
     # Every git call below works on scratch indexes and keeps the objects it writes in $t, so
-    # the project's index, files, refs and objects don't change
-    am_git() { GIT_OBJECT_DIRECTORY=$t/objects GIT_ALTERNATE_OBJECT_DIRECTORIES=$objs git -C "$d" "$@"; }
+    # the project's index, files, refs and objects don't change (a split index would put its
+    # shared part in the project's git folder)
+    am_git() { GIT_OBJECT_DIRECTORY=$t/objects GIT_ALTERNATE_OBJECT_DIRECTORIES=$objs git -C "$d" -c core.splitIndex=false "$@"; }
     # Redo what git am --keep-cr --3way did. The mail is split first, so a line in the commit
     # message that looks like a hunk isn't read as one
     if [[ "$(git mailsplit -b --keep-cr -o"$t/mail" -- "$patch" 2>/dev/null)" = 1 ]] \
@@ -147,8 +150,10 @@ same_change() {   # same_change <dir> <commit> <patch>: 0 if git am of the patch
         if GIT_INDEX_FILE=$t/index am_git apply --cached -- "$t/diff" >/dev/null 2>&1; then
             tree=$(GIT_INDEX_FILE=$t/index am_git write-tree 2>/dev/null) || rc=2
         # ... else a merge of the patch's own base and result into the parent, renames followed
-        # and directory renames not (git am's fallback)
-        elif am_git apply --build-fake-ancestor="$t/base" -- "$t/diff" >/dev/null 2>&1 \
+        # and directory renames not (git am's fallback; merge-tree follows renames whatever git
+        # config says, so am_patches' git am does too). The fake ancestor takes what the patch
+        # has no blob id for from the index, which for git am was the parent's
+        elif GIT_INDEX_FILE=$t/index am_git apply --build-fake-ancestor="$t/base" -- "$t/diff" >/dev/null 2>&1 \
             && base=$(GIT_INDEX_FILE=$t/base am_git write-tree 2>/dev/null) \
             && GIT_INDEX_FILE=$t/base am_git apply --cached -- "$t/diff" >/dev/null 2>&1 \
             && theirs=$(GIT_INDEX_FILE=$t/base am_git write-tree 2>/dev/null) \
