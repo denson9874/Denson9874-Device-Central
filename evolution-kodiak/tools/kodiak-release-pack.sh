@@ -20,7 +20,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 # A second build on the same day gets -r2, -r3...: a released file name (and
 # its posted SHA-256) must never be overwritten.
 base=${NAME%-fastboot.zip}; r=2
-while [ -e "$DEST/$NAME" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
+while [ -e "$DEST/$NAME" ] || [ -e "$DEST/$NAME.sha256" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
 ZIP=$DEST/$NAME
 
 pgrep -x soong_ui >/dev/null && fail "a build is running"

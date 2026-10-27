@@ -159,9 +159,11 @@ echo "OTA_VERIFIED $OTA (patch levels: system $system_spl, vendor/boot $boot_spl
 # content (marked <name>.uploaded; husky: the pack script uploads the OTA zip itself as the release)
 # isn't uploaded to SourceForge again. A copy that never reached SourceForge is uploaded under its name.
 # The mirror always gets it (rclone skips a copy it already has).
+# release-cleanup.sh deletes uploaded zips but keeps their .sha256, so a name with either is taken.
+sha256=$(sha256sum "$OTA" | cut -d' ' -f1)
 NAME=$ver$TAG.zip; r=2; REUSE=0
-while [ -e "$DEST/$NAME" ]; do
-    if cmp -s "$OTA" "$DEST/$NAME"; then
+while [ -e "$DEST/$NAME" ] || [ -e "$DEST/$NAME.sha256" ]; do
+    if cmp -s "$OTA" "$DEST/$NAME" || grep -qs "^$sha256 " "$DEST/$NAME.sha256"; then
         [ -f "$DEST/$NAME.uploaded" ] && REUSE=1
         break
     fi
@@ -170,15 +172,14 @@ done
 URL=$MIRROR/$NAME
 size=$(stat -c %s "$OTA")
 md5=$(md5sum "$OTA" | cut -d' ' -f1)
-sha256=$(sha256sum "$OTA" | cut -d' ' -f1)
 if [ $PREVIEW = 1 ]; then
     OUT=$T/preview; mkdir -p $OUT/builds $OUT/changelogs
 else
 OUT=$REPO; mkdir -p "$OUT/builds" "$OUT/changelogs"
-if [ $REUSE = 1 ]; then
-echo "== $NAME is already in $DEST (uploaded by the pack script); not uploading it to SourceForge again"
-else
 [ -e "$DEST/$NAME" ] || cp "$OTA" "$DEST/$NAME"
+if [ $REUSE = 1 ]; then
+echo "== $NAME was already uploaded to SourceForge (by the pack script); not uploading it again"
+else
 (cd "$DEST" && echo "$sha256  $NAME" > "$NAME.sha256")
 echo "== upload $NAME to SourceForge: $SF_DIR"
 printf -- "-mkdir /home/frs/project/%s/%s\n-mkdir %s\nput %s %s/%s\nput %s %s/%s\n" \
@@ -186,8 +187,6 @@ printf -- "-mkdir /home/frs/project/%s/%s\n-mkdir %s\nput %s %s/%s\nput %s %s/%s
     | sftp -b - -o BatchMode=yes -i ~/.ssh/sourceforge_ed25519 $SF_USER@frs.sourceforge.net > $T/sftp.log 2>&1 \
     || { tail -5 $T/sftp.log; fail "SourceForge upload failed"; }
 touch "$DEST/$NAME.uploaded"
-echo "== upload OTA to Google Drive: EvolutionX/$dev"
-~/upload-to-drive.sh EvolutionX "$dev" "$DEST/$NAME" "$DEST/$NAME.sha256" || true
 fi
 echo "== upload $NAME to the OTA mirror: $R2"
 ~/bin/rclone copyto --s3-no-check-bucket "$DEST/$NAME" "$R2/$NAME" > $T/rclone.log 2>&1 \

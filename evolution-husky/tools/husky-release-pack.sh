@@ -73,8 +73,10 @@ grep -q "$SHA" "$M" || fail "$M doesn't name this build's sha256 $SHA: out/ isn'
 cat "$M"
 
 # Never overwrite a released name: a different zip under an existing name gets -r2, -r3...
+# release-cleanup.sh deletes uploaded zips but keeps their .sha256, so a name with either is taken.
 base=${NAME%.zip}; REL=$NAME; SUF=; r=2
-while [ -e "$DEST/$REL" ] && ! cmp -s "$ZIP" "$DEST/$REL"; do SUF=-r$r; REL=$base$SUF.zip; r=$((r + 1)); done
+while { [ -e "$DEST/$REL" ] || [ -e "$DEST/$REL.sha256" ]; } \
+    && ! { cmp -s "$ZIP" "$DEST/$REL" || grep -qs "^$SHA " "$DEST/$REL.sha256"; }; do SUF=-r$r; REL=$base$SUF.zip; r=$((r + 1)); done
 BOOT=boot-$DATE$SUF.img; VBOOT=vendor_boot-$DATE$SUF.img; RSUM=recovery-$DATE$SUF.sha256
 [ -e "$DEST/$REL" ] || cp "$ZIP" "$DEST/$REL"
 cp $O/boot.img "$DEST/$BOOT"; cp $O/vendor_boot.img "$DEST/$VBOOT"
