@@ -5,7 +5,14 @@
 #   eos-pack.sh             # verify, then pack the candidate into ~/<EOS_RELEASES>/check
 #                           # (replaced each time)
 #   eos-pack.sh --release   # the tested candidate into ~/<EOS_RELEASES>
-#   eos-pack.sh --upload    # --release, then upload it to SourceForge (EOS_SF_DIR)
+#   eos-pack.sh --upload    # --release, then upload it to SourceForge (EOS_SF_DIR), and
+#                           # its target-files to R2 (EOS_R2_REMOTE) or, without, SourceForge
+#
+# Each candidate and release keeps the target-files zip its OTA package was made from
+# (out/eos/target-files.ok; patches/vendor_lineage/0003), the source of any incremental
+# OTA from it later: check/<name>-target_files.zip, then target-files/ in the release
+# folder, named after the release, with its .sha256. target-files/LATEST names the newest
+# release's, which server-cleanup.sh never removes.
 #
 # The on-device gate, as on husky: after flashing and testing check/<zip>, write
 # check/<zip>.device-ok with the line "sha256 <its sha256>". --release and --upload also
@@ -49,13 +56,20 @@ b=$(tree_build); [[ -z "$b" ]] || fail "a build is running in $top: $b"
 [[ "$EOS_RELEASES" =~ ^releases/expressiveos-[a-z0-9-]+$ ]] || fail "eos.conf's EOS_RELEASES ($EOS_RELEASES) isn't releases/expressiveos-<something>"
 DEST=$HOME/$EOS_RELEASES; CHECK=$DEST/check
 want=$(cd ~ && pwd -P)/$EOS_RELEASES
-for f in "$DEST" "$CHECK"; do
+for f in "$DEST" "$CHECK" "$DEST/target-files"; do
     d=$(realpath -m -- "$f") || fail "can't resolve $f"
     [[ "$d" = "$want${f#"$DEST"}" ]] || fail "$f leads to $d, not ExpressiveOS's own folder (a symlink?)"
 done
 mkdir -p -- "$CHECK"
 # And its own SourceForge folder, never Evolution X's cheetah/17
 [[ "$EOS_SF_DIR" == /home/frs/project/*/expressiveos/* ]] || fail "eos.conf's EOS_SF_DIR ($EOS_SF_DIR) isn't an expressiveos/ folder"
+# And its own R2 prefix for the target-files, never Evolution X's cheetah/17
+R2TF=
+if [[ -n "${EOS_R2_REMOTE:-}" ]]; then
+    [[ "$EOS_R2_REMOTE" =~ ^[A-Za-z0-9_-]+:[a-z0-9][a-z0-9-]*$ ]] || fail "eos.conf's EOS_R2_REMOTE ($EOS_R2_REMOTE) isn't <rclone remote>:<bucket>"
+    [[ "$EOS_R2_PREFIX" =~ ^expressiveos/[a-z0-9-]+/$ ]] || fail "eos.conf's EOS_R2_PREFIX ($EOS_R2_PREFIX) isn't expressiveos/<device>/"
+    R2TF=$EOS_R2_REMOTE/${EOS_R2_PREFIX}target-files
+fi
 
 echo "== the build"
 [[ -f out/eos/build.ok ]] || fail "no out/eos/build.ok: the last eos-images.sh run didn't finish (or ran KERNEL_ONLY)"
@@ -66,9 +80,17 @@ ota=$O/$name
 tail -1 out/eos/verify.log | grep -qx VERIFY=OK || { grep -E '^FAIL' out/eos/verify.log >&2 || tail -5 out/eos/verify.log >&2; fail "eos-verify.sh failed (out/eos/verify.log)"; }
 [[ "$(sed -n 's/^VERIFIED //p' out/eos/verify.log)" = "$top/$ota" ]] || fail "eos-verify.sh checked another package"
 echo "OK: $name verified (out/eos/verify.log)"
+# The target-files zip eos-images.sh kept with it (eos-verify.sh checked it's the package's)
+tf=$(tf_zip)
+[[ -f out/eos/target-files.ok ]] || fail "no out/eos/target-files.ok: the last eos-images.sh run kept no target-files (patches/vendor_lineage/0003)"
+read -r tfsha tfname < out/eos/target-files.ok || true
+[[ "${tfname:-}" = "${tf##*/}" && -f $tf && "$(sha256sum -- "$tf" | cut -d' ' -f1)" = "$tfsha" ]] \
+    || fail "$tf isn't the target-files eos-images.sh kept with $name (out/ changed since)"
+echo "OK: ${tf##*/} is its target-files (out/eos/target-files.ok)"
 base=${name%.zip}
 NAME=$base-fastboot.zip
 STOCK=$base-init_boot-stock.img
+TFN=$base-target_files.zip
 
 echo "== pack"
 T=$(mktemp -d "${TMPDIR:-/tmp}/eos-pack.XXXXXX")
@@ -119,8 +141,17 @@ if [[ -z "$mode" ]]; then
     cp -- out/ksu/init_boot-stock.img "$CHECK/$STOCK"
     (cd "$CHECK" && sha256sum -- "$NAME" > "$NAME.sha256" && sha256sum -- "$STOCK" > "$STOCK.sha256")
     for r in manifest.xml kernel-manifest.xml sources.txt; do cp -- "out/eos/$r" "$CHECK/$base-$r"; done
+    # Its target-files, removed before they're replaced and never written over: a release
+    # folder may hold a hard link to check/'s copy
+    find "$CHECK" -maxdepth 1 -type f -name '*-target_files.zip' ! -name "$TFN" -delete
+    if ! cmp -s -- "$tf" "$CHECK/$TFN" 2>/dev/null; then
+        rm -f -- "$CHECK/$TFN"
+        cp -- "$tf" "$CHECK/$TFN"
+    fi
+    (cd "$CHECK" && sha256sum -- "$TFN" > "$TFN.sha256")
+    [[ "$(cut -d' ' -f1 "$CHECK/$TFN.sha256")" = "$tfsha" ]] || fail "$CHECK/$TFN isn't a whole copy of $tf"
     echo "== candidate: $CHECK/$NAME"
-    cat "$CHECK/$NAME.sha256"
+    cat "$CHECK/$NAME.sha256" "$CHECK/$TFN.sha256"
     M=$CHECK/$NAME.device-ok
     if [[ -f "$M" ]] && grep -qF -- "$zsha" "$M"; then
         echo "on-device check: $(head -c 300 "$M")"
@@ -138,18 +169,40 @@ echo "== release gates"
 tail -1 "$T/keys.log" | grep -qx KEYS_CHECK=OK \
     || { grep -E '^(FAIL|UNPINNED)' "$T/keys.log" >&2 || true; fail "ExpressiveOS's keys must be pinned in eos.conf (KEYS_CHECK=OK) before a release (README.md, \"Keys\")"; }
 echo "OK: signed with the pinned ExpressiveOS keys"
+# Every incremental OTA from a release starts from its target-files, and ExpressiveOS is
+# installed with the fastboot zip: its images must be the target-files' (eos-target-files.sh)
+grep -q '^OK: incremental base:' out/eos/verify.log \
+    || fail "the fastboot zip's images aren't its target-files' (out/eos/verify.log, \"incremental base\"): no incremental OTA from this release could update phones installed from it"
 cmp -s -- "$T/$NAME" "$CHECK/$NAME" || fail "out/ doesn't pack into the tested $CHECK/$NAME (run eos-pack.sh, flash and test that)"
 "$kit/ksu/tools/ksu-check.sh" device-ok "$CHECK/$NAME" | grep -v '^KSU_CHECK=' || fail "the on-device gate"
 
 sf() { sftp -b - -o BatchMode=yes -i ~/.ssh/sourceforge_ed25519 daryldenson0405@frs.sourceforge.net; }
+rc2() { ~/bin/rclone "$@"; }
 if [[ "$mode" = --upload ]]; then
     # The '-' lets a mkdir fail when the folder exists; the cd must work
-    printf -- '-mkdir %s\n-mkdir %s\ncd %s\nbye\n' "${EOS_SF_DIR%/*}" "$EOS_SF_DIR" "$EOS_SF_DIR" | sf > "$T/sftp.log" 2>&1 \
+    { printf -- '-mkdir %s\n-mkdir %s\n' "${EOS_SF_DIR%/*}" "$EOS_SF_DIR"
+      [[ -n "$R2TF" ]] || printf -- '-mkdir %s/target-files\ncd %s/target-files\n' "$EOS_SF_DIR" "$EOS_SF_DIR"
+      printf 'cd %s\nbye\n' "$EOS_SF_DIR"; } | sf > "$T/sftp.log" 2>&1 \
         || { tail -5 "$T/sftp.log" >&2; fail "can't reach $EOS_SF_DIR on SourceForge"; }
+    if [[ -n "$R2TF" ]]; then
+        [[ -x ~/bin/rclone ]] || fail "no ~/bin/rclone for the target-files upload to $R2TF (tools/ota_mirror/README.md); EOS_R2_REMOTE= in eos.conf sends them to SourceForge instead"
+        rc2 lsf "$EOS_R2_REMOTE" > /dev/null 2> "$T/rclone.log" \
+            || { tail -3 "$T/rclone.log" >&2; fail "can't reach $EOS_R2_REMOTE (rclone's ${EOS_R2_REMOTE%%:*}: remote, tools/ota_mirror/README.md)"; }
+    fi
 fi
-taken() {   # taken <name> <file>: <name> already holds something other than <file>, here or (--upload) on SourceForge
+r2_taken() {   # r2_taken <name> <file>: R2's target-files/<name> holds something other than <file>
+    local rc=0
+    rc2 lsf --files-only "$R2TF/" > "$T/r2.ls" 2> "$T/r2.log" || rc=$?
+    # rclone exits 3 (directory not found) while nothing was ever uploaded there
+    (( rc == 0 || rc == 3 )) || { tail -3 "$T/r2.log" >&2; fail "can't tell whether $R2TF/$1 exists"; }
+    (( rc == 0 )) && grep -qxF -- "$1" "$T/r2.ls" || return 1
+    rc2 cat "$R2TF/$1.sha256" > "$T/remote.sha256" 2> /dev/null || true
+    [[ "$(cut -d' ' -f1 "$T/remote.sha256" 2>/dev/null)" != "$(sha256sum -- "$2" | cut -d' ' -f1)" ]]
+}
+taken() {   # taken <name> <file>: <name> already holds something other than <file>, here or (--upload) where it's uploaded
     if [[ -e $DEST/$1 ]] && ! cmp -s -- "$2" "$DEST/$1"; then return 0; fi
     [[ "$mode" = --upload ]] || return 1
+    if [[ $1 = target-files/* && -n "$R2TF" ]]; then r2_taken "${1#target-files/}" "$2"; return; fi
     # SourceForge too, even when the copy here matches: the copies here may have been
     # cleaned up since that upload and released again from another build. sftp -b ends
     # with 1 and "not found" on an ls of a file that isn't there; any other failure (no
@@ -165,18 +218,35 @@ taken() {   # taken <name> <file>: <name> already holds something other than <fi
     [[ "$(cut -d' ' -f1 "$T/remote.sha256" 2>/dev/null)" != "$(sha256sum -- "$2" | cut -d' ' -f1)" ]]
 }
 # Never overwrite a released name, here or on SourceForge (where the release folder may be
-# all that's left): a different zip or stock image under an existing name gets -r2, -r3...
-REL=$NAME; RSTOCK=$STOCK; r=2
-while taken "$REL" "$T/$NAME" || taken "$RSTOCK" out/ksu/init_boot-stock.img; do
-    (( r <= 20 )) || fail "$base-r2 to -r20 are all taken (here or on SourceForge); look at $DEST and $EOS_SF_DIR"
-    REL=$base-r$r-fastboot.zip; RSTOCK=$base-r$r-init_boot-stock.img; r=$((r + 1))
+# all that's left): a different zip, stock image or target-files under an existing name gets -r2, -r3...
+REL=$NAME; RSTOCK=$STOCK; RTF=$TFN; r=2
+while taken "$REL" "$T/$NAME" || taken "$RSTOCK" out/ksu/init_boot-stock.img || taken "target-files/$RTF" "$tf"; do
+    (( r <= 20 )) || fail "$base-r2 to -r20 are all taken (here, on SourceForge or in R2); look at $DEST and $EOS_SF_DIR"
+    REL=$base-r$r-fastboot.zip; RSTOCK=$base-r$r-init_boot-stock.img; RTF=$base-r$r-target_files.zip; r=$((r + 1))
 done
 [[ -e $DEST/$REL ]] || cp -- "$T/$NAME" "$DEST/$REL"
 [[ -e $DEST/$RSTOCK ]] || cp -- out/ksu/init_boot-stock.img "$DEST/$RSTOCK"
 # Names only, so users can run sha256sum -c
 (cd "$DEST" && sha256sum -- "$REL" > "$REL.sha256" && sha256sum -- "$RSTOCK" > "$RSTOCK.sha256")
 for f in manifest.xml kernel-manifest.xml sources.txt; do cp -- "out/eos/$f" "$DEST/${REL%-fastboot.zip}-$f"; done
-cat "$DEST/$REL.sha256" "$DEST/$RSTOCK.sha256"
+# The target-files the release's OTA package was made from: a hard link to check/'s copy
+# when that's this build's (no second copy on the disk), else a copy of out/'s, made
+# under another name first (a copy cut short must not take the release's name)
+TFD=$DEST/target-files
+mkdir -p -- "$TFD"
+if [[ ! -e $TFD/$RTF ]]; then
+    if [[ -f $CHECK/$TFN && "$(sha256sum -- "$CHECK/$TFN" | cut -d' ' -f1)" = "$tfsha" ]] && ln -- "$CHECK/$TFN" "$TFD/$RTF" 2>/dev/null; then
+        echo "note: $TFD/$RTF is a hard link to $CHECK/$TFN"
+    else
+        rm -f -- "$TFD/.$RTF.part"
+        cp -- "$tf" "$TFD/.$RTF.part" && mv -- "$TFD/.$RTF.part" "$TFD/$RTF"
+    fi
+fi
+(cd "$TFD" && sha256sum -- "$RTF" > "$RTF.sha256")
+[[ "$(cut -d' ' -f1 "$TFD/$RTF.sha256")" = "$tfsha" ]] || fail "$TFD/$RTF isn't $tf"
+# The newest release's target-files, which server-cleanup.sh never removes
+printf '%s\n' "$RTF" > "$TFD/LATEST"
+cat "$DEST/$REL.sha256" "$DEST/$RSTOCK.sha256" "$TFD/$RTF.sha256"
 echo "RELEASED $DEST/$REL"
 
 if [[ "$mode" = --upload ]]; then
@@ -187,6 +257,27 @@ if [[ "$mode" = --upload ]]; then
         printf 'ls -l %s\nbye\n' "$EOS_SF_DIR"
     } | sf > "$T/sftp.log" 2>&1 || { tail -5 "$T/sftp.log" >&2; fail "the SourceForge upload failed"; }
     touch -- "$DEST/$REL.uploaded"
+    if [[ -n "$R2TF" ]]; then
+        echo "== upload the target-files to R2: $R2TF"
+        for f in "$RTF" "$RTF.sha256"; do
+            rc2 copyto --s3-no-check-bucket "$TFD/$f" "$R2TF/$f" > "$T/rclone.log" 2>&1 \
+                || { tail -5 "$T/rclone.log" >&2; fail "the target-files upload to $R2TF failed"; }
+        done
+        # All of it: R2 has its size and the same .sha256
+        size=$(rc2 lsf --format s "$R2TF/$RTF" 2> /dev/null || true)
+        [[ "$size" = "$(stat -c %s -- "$TFD/$RTF")" ]] || fail "R2's $RTF is ${size:-not there}, not $(stat -c %s -- "$TFD/$RTF") bytes"
+        [[ "$(rc2 cat "$R2TF/$RTF.sha256" 2> /dev/null)" = "$(cat -- "$TFD/$RTF.sha256")" ]] || fail "R2's $RTF.sha256 isn't $TFD/$RTF.sha256"
+        where=$R2TF/$RTF
+    else
+        echo "== upload the target-files to SourceForge: $EOS_SF_DIR/target-files"
+        {
+            for f in "$RTF" "$RTF.sha256"; do printf 'put %s %s/target-files/%s\n' "$TFD/$f" "$EOS_SF_DIR" "$f"; done
+            printf 'ls -l %s/target-files\nbye\n' "$EOS_SF_DIR"
+        } | sf > "$T/sftp.log" 2>&1 || { tail -5 "$T/sftp.log" >&2; fail "the target-files upload to SourceForge failed"; }
+        where=$EOS_SF_DIR/target-files/$RTF
+    fi
+    touch -- "$TFD/$RTF.uploaded"
+    echo "UPLOADED_TARGET_FILES $where"
     echo "UPLOADED https://sourceforge.net/projects/denson9874-s-user-builds/files/${EOS_SF_DIR#/home/frs/project/denson9874-s-user-builds/}/"
 fi
 done=1

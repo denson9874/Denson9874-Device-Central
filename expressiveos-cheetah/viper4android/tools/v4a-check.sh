@@ -14,7 +14,11 @@
 #       what landed in out/target/product/cheetah. host_out (out/host/linux-x86) is
 #       only used for apksigner.
 #   v4a-check.sh device
-#       On a phone over adb (ANDROID_SERIAL picks one). Read-only.
+#       On a phone over adb (ANDROID_SERIAL picks one). Read-only. Run it soon after a
+#       boot, while logcat still holds the boot. Whether libeffects loaded the driver comes from
+#       dumpsys media.audio_flinger --effects. On a user build adb shell may not read the
+#       driver or the audio HAL: those checks are INFO there (v4a-check.sh out checks the
+#       files in the build).
 set -euo pipefail
 fails=0 finished=0 T=
 cleanup() {
@@ -303,34 +307,49 @@ device)
     [[ $# = 0 ]] || usage
     command -v adb >/dev/null || { bad "adb is not installed"; finish; }
     state=$(adb get-state 2>/dev/null || true)
-    [[ "$state" = device ]] || { bad "no phone over adb (adb get-state: ${state:-nothing})"; finish; }
+    [[ "$state" = device ]] || { bad "no phone over adb (adb get-state: ${state:-nothing}; several devices? set ANDROID_SERIAL)"; finish; }
     a() { adb shell "$@" 2>/dev/null | tr -d '\r' || true; }
+    # With the command's own errors: SELinux keeps adb shell out of vendor files on a user build
+    a2() { adb shell "$* 2>&1" 2>/dev/null | tr -d '\r' || true; }
+    denied() { [[ "$1" = *'Permission denied'* ]]; }
     echo "== ViPER4Android RE on-device checks: $(a getprop ro.build.fingerprint)"
     dev=$(a getprop ro.product.device)
     [[ "$dev" = cheetah ]] && pass "device is cheetah" || bad "device is ${dev:-unknown}, not cheetah"
-    l=$(a ls -lZ /vendor/lib64/soundfx/libv4a_re.so)
-    [[ "$l" = *u:object_r:vendor_file:s0* ]] && pass "/vendor/lib64/soundfx/libv4a_re.so is labelled vendor_file" \
-        || bad "/vendor/lib64/soundfx/libv4a_re.so: ${l:-missing} (want u:object_r:vendor_file:s0)"
-    s=$(a sha256sum /vendor/lib64/soundfx/libv4a_re.so | cut -d' ' -f1)
-    [[ "$s" = "$V4A_FX_LIB_SHA256" ]] && pass "libv4a_re.so is upstream's $V4A_FX_VERSION" || bad "libv4a_re.so sha256 is ${s:-unreadable}, want $V4A_FX_LIB_SHA256"
-    [[ -z "$(a ls /vendor/lib/soundfx/libv4a_re.so)" ]] && pass "no 32-bit libv4a_re.so" || bad "/vendor/lib/soundfx/libv4a_re.so exists"
-    f=$(a file /vendor/bin/hw/android.hardware.audio.service)
+    l=$(a2 ls -lZ /vendor/lib64/soundfx/libv4a_re.so)
+    if denied "$l"; then
+        info "adb shell may not read /vendor/lib64/soundfx/libv4a_re.so here (a user build): its label and sha256 aren't checked (the effects dump shows whether it loaded)"
+    else
+        [[ "$l" = *u:object_r:vendor_file:s0* ]] && pass "/vendor/lib64/soundfx/libv4a_re.so is labelled vendor_file" \
+            || bad "/vendor/lib64/soundfx/libv4a_re.so: ${l:-missing} (want u:object_r:vendor_file:s0)"
+        s=$(a sha256sum /vendor/lib64/soundfx/libv4a_re.so | cut -d' ' -f1)
+        [[ "$s" = "$V4A_FX_LIB_SHA256" ]] && pass "libv4a_re.so is upstream's $V4A_FX_VERSION" || bad "libv4a_re.so sha256 is ${s:-unreadable}, want $V4A_FX_LIB_SHA256"
+    fi
+    l=$(a2 ls /vendor/lib/soundfx/libv4a_re.so)
+    if [[ "$l" = *'No such file'* ]]; then pass "no 32-bit libv4a_re.so"
+    elif denied "$l"; then info "adb shell may not look in /vendor/lib/soundfx here (a user build): the 32-bit check is left to v4a-check.sh out"
+    else bad "/vendor/lib/soundfx/libv4a_re.so exists"; fi
+    f=$(a2 file /vendor/bin/hw/android.hardware.audio.service)
     if [[ -z "$f" ]]; then info "can't run file on /vendor/bin/hw/android.hardware.audio.service"
+    elif denied "$f"; then info "adb shell may not read the audio HAL here (a user build): its 64-bit check is left to v4a-check.sh out"
     elif [[ "$f" = *64-bit* ]]; then pass "the audio HAL is 64-bit"
     else bad "the audio HAL isn't 64-bit: $f"; fi
     n=$(a service list | grep -c 'android.hardware.audio.effect.IFactory' || true)
     [[ "${n:-0}" = 0 ]] && pass "no AIDL effect HAL service (HIDL @7.0 is in use)" || bad "android.hardware.audio.effect.IFactory is registered: the HAL is AIDL, the non-AIDL driver won't load"
+    # Whether libeffects loaded the driver: its loader's logcat lines when they're there, and
+    # the effects dump below, which decides (on the first build the audio HAL's startup lines
+    # weren't in logcat at all, two minutes after boot)
+    loaded=0 loadfail=0
     adb logcat -b all -d > "$T/log" 2>/dev/null || true
     tr -d '\r' < "$T/log" > "$T/logs"
     if grep -qF 'loadViperEffect: ViPER effect already registered by library' "$T/logs"; then
-        bad "something registered ViPER before the built-in loader (a module patching audio_effects.xml?): $(grep -F 'already registered by library' "$T/logs" | tail -1)"
+        loadfail=1; bad "something registered ViPER before the built-in loader (a module patching audio_effects.xml?): $(grep -F 'already registered by library' "$T/logs" | tail -1)"
     elif grep -qF 'loadViperEffect: loaded ViPER library from /vendor/lib64/soundfx/libv4a_re.so' "$T/logs" \
         && grep -qF 'loadViperEffect: successfully registered ViPER4Android effect: ViPERDSP' "$T/logs"; then
-        pass "logcat: libeffects loaded /vendor/lib64/soundfx/libv4a_re.so and registered ViPERDSP"
+        loaded=1; pass "logcat: libeffects loaded /vendor/lib64/soundfx/libv4a_re.so and registered ViPERDSP"
     elif grep -qF 'loadViperEffect:' "$T/logs"; then
-        bad "logcat: loadViperEffect failed: $(grep -F 'loadViperEffect:' "$T/logs" | tail -1)"
+        loadfail=1; bad "logcat: loadViperEffect failed: $(grep -F 'loadViperEffect:' "$T/logs" | tail -1)"
     else
-        bad "logcat has no loadViperEffect lines (the buffer may have rotated: reboot and run this soon after boot)"
+        info "logcat has no loadViperEffect lines (not logged, or rotated): the effects dump decides"
     fi
     n=$(a "grep -ciE 'v4a|90380da3' /vendor/etc/audio_effects.xml")
     case "$n" in
@@ -338,12 +357,42 @@ device)
         ''|*[!0-9]*) info "can't read /vendor/etc/audio_effects.xml from adb shell" ;;
         *) bad "/vendor/etc/audio_effects.xml has $n v4a lines: a ViPER module is installed (remove it, reboot)" ;;
     esac
-    n=$(a dumpsys media.audio_flinger | grep -cE '^ *Library v4a_re$' || true)
-    case "${n:-0}" in
-        1) pass "dumpsys media.audio_flinger lists library v4a_re once" ;;
-        0) info "dumpsys media.audio_flinger doesn't list 'Library v4a_re' (its dump format here is unverified)" ;;
-        *) bad "dumpsys media.audio_flinger lists library v4a_re $n times (registered more than once)" ;;
-    esac
+    # The effects dump (" ## BEGIN effects dump", then the audio HAL's "Libraries loaded:" and
+    # " Library v4a_re"): audio_flinger prints it only when asked (--effects; a bug report
+    # passes -a), and the HAL writes its part into adb shell's pipe, which policy allows
+    # (hal_audio.te: shell:fd use, shell:fifo_file write)
+    a dumpsys media.audio_flinger --effects > "$T/af"
+    if ! grep -qF 'BEGIN effects dump' "$T/af"; then
+        info "dumpsys media.audio_flinger --effects shows no effects dump here; a bug report's lists 'Library v4a_re'"
+    elif ! grep -qE '^Libraries loaded:' "$T/af"; then
+        info "the audio HAL wrote no effects list into dumpsys media.audio_flinger --effects here; a bug report's lists 'Library v4a_re'"
+    else
+        # Per list, and by the effect's uuid: libeffects names a library that failed to load
+        # the same way, under "Libraries NOT loaded:", and lists each library's effects under
+        # it ("    UUID: ..."), so a module's library carrying ViPER's uuid shows up too
+        # (media/libeffects/factory/EffectsFactory.c, EffectsFactoryState.c)
+        read -r n nf u others < <(awk -v want="$V4A_FX_UUID" '
+            /^Libraries loaded:/ { s = 1; lib = ""; next }
+            /^Libraries NOT loaded:/ { s = 2; lib = ""; next }
+            /^[^ ]/ || /^ ##/ { s = 0; lib = "" }
+            s && /^ Library / { lib = $2; if (lib == "v4a_re") c[s]++; next }
+            s == 1 && lib != "" && $1 == "UUID:" && tolower($2) == want {
+                if (lib == "v4a_re") u++; else o = o (o == "" ? "" : ",") lib }
+            END { print c[1] + 0, c[2] + 0, u + 0, (o == "" ? "-" : o) }' "$T/af")
+        [[ $nf = 0 ]] || { loadfail=1; bad "dumpsys media.audio_flinger --effects lists library v4a_re under 'Libraries NOT loaded': an effects config (audio_effects.xml in /odm/etc, /vendor/etc or /system/etc, likely a ViPER module's) names a v4a_re that libeffects couldn't load"; }
+        [[ $others = - ]] || { loadfail=1; bad "dumpsys media.audio_flinger --effects lists ViPER's effect ($V4A_FX_UUID) under library $others too: a module patching audio_effects.xml registered it (remove it, reboot)"; }
+        case "$n" in
+            1) if [[ $u = 1 ]]; then
+                   loaded=1; pass "dumpsys media.audio_flinger --effects lists library v4a_re once under 'Libraries loaded', with ViPER's effect"
+               else
+                   loadfail=1; bad "dumpsys media.audio_flinger --effects lists library v4a_re without ViPER's effect ($V4A_FX_UUID)"
+               fi ;;
+            0) loadfail=1; bad "dumpsys media.audio_flinger --effects doesn't list library v4a_re under 'Libraries loaded': libeffects didn't load it" ;;
+            *) loadfail=1; bad "dumpsys media.audio_flinger --effects lists library v4a_re $n times under 'Libraries loaded' (registered more than once)" ;;
+        esac
+    fi
+    [[ $loaded = 1 || $loadfail = 1 ]] \
+        || bad "neither logcat nor dumpsys media.audio_flinger --effects shows libeffects loaded libv4a_re.so"
     p=$(a pm list packages -f "$V4A_APP_PACKAGE" | grep -E "=$V4A_APP_PACKAGE\$" || true)
     case "$p" in
         *"/system_ext/priv-app/ViPER4Android/"*) pass "the app is the built-in /system_ext/priv-app copy" ;;
@@ -357,7 +406,9 @@ device)
     [[ -z "$hits" ]] && pass "no privapp-permissions allowlist violation" || bad "privapp allowlist violation: $hits"
     [[ -n "$(a ls /system_ext/etc/sysconfig/hiddenapi-$V4A_APP_PACKAGE.xml)" ]] \
         && pass "hidden-API sysconfig for the app is installed" || bad "no /system_ext/etc/sysconfig/hiddenapi-$V4A_APP_PACKAGE.xml"
-    hits=$(grep -F 'avc:' "$T/logs" | grep -F 'denied' | grep -E "hal_audio_default|$V4A_APP_PACKAGE|libv4a_re" | tail -5 || true)
+    # Not adb shell's own: on a user build this check's ls, sha256sum and file are denied
+    hits=$(grep -F 'avc:' "$T/logs" | grep -F 'denied' | grep -vF 'scontext=u:r:shell:s0' \
+        | grep -E "hal_audio_default|$V4A_APP_PACKAGE|libv4a_re" | tail -5 || true)
     [[ -z "$hits" ]] && pass "no SELinux denials for hal_audio_default or the app" || bad "SELinux denials:"$'\n'"$hits"
     grep -qF 'Welcome to ViPER FX' "$T/logs" && info "logcat: a ViPER effect instance was created (the app is on)" \
         || info "no ViPER effect instance in the log yet: turn the app's master switch on, play something, run again"

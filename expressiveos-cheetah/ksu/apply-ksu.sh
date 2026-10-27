@@ -6,7 +6,9 @@
 #      from CHEETAH_KSU_INIT_BOOT (0102). They sit on the tree's own pantah patches
 #      (../apply.sh, run by ../prepare.sh), which must be in first;
 #   2. vendor/extra/ksu: the manager APK fetch-ksu.sh downloaded (its SHA-256 and signer
-#      checked again here), the source's LICENSE, the APK's four arm64 libs and
+#      checked again here), the source's LICENSE, the APK's four arm64 libs, the first-boot
+#      setup (tree/eos-ksu-firstboot.rc, tree/ksu-firstboot.sh), the Zygisk provider zip
+#      fetch-ksu.sh downloaded (checked again too) with its licences in NOTICE-NeoZygisk, and
 #      tree/Android.mk, which is removed first and written last, so make never sees it
 #      without its files.
 # Run it on every build (repo sync drops local commits). Never on the Evolution X or
@@ -59,6 +61,32 @@ mkdir -p "$stage/lib/arm64"
 cp -- "$apk" "$stage/KernelSUNext.apk"
 cp -- "$dl/src/LICENSE" "$stage/LICENSE"
 cp -- "$here/tree/Android.mk" "$stage/Android.mk"
+cp -- "$here/tree/eos-ksu-firstboot.rc" "$here/tree/ksu-firstboot.sh" "$stage/"
+# The Zygisk provider, checked again: ksu.conf's zip byte for byte, and its source for the licences
+zv=$(get zygisk_version)
+zdir=~/android-dt/ksu/zygisk-$zv
+zip=$zdir/zygisk-provider.zip
+[[ -s "$zip" && "$(sha256sum -- "$zip" | cut -d' ' -f1)" = "$(get zygisk_sha256)" ]] \
+    || fail "$zip isn't ksu.conf's zygisk_sha256 (run fetch-ksu.sh)"
+python3 -I "$here/tools/zygisk-zip.py" "$zip" "$(get zygisk_module_id)" "$(get zygisk_version_code)" "$dl/src/risk/risk.json" \
+    > "$work/zygisk.log" 2>&1 || { grep '^FAIL' "$work/zygisk.log" >&2; fail "$zip doesn't pass tools/zygisk-zip.py"; }
+[[ -d "$zdir/src/.git" && "$(git -C "$zdir/src" rev-parse HEAD)" = "$(get zygisk_src_commit)" ]] \
+    || fail "$zdir/src isn't at ksu.conf's zygisk_src_commit (run fetch-ksu.sh)"
+lsplt=$zdir/src/loader/src/external/lsplt
+[[ "$(git -C "$lsplt" rev-parse HEAD 2>/dev/null)" = "$(get zygisk_lsplt_commit)" && -s "$zdir/src/LICENSE" && -s "$lsplt/LICENSE" ]] \
+    || fail "$lsplt isn't at ksu.conf's zygisk_lsplt_commit, or a LICENSE is missing (run fetch-ksu.sh)"
+cp -- "$zip" "$stage/zygisk-provider.zip"
+{
+    printf '%s\n' \
+        "NeoZygisk $zv (versionCode $(get zygisk_version_code)), by JingMatrix, GNU GPL v3: https://github.com/JingMatrix/NeoZygisk" \
+        "Shipped unmodified as /product/etc/eos/zygisk-provider.zip. Source for this exact build:" \
+        "https://github.com/JingMatrix/NeoZygisk/tree/$(get zygisk_src_commit)" \
+        "It includes LSPlt, GNU LGPL v3: https://github.com/JingMatrix/LSPlt/tree/$(get zygisk_lsplt_commit)" \
+        "" "NeoZygisk's licence:" ""
+    cat -- "$zdir/src/LICENSE"
+    printf '\n%s\n\n' "LSPlt's licence:"
+    cat -- "$lsplt/LICENSE"
+} > "$stage/NOTICE-NeoZygisk"
 # The libs Android.mk installs must be exactly the APK's arm64 ones
 libs=$(sed -n 's|^ *lib/arm64/\(lib[^ ]*\.so\).*|\1|p' "$here/tree/Android.mk" | sort)
 have=$(unzip -Z1 -- "$apk" 'lib/arm64-v8a/*' | sed 's|^lib/arm64-v8a/||' | sort)

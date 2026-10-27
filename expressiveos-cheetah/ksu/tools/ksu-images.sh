@@ -2,10 +2,11 @@
 # The make part of an ExpressiveOS cheetah build with KernelSU Next. tools/eos-images.sh
 # runs it after prepare.sh, the key checks and the kits; run alone, it builds what the
 # tree already has. lunch, build_kernel, our kernelsu.ko (ksu-module.sh), then two passes:
-# pass 1 builds everything with the stock init_boot, cheetah-ksu.sh patches that
-# init_boot, and pass 2 rebuilds with CHEETAH_KSU_INIT_BOOT
-# (patches/device_google_pantah/0102), so only init_boot, vbmeta, target-files and the
-# signed OTA are redone. Pass 2 must ship the patched init_boot (ksu-check.sh images).
+# pass 1 builds only the images cheetah-ksu.sh reads (boot, init_boot and
+# vendor_kernel_boot, whose ramdisk holds the first-stage modules) with the stock
+# init_boot, cheetah-ksu.sh patches that init_boot, and pass 2 builds everything with
+# CHEETAH_KSU_INIT_BOOT (patches/device_google_pantah/0102). Pass 2 must ship the
+# patched init_boot (ksu-check.sh images) and keep its target-files zip (tf_zip in lib.sh).
 # The last line is MAKE_EXIT=0 or MAKE_EXIT=1.
 #
 #   ksu-images.sh [top]                  # default ~/expressiveos; lunch target EOS_LUNCH (eos.conf)
@@ -65,15 +66,19 @@ if [[ "${KERNEL_ONLY:-0}" = 1 ]]; then done=1; echo "MAKE_EXIT=0"; exit 0; fi
 # partition whose build.prop changed (and names another zip after midnight)
 export BUILD_DATETIME=${BUILD_DATETIME:-$(date +%s)}
 export BUILD_NUMBER=${BUILD_NUMBER:-eng.$(whoami).$(date -ud "@$BUILD_DATETIME" +%Y%m%d.%H%M%S)}
-# Older builds' packages out of the way: after this run, out/ holds only this build's
-pkgs() { rm -f -- "$O"/ExpressiveOS-*.zip "$O"/ExpressiveOS-*.zip.sha256sum "$O/cheetah.json"; }
+# Older builds' packages out of the way: after this run, out/ holds only this build's,
+# and the target-files zip m evolution keeps (patches/vendor_lineage/0003) is this build's
+tf=$(tf_zip)
+in_top "$top/${tf%/*}"
+pkgs() { rm -f -- "$O"/ExpressiveOS-*.zip "$O"/ExpressiveOS-*.zip.sha256sum "$O/cheetah.json" "$tf"; }
 pkgs
 rm -f -- out/ksu/init_boot-ksu.img out/ksu/init_boot-stock.img
 unset CHEETAH_KSU_INIT_BOOT
 echo "== make pass 1 (stock init_boot), BUILD_DATETIME $BUILD_DATETIME"
-m -j"$(nproc)" evolution || fail "make pass 1 failed"
-# Pass 1's package carries the stock init_boot: it must never be taken for the release
-pkgs
+# Only what cheetah-ksu.sh reads, not all of evolution: CHEETAH_KSU_INIT_BOOT changes the
+# board config, so pass 2 runs Soong and Kati again and packages everything anyway. A full
+# pass 1 only added a second packaging run and an OTA zip (about 5 minutes) to throw away.
+m -j"$(nproc)" bootimage initbootimage vendorkernelbootimage || fail "make pass 1 failed"
 "$here/tools/cheetah-ksu.sh" "$top" || fail "cheetah-ksu.sh failed"
 export CHEETAH_KSU_INIT_BOOT=out/ksu/init_boot-ksu.img
 echo "== make pass 2 (KernelSU Next init_boot)"
@@ -84,6 +89,7 @@ zips=("$O"/ExpressiveOS-*.zip)
 want="ExpressiveOS-*-$(date -ud "@$BUILD_DATETIME" +%Y%m%d)-cheetah-$EOS_VERSION-$EOS_BUILD_TYPE.zip"
 # shellcheck disable=SC2053
 [[ ${zips[0]##*/} == $want ]] || fail "pass 2 made ${zips[0]##*/}, want $want"
+[[ -f $tf ]] || fail "pass 2 kept no target-files zip ($tf): is patches/vendor_lineage/0003 in vendor/lineage?"
 "$here/tools/ksu-check.sh" images "$top/$O" "$top" || fail "pass 2 didn't ship the KernelSU Next init_boot"
 done=1
 echo "OK: ${zips[0]##*/}"

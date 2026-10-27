@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The picker's on-device "default" tile would be Bloom a second time (ro.config.wallpaper
+         points at it); Bloom is already first in the ExpressiveOS category. The typo is the
+         picker's own (PartnerProvider.RES_DEFAULT_WALLPAPER_HIDDEN). -->
+    <bool name="default_wallpapper_hidden">true</bool>
+</resources>

@@ -11,7 +11,7 @@ give the same bytes. Prints the zip's sha256 on the last line.
 import hashlib, os, re, struct, sys, zipfile, zlib
 
 W, H = 1080, 1320
-BAD_CHUNKS = {b"iCCP", b"gAMA", b"sRGB", b"cHRM"}   # would shift #141228 on some decoders
+BAD_CHUNKS = {b"iCCP", b"gAMA", b"sRGB", b"cHRM"}   # would shift the background on some decoders
 STAMP = (2026, 1, 1, 0, 0, 0)
 
 def fail(msg):

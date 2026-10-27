@@ -61,6 +61,19 @@ project_ok() {   # project_ok <dir>: a git project of its own in this tree, git 
         || fail "${d#"$top"/} has a git am or rebase in progress ($gd); finish it or abort it yourself, then run this again"
 }
 
+patch_project() {   # patch_project <patches/dir>: the tree project it patches (<dir>/PROJECT, else its path with _ for /)
+    local p=${1%/}
+    # A project whose own name has a _ (system/update_engine) names itself in PROJECT
+    if [[ -f $p/PROJECT ]]; then
+        p=$(sed -n 1p -- "$p/PROJECT")
+        [[ $p =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ && /$p/ != */../* ]] || fail "${1%/}/PROJECT doesn't name a tree project: '$p'"
+        printf '%s\n' "$p"
+        return
+    fi
+    p=${p##*/}
+    printf '%s\n' "${p//_//}"
+}
+
 subject_of() {   # subject_of <patch>: its Subject:, folded lines joined, [PATCH n/m] dropped
     awk '/^Subject: /{s=substr($0,10); while ((getline l) > 0 && l ~ /^ /) s = s l; print s; exit}' "$1" | sed 's/^\[PATCH[^]]*\] //'
 }
@@ -125,6 +138,10 @@ dump_vars() {   # dump_vars <var>...: VAR='value' lines for EOS_LUNCH, without l
 
 var_of() {   # var_of <dumpvars output> <name>: one value from dump_vars' output
     sed -n "s/^$2='\(.*\)'\$/\1/p" <<<"$1"
+}
+
+tf_zip() {   # tf_zip: the target-files zip m evolution keeps (patches/vendor_lineage/0003), relative to the tree
+    printf '%s\n' "out/target/product/cheetah/obj/PACKAGING/target_files_intermediates/${EOS_LUNCH%%-*}-target_files.zip"
 }
 
 eos_lock() {   # eos_lock <script> [arg]...: run <script> holding ~/.expressiveos.lock and ~/.evolution-tree.lock (shared with the Evolution X routines), waiting up to 8 h for each

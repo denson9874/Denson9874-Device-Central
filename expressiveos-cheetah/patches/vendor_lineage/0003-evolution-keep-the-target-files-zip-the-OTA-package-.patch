@@ -1,0 +1,46 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 12:00:00 +0000
+Subject: [PATCH] evolution: keep the target-files zip the OTA package is made
+ from
+
+m evolution packages the OTA from the unpacked target-files folder and
+then deletes the whole target_files intermediates folder, so nothing of
+a build's target-files is left once its package is done. An incremental
+OTA from a build needs exactly that build's target-files as its source.
+
+Build the target-files zip too ($(BUILT_TARGET_FILES_PACKAGE), soong_zip
+of the same folder the package was made from) and remove only the
+unpacked folder and its file list afterwards. The zip stays at
+obj/PACKAGING/target_files_intermediates/<product>-target_files.zip,
+where ExpressiveOS's pack script picks it up and keeps it with the
+release.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ build/tasks/evolution.mk | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/build/tasks/evolution.mk b/build/tasks/evolution.mk
+index 939f7ede..341c9905 100644
+--- a/build/tasks/evolution.mk
++++ b/build/tasks/evolution.mk
+@@ -20,11 +20,13 @@ LINEAGE_TARGET_PACKAGE := $(PRODUCT_OUT)/$(LINEAGE_VERSION).zip
+ 
+ SHA256 := prebuilts/build-tools/path/$(HOST_PREBUILT_TAG)/sha256sum
+ 
+-$(LINEAGE_TARGET_PACKAGE): $(INTERNAL_OTA_PACKAGE_TARGET)
++# ExpressiveOS keeps the target-files zip the package is made from: every incremental
++# OTA from this build starts from it. Only the unpacked copy and its file list go.
++$(LINEAGE_TARGET_PACKAGE): $(INTERNAL_OTA_PACKAGE_TARGET) $(BUILT_TARGET_FILES_PACKAGE)
+ 	$(hide) mv -f $(INTERNAL_OTA_PACKAGE_TARGET) $(LINEAGE_TARGET_PACKAGE)
+ 	$(hide) $(SHA256) $(LINEAGE_TARGET_PACKAGE) | sed "s|$(PRODUCT_OUT)/||" > $(LINEAGE_TARGET_PACKAGE).sha256sum
+ 	$(hide) ./vendor/lineage/build/tools/createjson.py $(TARGET_DEVICE) $(PRODUCT_OUT) $(LINEAGE_VERSION).zip $(TARGET_BUILD_VARIANT) $(WITH_GMS)
+-	$(hide) rm -rf $(call intermediates-dir-for,PACKAGING,target_files)
++	$(hide) rm -rf $(patsubst %.zip,%,$(BUILT_TARGET_FILES_PACKAGE)) $(BUILT_TARGET_FILES_DIR)
+ 	$(hide) ./vendor/lineage/build/tasks/ascii_output.sh
+ 	@echo "Package Complete: $(LINEAGE_TARGET_PACKAGE)" >&2
+ 
+-- 
+2.43.0
+

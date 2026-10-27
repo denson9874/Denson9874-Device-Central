@@ -1,0 +1,330 @@
+From 602cd104de8be4d82309bede114f61df8a5cbb57 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:34:10 +0000
+Subject: [PATCH] Evolver: rename the hub to Expressive Studio
+
+ExpressiveOS is its own ROM: its customization hub was still called
+"The Evolver" with Evolution X's tagline. Drop the old translations so
+the new name and subtitle show until they are translated again.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ res/values-ar/evolution_strings.xml     | 2 --
+ res/values-de-rDE/evolution_strings.xml | 3 ---
+ res/values-es-rES/evolution_strings.xml | 3 ---
+ res/values-fr-rFR/evolution_strings.xml | 3 ---
+ res/values-hu-rHU/evolution_strings.xml | 3 ---
+ res/values-in-rID/evolution_strings.xml | 3 ---
+ res/values-it-rIT/evolution_strings.xml | 3 ---
+ res/values-ja-rJP/evolution_strings.xml | 3 ---
+ res/values-ko-rKR/evolution_strings.xml | 3 ---
+ res/values-ku-rTR/evolution_strings.xml | 3 ---
+ res/values-pl-rPL/evolution_strings.xml | 3 ---
+ res/values-pt-rBR/evolution_strings.xml | 3 ---
+ res/values-ru-rRU/evolution_strings.xml | 3 ---
+ res/values-sk-rSK/evolution_strings.xml | 3 ---
+ res/values-sv-rSE/evolution_strings.xml | 3 ---
+ res/values-tr-rTR/evolution_strings.xml | 3 ---
+ res/values-uk-rUA/evolution_strings.xml | 3 ---
+ res/values-vi-rVN/evolution_strings.xml | 3 ---
+ res/values-zh-rCN/evolution_strings.xml | 3 ---
+ res/values-zh-rTW/evolution_strings.xml | 3 ---
+ res/values/evolution_strings.xml        | 4 ++--
+ 21 files changed, 2 insertions(+), 61 deletions(-)
+
+diff --git a/res/values-ar/evolution_strings.xml b/res/values-ar/evolution_strings.xml
+index 05cb467..22e06da 100644
+--- a/res/values-ar/evolution_strings.xml
++++ b/res/values-ar/evolution_strings.xml
+@@ -1,7 +1,5 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="evolver_dashboard_title">Evolver</string>
+-    <string name="evolver_dashboard_summary">طوّر جهازك بطريقتك</string>
+     <string name="themes_title">السمات</string>
+     <string name="themes_summary">محرك Monet والخطوط والأيقونات والحركات</string>
+     <string name="lock_screen_title">شاشة القفل</string>
+diff --git a/res/values-de-rDE/evolution_strings.xml b/res/values-de-rDE/evolution_strings.xml
+index d909914..77fa66d 100644
+--- a/res/values-de-rDE/evolution_strings.xml
++++ b/res/values-de-rDE/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">Evolver</string>
+-    <string name="evolver_dashboard_summary">Entwickelnd, wie nie zuvor</string>
+     <!-- Categories -->
+     <string name="themes_title">Themen</string>
+     <string name="themes_summary">Monet, Schriftarten, Symbole</string>
+diff --git a/res/values-es-rES/evolution_strings.xml b/res/values-es-rES/evolution_strings.xml
+index f3915d9..caa6e2e 100644
+--- a/res/values-es-rES/evolution_strings.xml
++++ b/res/values-es-rES/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">El Evolucionador</string>
+-    <string name="evolver_dashboard_summary">Evoluciona tu dispositivo, a tu manera</string>
+     <!-- Categories -->
+     <string name="themes_title">Temas</string>
+     <string name="themes_summary">Motor Monet, estilos de UI, fuentes, paquetes de iconos</string>
+diff --git a/res/values-fr-rFR/evolution_strings.xml b/res/values-fr-rFR/evolution_strings.xml
+index 2855dd6..49010a4 100644
+--- a/res/values-fr-rFR/evolution_strings.xml
++++ b/res/values-fr-rFR/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">Evolver</string>
+-    <string name="evolver_dashboard_summary">Évoluer comme jamais auparavant</string>
+     <!-- Categories -->
+     <string name="themes_title">Thèmes</string>
+     <string name="themes_summary">Monet, polices, icônes</string>
+diff --git a/res/values-hu-rHU/evolution_strings.xml b/res/values-hu-rHU/evolution_strings.xml
+index 06e14e5..9564066 100644
+--- a/res/values-hu-rHU/evolution_strings.xml
++++ b/res/values-hu-rHU/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">Az Evolver</string>
+-    <string name="evolver_dashboard_summary">Az Ön útja, a telefonja fejlesztése</string>
+     <!-- Categories -->
+     <string name="themes_title">Témák</string>
+     <string name="themes_summary">Monet motor, betűtípusok, ikonok, animációk</string>
+diff --git a/res/values-in-rID/evolution_strings.xml b/res/values-in-rID/evolution_strings.xml
+index c72ffb6..6636dea 100644
+--- a/res/values-in-rID/evolution_strings.xml
++++ b/res/values-in-rID/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">The Evolver</string>
+-    <string name="evolver_dashboard_summary">Kembangkan perangkatmu, sesuai keinginanmu</string>
+     <!-- Categories -->
+     <string name="themes_title">Tema</string>
+     <string name="themes_summary">Mesin Monet, font, ikon, animasi</string>
+diff --git a/res/values-it-rIT/evolution_strings.xml b/res/values-it-rIT/evolution_strings.xml
+index ad88202..a6505dd 100644
+--- a/res/values-it-rIT/evolution_strings.xml
++++ b/res/values-it-rIT/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">The Evolver</string>
+-    <string name="evolver_dashboard_summary">Evolvi il tuo dispositivo, a modo tuo</string>
+     <!-- Categories -->
+     <string name="themes_title">Temi</string>
+     <string name="themes_summary">Motore Monet, caratteri, icone, animazioni</string>
+diff --git a/res/values-ja-rJP/evolution_strings.xml b/res/values-ja-rJP/evolution_strings.xml
+index a20e2e6..5b016ad 100644
+--- a/res/values-ja-rJP/evolution_strings.xml
++++ b/res/values-ja-rJP/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">The Evolver</string>
+-    <string name="evolver_dashboard_summary">自分好みにデバイスを進化させよう！</string>
+     <!-- Categories -->
+     <string name="themes_title">テーマ</string>
+     <string name="themes_summary">Monet エンジン、フォント、アイコン、アニメーション</string>
+diff --git a/res/values-ko-rKR/evolution_strings.xml b/res/values-ko-rKR/evolution_strings.xml
+index e78267b..1201569 100644
+--- a/res/values-ko-rKR/evolution_strings.xml
++++ b/res/values-ko-rKR/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">Evolver</string>
+-    <string name="evolver_dashboard_summary">나만의 방식으로 기기를 발전시키세요</string>
+     <!-- Categories -->
+     <string name="themes_title">테마</string>
+     <string name="themes_summary">모네 엔진, 폰트, 아이콘, 애니메이션</string>
+diff --git a/res/values-ku-rTR/evolution_strings.xml b/res/values-ku-rTR/evolution_strings.xml
+index eaa9bcd..7b60648 100644
+--- a/res/values-ku-rTR/evolution_strings.xml
++++ b/res/values-ku-rTR/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">The Evolver</string>
+-    <string name="evolver_dashboard_summary">پەرەپێدانی ئامێرەکەت بە ئارەزووی خۆت</string>
+     <!-- Categories -->
+     <string name="themes_title">تێماکان</string>
+     <string name="themes_summary">مۆنێت، فۆنتەکان، وێنۆچکەکان، جووڵەکان</string>
+diff --git a/res/values-pl-rPL/evolution_strings.xml b/res/values-pl-rPL/evolution_strings.xml
+index 86316b0..0dd86cd 100644
+--- a/res/values-pl-rPL/evolution_strings.xml
++++ b/res/values-pl-rPL/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">Evolver</string>
+-    <string name="evolver_dashboard_summary">Rozwijaj swoje urządzenie na swój sposób</string>
+     <!-- Categories -->
+     <string name="themes_title">Motywy</string>
+     <string name="themes_summary">Motyw dynamiczny, czcionki, ikony, animacje</string>
+diff --git a/res/values-pt-rBR/evolution_strings.xml b/res/values-pt-rBR/evolution_strings.xml
+index a9e78c2..cd1bd3e 100644
+--- a/res/values-pt-rBR/evolution_strings.xml
++++ b/res/values-pt-rBR/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">Evolução</string>
+-    <string name="evolver_dashboard_summary">Evolua seu dispositivo, do seu jeito</string>
+     <!-- Categories -->
+     <string name="themes_title">Temas</string>
+     <string name="themes_summary">Tema, fontes, ícones, animações</string>
+diff --git a/res/values-ru-rRU/evolution_strings.xml b/res/values-ru-rRU/evolution_strings.xml
+index e8bff00..098b8b1 100644
+--- a/res/values-ru-rRU/evolution_strings.xml
++++ b/res/values-ru-rRU/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">The Evolver</string>
+-    <string name="evolver_dashboard_summary">Развиваемся, как никогда прежде</string>
+     <!-- Categories -->
+     <string name="themes_title">Темы</string>
+     <string name="themes_summary">Настройки Monet, шрифты, значки</string>
+diff --git a/res/values-sk-rSK/evolution_strings.xml b/res/values-sk-rSK/evolution_strings.xml
+index 88c1bfa..9746bf8 100644
+--- a/res/values-sk-rSK/evolution_strings.xml
++++ b/res/values-sk-rSK/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">Evolver</string>
+-    <string name="evolver_dashboard_summary">Evolving like never before</string>
+     <!-- Categories -->
+     <string name="themes_title">Témy</string>
+     <string name="themes_summary">Monet, písma, ikony</string>
+diff --git a/res/values-sv-rSE/evolution_strings.xml b/res/values-sv-rSE/evolution_strings.xml
+index 8e27fcd..179f8bb 100644
+--- a/res/values-sv-rSE/evolution_strings.xml
++++ b/res/values-sv-rSE/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">The Evolver</string>
+-    <string name="evolver_dashboard_summary">Utveckla din enhet på ditt sätt</string>
+     <!-- Categories -->
+     <string name="themes_title">Teman</string>
+     <string name="themes_summary">Monet-motor, teckensnitt, ikoner, animeringar</string>
+diff --git a/res/values-tr-rTR/evolution_strings.xml b/res/values-tr-rTR/evolution_strings.xml
+index 02a7403..a5cac26 100644
+--- a/res/values-tr-rTR/evolution_strings.xml
++++ b/res/values-tr-rTR/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">The Evolver</string>
+-    <string name="evolver_dashboard_summary">Cihazınızı kendi yönteminizle geliştirin</string>
+     <!-- Categories -->
+     <string name="themes_title">Temalar</string>
+     <string name="themes_summary">Monet motoru, yazı tipleri, simgeler, animasyonlar</string>
+diff --git a/res/values-uk-rUA/evolution_strings.xml b/res/values-uk-rUA/evolution_strings.xml
+index ad8838d..64304d8 100644
+--- a/res/values-uk-rUA/evolution_strings.xml
++++ b/res/values-uk-rUA/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">Кастомізація Evo-X</string>
+-    <string name="evolver_dashboard_summary">Еволюція вашого пристрою на ваш смак</string>
+     <!-- Categories -->
+     <string name="themes_title">Теми</string>
+     <string name="themes_summary">Рушій Monet, шрифти, значки, анімації</string>
+diff --git a/res/values-vi-rVN/evolution_strings.xml b/res/values-vi-rVN/evolution_strings.xml
+index 69e6315..c3c44f1 100644
+--- a/res/values-vi-rVN/evolution_strings.xml
++++ b/res/values-vi-rVN/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">The Evolver</string>
+-    <string name="evolver_dashboard_summary">Tiến hoá thiết bị của bạn, theo cách của bạn</string>
+     <!-- Categories -->
+     <string name="themes_title">Giao diện</string>
+     <string name="themes_summary">Công cụ Monet, kiểu giao diện người dùng, phông chữ, gói biểu tượng</string>
+diff --git a/res/values-zh-rCN/evolution_strings.xml b/res/values-zh-rCN/evolution_strings.xml
+index bfd40dd..ec36723 100644
+--- a/res/values-zh-rCN/evolution_strings.xml
++++ b/res/values-zh-rCN/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">Evolution 自定义</string>
+-    <string name="evolver_dashboard_summary">随心定制，让你的设备不断进化</string>
+     <!-- Categories -->
+     <string name="themes_title">主题</string>
+     <string name="themes_summary">Monet 引擎、界面风格、字体、图标包</string>
+diff --git a/res/values-zh-rTW/evolution_strings.xml b/res/values-zh-rTW/evolution_strings.xml
+index 36cab94..707af5b 100644
+--- a/res/values-zh-rTW/evolution_strings.xml
++++ b/res/values-zh-rTW/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Evolver -->
+-    <string name="evolver_dashboard_title">Evolution X 自定義</string>
+-    <string name="evolver_dashboard_summary">前所未有的進化</string>
+     <!-- Categories -->
+     <string name="themes_title">主題</string>
+     <string name="themes_summary">Monet、字體、圖示</string>
+diff --git a/res/values/evolution_strings.xml b/res/values/evolution_strings.xml
+index 6e71457..3bf0f13 100644
+--- a/res/values/evolution_strings.xml
++++ b/res/values/evolution_strings.xml
+@@ -5,8 +5,8 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Evolver -->
+-    <string name="evolver_dashboard_title">The Evolver</string>
+-    <string name="evolver_dashboard_summary">Evolving your device, your way</string>
++    <string name="evolver_dashboard_title">Expressive Studio</string>
++    <string name="evolver_dashboard_summary">Make your device yours</string>
+ 
+     <!-- Categories -->
+     <string name="themes_title">Themes</string>
+-- 
+2.43.0
+

@@ -1,0 +1,1771 @@
+From 29ec1a0f5b61b92ac8fcf4aece68c824588e457f Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:51:44 +0000
+Subject: [PATCH] lineage-sdk: name ExpressiveOS in the system strings
+
+ExpressiveOS is its own ROM: the About phone version, API level and
+updates labels, the system label and several translated permission
+descriptions still named Evolution X (or LineageOS in a few
+translations).
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ lineage/res/res/values-ar/strings.xml      |  8 ++++----
+ lineage/res/res/values-ast-rES/strings.xml |  8 ++++----
+ lineage/res/res/values-az/strings.xml      |  8 ++++----
+ lineage/res/res/values-be/strings.xml      |  6 +++---
+ lineage/res/res/values-bg/strings.xml      |  8 ++++----
+ lineage/res/res/values-ca/strings.xml      |  8 ++++----
+ lineage/res/res/values-ckb/strings.xml     |  8 ++++----
+ lineage/res/res/values-cs/strings.xml      |  8 ++++----
+ lineage/res/res/values-cy/strings.xml      | 12 ++++++------
+ lineage/res/res/values-da/strings.xml      |  8 ++++----
+ lineage/res/res/values-de/strings.xml      |  8 ++++----
+ lineage/res/res/values-el/strings.xml      |  8 ++++----
+ lineage/res/res/values-en-rAU/strings.xml  |  8 ++++----
+ lineage/res/res/values-en-rCA/strings.xml  |  8 ++++----
+ lineage/res/res/values-en-rGB/strings.xml  |  8 ++++----
+ lineage/res/res/values-en-rIN/strings.xml  |  8 ++++----
+ lineage/res/res/values-es-rUS/strings.xml  |  8 ++++----
+ lineage/res/res/values-es/strings.xml      |  8 ++++----
+ lineage/res/res/values-et/strings.xml      |  8 ++++----
+ lineage/res/res/values-eu/strings.xml      |  8 ++++----
+ lineage/res/res/values-fa/strings.xml      |  8 ++++----
+ lineage/res/res/values-fi/strings.xml      |  8 ++++----
+ lineage/res/res/values-fr/strings.xml      |  8 ++++----
+ lineage/res/res/values-fur-rIT/strings.xml |  8 ++++----
+ lineage/res/res/values-fy-rNL/strings.xml  |  8 ++++----
+ lineage/res/res/values-ga-rIE/strings.xml  |  8 ++++----
+ lineage/res/res/values-gd/strings.xml      |  8 ++++----
+ lineage/res/res/values-gl/strings.xml      |  8 ++++----
+ lineage/res/res/values-hr/strings.xml      |  8 ++++----
+ lineage/res/res/values-hu/strings.xml      |  8 ++++----
+ lineage/res/res/values-in/strings.xml      |  8 ++++----
+ lineage/res/res/values-is/strings.xml      | 18 +++++++++---------
+ lineage/res/res/values-it/strings.xml      | 10 +++++-----
+ lineage/res/res/values-iw/strings.xml      | 12 ++++++------
+ lineage/res/res/values-ja/strings.xml      | 14 +++++++-------
+ lineage/res/res/values-ka/strings.xml      |  8 ++++----
+ lineage/res/res/values-kab-rDZ/strings.xml |  8 ++++----
+ lineage/res/res/values-kn/strings.xml      |  8 ++++----
+ lineage/res/res/values-ko/strings.xml      |  8 ++++----
+ lineage/res/res/values-nl/strings.xml      |  8 ++++----
+ lineage/res/res/values-nn-rNO/strings.xml  |  8 ++++----
+ lineage/res/res/values-pl/strings.xml      |  8 ++++----
+ lineage/res/res/values-pt-rBR/strings.xml  |  8 ++++----
+ lineage/res/res/values-pt-rPT/strings.xml  |  8 ++++----
+ lineage/res/res/values-ro/strings.xml      |  8 ++++----
+ lineage/res/res/values-ru/strings.xml      |  8 ++++----
+ lineage/res/res/values-sc-rIT/strings.xml  | 18 +++++++++---------
+ lineage/res/res/values-sk/strings.xml      |  8 ++++----
+ lineage/res/res/values-sl/strings.xml      |  8 ++++----
+ lineage/res/res/values-sq/strings.xml      |  8 ++++----
+ lineage/res/res/values-sr/strings.xml      | 10 +++++-----
+ lineage/res/res/values-sv/strings.xml      | 10 +++++-----
+ lineage/res/res/values-ta/strings.xml      |  8 ++++----
+ lineage/res/res/values-th/strings.xml      |  8 ++++----
+ lineage/res/res/values-tr/strings.xml      |  8 ++++----
+ lineage/res/res/values-ug/strings.xml      |  8 ++++----
+ lineage/res/res/values-uk/strings.xml      |  8 ++++----
+ lineage/res/res/values-vi/strings.xml      |  8 ++++----
+ lineage/res/res/values-zh-rCN/strings.xml  |  8 ++++----
+ lineage/res/res/values-zh-rHK/strings.xml  |  8 ++++----
+ lineage/res/res/values-zh-rTW/strings.xml  |  8 ++++----
+ lineage/res/res/values/strings.xml         | 16 ++++++++--------
+ 62 files changed, 271 insertions(+), 271 deletions(-)
+
+diff --git a/lineage/res/res/values-ar/strings.xml b/lineage/res/res/values-ar/strings.xml
+index 63119ef8..e456af73 100644
+--- a/lineage/res/res/values-ar/strings.xml
++++ b/lineage/res/res/values-ar/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">نظام Evolution X</string>
++    <string name="lineageos_system_label">نظام ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">تعديل الملفات التعريفية للنظام</string>
+     <string name="permdesc_modifyProfiles">السماح للتطبيق بتعديل الملفات التعريفية للنظام.</string>
+     <string name="permlab_useHardwareFramework">استخدام إطار عمل الجهاز</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">إعدادات التحكم عن بعد</string>
+     <string name="permdesc_manageRemotePrefs">السماح للتطبيق بإدارة الإعدادات عن بعد</string>
+     <string name="build_date">تاريخ الإنشاء</string>
+-    <string name="lineage_api_level">مستوى Evolution X API</string>
+-    <string name="lineage_updates">تحديثات Evolution X</string>
+-    <string name="lineage_version">إصدار Evolution X</string>
++    <string name="lineage_api_level">مستوى ExpressiveOS API</string>
++    <string name="lineage_updates">تحديثات ExpressiveOS</string>
++    <string name="lineage_version">إصدار ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">‏مستوى رمز تصحيح أمان المورد</string>
+     <string name="unknown">غير معروف</string>
+     <string name="app_killed_message">تم إنهاء التطبيق</string>
+diff --git a/lineage/res/res/values-ast-rES/strings.xml b/lineage/res/res/values-ast-rES/strings.xml
+index eb3c3f95..f2fb6bec 100644
+--- a/lineage/res/res/values-ast-rES/strings.xml
++++ b/lineage/res/res/values-ast-rES/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sistema Evolution X</string>
++    <string name="lineageos_system_label">Sistema ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modificación de los perfiles del sistema</string>
+     <string name="permdesc_modifyProfiles">Permite qu\'una aplicación modifique los perfiles del sistema.</string>
+     <string name="permlab_useHardwareFramework">usu del framework del hardware</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">xestión d\'axustes remotos</string>
+     <string name="permdesc_manageRemotePrefs">Permite qu\'una aplicación xestione axustes remotos</string>
+     <string name="build_date">Data de la compilación</string>
+-    <string name="lineage_api_level">Nivel de l\'API de Evolution X</string>
+-    <string name="lineage_updates">Anovamientos de Evolution X</string>
+-    <string name="lineage_version">Versión de Evolution X</string>
++    <string name="lineage_api_level">Nivel de l\'API de ExpressiveOS</string>
++    <string name="lineage_updates">Anovamientos de ExpressiveOS</string>
++    <string name="lineage_version">Versión de ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Nivel del parche de seguranza del fabricante</string>
+     <string name="unknown">Desconozse</string>
+     <string name="app_killed_message">Matóse l\'aplicación</string>
+diff --git a/lineage/res/res/values-az/strings.xml b/lineage/res/res/values-az/strings.xml
+index cc4899c8..5de7d294 100644
+--- a/lineage/res/res/values-az/strings.xml
++++ b/lineage/res/res/values-az/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X Sistemi</string>
++    <string name="lineageos_system_label">ExpressiveOS Sistemi</string>
+     <string name="permlab_modifyProfiles">sistem profillərini dəyişdir</string>
+     <string name="permdesc_modifyProfiles">Tətbiqin sistem profillərini dəyişdirməsinə icazə verir.</string>
+     <string name="permlab_useHardwareFramework">donanım çərçivəsini istifadə et</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">uzaqdan bağlantı ayarlarını idarə et</string>
+     <string name="permdesc_manageRemotePrefs">Tətbiqin uzaqdan bağlantı ayarlarını idarə etməsinə icazə verir</string>
+     <string name="build_date">Quruluş tarixi</string>
+-    <string name="lineage_api_level">Evolution X API səviyyəsi</string>
+-    <string name="lineage_updates">Evolution X güncəlləmələri</string>
+-    <string name="lineage_version">Evolution X versiyası</string>
++    <string name="lineage_api_level">ExpressiveOS API səviyyəsi</string>
++    <string name="lineage_updates">ExpressiveOS güncəlləmələri</string>
++    <string name="lineage_version">ExpressiveOS versiyası</string>
+     <string name="lineage_vendor_security_patch">Vendor güvənlik yamaq səviyyəsi</string>
+     <string name="unknown">Bilinmir</string>
+     <string name="app_killed_message">Tətbiq bağlanıldı</string>
+diff --git a/lineage/res/res/values-be/strings.xml b/lineage/res/res/values-be/strings.xml
+index cf0a96fe..802eda31 100644
+--- a/lineage/res/res/values-be/strings.xml
++++ b/lineage/res/res/values-be/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Сістэма Evolution X</string>
++    <string name="lineageos_system_label">Сістэма ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">змена сістэмных профіляў</string>
+     <string name="permdesc_modifyProfiles">Дазваляе праграме змяняць сістэмныя профілі.</string>
+     <string name="permlab_writeSettings">змяніць налады сістэмы Lineage</string>
+@@ -32,8 +32,8 @@
+     <string name="permlab_manageRemotePrefs">кіраваць аддаленымі наладамі</string>
+     <string name="permdesc_manageRemotePrefs">Дазваляе праграме кіраваць аддаленымі наладамі</string>
+     <string name="build_date">Дата зборкі</string>
+-    <string name="lineage_updates">Абнаўленні Evolution X</string>
+-    <string name="lineage_version">Версія Evolution X</string>
++    <string name="lineage_updates">Абнаўленні ExpressiveOS</string>
++    <string name="lineage_version">Версія ExpressiveOS</string>
+     <string name="unknown">Невядома</string>
+     <string name="app_killed_message">Праграма спынена</string>
+     <string name="kilobitspersecond_short">кбіт/с</string>
+diff --git a/lineage/res/res/values-bg/strings.xml b/lineage/res/res/values-bg/strings.xml
+index 9cee6529..1d2f9fe6 100644
+--- a/lineage/res/res/values-bg/strings.xml
++++ b/lineage/res/res/values-bg/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X Система</string>
++    <string name="lineageos_system_label">ExpressiveOS Система</string>
+     <string name="permlab_modifyProfiles">Модифициране на системни профили</string>
+     <string name="permdesc_modifyProfiles">Позволява да модифицирате системни профили.</string>
+     <string name="permlab_useHardwareFramework">Използване на framework хардуер</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">управление на отдалечени настройки</string>
+     <string name="permdesc_manageRemotePrefs">Позволява на приложението да управлява отдалечени настройки</string>
+     <string name="build_date">Дата на изграждане</string>
+-    <string name="lineage_api_level">Evolution X приложно-програмен интерфейс ниво</string>
+-    <string name="lineage_updates">Evolution X актуализации</string>
+-    <string name="lineage_version">Версия на Evolution X</string>
++    <string name="lineage_api_level">ExpressiveOS приложно-програмен интерфейс ниво</string>
++    <string name="lineage_updates">ExpressiveOS актуализации</string>
++    <string name="lineage_version">Версия на ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Ниво на сигурност на доставчик</string>
+     <string name="unknown">Неизвестно</string>
+     <string name="app_killed_message">Приложението е спряно</string>
+diff --git a/lineage/res/res/values-ca/strings.xml b/lineage/res/res/values-ca/strings.xml
+index bd8807ab..973168b8 100644
+--- a/lineage/res/res/values-ca/strings.xml
++++ b/lineage/res/res/values-ca/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sistema de Evolution X</string>
++    <string name="lineageos_system_label">Sistema de ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modifica els perfils del sistema</string>
+     <string name="permdesc_modifyProfiles">Permet a una aplicació modificar els perfils del sistema.</string>
+     <string name="permlab_useHardwareFramework">utilitza el marc de hardware</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">gestiona la configuració remota</string>
+     <string name="permdesc_manageRemotePrefs">Permet a una aplicació gestionar la configuració remota</string>
+     <string name="build_date">Data de compilació</string>
+-    <string name="lineage_api_level">Nivell de l\'API de Evolution X</string>
+-    <string name="lineage_updates">Actualitzacions Evolution X</string>
+-    <string name="lineage_version">Versió de Evolution X</string>
++    <string name="lineage_api_level">Nivell de l\'API de ExpressiveOS</string>
++    <string name="lineage_updates">Actualitzacions ExpressiveOS</string>
++    <string name="lineage_version">Versió de ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Nivell de pedaç de seguretat del proveïdor</string>
+     <string name="unknown">Desconegut</string>
+     <string name="app_killed_message">S\'ha finalitzat l\'aplicació</string>
+diff --git a/lineage/res/res/values-ckb/strings.xml b/lineage/res/res/values-ckb/strings.xml
+index a85906d6..8edcd40e 100644
+--- a/lineage/res/res/values-ckb/strings.xml
++++ b/lineage/res/res/values-ckb/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">سیستمی LineageOS</string>
++    <string name="lineageos_system_label">سیستمی ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">دەستکاریکردنی پرۆفایلەکانی سیستم</string>
+     <string name="permdesc_modifyProfiles">ڕێگە بە بەرنامە دەدات کە پرۆفایلەکانی سیستم دەستکاری بکات.</string>
+     <string name="permlab_useHardwareFramework">بەکارهێنانی چوارچێوەی ڕەقەکاڵا</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">بەڕێوەبردنی ڕێکخستنە دوورەکان</string>
+     <string name="permdesc_manageRemotePrefs">ڕێگە بە بەرنامە دەدات ڕێکخستنە دوورەکان بەڕێوە ببات</string>
+     <string name="build_date">ڕێکەوتی بنیاتنان</string>
+-    <string name="lineage_api_level">ئاستی LineageOS API</string>
+-    <string name="lineage_updates">نوێکارییەکانی LineageOS</string>
+-    <string name="lineage_version">وەشانی LineageOS</string>
++    <string name="lineage_api_level">ئاستی ExpressiveOS API</string>
++    <string name="lineage_updates">نوێکارییەکانی ExpressiveOS</string>
++    <string name="lineage_version">وەشانی ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">ئاستی پارچەی پاراستنی فرۆشیار</string>
+     <string name="unknown">نادیار</string>
+     <string name="app_killed_message">بەرنامەکە کوژێنرایەوە</string>
+diff --git a/lineage/res/res/values-cs/strings.xml b/lineage/res/res/values-cs/strings.xml
+index 83b2a93a..4d790fea 100644
+--- a/lineage/res/res/values-cs/strings.xml
++++ b/lineage/res/res/values-cs/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Systém Evolution X</string>
++    <string name="lineageos_system_label">Systém ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">změnit systémové profily</string>
+     <string name="permdesc_modifyProfiles">Umožňuje upravovat systémové profily.</string>
+     <string name="permlab_useHardwareFramework">využití hardware zařízení</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">správa vzdálených nastavení</string>
+     <string name="permdesc_manageRemotePrefs">Umožňuje spravovat vzdálené nastavení</string>
+     <string name="build_date">Datum sestavení</string>
+-    <string name="lineage_api_level">Verze Evolution X API</string>
+-    <string name="lineage_updates">Aktualizace Evolution X</string>
+-    <string name="lineage_version">Verze systému Evolution X</string>
++    <string name="lineage_api_level">Verze ExpressiveOS API</string>
++    <string name="lineage_updates">Aktualizace ExpressiveOS</string>
++    <string name="lineage_version">Verze systému ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Úroveň opravy zabezpečení dodavatele</string>
+     <string name="unknown">Neznámá</string>
+     <string name="app_killed_message">Aplikace ukončena</string>
+diff --git a/lineage/res/res/values-cy/strings.xml b/lineage/res/res/values-cy/strings.xml
+index f5506792..b05df2de 100644
+--- a/lineage/res/res/values-cy/strings.xml
++++ b/lineage/res/res/values-cy/strings.xml
+@@ -5,15 +5,15 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">System Evolution X</string>
++    <string name="lineageos_system_label">System ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">addasu proffiliau system</string>
+     <string name="permdesc_modifyProfiles">Mae\'n caniatáu i ap addasu proffiliau system.</string>
+     <string name="permlab_useHardwareFramework">defnyddio fframwaith caledwedd</string>
+     <string name="permdesc_useHardwareFramework">Mae\'n caniatáu i ap gyrchu fframwaith caledwedd Lineage.</string>
+     <string name="permlab_writeSettings">addasu gosodiadau system Lineage</string>
+-    <string name="permdesc_writeSettings">Mae\'n caniatáu i ap addasu gosodiadau system Evolution X.</string>
++    <string name="permdesc_writeSettings">Mae\'n caniatáu i ap addasu gosodiadau system ExpressiveOS.</string>
+     <string name="permlab_writeSecureSettings">addasu gosodiadau system ddiogel Lineage</string>
+-    <string name="permdesc_writeSecureSettings">Mae\'n caniatáu i ap addasu gosodiadau system ddiogel Evolution X. Dim i\'w ddefnyddio gan apiau arferol.</string>
++    <string name="permdesc_writeSecureSettings">Mae\'n caniatáu i ap addasu gosodiadau system ddiogel ExpressiveOS. Dim i\'w ddefnyddio gan apiau arferol.</string>
+     <string name="profileNameDefault">Rhagosodiad</string>
+     <string name="profileNameWork">Gwaith</string>
+     <string name="profileNameHome">Cartref</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">rheoli gosodiadau o bell</string>
+     <string name="permdesc_manageRemotePrefs">Mae\'n caniatáu ap i reoli gosodiadau o bell.</string>
+     <string name="build_date">Dyddiad adeiledd</string>
+-    <string name="lineage_api_level">Lefel API Evolution X</string>
+-    <string name="lineage_updates">Diweddariadau Evolution X</string>
+-    <string name="lineage_version">Fersiwn Evolution X</string>
++    <string name="lineage_api_level">Lefel API ExpressiveOS</string>
++    <string name="lineage_updates">Diweddariadau ExpressiveOS</string>
++    <string name="lineage_version">Fersiwn ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Lefel patsh diogelwch gwneuthurwr</string>
+     <string name="unknown">Anhysybys</string>
+     <string name="app_killed_message">Lladdwyd yr ap</string>
+diff --git a/lineage/res/res/values-da/strings.xml b/lineage/res/res/values-da/strings.xml
+index 2bc76adf..1a6b71b7 100644
+--- a/lineage/res/res/values-da/strings.xml
++++ b/lineage/res/res/values-da/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X System</string>
++    <string name="lineageos_system_label">ExpressiveOS System</string>
+     <string name="permlab_modifyProfiles">ændre systemprofiler</string>
+     <string name="permdesc_modifyProfiles">Tillader en app at ændre systemprofiler.</string>
+     <string name="permlab_useHardwareFramework">brug udstyrs-programmingsplatform</string>
+@@ -51,9 +51,9 @@
+     <string name="permdesc_manageLiveDisplay">Tillader en app at konfigurere avancerede skærmindstillinger.</string>
+     <string name="permlab_manageRemotePrefs">håndtere fjernbetjeningsindstillinger</string>
+     <string name="permdesc_manageRemotePrefs">Tillader en app at håndtere fjernbetjeningsindstillinger</string>
+-    <string name="lineage_api_level">Evolution X API-niveau</string>
+-    <string name="lineage_updates">Evolution X-opdateringer</string>
+-    <string name="lineage_version">Evolution X-version</string>
++    <string name="lineage_api_level">ExpressiveOS API-niveau</string>
++    <string name="lineage_updates">ExpressiveOS-opdateringer</string>
++    <string name="lineage_version">ExpressiveOS-version</string>
+     <string name="lineage_vendor_security_patch">Producent-sikkerhedsrettelsesniveau</string>
+     <string name="unknown">Ukendt</string>
+     <string name="app_killed_message">Program stoppet</string>
+diff --git a/lineage/res/res/values-de/strings.xml b/lineage/res/res/values-de/strings.xml
+index 353534ca..b54ecace 100644
+--- a/lineage/res/res/values-de/strings.xml
++++ b/lineage/res/res/values-de/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X-System</string>
++    <string name="lineageos_system_label">ExpressiveOS-System</string>
+     <string name="permlab_modifyProfiles">Systemprofile ändern</string>
+     <string name="permdesc_modifyProfiles">Ermöglicht der App, Systemprofile zu ändern.</string>
+     <string name="permlab_useHardwareFramework">Hardware-Framework verwenden</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">Remote-Einstellungen verwalten</string>
+     <string name="permdesc_manageRemotePrefs">Ermöglicht der App, Remote-Einstellungen zu verwalten</string>
+     <string name="build_date">Build-Datum</string>
+-    <string name="lineage_api_level">Evolution X API-Level</string>
+-    <string name="lineage_updates">Evolution X-Updates</string>
+-    <string name="lineage_version">Evolution X-Version</string>
++    <string name="lineage_api_level">ExpressiveOS API-Level</string>
++    <string name="lineage_updates">ExpressiveOS-Updates</string>
++    <string name="lineage_version">ExpressiveOS-Version</string>
+     <string name="lineage_vendor_security_patch">Hersteller-Sicherheitspatch-Level</string>
+     <string name="unknown">Unbekannt</string>
+     <string name="app_killed_message">Anwendung beendet</string>
+diff --git a/lineage/res/res/values-el/strings.xml b/lineage/res/res/values-el/strings.xml
+index 5afa7067..a18f1924 100644
+--- a/lineage/res/res/values-el/strings.xml
++++ b/lineage/res/res/values-el/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Σύστημα Evolution X</string>
++    <string name="lineageos_system_label">Σύστημα ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">τροποποίηση προφίλ συστήματος</string>
+     <string name="permdesc_modifyProfiles">Επιτρέπει σε μια εφαρμογή να τροποποιεί τα προφίλ του συστήματος.</string>
+     <string name="permlab_useHardwareFramework">χρήση του πλαισίου υλικού</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">διαχείριση απομακρυσμένων ρυθμίσεων</string>
+     <string name="permdesc_manageRemotePrefs">Επιτρέπει σε μια εφαρμογή να διαχειριστεί απομακρυσμένες ρυθμίσεις</string>
+     <string name="build_date">Ημερομηνία έκδοσης</string>
+-    <string name="lineage_api_level">Επίπεδο Evolution X API</string>
+-    <string name="lineage_updates">Ενημερώσεις Evolution X</string>
+-    <string name="lineage_version">Έκδοση Evolution X</string>
++    <string name="lineage_api_level">Επίπεδο ExpressiveOS API</string>
++    <string name="lineage_updates">Ενημερώσεις ExpressiveOS</string>
++    <string name="lineage_version">Έκδοση ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Επίπεδο ενημέρωσης κώδικα ασφαλείας κατασκευαστή</string>
+     <string name="unknown">Άγνωστο</string>
+     <string name="app_killed_message">Η εφαρμογή τερματίστηκε</string>
+diff --git a/lineage/res/res/values-en-rAU/strings.xml b/lineage/res/res/values-en-rAU/strings.xml
+index df3bd211..5265aefa 100644
+--- a/lineage/res/res/values-en-rAU/strings.xml
++++ b/lineage/res/res/values-en-rAU/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X System</string>
++    <string name="lineageos_system_label">ExpressiveOS System</string>
+     <string name="permlab_modifyProfiles">modify system profiles</string>
+     <string name="permdesc_modifyProfiles">Allows an app to modify system profiles.</string>
+     <string name="permlab_useHardwareFramework">use hardware framework</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">manage remote settings</string>
+     <string name="permdesc_manageRemotePrefs">Allows an app to manage remote settings</string>
+     <string name="build_date">Build date</string>
+-    <string name="lineage_api_level">Evolution X API level</string>
+-    <string name="lineage_updates">Evolution X updates</string>
+-    <string name="lineage_version">Evolution X version</string>
++    <string name="lineage_api_level">ExpressiveOS API level</string>
++    <string name="lineage_updates">ExpressiveOS updates</string>
++    <string name="lineage_version">ExpressiveOS version</string>
+     <string name="lineage_vendor_security_patch">Vendor security patch level</string>
+     <string name="unknown">Unknown</string>
+     <string name="app_killed_message">Application killed</string>
+diff --git a/lineage/res/res/values-en-rCA/strings.xml b/lineage/res/res/values-en-rCA/strings.xml
+index df3bd211..5265aefa 100644
+--- a/lineage/res/res/values-en-rCA/strings.xml
++++ b/lineage/res/res/values-en-rCA/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X System</string>
++    <string name="lineageos_system_label">ExpressiveOS System</string>
+     <string name="permlab_modifyProfiles">modify system profiles</string>
+     <string name="permdesc_modifyProfiles">Allows an app to modify system profiles.</string>
+     <string name="permlab_useHardwareFramework">use hardware framework</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">manage remote settings</string>
+     <string name="permdesc_manageRemotePrefs">Allows an app to manage remote settings</string>
+     <string name="build_date">Build date</string>
+-    <string name="lineage_api_level">Evolution X API level</string>
+-    <string name="lineage_updates">Evolution X updates</string>
+-    <string name="lineage_version">Evolution X version</string>
++    <string name="lineage_api_level">ExpressiveOS API level</string>
++    <string name="lineage_updates">ExpressiveOS updates</string>
++    <string name="lineage_version">ExpressiveOS version</string>
+     <string name="lineage_vendor_security_patch">Vendor security patch level</string>
+     <string name="unknown">Unknown</string>
+     <string name="app_killed_message">Application killed</string>
+diff --git a/lineage/res/res/values-en-rGB/strings.xml b/lineage/res/res/values-en-rGB/strings.xml
+index 688507e5..6213e7d9 100644
+--- a/lineage/res/res/values-en-rGB/strings.xml
++++ b/lineage/res/res/values-en-rGB/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X System</string>
++    <string name="lineageos_system_label">ExpressiveOS System</string>
+     <string name="permlab_modifyProfiles">modify system profiles</string>
+     <string name="permdesc_modifyProfiles">Allows an app to modify system profiles.</string>
+     <string name="permlab_useHardwareFramework">use hardware framework</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">manage remote settings</string>
+     <string name="permdesc_manageRemotePrefs">Allows an app to manage remote settings</string>
+     <string name="build_date">Build date</string>
+-    <string name="lineage_api_level">Evolution X API level</string>
+-    <string name="lineage_updates">Evolution X updates</string>
+-    <string name="lineage_version">Evolution X version</string>
++    <string name="lineage_api_level">ExpressiveOS API level</string>
++    <string name="lineage_updates">ExpressiveOS updates</string>
++    <string name="lineage_version">ExpressiveOS version</string>
+     <string name="lineage_vendor_security_patch">Vendor security patch level</string>
+     <string name="unknown">Unknown</string>
+     <string name="app_killed_message">Application killed</string>
+diff --git a/lineage/res/res/values-en-rIN/strings.xml b/lineage/res/res/values-en-rIN/strings.xml
+index b99a55a3..f727b405 100644
+--- a/lineage/res/res/values-en-rIN/strings.xml
++++ b/lineage/res/res/values-en-rIN/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X System</string>
++    <string name="lineageos_system_label">ExpressiveOS System</string>
+     <string name="permlab_modifyProfiles">Modify system profiles</string>
+     <string name="permdesc_modifyProfiles">Allows an app to modify system profiles.</string>
+     <string name="permlab_useHardwareFramework">use hardware framework</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">manage remote settings</string>
+     <string name="permdesc_manageRemotePrefs">Allows an app to manage remote settings</string>
+     <string name="build_date">Build date</string>
+-    <string name="lineage_api_level">Evolution X API level</string>
+-    <string name="lineage_updates">Evolution X updates</string>
+-    <string name="lineage_version">Evolution X version</string>
++    <string name="lineage_api_level">ExpressiveOS API level</string>
++    <string name="lineage_updates">ExpressiveOS updates</string>
++    <string name="lineage_version">ExpressiveOS version</string>
+     <string name="lineage_vendor_security_patch">Vendor security patch level</string>
+     <string name="unknown">Unknown</string>
+     <string name="app_killed_message">Application killed</string>
+diff --git a/lineage/res/res/values-es-rUS/strings.xml b/lineage/res/res/values-es-rUS/strings.xml
+index 372cc005..8eae59f9 100644
+--- a/lineage/res/res/values-es-rUS/strings.xml
++++ b/lineage/res/res/values-es-rUS/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sistema de Evolution X</string>
++    <string name="lineageos_system_label">Sistema de ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modificar los perfiles del sistema</string>
+     <string name="permdesc_modifyProfiles">Permite que una aplicación modifique los perfiles del sistema.</string>
+     <string name="permlab_useHardwareFramework">usar framework de hardware</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">gestionar los ajustes remotos</string>
+     <string name="permdesc_manageRemotePrefs">Permite a una aplicación gestionar los ajustes remotos</string>
+     <string name="build_date">Fecha de compilación</string>
+-    <string name="lineage_api_level">Nivel de API de Evolution X</string>
+-    <string name="lineage_updates">Actualizaciones de Evolution X</string>
+-    <string name="lineage_version">Versión de Evolution X</string>
++    <string name="lineage_api_level">Nivel de API de ExpressiveOS</string>
++    <string name="lineage_updates">Actualizaciones de ExpressiveOS</string>
++    <string name="lineage_version">Versión de ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Nivel del parche de seguridad del proveedor</string>
+     <string name="unknown">Desconocido</string>
+     <string name="app_killed_message">Aplicación finalizada</string>
+diff --git a/lineage/res/res/values-es/strings.xml b/lineage/res/res/values-es/strings.xml
+index b0799014..648a67df 100644
+--- a/lineage/res/res/values-es/strings.xml
++++ b/lineage/res/res/values-es/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sistema de Evolution X</string>
++    <string name="lineageos_system_label">Sistema de ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modificar los perfiles del sistema</string>
+     <string name="permdesc_modifyProfiles">Permite que una aplicación modifique los perfiles del sistema.</string>
+     <string name="permlab_useHardwareFramework">usar estructura de hardware</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">administrar la configuración remota</string>
+     <string name="permdesc_manageRemotePrefs">Permite a una aplicación administrar la configuración remota</string>
+     <string name="build_date">Fecha de compilación</string>
+-    <string name="lineage_api_level">Nivel de la API de Evolution X</string>
+-    <string name="lineage_updates">Actualizaciones de Evolution X</string>
+-    <string name="lineage_version">Versión de Evolution X</string>
++    <string name="lineage_api_level">Nivel de la API de ExpressiveOS</string>
++    <string name="lineage_updates">Actualizaciones de ExpressiveOS</string>
++    <string name="lineage_version">Versión de ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Nivel del parche de seguridad del proveedor</string>
+     <string name="unknown">Desconocido</string>
+     <string name="app_killed_message">Aplicación finalizada</string>
+diff --git a/lineage/res/res/values-et/strings.xml b/lineage/res/res/values-et/strings.xml
+index 794264ac..e206722c 100644
+--- a/lineage/res/res/values-et/strings.xml
++++ b/lineage/res/res/values-et/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X\'i süsteem</string>
++    <string name="lineageos_system_label">ExpressiveOS\'i süsteem</string>
+     <string name="permlab_modifyProfiles">süsteemiprofiilide muutmine</string>
+     <string name="permdesc_modifyProfiles">Lubab rakendusel süsteemiprofiile muuta.</string>
+     <string name="permlab_useHardwareFramework">kasutada riistvara raamistikku</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">kaugtöölaua sätete haldamine</string>
+     <string name="permdesc_manageRemotePrefs">Võimaldab rakendusel hallata kaugtöölaua sätteid</string>
+     <string name="build_date">Järgu kuupäev</string>
+-    <string name="lineage_api_level">Evolution X\'i API tase</string>
+-    <string name="lineage_updates">Evolution X\'i uuendused</string>
+-    <string name="lineage_version">Evolution X\'i versioon</string>
++    <string name="lineage_api_level">ExpressiveOS\'i API tase</string>
++    <string name="lineage_updates">ExpressiveOS\'i uuendused</string>
++    <string name="lineage_version">ExpressiveOS\'i versioon</string>
+     <string name="lineage_vendor_security_patch">Tarnija turvapaiga tase</string>
+     <string name="unknown">Tundmatu</string>
+     <string name="app_killed_message">Rakendus sundsuletud</string>
+diff --git a/lineage/res/res/values-eu/strings.xml b/lineage/res/res/values-eu/strings.xml
+index cb815bd0..cf4e2e73 100644
+--- a/lineage/res/res/values-eu/strings.xml
++++ b/lineage/res/res/values-eu/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X sistema</string>
++    <string name="lineageos_system_label">ExpressiveOS sistema</string>
+     <string name="permlab_modifyProfiles">aldatu sistemaren profilak</string>
+     <string name="permdesc_modifyProfiles">Sistemaren profilak aldatzea ahalbidetzen dio aplikazioari.</string>
+     <string name="permlab_useHardwareFramework">hardware markoa erabili</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">urruneko ezarpenak kudeatu</string>
+     <string name="permdesc_manageRemotePrefs">Urruneko ezarpenak kudeatzea ahalbidetzen dio aplikazioari</string>
+     <string name="build_date">Konpilatze data</string>
+-    <string name="lineage_api_level">Evolution X API maila</string>
+-    <string name="lineage_updates">Evolution X eguneraketak</string>
+-    <string name="lineage_version">Evolution X bertsioa</string>
++    <string name="lineage_api_level">ExpressiveOS API maila</string>
++    <string name="lineage_updates">ExpressiveOS eguneraketak</string>
++    <string name="lineage_version">ExpressiveOS bertsioa</string>
+     <string name="lineage_vendor_security_patch">Ekoizlearen segurtasun partxe maila</string>
+     <string name="unknown">Ezezaguna</string>
+     <string name="app_killed_message">Aplikazioa erail da</string>
+diff --git a/lineage/res/res/values-fa/strings.xml b/lineage/res/res/values-fa/strings.xml
+index 71930417..4fbe0f3d 100644
+--- a/lineage/res/res/values-fa/strings.xml
++++ b/lineage/res/res/values-fa/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">سیستم Evolution X</string>
++    <string name="lineageos_system_label">سیستم ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">تغییر پروفایل‌های سیستم</string>
+     <string name="permdesc_modifyProfiles">به برنامه اجازه می‌دهد تا پروفایل‌های سیستم را تغییر دهد.</string>
+     <string name="permlab_useHardwareFramework">استفاده از چارچوب سخت‌افزار</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">کنترل تنظیمات از راه دور</string>
+     <string name="permdesc_manageRemotePrefs">به برنامه اجازه میدهد تا تنظیمات از راه دور را کنترل کند</string>
+     <string name="build_date">تاریخ ساخت</string>
+-    <string name="lineage_api_level">سطح LineageOS API </string>
+-    <string name="lineage_updates">به‌روزرسانی‌های Evolution X</string>
+-    <string name="lineage_version">نگارش Evolution X</string>
++    <string name="lineage_api_level">سطح ExpressiveOS API </string>
++    <string name="lineage_updates">به‌روزرسانی‌های ExpressiveOS</string>
++    <string name="lineage_version">نگارش ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">سطح وصله امنیتی فروشنده</string>
+     <string name="unknown">ناشناخته</string>
+     <string name="app_killed_message">برنامه بسته شد</string>
+diff --git a/lineage/res/res/values-fi/strings.xml b/lineage/res/res/values-fi/strings.xml
+index f5877a35..0ee69da0 100644
+--- a/lineage/res/res/values-fi/strings.xml
++++ b/lineage/res/res/values-fi/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X Järjestelmä</string>
++    <string name="lineageos_system_label">ExpressiveOS Järjestelmä</string>
+     <string name="permlab_modifyProfiles">muokkaa järjestelmän profiileja</string>
+     <string name="permdesc_modifyProfiles">Sallii sovelluksen muokata järjestelmäprofiileja.</string>
+     <string name="permlab_useHardwareFramework">käytä laitteiston kehystä</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">hallitse etäkäytön asetuksia</string>
+     <string name="permdesc_manageRemotePrefs">Sallii sovellluksen hallita etäasetuksia</string>
+     <string name="build_date">Luontipäivä</string>
+-    <string name="lineage_api_level">Evolution X API-taso</string>
+-    <string name="lineage_updates">Evolution X-päivitykset</string>
+-    <string name="lineage_version">Evolution X-versio</string>
++    <string name="lineage_api_level">ExpressiveOS API-taso</string>
++    <string name="lineage_updates">ExpressiveOS-päivitykset</string>
++    <string name="lineage_version">ExpressiveOS-versio</string>
+     <string name="lineage_vendor_security_patch">Valmistajan tietoturvakorjauksen taso</string>
+     <string name="unknown">Tuntematon</string>
+     <string name="app_killed_message">Sovellus pysäytetty</string>
+diff --git a/lineage/res/res/values-fr/strings.xml b/lineage/res/res/values-fr/strings.xml
+index 95edb052..7a832e6b 100644
+--- a/lineage/res/res/values-fr/strings.xml
++++ b/lineage/res/res/values-fr/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Système Evolution X</string>
++    <string name="lineageos_system_label">Système ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modifier les profils système</string>
+     <string name="permdesc_modifyProfiles">Permet à une application de modifier les profils système.</string>
+     <string name="permlab_useHardwareFramework">utiliser le framework matériel</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">gérer les paramètres distants</string>
+     <string name="permdesc_manageRemotePrefs">Autoriser une application à gérer les paramètres distants</string>
+     <string name="build_date">Date de compilation</string>
+-    <string name="lineage_api_level">Niveau de l\'API Evolution X</string>
+-    <string name="lineage_updates">Mises à jour Evolution X</string>
+-    <string name="lineage_version">Version Evolution X</string>
++    <string name="lineage_api_level">Niveau de l\'API ExpressiveOS</string>
++    <string name="lineage_updates">Mises à jour ExpressiveOS</string>
++    <string name="lineage_version">Version ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Niveau du correctif de sécurité du fournisseur</string>
+     <string name="unknown">Inconnu</string>
+     <string name="app_killed_message">Application arrêtée</string>
+diff --git a/lineage/res/res/values-fur-rIT/strings.xml b/lineage/res/res/values-fur-rIT/strings.xml
+index 8a40e879..736d56d8 100644
+--- a/lineage/res/res/values-fur-rIT/strings.xml
++++ b/lineage/res/res/values-fur-rIT/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sisteme Evolution X</string>
++    <string name="lineageos_system_label">Sisteme ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modifiche profîi di sisteme</string>
+     <string name="permdesc_modifyProfiles">Al permet a une aplicazion di modificâ i profîi di sisteme.</string>
+     <string name="permlab_useHardwareFramework">dopre la suaze di vore hardware</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">gjestìs impostazions lontanis</string>
+     <string name="permdesc_manageRemotePrefs">Al permet a une aplicazion di gjestî impostazions lontanis.</string>
+     <string name="build_date">Date di compilazion</string>
+-    <string name="lineage_api_level">Nivel API Evolution X</string>
+-    <string name="lineage_updates">Inzornaments di Evolution X</string>
+-    <string name="lineage_version">Version di Evolution X</string>
++    <string name="lineage_api_level">Nivel API ExpressiveOS</string>
++    <string name="lineage_updates">Inzornaments di ExpressiveOS</string>
++    <string name="lineage_version">Version di ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Nivel de corezion di sigurece dal produtôr</string>
+     <string name="unknown">No cognossût</string>
+     <string name="app_killed_message">Aplicazion copade</string>
+diff --git a/lineage/res/res/values-fy-rNL/strings.xml b/lineage/res/res/values-fy-rNL/strings.xml
+index 19b58835..5b629940 100644
+--- a/lineage/res/res/values-fy-rNL/strings.xml
++++ b/lineage/res/res/values-fy-rNL/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X-systeem</string>
++    <string name="lineageos_system_label">ExpressiveOS-systeem</string>
+     <string name="permlab_modifyProfiles">systeemprofilen wizigje</string>
+     <string name="permdesc_modifyProfiles">Hjirmei kin de app systeemprofilen wizigje.</string>
+     <string name="permlab_useHardwareFramework">hardware-framework brûke</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">ynstellingen foar behear op ôfstân</string>
+     <string name="permdesc_manageRemotePrefs">Hjirmei kin de app ynstellingen foar behear op ôfstân beheare</string>
+     <string name="build_date">Build-datum</string>
+-    <string name="lineage_api_level">Evolution X-API-Nivo</string>
+-    <string name="lineage_updates">Evolution X-fernijingen</string>
+-    <string name="lineage_version">Evolution X-ferzje</string>
++    <string name="lineage_api_level">ExpressiveOS-API-Nivo</string>
++    <string name="lineage_updates">ExpressiveOS-fernijingen</string>
++    <string name="lineage_version">ExpressiveOS-ferzje</string>
+     <string name="lineage_vendor_security_patch">Leveransiers-befeiligingspatch-nivo</string>
+     <string name="unknown">Unbekend</string>
+     <string name="app_killed_message">App ôfsluten</string>
+diff --git a/lineage/res/res/values-ga-rIE/strings.xml b/lineage/res/res/values-ga-rIE/strings.xml
+index 7799e408..99bc4d51 100644
+--- a/lineage/res/res/values-ga-rIE/strings.xml
++++ b/lineage/res/res/values-ga-rIE/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Córas Evolution X</string>
++    <string name="lineageos_system_label">Córas ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">próifílí córais a mhodhnú</string>
+     <string name="permdesc_modifyProfiles">Ligeann sé d\'aip próifílí córais a mhodhnú.</string>
+     <string name="permlab_useHardwareFramework">úsáid creatlach crua-earraí</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">socruithe cianda a bhainistiú</string>
+     <string name="permdesc_manageRemotePrefs">Ligeann sé d’aip cianshocruithe a bhainistiú</string>
+     <string name="build_date">Dáta tógála</string>
+-    <string name="lineage_api_level">Leibhéal API Evolution X</string>
+-    <string name="lineage_updates">Nuashonruithe do Evolution X</string>
+-    <string name="lineage_version">LineageOS leagan</string>
++    <string name="lineage_api_level">Leibhéal API ExpressiveOS</string>
++    <string name="lineage_updates">Nuashonruithe do ExpressiveOS</string>
++    <string name="lineage_version">ExpressiveOS leagan</string>
+     <string name="lineage_vendor_security_patch">Leibhéal paiste slándála díoltóir</string>
+     <string name="unknown">Anaithnid</string>
+     <string name="app_killed_message">Maraíodh an t-iarratas</string>
+diff --git a/lineage/res/res/values-gd/strings.xml b/lineage/res/res/values-gd/strings.xml
+index 3ff04b3f..55568041 100644
+--- a/lineage/res/res/values-gd/strings.xml
++++ b/lineage/res/res/values-gd/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Siostam Evolution X</string>
++    <string name="lineageos_system_label">Siostam ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">pròifilean an t-siostaim atharrachadh</string>
+     <string name="permdesc_modifyProfiles">Leigidh seo le aplacaid pròifilean an t-siostaim atharrachadh.</string>
+     <string name="permlab_useHardwareFramework">frèam-obrach bathair-chruaidh a chleachdadh</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">roghainnean cèine a stiùireadh</string>
+     <string name="permdesc_manageRemotePrefs">Leigidh seo le aplacaid roghainnean cèine a stiùireadh</string>
+     <string name="build_date">Ceann-là na togail</string>
+-    <string name="lineage_api_level">Leibheil API Evolution X</string>
+-    <string name="lineage_updates">Ùrachaidhean air Evolution X</string>
+-    <string name="lineage_version">An tionndadh de Evolution X</string>
++    <string name="lineage_api_level">Leibheil API ExpressiveOS</string>
++    <string name="lineage_updates">Ùrachaidhean air ExpressiveOS</string>
++    <string name="lineage_version">An tionndadh de ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Leibheil brèide tèarainteachd an reiceadair</string>
+     <string name="unknown">Chan eil fhios</string>
+     <string name="app_killed_message">Chaidh aplacaid a mharbhadh</string>
+diff --git a/lineage/res/res/values-gl/strings.xml b/lineage/res/res/values-gl/strings.xml
+index 206e5427..8a8d3634 100644
+--- a/lineage/res/res/values-gl/strings.xml
++++ b/lineage/res/res/values-gl/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sistema Evolution X</string>
++    <string name="lineageos_system_label">Sistema ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modificar perfís do sistema</string>
+     <string name="permdesc_modifyProfiles">Permítelle a unha aplicación modificar os perfís do sistema.</string>
+     <string name="permlab_useHardwareFramework">utilizar o contorno de traballo do hardware</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">xestionar axustes remotos</string>
+     <string name="permdesc_manageRemotePrefs">Permitir a unha aplicación xestionar os axustes remotos</string>
+     <string name="build_date">Data de compilación</string>
+-    <string name="lineage_api_level">Nivel da API do Evolution X</string>
+-    <string name="lineage_updates">Actualizacións de Evolution X</string>
+-    <string name="lineage_version">Versión de Evolution X</string>
++    <string name="lineage_api_level">Nivel da API do ExpressiveOS</string>
++    <string name="lineage_updates">Actualizacións de ExpressiveOS</string>
++    <string name="lineage_version">Versión de ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Nivel do parche de seguridade do proveedor</string>
+     <string name="unknown">Descoñecido</string>
+     <string name="app_killed_message">Matouse a aplicación</string>
+diff --git a/lineage/res/res/values-hr/strings.xml b/lineage/res/res/values-hr/strings.xml
+index 1d46b4da..b692d888 100644
+--- a/lineage/res/res/values-hr/strings.xml
++++ b/lineage/res/res/values-hr/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X Sustav</string>
++    <string name="lineageos_system_label">ExpressiveOS Sustav</string>
+     <string name="permlab_modifyProfiles">izmijeni profile sustava</string>
+     <string name="permdesc_modifyProfiles">Dopušta aplikaciji da izmijeni profile sustava.</string>
+     <string name="permlab_useHardwareFramework">koristi hardware framework</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">upravljanje udaljenim postavkama</string>
+     <string name="permdesc_manageRemotePrefs">Omogućuje aplikaciji upravljanje udaljenim postavkama</string>
+     <string name="build_date">Datum izdavanja</string>
+-    <string name="lineage_api_level">Evolution X API razina</string>
+-    <string name="lineage_updates">Evolution X ažuriranja</string>
+-    <string name="lineage_version">Evolution X verzija</string>
++    <string name="lineage_api_level">ExpressiveOS API razina</string>
++    <string name="lineage_updates">ExpressiveOS ažuriranja</string>
++    <string name="lineage_version">ExpressiveOS verzija</string>
+     <string name="unknown">Nepoznato</string>
+     <string name="app_killed_message">Aplikacija je zaustavljena</string>
+     <string name="kilobitspersecond_short">kb/s</string>
+diff --git a/lineage/res/res/values-hu/strings.xml b/lineage/res/res/values-hu/strings.xml
+index 206e2d33..f1150aca 100644
+--- a/lineage/res/res/values-hu/strings.xml
++++ b/lineage/res/res/values-hu/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X-rendszer</string>
++    <string name="lineageos_system_label">ExpressiveOS-rendszer</string>
+     <string name="permlab_modifyProfiles">rendszerprofilok módosítása</string>
+     <string name="permdesc_modifyProfiles">Lehetővé teszi az alkalmazás számára a rendszerprofilok módosítását.</string>
+     <string name="permlab_useHardwareFramework">hardver keretrendszert használ</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">távoli beállítások kezelése</string>
+     <string name="permdesc_manageRemotePrefs">Lehetővé teszi az alkalmazások számára a távoli beállítások kezelését</string>
+     <string name="build_date">A kiadás dátuma</string>
+-    <string name="lineage_api_level">A Evolution X API-szintje</string>
+-    <string name="lineage_updates">Evolution X-frissítések</string>
+-    <string name="lineage_version">Evolution X-verzió</string>
++    <string name="lineage_api_level">Az ExpressiveOS API-szintje</string>
++    <string name="lineage_updates">ExpressiveOS-frissítések</string>
++    <string name="lineage_version">ExpressiveOS-verzió</string>
+     <string name="lineage_vendor_security_patch">Gyártói biztonsági hibajavítócsomag-szint</string>
+     <string name="unknown">Ismeretlen</string>
+     <string name="app_killed_message">Az alkalmazás leállítva</string>
+diff --git a/lineage/res/res/values-in/strings.xml b/lineage/res/res/values-in/strings.xml
+index df1d7f79..71769109 100644
+--- a/lineage/res/res/values-in/strings.xml
++++ b/lineage/res/res/values-in/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sistem Evolution X</string>
++    <string name="lineageos_system_label">Sistem ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">memodifikasi profil sistem</string>
+     <string name="permdesc_modifyProfiles">Mengizinkan aplikasi untuk mengubah profil sistem.</string>
+     <string name="permlab_useHardwareFramework">gunakan hardware framework</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">mengelola pengaturan jarak jauh</string>
+     <string name="permdesc_manageRemotePrefs">Memungkinkan aplikasi untuk mengelola pengaturan jarak jauh</string>
+     <string name="build_date">Tanggal pembuatan</string>
+-    <string name="lineage_api_level">Tingkat API Evolution X</string>
+-    <string name="lineage_updates">Pembaruan Evolution X</string>
+-    <string name="lineage_version">Versi Evolution X</string>
++    <string name="lineage_api_level">Tingkat API ExpressiveOS</string>
++    <string name="lineage_updates">Pembaruan ExpressiveOS</string>
++    <string name="lineage_version">Versi ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Tingkat patch keamanan vendor</string>
+     <string name="unknown">Tidak dikenal</string>
+     <string name="app_killed_message">Aplikasi dimatikan</string>
+diff --git a/lineage/res/res/values-is/strings.xml b/lineage/res/res/values-is/strings.xml
+index 211d6708..94bd4030 100644
+--- a/lineage/res/res/values-is/strings.xml
++++ b/lineage/res/res/values-is/strings.xml
+@@ -5,15 +5,15 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X kerfi</string>
++    <string name="lineageos_system_label">ExpressiveOS kerfi</string>
+     <string name="permlab_modifyProfiles">breyta kerfissniðum</string>
+     <string name="permdesc_modifyProfiles">Gerir forriti kleift að breyta kerfissniðum.</string>
+     <string name="permlab_useHardwareFramework">fá aðgang að vélbúnaðarkerfum</string>
+-    <string name="permdesc_useHardwareFramework">Gerir forriti kleift að fá aðgang að vélbúnaðarkerfum Evolution X.</string>
+-    <string name="permlab_writeSettings">breyta kerfisstillingum Evolution X</string>
+-    <string name="permdesc_writeSettings">Gerir forriti kleift að breyta kerfisstillingum Evolution X.</string>
+-    <string name="permlab_writeSecureSettings">breyta öruggum kerfisstillingum Evolution X</string>
+-    <string name="permdesc_writeSecureSettings">Gerir forriti kleift að breyta öryggisstillingum Evolution X. Notist ekki af venjulegum forritum.</string>
++    <string name="permdesc_useHardwareFramework">Gerir forriti kleift að fá aðgang að vélbúnaðarkerfum ExpressiveOS.</string>
++    <string name="permlab_writeSettings">breyta kerfisstillingum ExpressiveOS</string>
++    <string name="permdesc_writeSettings">Gerir forriti kleift að breyta kerfisstillingum ExpressiveOS.</string>
++    <string name="permlab_writeSecureSettings">breyta öruggum kerfisstillingum ExpressiveOS</string>
++    <string name="permdesc_writeSecureSettings">Gerir forriti kleift að breyta öryggisstillingum ExpressiveOS. Notist ekki af venjulegum forritum.</string>
+     <string name="profileNameDefault">Sjálfgefið</string>
+     <string name="profileNameWork">Vinna</string>
+     <string name="profileNameHome">Heim</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">sýsla með fjartengdar stillingar</string>
+     <string name="permdesc_manageRemotePrefs">Gerir forriti kleift að sýsla með fjartengdar stillingar</string>
+     <string name="build_date">Dagsetning samsetningar</string>
+-    <string name="lineage_api_level">Evolution X API-stig</string>
+-    <string name="lineage_updates">Evolution X uppfærslur</string>
+-    <string name="lineage_version">Evolution X útgáfa</string>
++    <string name="lineage_api_level">ExpressiveOS API-stig</string>
++    <string name="lineage_updates">ExpressiveOS uppfærslur</string>
++    <string name="lineage_version">ExpressiveOS útgáfa</string>
+     <string name="lineage_vendor_security_patch">Stig öryggisviðbóta framleiðanda</string>
+     <string name="unknown">Óþekkt</string>
+     <string name="app_killed_message">Forrit drepið</string>
+diff --git a/lineage/res/res/values-it/strings.xml b/lineage/res/res/values-it/strings.xml
+index bf8aab2f..d4470300 100644
+--- a/lineage/res/res/values-it/strings.xml
++++ b/lineage/res/res/values-it/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sistema Evolution X</string>
++    <string name="lineageos_system_label">Sistema ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modifica profili sistema</string>
+     <string name="permdesc_modifyProfiles">Consente all\'applicazione di modificare i profili di sistema.</string>
+     <string name="permlab_useHardwareFramework">utilizza framework hardware</string>
+@@ -13,7 +13,7 @@
+     <string name="permlab_writeSettings">modifica le impostazioni di sistema di Lineage</string>
+     <string name="permdesc_writeSettings">Consente all\'applicazione di modificare le impostazioni di sistema di Lineage.</string>
+     <string name="permlab_writeSecureSettings">modifica le impostazioni sicure di sistema di Lineage</string>
+-    <string name="permdesc_writeSecureSettings">Consente all\'applicazione di modificare le impostazioni sicure di sistema di Evolution X. Non utilizzato dalle app normali.</string>
++    <string name="permdesc_writeSecureSettings">Consente all\'applicazione di modificare le impostazioni sicure di sistema di ExpressiveOS. Non utilizzato dalle app normali.</string>
+     <string name="profileNameDefault">Predefinito</string>
+     <string name="profileNameWork">Lavoro</string>
+     <string name="profileNameHome">Casa</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">gestisci impostazioni remote</string>
+     <string name="permdesc_manageRemotePrefs">Consente all\'applicazione di gestire le impostazioni remote</string>
+     <string name="build_date">Data build</string>
+-    <string name="lineage_api_level">Livello API Evolution X</string>
+-    <string name="lineage_updates">Aggiornamenti Evolution X</string>
+-    <string name="lineage_version">Versione Evolution X</string>
++    <string name="lineage_api_level">Livello API ExpressiveOS</string>
++    <string name="lineage_updates">Aggiornamenti ExpressiveOS</string>
++    <string name="lineage_version">Versione ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Livello patch sicurezza produttore</string>
+     <string name="unknown">Sconosciuto</string>
+     <string name="app_killed_message">Applicazione chiusa</string>
+diff --git a/lineage/res/res/values-iw/strings.xml b/lineage/res/res/values-iw/strings.xml
+index bc9fb967..0c7ef131 100644
+--- a/lineage/res/res/values-iw/strings.xml
++++ b/lineage/res/res/values-iw/strings.xml
+@@ -5,13 +5,13 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">מערכת Evolution X</string>
++    <string name="lineageos_system_label">מערכת ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">שינוי פרופילי מערכת</string>
+     <string name="permdesc_modifyProfiles">מאפשר ליישום לשנות פרופילי מערכת.</string>
+     <string name="permlab_useHardwareFramework">השתמש במסגרת חומרה</string>
+-    <string name="permdesc_useHardwareFramework">אפשר ליישומים גישה לתשתית החומרה של Evolution X.</string>
++    <string name="permdesc_useHardwareFramework">אפשר ליישומים גישה לתשתית החומרה של ExpressiveOS.</string>
+     <string name="permlab_writeSettings">שינוי הגדרות המערכת</string>
+-    <string name="permdesc_writeSettings">מאפשר ליישום לשנות את הגדרות מערכת Evolution X.</string>
++    <string name="permdesc_writeSettings">מאפשר ליישום לשנות את הגדרות מערכת ExpressiveOS.</string>
+     <string name="permlab_writeSecureSettings">שינוי הגדרות אבטחה של המערכת</string>
+     <string name="permdesc_writeSecureSettings">מאפשר ליישום לשנות הגדרות אבטחה של המערכת, לא נועד לשימוש ע\"י יישומים רגילים.</string>
+     <string name="profileNameDefault">ברירת מחדל</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">נהל הגדרות מרחוק</string>
+     <string name="permdesc_manageRemotePrefs">מאפשר ליישום לנהל הגדרות מרחוק</string>
+     <string name="build_date">תאריך בנייה</string>
+-    <string name="lineage_api_level">רמת ה־API של Evolution X</string>
+-    <string name="lineage_updates">עדכוני Evolution X</string>
+-    <string name="lineage_version">גרסת Evolution X</string>
++    <string name="lineage_api_level">רמת ה־API של ExpressiveOS</string>
++    <string name="lineage_updates">עדכוני ExpressiveOS</string>
++    <string name="lineage_version">גרסת ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">‏רמת עדכוני אבטחה</string>
+     <string name="unknown">לא ידוע</string>
+     <string name="app_killed_message">היישום נסגר</string>
+diff --git a/lineage/res/res/values-ja/strings.xml b/lineage/res/res/values-ja/strings.xml
+index 08a0065d..66cf6d33 100644
+--- a/lineage/res/res/values-ja/strings.xml
++++ b/lineage/res/res/values-ja/strings.xml
+@@ -5,15 +5,15 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X システム</string>
++    <string name="lineageos_system_label">ExpressiveOS システム</string>
+     <string name="permlab_modifyProfiles">システムプロファイルの変更</string>
+     <string name="permdesc_modifyProfiles">システムプロファイルの変更をアプリに許可します。</string>
+     <string name="permlab_useHardwareFramework">ハードウェアフレームワークの使用</string>
+-    <string name="permdesc_useHardwareFramework">Evolution X ハードウェアフレームワークへのアクセスをアプリに許可します。</string>
++    <string name="permdesc_useHardwareFramework">ExpressiveOS ハードウェアフレームワークへのアクセスをアプリに許可します。</string>
+     <string name="permlab_writeSettings">lineageOS システム設定の変更</string>
+-    <string name="permdesc_writeSettings">Evolution X システム設定の変更をアプリに許可します。</string>
++    <string name="permdesc_writeSettings">ExpressiveOS システム設定の変更をアプリに許可します。</string>
+     <string name="permlab_writeSecureSettings">lineageOS セキュアシステム設定の変更</string>
+-    <string name="permdesc_writeSecureSettings">Evolution X セキュアシステム設定の変更をアプリに許可します。通常のアプリ用ではありません。</string>
++    <string name="permdesc_writeSecureSettings">ExpressiveOS セキュアシステム設定の変更をアプリに許可します。通常のアプリ用ではありません。</string>
+     <string name="profileNameDefault">デフォルト</string>
+     <string name="profileNameWork">仕事</string>
+     <string name="profileNameHome">自宅</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">リモートの設定の管理</string>
+     <string name="permdesc_manageRemotePrefs">リモートの設定を管理することをアプリに許可します。</string>
+     <string name="build_date">ビルド日時</string>
+-    <string name="lineage_api_level">Evolution X API レベル</string>
+-    <string name="lineage_updates">Evolution X アップデート</string>
+-    <string name="lineage_version">Evolution X バージョン</string>
++    <string name="lineage_api_level">ExpressiveOS API レベル</string>
++    <string name="lineage_updates">ExpressiveOS アップデート</string>
++    <string name="lineage_version">ExpressiveOS バージョン</string>
+     <string name="lineage_vendor_security_patch">ベンダーセキュリティパッチレベル</string>
+     <string name="unknown">不明</string>
+     <string name="app_killed_message">アプリを終了しました。</string>
+diff --git a/lineage/res/res/values-ka/strings.xml b/lineage/res/res/values-ka/strings.xml
+index 00059542..692fe4f4 100644
+--- a/lineage/res/res/values-ka/strings.xml
++++ b/lineage/res/res/values-ka/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X სისტემა</string>
++    <string name="lineageos_system_label">ExpressiveOS სისტემა</string>
+     <string name="permlab_modifyProfiles">სისტემის პროფილების შესწორება</string>
+     <string name="permdesc_modifyProfiles">პროგრამისთვის ნების დართვა, შეცვალოს სისტემის პროფილები.</string>
+     <string name="permlab_useHardwareFramework">აპარატურული გარსის გამოყენება</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">დაშორებული პარამეტრების მართვა</string>
+     <string name="permdesc_manageRemotePrefs">პროგრამისთვის ნების დართვა, რომ შეეძლოს დაშორებული პარამეტრების გამართვა </string>
+     <string name="build_date">აწყობის თარიღი</string>
+-    <string name="lineage_api_level">Evolution X-ის API-ს დონე</string>
+-    <string name="lineage_updates">Evolution X-ის განახლებები</string>
+-    <string name="lineage_version">Evolution X-ის ვერსია</string>
++    <string name="lineage_api_level">ExpressiveOS-ის API-ს დონე</string>
++    <string name="lineage_updates">ExpressiveOS-ის განახლებები</string>
++    <string name="lineage_version">ExpressiveOS-ის ვერსია</string>
+     <string name="lineage_vendor_security_patch">მწარმოებლისგან უსაფრთხოების შესწორების დონე</string>
+     <string name="unknown">უცნობი</string>
+     <string name="app_killed_message">პროგრამა გაითიშა</string>
+diff --git a/lineage/res/res/values-kab-rDZ/strings.xml b/lineage/res/res/values-kab-rDZ/strings.xml
+index ba891f02..5d15e772 100644
+--- a/lineage/res/res/values-kab-rDZ/strings.xml
++++ b/lineage/res/res/values-kab-rDZ/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Anagraw n Evolution X</string>
++    <string name="lineageos_system_label">Anagraw n ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">snifel imaɣnuyen unagraw</string>
+     <string name="permdesc_modifyProfiles">Sireg asnas ad-isnifel imaɣnuyen unagraw.</string>
+     <string name="profileNameDefault">Prédéfini(e)</string>
+@@ -23,9 +23,9 @@
+     <string name="live_display_day">Ass</string>
+     <string name="live_display_night">Iḍ</string>
+     <string name="build_date">Azemz n usefsu</string>
+-    <string name="lineage_api_level">Aswir n Evolution X API</string>
+-    <string name="lineage_updates">Lqem n Evolution X</string>
+-    <string name="lineage_version">Lqem n Evolution X</string>
++    <string name="lineage_api_level">Aswir n ExpressiveOS API</string>
++    <string name="lineage_updates">Lqem n ExpressiveOS</string>
++    <string name="lineage_version">Lqem n ExpressiveOS</string>
+     <string name="unknown">Arussin</string>
+     <string name="trust_feature_name">Trust</string>
+ </resources>
+diff --git a/lineage/res/res/values-kn/strings.xml b/lineage/res/res/values-kn/strings.xml
+index 255a5a91..7298f5a4 100644
+--- a/lineage/res/res/values-kn/strings.xml
++++ b/lineage/res/res/values-kn/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X ವ್ಯವಸ್ಥೆ</string>
++    <string name="lineageos_system_label">ExpressiveOS ವ್ಯವಸ್ಥೆ</string>
+     <string name="permlab_modifyProfiles">ವ್ಯವಸ್ಥೆಯ ರೇಖಾಕೃತಿಗಳನ್ನು ಮಾರ್ಪಡಿಸು</string>
+     <string name="permdesc_modifyProfiles">ವ್ಯವಸ್ಥೆಯ ರೇಖಾಕೃತಿಗಳನ್ನು ಮಾರ್ಪಡಿಸಲು ಒಂದು ಆಪ್ಗೆ ಅನುಮತಿಸುತ್ತದೆ.</string>
+     <string name="permlab_useHardwareFramework">ಹಾರ್ಡ್‍ವೇರ್ ಫ್ರೇಮ್‍ವರ್ಕ್ ಉಪಯೋಗಿಸು</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">ಗೆಂಟಂಕೆಯ ಅಳವಡಿಕೆಗಳನ್ನು ನಿರ್ವಹಿಸು</string>
+     <string name="permdesc_manageRemotePrefs">ಗೆಂಟಂಕೆ ಅಳವಡಿಕೆಗಳನ್ನು ನಿರ್ವಹಿಸಲು ಅಪ್ಗೆ ಅನುಮತಿಸುತ್ತದೆ</string>
+     <string name="build_date">ನಿರ್ಮಾಣ ದಿನಾಂಕ</string>
+-    <string name="lineage_api_level">Evolution X API ಮಟ್ಟ</string>
+-    <string name="lineage_updates">Evolution X ನವೀಕರಣಗಳು</string>
+-    <string name="lineage_version">Evolution X ಆವೃತ್ತಿ</string>
++    <string name="lineage_api_level">ExpressiveOS API ಮಟ್ಟ</string>
++    <string name="lineage_updates">ExpressiveOS ನವೀಕರಣಗಳು</string>
++    <string name="lineage_version">ExpressiveOS ಆವೃತ್ತಿ</string>
+     <string name="lineage_vendor_security_patch">Android ಭದ್ರತಾ ತೇಪೆ ಮಟ್ಟ</string>
+     <string name="unknown">ಅಜ್ಞಾತ</string>
+     <string name="app_killed_message">ತಂತ್ರಾಂಶ ಸತ್ತಿತು</string>
+diff --git a/lineage/res/res/values-ko/strings.xml b/lineage/res/res/values-ko/strings.xml
+index 8f48f0c8..304ab27a 100644
+--- a/lineage/res/res/values-ko/strings.xml
++++ b/lineage/res/res/values-ko/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X 시스템</string>
++    <string name="lineageos_system_label">ExpressiveOS 시스템</string>
+     <string name="permlab_modifyProfiles">시스템 프로필 수정</string>
+     <string name="permdesc_modifyProfiles">앱이 시스템 프로필을 수정할 수 있도록 허용합니다.</string>
+     <string name="permlab_useHardwareFramework">하드웨어 프레임워크 사용</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">원격 설정 관리</string>
+     <string name="permdesc_manageRemotePrefs">앱이 원격 설정을 관리할 수 있도록 허용합니다.</string>
+     <string name="build_date">빌드 날짜</string>
+-    <string name="lineage_api_level">Evolution X API 수준</string>
+-    <string name="lineage_updates">Evolution X 업데이트</string>
+-    <string name="lineage_version">Evolution X 버전</string>
++    <string name="lineage_api_level">ExpressiveOS API 수준</string>
++    <string name="lineage_updates">ExpressiveOS 업데이트</string>
++    <string name="lineage_version">ExpressiveOS 버전</string>
+     <string name="lineage_vendor_security_patch">공급업체 보안 패치 수준</string>
+     <string name="unknown">알 수 없음</string>
+     <string name="app_killed_message">애플리케이션 종료됨</string>
+diff --git a/lineage/res/res/values-nl/strings.xml b/lineage/res/res/values-nl/strings.xml
+index ede3720e..b86845f7 100644
+--- a/lineage/res/res/values-nl/strings.xml
++++ b/lineage/res/res/values-nl/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X-systeem</string>
++    <string name="lineageos_system_label">ExpressiveOS-systeem</string>
+     <string name="permlab_modifyProfiles">systeemprofielen wijzigen</string>
+     <string name="permdesc_modifyProfiles">Hiermee kan de app systeemprofielen wijzigen.</string>
+     <string name="permlab_useHardwareFramework">hardware-framework gebruiken</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">instellingen voor beheer op afstand</string>
+     <string name="permdesc_manageRemotePrefs">Hiermee kan de app instellingen voor beheer op afstand beheren</string>
+     <string name="build_date">Build-datum</string>
+-    <string name="lineage_api_level">Niveau van Evolution X-API</string>
+-    <string name="lineage_updates">Evolution X-updates</string>
+-    <string name="lineage_version">Evolution X-versie</string>
++    <string name="lineage_api_level">Niveau van ExpressiveOS-API</string>
++    <string name="lineage_updates">ExpressiveOS-updates</string>
++    <string name="lineage_version">ExpressiveOS-versie</string>
+     <string name="lineage_vendor_security_patch">Niveau van leveranciers-beveiligingspatch</string>
+     <string name="unknown">Onbekend</string>
+     <string name="app_killed_message">App afgesloten</string>
+diff --git a/lineage/res/res/values-nn-rNO/strings.xml b/lineage/res/res/values-nn-rNO/strings.xml
+index 64fde703..45574c0f 100644
+--- a/lineage/res/res/values-nn-rNO/strings.xml
++++ b/lineage/res/res/values-nn-rNO/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">LineageOS-system</string>
++    <string name="lineageos_system_label">ExpressiveOS-system</string>
+     <string name="permlab_modifyProfiles">endra systemprofilar</string>
+     <string name="permdesc_modifyProfiles">Lèt ein app endra systemprofilar.</string>
+     <string name="permlab_useHardwareFramework">bruka rammeverk for maskinvare</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">styra eksterne innstillingar</string>
+     <string name="permdesc_manageRemotePrefs">Lèt ein app styra eksterne innstillingar.</string>
+     <string name="build_date">Byggjedato</string>
+-    <string name="lineage_api_level">LineageOS API-nivå</string>
+-    <string name="lineage_updates">LineageOS-oppdateringar</string>
+-    <string name="lineage_version">LineageOS-versjon</string>
++    <string name="lineage_api_level">ExpressiveOS API-nivå</string>
++    <string name="lineage_updates">ExpressiveOS-oppdateringar</string>
++    <string name="lineage_version">ExpressiveOS-versjon</string>
+     <string name="lineage_vendor_security_patch">Tryggleiksoppdatering frå leverandøren</string>
+     <string name="unknown">Ukjend</string>
+     <string name="app_killed_message">Programmet vart avslutta</string>
+diff --git a/lineage/res/res/values-pl/strings.xml b/lineage/res/res/values-pl/strings.xml
+index 4f704c98..d8f38317 100644
+--- a/lineage/res/res/values-pl/strings.xml
++++ b/lineage/res/res/values-pl/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">System Evolution X</string>
++    <string name="lineageos_system_label">System ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modyfikuje profile systemowe</string>
+     <string name="permdesc_modifyProfiles">Umożliwia aplikacji modyfikację profili systemowych.</string>
+     <string name="permlab_useHardwareFramework">korzystaj z zasobów sprzętowych</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">zarządza zdalnymi ustawieniami</string>
+     <string name="permdesc_manageRemotePrefs">Zezwala aplikacji na zarządzanie zdalnymi ustawieniami</string>
+     <string name="build_date">Data kompilacji</string>
+-    <string name="lineage_api_level">Poziom API Evolution X</string>
+-    <string name="lineage_updates">Aktualizacje Evolution X</string>
+-    <string name="lineage_version">Wersja Evolution X</string>
++    <string name="lineage_api_level">Poziom API ExpressiveOS</string>
++    <string name="lineage_updates">Aktualizacje ExpressiveOS</string>
++    <string name="lineage_version">Wersja ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Poziom poprawek zabezpieczeń producenta</string>
+     <string name="unknown">Nieznane</string>
+     <string name="app_killed_message">Zamknięto aplikację</string>
+diff --git a/lineage/res/res/values-pt-rBR/strings.xml b/lineage/res/res/values-pt-rBR/strings.xml
+index dd559bab..8d09653d 100644
+--- a/lineage/res/res/values-pt-rBR/strings.xml
++++ b/lineage/res/res/values-pt-rBR/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sistema Evolution X</string>
++    <string name="lineageos_system_label">Sistema ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modificar perfis do sistema</string>
+     <string name="permdesc_modifyProfiles">Permite que um app modifique perfis do sistema.</string>
+     <string name="permlab_useHardwareFramework">usar estrutura de hardware</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">Administrar configurações remotas</string>
+     <string name="permdesc_manageRemotePrefs">Permite que um app gerencie configurações remotas</string>
+     <string name="build_date">Data de compilação</string>
+-    <string name="lineage_api_level">Nível de API do Evolution X</string>
+-    <string name="lineage_updates">Atualizações do Evolution X</string>
+-    <string name="lineage_version">Versão do Evolution X</string>
++    <string name="lineage_api_level">Nível de API do ExpressiveOS</string>
++    <string name="lineage_updates">Atualizações do ExpressiveOS</string>
++    <string name="lineage_version">Versão do ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Nível de correções de segurança da fabricante</string>
+     <string name="unknown">Desconhecido</string>
+     <string name="app_killed_message">Aplicativo encerrado</string>
+diff --git a/lineage/res/res/values-pt-rPT/strings.xml b/lineage/res/res/values-pt-rPT/strings.xml
+index 6d2eeb48..b0c43879 100644
+--- a/lineage/res/res/values-pt-rPT/strings.xml
++++ b/lineage/res/res/values-pt-rPT/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sistema Evolution X</string>
++    <string name="lineageos_system_label">Sistema ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modificar os perfis de sistema</string>
+     <string name="permdesc_modifyProfiles">Permite que uma aplicação modifique os perfis do sistema.</string>
+     <string name="permlab_useHardwareFramework">utilizar a framework de hardware</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">gerir definições remotas</string>
+     <string name="permdesc_manageRemotePrefs">Permite que uma aplicação possa gerir definições remotas</string>
+     <string name="build_date">Data de compilação</string>
+-    <string name="lineage_api_level">Nível da API Evolution X</string>
+-    <string name="lineage_updates">Atualizações Evolution X</string>
+-    <string name="lineage_version">Versão Evolution X</string>
++    <string name="lineage_api_level">Nível da API ExpressiveOS</string>
++    <string name="lineage_updates">Atualizações ExpressiveOS</string>
++    <string name="lineage_version">Versão ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Nível do patch de segurança do fabricante</string>
+     <string name="unknown">Desconhecido</string>
+     <string name="app_killed_message">Aplicação terminada</string>
+diff --git a/lineage/res/res/values-ro/strings.xml b/lineage/res/res/values-ro/strings.xml
+index 9bfcb309..75a5df4d 100644
+--- a/lineage/res/res/values-ro/strings.xml
++++ b/lineage/res/res/values-ro/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sistem Evolution X</string>
++    <string name="lineageos_system_label">Sistem ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modifică profiluri de sistem</string>
+     <string name="permdesc_modifyProfiles">Permite unei aplicații să modifice profilurile de sistem.</string>
+     <string name="permlab_useHardwareFramework">folosește framework-ul hardware</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">gestionare setări la distanţă</string>
+     <string name="permdesc_manageRemotePrefs">Permite unei aplicații să gestioneze setările de la distanţă</string>
+     <string name="build_date">Dată de compilare</string>
+-    <string name="lineage_api_level">Nivel API Evolution X</string>
+-    <string name="lineage_updates">Actualizări Evolution X</string>
+-    <string name="lineage_version">Versiune Evolution X</string>
++    <string name="lineage_api_level">Nivel API ExpressiveOS</string>
++    <string name="lineage_updates">Actualizări ExpressiveOS</string>
++    <string name="lineage_version">Versiune ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Nivelul corecției de securitate a producătorului</string>
+     <string name="unknown">Necunoscut</string>
+     <string name="app_killed_message">Aplicație închisă</string>
+diff --git a/lineage/res/res/values-ru/strings.xml b/lineage/res/res/values-ru/strings.xml
+index b448ab5d..ff464b26 100644
+--- a/lineage/res/res/values-ru/strings.xml
++++ b/lineage/res/res/values-ru/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Система Evolution X</string>
++    <string name="lineageos_system_label">Система ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">Изменение профилей системы</string>
+     <string name="permdesc_modifyProfiles">Приложение сможет изменять настройки системных профилей.</string>
+     <string name="permlab_useHardwareFramework">Взаимодействие с оборудованием</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">управление удаленными параметрами</string>
+     <string name="permdesc_manageRemotePrefs">Приложение сможет управлять удаленными параметрами</string>
+     <string name="build_date">Дата сборки</string>
+-    <string name="lineage_api_level">Версия API Evolution X</string>
+-    <string name="lineage_updates">Обновления Evolution X</string>
+-    <string name="lineage_version">Версия Evolution X</string>
++    <string name="lineage_api_level">Версия API ExpressiveOS</string>
++    <string name="lineage_updates">Обновления ExpressiveOS</string>
++    <string name="lineage_version">Версия ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Состояние исправлений безопасности от производителя</string>
+     <string name="unknown">Неизвестно</string>
+     <string name="app_killed_message">Приложение завершено</string>
+diff --git a/lineage/res/res/values-sc-rIT/strings.xml b/lineage/res/res/values-sc-rIT/strings.xml
+index aae5b326..dc74fe2a 100644
+--- a/lineage/res/res/values-sc-rIT/strings.xml
++++ b/lineage/res/res/values-sc-rIT/strings.xml
+@@ -5,15 +5,15 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sistema Evolution X</string>
++    <string name="lineageos_system_label">Sistema ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modìfica sos profilos de sistema</string>
+     <string name="permdesc_modifyProfiles">Permitit a un\'aplicatzione de modificare sos profilos de sistema.</string>
+     <string name="permlab_useHardwareFramework">imprea istrutura hardware</string>
+-    <string name="permdesc_useHardwareFramework">Permitit a s\'aplicatzione de atzèdere a s\'istrutura de s\'hardware de Evolution X.</string>
+-    <string name="permlab_writeSettings">modìfica sas impostatziones de sistema de Evolution X</string>
+-    <string name="permdesc_writeSettings">Permitit a un\'aplicatzione de modificare sas impostatziones de sistema de Evolution X.</string>
+-    <string name="permlab_writeSecureSettings">modificare is cunfiguratziones de sistema de Evolution X</string>
+-    <string name="permdesc_writeSecureSettings">Permitit a s\'aplicatzione de modificare is cunfiguratziones de seguresa de Evolution X. No est de impreare dae is aplicatziones normales.</string>
++    <string name="permdesc_useHardwareFramework">Permitit a s\'aplicatzione de atzèdere a s\'istrutura de s\'hardware de ExpressiveOS.</string>
++    <string name="permlab_writeSettings">modìfica sas impostatziones de sistema de ExpressiveOS</string>
++    <string name="permdesc_writeSettings">Permitit a un\'aplicatzione de modificare sas impostatziones de sistema de ExpressiveOS.</string>
++    <string name="permlab_writeSecureSettings">modificare is cunfiguratziones de sistema de ExpressiveOS</string>
++    <string name="permdesc_writeSecureSettings">Permitit a s\'aplicatzione de modificare is cunfiguratziones de seguresa de ExpressiveOS. No est de impreare dae is aplicatziones normales.</string>
+     <string name="profileNameDefault">Predefinidu</string>
+     <string name="profileNameWork">Traballu</string>
+     <string name="profileNameHome">Domo</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">gestire cunfiguratziones remotas</string>
+     <string name="permdesc_manageRemotePrefs">Permitit a s\'aplicatzione de gestire is cunfiguratziones remotas</string>
+     <string name="build_date">Data de compilatzione</string>
+-    <string name="lineage_api_level">Livellu de s\'API de Evolution X</string>
+-    <string name="lineage_updates">Atualizatziones de Evolution X</string>
+-    <string name="lineage_version">Versione de Evolution X</string>
++    <string name="lineage_api_level">Livellu de s\'API de ExpressiveOS</string>
++    <string name="lineage_updates">Atualizatziones de ExpressiveOS</string>
++    <string name="lineage_version">Versione de ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Livellu de su patch de seguresa de Android</string>
+     <string name="unknown">Disconnotu</string>
+     <string name="app_killed_message">Aplicatzione serrada</string>
+diff --git a/lineage/res/res/values-sk/strings.xml b/lineage/res/res/values-sk/strings.xml
+index 62a4b5be..76525a2a 100644
+--- a/lineage/res/res/values-sk/strings.xml
++++ b/lineage/res/res/values-sk/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Systém Evolution X</string>
++    <string name="lineageos_system_label">Systém ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">upraviť systémové profily</string>
+     <string name="permdesc_modifyProfiles">Umožňuje aplikácii upraviť systémové profily.</string>
+     <string name="permlab_useHardwareFramework">používať hardvérový framework</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">správa vzdialených nastavení</string>
+     <string name="permdesc_manageRemotePrefs">Umožňuje spravovať vzdialené nastavenia</string>
+     <string name="build_date">Dátum zostavenia</string>
+-    <string name="lineage_api_level">Verzia Evolution X API</string>
+-    <string name="lineage_updates">Aktualizácie Evolution X</string>
+-    <string name="lineage_version">Verzia Evolution X</string>
++    <string name="lineage_api_level">Verzia ExpressiveOS API</string>
++    <string name="lineage_updates">Aktualizácie ExpressiveOS</string>
++    <string name="lineage_version">Verzia ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Úroveň opravy zabezpečenia výrobcu</string>
+     <string name="unknown">Neznáma</string>
+     <string name="app_killed_message">Aplikácia bola ukončená</string>
+diff --git a/lineage/res/res/values-sl/strings.xml b/lineage/res/res/values-sl/strings.xml
+index e5c0f0f8..f53b7007 100644
+--- a/lineage/res/res/values-sl/strings.xml
++++ b/lineage/res/res/values-sl/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sistem Evolution X</string>
++    <string name="lineageos_system_label">Sistem ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">spreminjanje sistemskih profilov</string>
+     <string name="permdesc_modifyProfiles">Dovoli aplikaciji spreminjanje sistemskih profilov.</string>
+     <string name="permlab_useHardwareFramework">uporabi strojno ogrodje</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">upravljanje oddaljenih nastavitev</string>
+     <string name="permdesc_manageRemotePrefs">Dovoli aplikaciji upravljanje oddaljenih nastavitev</string>
+     <string name="build_date">Datum izgradnje</string>
+-    <string name="lineage_api_level">Raven Evolution X API-ja</string>
+-    <string name="lineage_updates">Posodobitve Evolution X</string>
+-    <string name="lineage_version">Različica Evolution X</string>
++    <string name="lineage_api_level">Raven ExpressiveOS API-ja</string>
++    <string name="lineage_updates">Posodobitve ExpressiveOS</string>
++    <string name="lineage_version">Različica ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Raven popravkov za varnost proizvajalca</string>
+     <string name="unknown">Neznano</string>
+     <string name="app_killed_message">Aplikacija uničena</string>
+diff --git a/lineage/res/res/values-sq/strings.xml b/lineage/res/res/values-sq/strings.xml
+index 72c1b427..5aa3a871 100644
+--- a/lineage/res/res/values-sq/strings.xml
++++ b/lineage/res/res/values-sq/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Sistemi Evolution X</string>
++    <string name="lineageos_system_label">Sistemi ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">modifiko profilet e sistemit</string>
+     <string name="permdesc_modifyProfiles">Lejon një aplikacion që të modifikojë profilet e sistemit.</string>
+     <string name="permlab_useHardwareFramework">përdor strukturën hardware</string>
+@@ -55,9 +55,9 @@
+     <string name="permlab_manageRemotePrefs">menaxho parametrat në distancë</string>
+     <string name="permdesc_manageRemotePrefs">Lejon një aplikacion që të menaxhojë parametrat në distancë</string>
+     <string name="build_date">Data e ndërtimit</string>
+-    <string name="lineage_api_level">Niveli API i Evolution X</string>
+-    <string name="lineage_updates">Përditësimet e Evolution X</string>
+-    <string name="lineage_version">Versioni i Evolution X</string>
++    <string name="lineage_api_level">Niveli API i ExpressiveOS</string>
++    <string name="lineage_updates">Përditësimet e ExpressiveOS</string>
++    <string name="lineage_version">Versioni i ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Niveli i korrigjimit të sigurisë së Vendor</string>
+     <string name="unknown">E panjohur</string>
+     <string name="app_killed_message">Aplikacioni u mbyll</string>
+diff --git a/lineage/res/res/values-sr/strings.xml b/lineage/res/res/values-sr/strings.xml
+index 1745350b..05cf9823 100644
+--- a/lineage/res/res/values-sr/strings.xml
++++ b/lineage/res/res/values-sr/strings.xml
+@@ -5,11 +5,11 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X Систем</string>
++    <string name="lineageos_system_label">ExpressiveOS Систем</string>
+     <string name="permlab_modifyProfiles">мењање профила система</string>
+     <string name="permdesc_modifyProfiles">Апликација може да мења подешавања системских профила.</string>
+     <string name="permlab_useHardwareFramework">коришћење хардверског оквира</string>
+-    <string name="permdesc_useHardwareFramework">Апликација може да приступа хардверском оквиру Evolution X-а.</string>
++    <string name="permdesc_useHardwareFramework">Апликација може да приступа хардверском оквиру ExpressiveOS-а.</string>
+     <string name="permlab_writeSettings">измени Lineage системске поставке</string>
+     <string name="permdesc_writeSettings">Дозвољава апликацији да мења Lineage системске поставке.</string>
+     <string name="permlab_writeSecureSettings">измените Lineage сигурносне поставке система</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">управљање подешавањима даљинског приступа</string>
+     <string name="permdesc_manageRemotePrefs">Апликација може да управља подешавањима даљинског приступа.</string>
+     <string name="build_date">Датум израде</string>
+-    <string name="lineage_api_level">Ниво API-ја Evolution X-а</string>
+-    <string name="lineage_updates">Evolution X ажурирања</string>
+-    <string name="lineage_version">Верзија Evolution X-а</string>
++    <string name="lineage_api_level">Ниво API-ја ExpressiveOS-а</string>
++    <string name="lineage_updates">ExpressiveOS ажурирања</string>
++    <string name="lineage_version">Верзија ExpressiveOS-а</string>
+     <string name="lineage_vendor_security_patch">Ниво безбедносне закрпе добављача</string>
+     <string name="unknown">Непознат</string>
+     <string name="app_killed_message">Апликација је искључена</string>
+diff --git a/lineage/res/res/values-sv/strings.xml b/lineage/res/res/values-sv/strings.xml
+index 083d56ff..a932ef5a 100644
+--- a/lineage/res/res/values-sv/strings.xml
++++ b/lineage/res/res/values-sv/strings.xml
+@@ -5,11 +5,11 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X-systemet</string>
++    <string name="lineageos_system_label">ExpressiveOS-systemet</string>
+     <string name="permlab_modifyProfiles">ändra systemprofiler</string>
+     <string name="permdesc_modifyProfiles">Tillåter att en app ändrar systemprofiler.</string>
+     <string name="permlab_useHardwareFramework">använda hårdvaruramverk</string>
+-    <string name="permdesc_useHardwareFramework">Ger en app åtkomst till Evolution X hårdvaruramverk.</string>
++    <string name="permdesc_useHardwareFramework">Ger en app åtkomst till ExpressiveOS hårdvaruramverk.</string>
+     <string name="permlab_writeSettings">ändra Lineages systeminställningar</string>
+     <string name="permdesc_writeSettings">Tillåter en app att ändra Lineages systeminställningar.</string>
+     <string name="permlab_writeSecureSettings">ändra skyddade Lineage-inställningar</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">hantera fjärrinställningar</string>
+     <string name="permdesc_manageRemotePrefs">Tillåter en app att hantera fjärrinställningar</string>
+     <string name="build_date">Kompileringsdatum</string>
+-    <string name="lineage_api_level">API-nivå för Evolution X</string>
+-    <string name="lineage_updates">Evolution X-uppdateringar</string>
+-    <string name="lineage_version">Evolution X-version</string>
++    <string name="lineage_api_level">API-nivå för ExpressiveOS</string>
++    <string name="lineage_updates">ExpressiveOS-uppdateringar</string>
++    <string name="lineage_version">ExpressiveOS-version</string>
+     <string name="lineage_vendor_security_patch">Säkerhetsprogramvaruversion</string>
+     <string name="unknown">Okänt</string>
+     <string name="app_killed_message">Applikationen har tvångsavslutats</string>
+diff --git a/lineage/res/res/values-ta/strings.xml b/lineage/res/res/values-ta/strings.xml
+index e7e834c9..c1b1c1a4 100644
+--- a/lineage/res/res/values-ta/strings.xml
++++ b/lineage/res/res/values-ta/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">LineageOS அமைப்பு</string>
++    <string name="lineageos_system_label">ExpressiveOS அமைப்பு</string>
+     <string name="permlab_modifyProfiles">முறைமைத் தனியமைப்புகளை மாற்றுக</string>
+     <string name="permdesc_modifyProfiles">முறைமைத் தனியமைப்புகளை மாற்ற ஒரு செயலியை அனுமதிக்கிறது.</string>
+     <string name="permlab_useHardwareFramework">வன்பொருள் கட்டமைப்பைப் பயன்படுத்துக</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">தொலைநிலை அமைப்புகளை மேலாள்க</string>
+     <string name="permdesc_manageRemotePrefs">தொலைநிலை அமைப்புகளை மேலாள ஒரு செயலியை அனுமதிக்கும்</string>
+     <string name="build_date">கட்டிய நாள்</string>
+-    <string name="lineage_api_level">LineageOS API நிலை</string>
+-    <string name="lineage_updates">LineageOS புதுப்பிப்புகள்</string>
+-    <string name="lineage_version">LineageOS பதிப்பு</string>
++    <string name="lineage_api_level">ExpressiveOS API நிலை</string>
++    <string name="lineage_updates">ExpressiveOS புதுப்பிப்புகள்</string>
++    <string name="lineage_version">ExpressiveOS பதிப்பு</string>
+     <string name="lineage_vendor_security_patch">விற்குநர் பாதுகாப்புச் சீர் நிலை</string>
+     <string name="unknown">அறியா</string>
+     <string name="app_killed_message">செயலி ஒழிந்தது</string>
+diff --git a/lineage/res/res/values-th/strings.xml b/lineage/res/res/values-th/strings.xml
+index 4265a63f..e32958aa 100644
+--- a/lineage/res/res/values-th/strings.xml
++++ b/lineage/res/res/values-th/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">ระบบ Evolution X</string>
++    <string name="lineageos_system_label">ระบบ ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">ปรับแต่งโปรไฟล์ระบบ</string>
+     <string name="permdesc_modifyProfiles">อนุญาตให้แอปปรับแต่งโปรไฟล์ระบบ</string>
+     <string name="permlab_useHardwareFramework">ใช้ฮาร์ดแวร์เฟรมเวิร์ค</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">จัดการการตั้งค่าระยะไกล</string>
+     <string name="permdesc_manageRemotePrefs">อนุญาตให้แอปจัดการการตั้งค่าระยะไกล</string>
+     <string name="build_date">วันที่สร้าง</string>
+-    <string name="lineage_api_level">ระดับ API ของ Evolution X</string>
+-    <string name="lineage_updates">อัพเดตระบบ Evolution X</string>
+-    <string name="lineage_version">เวอร์ชั่น Evolution X</string>
++    <string name="lineage_api_level">ระดับ API ของ ExpressiveOS</string>
++    <string name="lineage_updates">อัพเดตระบบ ExpressiveOS</string>
++    <string name="lineage_version">เวอร์ชั่น ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">ระดับแพทช์ความปลอดภัย Vendor</string>
+     <string name="unknown">ไม่รู้จัก</string>
+     <string name="app_killed_message">แอปพลิเคชั่นถูกปิด</string>
+diff --git a/lineage/res/res/values-tr/strings.xml b/lineage/res/res/values-tr/strings.xml
+index 155790f5..4bcedbc2 100644
+--- a/lineage/res/res/values-tr/strings.xml
++++ b/lineage/res/res/values-tr/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X Sistemi</string>
++    <string name="lineageos_system_label">ExpressiveOS Sistemi</string>
+     <string name="permlab_modifyProfiles">sistem profillerini değiştir</string>
+     <string name="permdesc_modifyProfiles">Uygulamaya sistem profillerini değiştirme izni verir.</string>
+     <string name="permlab_useHardwareFramework">donanım altyapısını kullan</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">uzak bağlantı ayarları</string>
+     <string name="permdesc_manageRemotePrefs">Bir uygulamaya uzak bağlantı ayarlarını yönetme izni verir</string>
+     <string name="build_date">İnşa tarihi</string>
+-    <string name="lineage_api_level">Evolution X API düzeyi</string>
+-    <string name="lineage_updates">Evolution X güncellemeleri</string>
+-    <string name="lineage_version">Evolution X sürümü</string>
++    <string name="lineage_api_level">ExpressiveOS API düzeyi</string>
++    <string name="lineage_updates">ExpressiveOS güncellemeleri</string>
++    <string name="lineage_version">ExpressiveOS sürümü</string>
+     <string name="lineage_vendor_security_patch">Üretici güvenlik yaması düzeyi</string>
+     <string name="unknown">Bilinmiyor</string>
+     <string name="app_killed_message">Uygulama sonlandırıldı</string>
+diff --git a/lineage/res/res/values-ug/strings.xml b/lineage/res/res/values-ug/strings.xml
+index fa36c450..f9f03990 100644
+--- a/lineage/res/res/values-ug/strings.xml
++++ b/lineage/res/res/values-ug/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">LineageOS سىستېمىسى</string>
++    <string name="lineageos_system_label">ExpressiveOS سىستېمىسى</string>
+     <string name="permlab_modifyProfiles">سىستېما سەپلەنمىسىنى ئۆزگەرتىش</string>
+     <string name="permdesc_modifyProfiles">ئەپنىڭ سىستېما سەپلەنمىسىنى ئۆزگەرتىشىگە يول قويۇش.</string>
+     <string name="permlab_useHardwareFramework">قاتتىق دىتال جازىسىنى ئىشلىتىش</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">يىراقتىكى تەڭشەكنى باشقۇرۇش</string>
+     <string name="permdesc_manageRemotePrefs">ئەپچنىڭ يىراقتىكى تەڭشەكنى باشقۇرۇشىغا يول قويىدۇ</string>
+     <string name="build_date">ھاسىللىغان چېسلا</string>
+-    <string name="lineage_api_level">LineageOS API دەرىجىسى</string>
+-    <string name="lineage_updates">LineageOS يېڭىلاش</string>
+-    <string name="lineage_version">LineageOS نەشرى</string>
++    <string name="lineage_api_level">ExpressiveOS API دەرىجىسى</string>
++    <string name="lineage_updates">ExpressiveOS يېڭىلاش</string>
++    <string name="lineage_version">ExpressiveOS نەشرى</string>
+     <string name="lineage_vendor_security_patch">تەمىنلىگۈچى سودىگەر بىخەتەرلىك ياماق دەرىجىسى</string>
+     <string name="unknown">يوچۇن</string>
+     <string name="app_killed_message">ئەپ ئاخىرلاشتۇرۇلدى</string>
+diff --git a/lineage/res/res/values-uk/strings.xml b/lineage/res/res/values-uk/strings.xml
+index 5a9649c9..2c317d61 100644
+--- a/lineage/res/res/values-uk/strings.xml
++++ b/lineage/res/res/values-uk/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Система Evolution X</string>
++    <string name="lineageos_system_label">Система ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">зміна системних профілів</string>
+     <string name="permdesc_modifyProfiles">Дозволяє додатку змінювати системні профілі.</string>
+     <string name="permlab_useHardwareFramework">Взаємодія із обладнанням</string>
+@@ -47,9 +47,9 @@
+     <string name="permlab_manageRemotePrefs">керування віддаленими параметрами</string>
+     <string name="permdesc_manageRemotePrefs">Дозволяє застосункові керувати налаштуваннями віддаленого підключення</string>
+     <string name="build_date">Дата збірки</string>
+-    <string name="lineage_api_level">Рівень API Evolution X</string>
+-    <string name="lineage_updates">Оновлення Evolution X</string>
+-    <string name="lineage_version">Версія Evolution X</string>
++    <string name="lineage_api_level">Рівень API ExpressiveOS</string>
++    <string name="lineage_updates">Оновлення ExpressiveOS</string>
++    <string name="lineage_version">Версія ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Рівень виправлень системи безпеки від виробника</string>
+     <string name="unknown">Невідомо</string>
+     <string name="kilobitspersecond_short">кбіт/с</string>
+diff --git a/lineage/res/res/values-vi/strings.xml b/lineage/res/res/values-vi/strings.xml
+index 187489b7..5fc885b9 100644
+--- a/lineage/res/res/values-vi/strings.xml
++++ b/lineage/res/res/values-vi/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Hệ thống Evolution X</string>
++    <string name="lineageos_system_label">Hệ thống ExpressiveOS</string>
+     <string name="permlab_modifyProfiles">sửa đổi cấu hình hệ thống</string>
+     <string name="permdesc_modifyProfiles">Cho phép một ứng dụng sửa đổi cấu hình hệ thống.</string>
+     <string name="permlab_useHardwareFramework">dùng khung làm việc phần cứng</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">quản lý cài đặt từ xa</string>
+     <string name="permdesc_manageRemotePrefs">Cho phép một ứng dụng quản lý cài đặt từ xa</string>
+     <string name="build_date">Ngày dựng</string>
+-    <string name="lineage_api_level">Cấp độ API Evolution X</string>
+-    <string name="lineage_updates">Cập nhật Evolution X</string>
+-    <string name="lineage_version">Phiên bản Evolution X</string>
++    <string name="lineage_api_level">Cấp độ API ExpressiveOS</string>
++    <string name="lineage_updates">Cập nhật ExpressiveOS</string>
++    <string name="lineage_version">Phiên bản ExpressiveOS</string>
+     <string name="lineage_vendor_security_patch">Nhà cung cấp mức bản vá bảo mật</string>
+     <string name="unknown">Không rõ</string>
+     <string name="app_killed_message">Đã dừng ứng dụng</string>
+diff --git a/lineage/res/res/values-zh-rCN/strings.xml b/lineage/res/res/values-zh-rCN/strings.xml
+index f1527e87..e895f9e0 100644
+--- a/lineage/res/res/values-zh-rCN/strings.xml
++++ b/lineage/res/res/values-zh-rCN/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X 系统</string>
++    <string name="lineageos_system_label">ExpressiveOS 系统</string>
+     <string name="permlab_modifyProfiles">修改系统配置</string>
+     <string name="permdesc_modifyProfiles">允许应用修改系统配置文件。</string>
+     <string name="permlab_useHardwareFramework">使用硬件框架</string>
+@@ -56,9 +56,9 @@
+     <string name="permlab_manageRemotePrefs">管理远程设置</string>
+     <string name="permdesc_manageRemotePrefs">允许应用管理远程设置</string>
+     <string name="build_date">编译日期</string>
+-    <string name="lineage_api_level">Evolution X API 级别</string>
+-    <string name="lineage_updates">Evolution X 更新</string>
+-    <string name="lineage_version">Evolution X 版本</string>
++    <string name="lineage_api_level">ExpressiveOS API 级别</string>
++    <string name="lineage_updates">ExpressiveOS 更新</string>
++    <string name="lineage_version">ExpressiveOS 版本</string>
+     <string name="lineage_vendor_security_patch">供应商安全补丁程序级别</string>
+     <string name="unknown">未知</string>
+     <string name="app_killed_message">应用程序已终止</string>
+diff --git a/lineage/res/res/values-zh-rHK/strings.xml b/lineage/res/res/values-zh-rHK/strings.xml
+index f37ebaf4..937811d1 100644
+--- a/lineage/res/res/values-zh-rHK/strings.xml
++++ b/lineage/res/res/values-zh-rHK/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">LineageOS 系統</string>
++    <string name="lineageos_system_label">ExpressiveOS 系統</string>
+     <string name="permlab_modifyProfiles">修改系統設定檔</string>
+     <string name="permlab_useHardwareFramework">使用硬件框架</string>
+     <string name="profileNameDefault">預設</string>
+@@ -24,9 +24,9 @@
+     <string name="live_display_off">關閉</string>
+     <string name="live_display_outdoor">戶外 (猛烈陽光)</string>
+     <string name="build_date">編譯日期</string>
+-    <string name="lineage_api_level">LineageOS API 等級</string>
+-    <string name="lineage_updates">LineageOS 更新</string>
+-    <string name="lineage_version">LineageOS 版本</string>
++    <string name="lineage_api_level">ExpressiveOS API 等級</string>
++    <string name="lineage_updates">ExpressiveOS 更新</string>
++    <string name="lineage_version">ExpressiveOS 版本</string>
+     <string name="charging_control_notification_content_limit">電池將會充電至 %1$d%%</string>
+     <string name="charging_control_notification_content_limit_reached">電池已充電至 %1$d%%</string>
+ </resources>
+diff --git a/lineage/res/res/values-zh-rTW/strings.xml b/lineage/res/res/values-zh-rTW/strings.xml
+index 183a729f..98fb596f 100644
+--- a/lineage/res/res/values-zh-rTW/strings.xml
++++ b/lineage/res/res/values-zh-rTW/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageos_system_label">Evolution X 系統</string>
++    <string name="lineageos_system_label">ExpressiveOS 系統</string>
+     <string name="permlab_modifyProfiles">修改系統設定檔</string>
+     <string name="permdesc_modifyProfiles">允許應用程式修改系統設定檔。</string>
+     <string name="permlab_useHardwareFramework">使用硬體框架</string>
+@@ -52,9 +52,9 @@
+     <string name="permlab_manageRemotePrefs">管理遠端設定</string>
+     <string name="permdesc_manageRemotePrefs">允許應用程式管理遠端設定</string>
+     <string name="build_date">編譯日期</string>
+-    <string name="lineage_api_level">Evolution X API 等級</string>
+-    <string name="lineage_updates">Evolution X 更新</string>
+-    <string name="lineage_version">Evolution X 版本</string>
++    <string name="lineage_api_level">ExpressiveOS API 等級</string>
++    <string name="lineage_updates">ExpressiveOS 更新</string>
++    <string name="lineage_version">ExpressiveOS 版本</string>
+     <string name="lineage_vendor_security_patch">供應商安全性修補程式等級</string>
+     <string name="unknown">未知</string>
+     <string name="app_killed_message">已強制結束應用程式</string>
+diff --git a/lineage/res/res/values/strings.xml b/lineage/res/res/values/strings.xml
+index f1f56e76..f32105de 100644
+--- a/lineage/res/res/values/strings.xml
++++ b/lineage/res/res/values/strings.xml
+@@ -5,8 +5,8 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Label for the Evolution X system components when they are shown to the user. -->
+-    <string name="lineageos_system_label">Evolution X System</string>
++    <!-- Label for the ExpressiveOS system components when they are shown to the user. -->
++    <string name="lineageos_system_label">ExpressiveOS System</string>
+ 
+     <!-- Labels for the MODIFY_PROFILES permission. -->
+     <string name="permlab_modifyProfiles">modify system profiles</string>
+@@ -84,12 +84,12 @@
+ 
+     <!-- About device screen, build date -->
+     <string name="build_date">Build date</string>
+-    <!-- About device screen, Evolution X API Level -->
+-    <string name="lineage_api_level">Evolution X API level</string>
+-    <!-- About device screen, Evolution X updates -->
+-    <string name="lineage_updates">Evolution X updates</string>
+-    <!-- About device screen, Evolution X version -->
+-    <string name="lineage_version">Evolution X version</string>
++    <!-- About device screen, ExpressiveOS API Level -->
++    <string name="lineage_api_level">ExpressiveOS API level</string>
++    <!-- About device screen, ExpressiveOS updates -->
++    <string name="lineage_updates">ExpressiveOS updates</string>
++    <!-- About device screen, ExpressiveOS version -->
++    <string name="lineage_version">ExpressiveOS version</string>
+     <!-- About device screen, vendor security patch -->
+     <string name="lineage_vendor_security_patch">Vendor security patch level</string>
+ 
+-- 
+2.43.0
+

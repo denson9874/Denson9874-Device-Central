@@ -2,8 +2,9 @@
 # KernelSU Next init_boot for ExpressiveOS on cheetah: patches the init_boot.img
 # the first make pass just built (ksu-images.sh) with our own kernelsu.ko
 # (ksu-module.sh) and ksuinit, using the host ksud from fetch-ksu.sh. The kernel stays
-# Google's signed GKI; susfs is the guard module ksud loads at boot once the user turns
-# on SUSFS auto-load in the manager. ksu-images.sh then builds again with
+# Google's signed GKI; susfs is the guard module ksud loads at boot while SUSFS auto-load
+# is on, which the first-boot setup (../tree/ksu-firstboot.sh) turns on for a new phone.
+# ksu-images.sh then builds again with
 # CHEETAH_KSU_INIT_BOOT=out/ksu/init_boot-ksu.img (patches/device_google_pantah/0102),
 # so the images and the OTA ship it. The last line is KSU_EXIT=0 or KSU_EXIT=1.
 #
@@ -66,6 +67,16 @@ sub=$(grep -Eo "^Linux version ${kmi#*-}\.[0-9]+" <<<"$uname"); sub=${sub#Linux 
 vermagic=$(strings "$ko" | sed -n 's/^vermagic=//p')
 [[ "$vermagic" == "$sub"[-\ ]* ]] || fail "$ko is built for '$vermagic', boot.img's kernel is $sub (build_kernel synced another GKI?)"
 echo "OK: $ko matches ($vermagic)"
+# ...and for its struct module, with its config. kernelsu.ko has no symbol versions, so 6.1
+# loads one built for another struct module and crashes reading past it: the first build
+# did, its module built without pahole (2026-10-26). The first-stage modules in this build
+# were built with the kernel's own config
+r=$(python3 -I "$here/tools/ko-info.py" same-struct "$ko" "$O/vendor_kernel_ramdisk/lib/modules") \
+    || fail "$ko doesn't fit this kernel's struct module (tools/ksu-module.sh)"
+echo "OK: $ko is built for the kernel's struct module (${r% *} bytes, as its ${r#* } first-stage modules)"
+python3 -I "$here/tools/ko-info.py" config-diff "$k" "$K/kbuild/.config" > "$T/config.diff" \
+    || { cat "$T/config.diff" >&2; fail "$K/kbuild/.config isn't boot.img's kernel config (tools/ksu-module.sh)"; }
+echo "OK: $ko was built with boot.img's kernel config"
 
 # The input must be this build's own init_boot, never one a previous run patched
 ramdisk "$O/init_boot.img" "$T/stock"

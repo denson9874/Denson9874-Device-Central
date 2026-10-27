@@ -5,13 +5,16 @@
 #   2. eos-keys-check.sh tree and vars: ExpressiveOS's own keys are in
 #      vendor/evolution-priv/keys and the build will sign with them, not with test keys
 #      or Evolution X's;
-#   3. the kits: ksu/apply-ksu.sh, viper4android/apply-v4a.sh, bootanimation/apply-bootanim.sh;
+#   3. the kits: ksu/fetch-ksu.sh (checks what it downloaded before, fetches what's new in
+#      ksu.conf) and apply-ksu.sh, viper4android/apply-v4a.sh, bootanimation/apply-bootanim.sh,
+#      wallpapers/apply-wallpapers.sh;
 #   4. the name and version the build will carry (dumpvars), and a record of its sources
 #      in out/eos/ (the tree's repo manifest -r, each patched project's upstream revision,
 #      the kit's commit; ksu-images.sh adds the kernel's);
 #   5. ksu/tools/ksu-images.sh: lunch, build_kernel, kernelsu.ko, the two make passes;
 #   6. eos-verify.sh: the finished build, offline.
-# Only a run that gets through all six writes out/eos/build.ok, which eos-pack.sh needs.
+# Only a run that gets through all six writes out/eos/build.ok and target-files.ok (the
+# sha256 of the OTA package and of the target-files zip kept with it), which eos-pack.sh needs.
 # Holds ~/.evolution-tree.lock (the Evolution X routines' lock) and ~/.expressiveos.lock
 # for the whole run, and first waits for any build already running. Everything also goes
 # to ~/expressiveos-build.log (the one before is kept as .1); the last line is
@@ -47,7 +50,7 @@ eos_top "${1:-}"
 clean_env
 cd "$top" || fail "can't cd to $top"
 PATH=$HOME/bin:$PATH
-rm -f -- out/eos/build.ok
+rm -f -- out/eos/build.ok out/eos/target-files.ok
 # patches/device_google_pantah/0010 sets it too; apply-bootanim.sh checks for it here
 export EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
 echo "== ExpressiveOS $EOS_VERSION $EOS_BUILD_TYPE for cheetah in $top, $(date -u '+%F %T') UTC"
@@ -66,9 +69,11 @@ trap 'rc=$?; rm -rf -- "$work"; [[ $done = 1 ]] || { echo "BUILD_EXIT=1"; exit $
 step "prepare.sh" 'PREPARE_OK.*' "$kit/prepare.sh" "$top"
 step "keys: tree" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" tree "$top"
 step "keys: build variables" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vars "$top"
+step "KernelSU Next downloads" 'FETCH_KSU_OK.*' "$kit/ksu/fetch-ksu.sh"
 step "KernelSU Next" 'APPLY_KSU_OK.*' "$kit/ksu/apply-ksu.sh" "$top"
 step "ViPER4Android" 'V4A_APPLY=OK.*' "$kit/viper4android/apply-v4a.sh" "$top"
 step "boot animation" 'BOOTANIM_APPLY=OK.*' "$kit/bootanimation/apply-bootanim.sh" "$top"
+step "wallpapers" 'WALLPAPERS_APPLY=OK.*' "$kit/wallpapers/apply-wallpapers.sh" "$top"
 
 echo "== identity"
 vars=$(dump_vars LINEAGE_VERSION EVO_VERSION EVO_BUILD_TYPE TARGET_DEVICE TARGET_BUILD_VARIANT) || fail "dumpvars failed"
@@ -87,14 +92,8 @@ repo manifest -r -o out/eos/manifest.xml >/dev/null || fail "repo manifest -r fa
 projects=()
 for d in "$kit"/patches/* "$kit"/ksu/patches/* "$kit"/viper4android/patches/*; do
     [[ -d $d ]] || continue
-    p=${d##*/}
-    case $p in
-        device_google_*) p=device/google/${p#device_google_} ;;
-        vendor_google_*) p=vendor/google/${p#vendor_google_} ;;
-        vendor_lineage) p=vendor/lineage ;;
-        frameworks_*) p=frameworks/${p#frameworks_} ;;
-        *) fail "don't know which project $d patches" ;;
-    esac
+    p=$(patch_project "$d")
+    [[ -d $p ]] || fail "${d#"$kit"/} patches $p, which this tree doesn't have"
     head=$(git -C "$p" rev-parse HEAD) || fail "can't read $p's HEAD"
     projects+=("  $p $(git -C "$p" rev-parse "m/$EOS_MANIFEST_BRANCH" 2>/dev/null || echo unknown) $head")
 done
@@ -103,6 +102,7 @@ done
     # A copy the runner installed (rsync, no .git) names the commit it came from
     echo "kit: $(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")$([[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || echo " (with local changes)")"
     echo "KernelSU Next: $(sed -n 's/^version=//p' "$kit/ksu/ksu.conf") $(sed -n 's/^src_commit=//p' "$kit/ksu/ksu.conf")"
+    echo "NeoZygisk (product/etc/eos/zygisk-provider.zip): $(sed -n 's/^zygisk_version=//p' "$kit/ksu/ksu.conf") $(sed -n 's/^zygisk_src_commit=//p' "$kit/ksu/ksu.conf"), LSPlt $(sed -n 's/^zygisk_lsplt_commit=//p' "$kit/ksu/ksu.conf")"
     echo "Patched projects: upstream revision (repo's m/$EOS_MANIFEST_BRANCH), then HEAD with the kit's commits"
     printf '%s\n' "${projects[@]}" | sort -u
 } > out/eos/sources.txt
@@ -123,7 +123,13 @@ fi
 step "verify (eos-verify.sh)" 'VERIFY=OK' "$kit/tools/eos-verify.sh" "$top"
 zip=$(sed -n 's/^VERIFIED //p' "$work/step.log" | tail -1)
 [[ -f $zip ]] || fail "eos-verify.sh named no package"
+tf=$(tf_zip)
+[[ -f $tf ]] || fail "no $tf (eos-verify.sh checked it)"
+# The target-files eos-verify.sh checked against the package, for eos-pack.sh (written
+# first: build.ok is what says the run finished)
+echo "$(sha256sum -- "$tf" | cut -d' ' -f1)  ${tf##*/}" > out/eos/target-files.ok
 echo "$(sha256sum -- "$zip" | cut -d' ' -f1)  ${zip##*/}" > out/eos/build.ok
 echo "OK: $(cat out/eos/build.ok)"
+echo "OK: target-files $(cat out/eos/target-files.ok) ($(stat -c %s -- "$tf") bytes)"
 done=1
 echo "BUILD_EXIT=0"

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">ExpressiveOS wallpapers</string>
+    <string name="category_expressiveos" translatable="false">ExpressiveOS</string>
+    <!-- PixelWallpapers2026's English title for the Memories category -->
+    <string name="category_memories">Your memories</string>
+    <string name="subtitle_expressiveos" translatable="false">ExpressiveOS</string>
+
+    <string name="bloom_title" translatable="false">Bloom</string>
+    <string name="bloom_subtitle">Blue petal, dark</string>
+    <string name="dusk_title" translatable="false">Dusk</string>
+    <string name="dusk_subtitle">Purple petal, dark</string>
+    <string name="dawn_title" translatable="false">Dawn</string>
+    <string name="dawn_subtitle">Coral petal, light</string>
+    <string name="mint_title" translatable="false">Mint</string>
+    <string name="mint_subtitle">Green petal, light</string>
+</resources>

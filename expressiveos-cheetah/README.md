@@ -9,9 +9,10 @@ ExpressiveOS is its own ROM, built on Evolution X (cnb) like any standard custom
   (`~/releases/expressiveos-cheetah`), SourceForge folder (`expressiveos/cheetah`) and R2 prefix
   (`expressiveos/cheetah/`), all set in `eos.conf`;
 - a clean install only: updates from other ROMs, Evolution X included, never install on it;
-- KernelSU Next with susfs ([`ksu/`](ksu/README.md)), ViPER4Android RE
-  ([`viper4android/`](viper4android/README.md)) and its own boot animation
-  ([`bootanimation/`](bootanimation/README.md)).
+- KernelSU Next with susfs on from the first boot and NeoZygisk preinstalled
+  ([`ksu/`](ksu/README.md)), ViPER4Android RE ([`viper4android/`](viper4android/README.md)), its
+  own boot animation ([`bootanimation/`](bootanimation/README.md)) and its own wallpaper, Bloom, on a
+  clean install's first screen ([`wallpapers/`](wallpapers/README.md)).
 
 The Evolution X cheetah build (`evolution-cheetah/`, built in `~/evolution`) stays as it is, unrooted.
 Nothing here touches it: every script refuses `~/evolution` and `~/derpfest`, writes nothing through a
@@ -29,21 +30,32 @@ holding the lock the Evolution X routines take (`~/.evolution-tree.lock`). The o
 | `tools/eos-keys-check.sh` | The key guard: ExpressiveOS's own keys, never Evolution X's, DerpFest's or the AOSP test keys |
 | `tools/eos-images.sh` | The build, start to finish |
 | `tools/eos-verify.sh` | Checks a finished build offline |
+| `tools/eos-target-files.sh` | Checks the target-files zip kept with the build (`eos-verify.sh` runs it) |
 | `tools/eos-pack.sh` | The fastboot zip, the release gate and the SourceForge upload |
 | `tools/server-cleanup.sh` | Frees disk on the build server (runner actions `server-cleanup-list` and `server-cleanup`) |
-| `lib.sh`, `tools/payload.py` | Shared guards and helpers |
+| `lib.sh`, `tools/payload.py`, `tools/payload-sig.py` | Shared guards and helpers; `payload-sig.py` checks a payload's signatures without update_engine's code |
 
 Tree patches (`apply.sh`, as local commits; `repo sync` drops them and the next build puts them back):
 
 | Patches | What |
 |---|---|
 | `device_google_pantah` 0001, 0002, 0010 | ExpressiveOS's own: maintainer, update feed, only ExpressiveOS's boot animation |
-| `device_google_pantah` 0003-0009, `device_google_gs201`, `vendor_google_cheetah` | `evolution-cheetah`'s, copied unchanged |
+| `device_google_pantah` 0003-0009, `device_google_gs201` 0001-0005, `vendor_google_cheetah` | `evolution-cheetah`'s, copied unchanged |
+| `device_google_gs201` 0006 | ExpressiveOS's own: target-files takes the images the build made (`COPY_IMAGES_FOR_TARGET_FILES_ZIP`) instead of making them again with other file times, so the fastboot zip and the OTA carry the same images and an incremental OTA applies on phones installed either way |
 | `frameworks_base` 0001-0010 | The fixes the Evolution X tree carries, refreshed for today's frameworks/base: they apply without history too |
 | `frameworks_base` 0011-0020 | evolution-kodiak's background-power fixes (2026-10-26), copied: SystemUI animations that kept running with the screen off or on AOD, the colored status bar icons setting, AxSpoofManager's fetches, Extreme Charging's 50% limit |
 | `vendor_lineage` 0001 | ExpressiveOS 1.0 names, and the build's own date, so both make passes name one zip |
 | `vendor_lineage` 0002 | evolution-kodiak's, copied: games get stock's 60 fps default again |
+| `vendor_lineage` 0003 | ExpressiveOS's own: `m evolution` keeps the target-files zip its OTA package is made from |
+| `frameworks_base` 0021-0024, `packages_apps_Settings`, `packages_apps_Evolver`, `packages_apps_Updater`, `lineage-sdk`, `packages_apps_LineageParts`, `packages_apps_EvoEgg`, `packages_apps_Sandbox`, `vendor_pixel-style`, `system_core`, `bootable_recovery` | ExpressiveOS's branding (Daryl, 2026-10-27: "ExpressiveOS only, no mention"): every screen, icon, link and the crash report header say ExpressiveOS, the Evolver is "Expressive Studio", the crash dialog copies the log instead of uploading it to Evolution X's paste site, recovery shows ExpressiveOS's mark. Made at the server's revisions of 2026-10-26; the images come from [`branding/`](branding/README.md) |
+| `system_update_engine` 0001 | update_engine checks payload and metadata signatures again (Daryl, 2026-10-27); Evolution X's 59fbd47 skips them, on the phone and in the host's `delta_generator` |
+| `system_update_engine` 0002 | No OTA downgrades on user builds again (59fbd47's other half): going back to an older build means fastboot |
+| `packages_apps_Updater` 0005 | ExpressiveOS's own: a feed entry with `base_timestamp` (an incremental package) is offered only to the build it was made from |
+| `system_update_engine` 0003 | Recovery's sideload checks payload signatures too (LineageOS's 27c007a skips them, and Evolution X's recovery has no package check at all) |
 | `ksu/patches`, `viper4android/patches` | Their kits' own (see their READMEs) |
+
+A folder is named after its project's path with `_` for `/`; a project whose name has a `_` of its own
+(`system/update_engine`) names itself in the folder's `PROJECT` file.
 
 Never `evolution-cheetah/apply.sh` or its pantah 0001/0002: they point the Updater at Evolution X's feed.
 
@@ -135,6 +147,8 @@ or `BUILD_EXIT=1`.
   syncs it otherwise.
 
 A complete run leaves in `out/eos/`: `build.ok` (the OTA package's sha256, which `eos-pack.sh` needs),
+`target-files.ok` (the sha256 of the target-files zip it was made from, which `m evolution` leaves in
+`obj/PACKAGING/target_files_intermediates/`),
 `manifest.xml` (the tree's `repo manifest -r`), `kernel-manifest.xml` (the kernel's) and `sources.txt`
 (the kit's commit, the KernelSU Next source, and each patched project's upstream revision and HEAD).
 They're the record of what the build was made from, for the GPL source offer.
@@ -142,21 +156,30 @@ They're the record of what the build was made from, for the GPL source offer.
 `eos-verify.sh` checks, without a phone: the package (the build's own, A/B, for cheetah), the identity
 (cheetah, Pixel 7 Pro, user build, every kit patch in, the Updater on ExpressiveOS's feed), the keys
 (every image vbmeta chains, otacerts, and the package's zip and payload signatures; recovery's otacerts
-also hold LineageOS's release certificate, which Evolution X adds there, and nothing else), the payload (every
+also hold LineageOS's release certificate, which Evolution X adds there, and nothing else; the payload is
+signed with the pinned OTA key, `delta_generator` refuses AOSP's test key for it, and update_engine and
+recovery's update_engine_sideload carry the signature and downgrade checks), the payload (every
 partition plus the nine firmware images, its init_boot is out/'s KernelSU Next one, its boot, init_boot,
 vbmeta and vbmeta_system are ExpressiveOS's, patch levels), KernelSU Next and the stock init_boot,
-ViPER4Android, the boot animation, the firmware and the fastboot files.
+ViPER4Android, the boot animation, the wallpaper, the branding (`tools/brand-check.py`: no app, framework string or
+tombstone header names Evolution X, apart from the few links it lists on purpose), the firmware and the
+fastboot files, and the target-files zip (`tools/eos-target-files.sh`: the package's, with out/'s KernelSU
+Next init_boot, and a WARNING if any image the fastboot zip flashes isn't byte for byte its copy there:
+an incremental OTA from this build couldn't patch it on phones installed from the fastboot zip, so
+`eos-pack.sh --release` refuses such a build, though it still packs as a candidate).
 
 ## Test and release
 
 1. `tools/eos-pack.sh` packs the candidate into `~/releases/expressiveos-cheetah/check/`:
    `<name>-fastboot.zip` (what `fastboot-info.txt` flashes, with `android-info.txt` saying
    `require board=cheetah` only, so it can't land on a Pixel 7), `<name>-init_boot-stock.img` for users
-   who want no root, their `.sha256`, and the `out/eos/` records.
+   who want no root, `<name>-target_files.zip` (what the OTA package was made from), their `.sha256`,
+   and the `out/eos/` records.
 2. Back up the phone. Then a clean install: unlock the bootloader, flash the latest stock firmware,
    then `fastboot -w update <name>-fastboot.zip`.
 3. Test on the phone: it boots, the KernelSU Next manager shows "Working", ViPER4Android's driver loads
-   (`viper4android/tools/v4a-check.sh device`), the boot animation plays, the Updater shows
+   (`viper4android/tools/v4a-check.sh device`), the boot animation plays, the phone starts on Bloom
+   with blue system colours, the Updater shows
    ExpressiveOS 1.0 and no updates, and Play Integrity.
 4. Write `check/<name>-fastboot.zip.device-ok` with the line `sha256 <the zip's sha256>` (the pack
    prints it) and a note on what you tested.
@@ -164,8 +187,11 @@ ViPER4Android, the boot animation, the firmware and the fastboot files.
    release the same day gets `-r2`), and `--upload` also uploads it to SourceForge, where a name that
    holds another zip is never overwritten either (even once the server's copy is gone; if SourceForge
    can't be checked, nothing is released). Both need the keys pinned and repack out/ to check it's byte
-   for byte the zip that was tested. The release folder must be `~/releases/expressiveos-cheetah` itself,
-   not a symlink.
+   for byte the zip that was tested, whose images must be its target-files' (above). The release folder must be `~/releases/expressiveos-cheetah` itself,
+   not a symlink. The release keeps its target-files in `target-files/`, named after the release
+   (`target-files/LATEST` names the newest), and `--upload` sends them to R2's
+   `expressiveos/cheetah/target-files/` (`EOS_R2_REMOTE`, `~/bin/rclone`), or with `EOS_R2_REMOTE=` empty to
+   SourceForge's `expressiveos/cheetah/target-files`: every incremental OTA from the release starts from them.
 
 The Updater feed stays `{"response": []}` until the OTA publish script exists (below).
 
@@ -175,16 +201,34 @@ The Updater feed stays `{"response": []}` until the OTA publish script exists (b
 `server-cleanup` (query: groups such as `1,2,3`), lists and removes old builds and outputs, Evolution X's
 and DerpFest's copies included, by exact path and only while it holds `~/.evolution-tree.lock`. It never
 touches the `~/android-dt/firmware/image-*.zip` files every fastboot pack reads or the firmware cache,
-and never removes a folder holding a `.device-ok` record. Release zips don't need to stay on the server
+never removes a folder holding a `.device-ok` record, and never the newest ExpressiveOS release's
+target-files (`target-files/LATEST`). Release zips don't need to stay on the server
 (they're on SourceForge, Google Drive or R2); anything else needs Daryl's OK before it goes.
+
+A target-files zip takes several GB (about 8, until the first build measures it): one in `check/`, one per
+release in `target-files/` (a hard link to `check/`'s while that's the same build), and while `m evolution`
+packages it, its unpacked copy in `out/` too. An older release's can go once its `.uploaded` marker is there.
 
 ## Not done yet
 
 - The OTA publish script (feed JSON in Evolution X's Updater format, changelog, R2 upload), modelled on
-  `evolution-kodiak/tools/p11-ota.sh` with ExpressiveOS's own feed and folders. Never publish
-  `ota_property_files`: the Updater's package check is the only thing keeping Evolution X packages off
-  ExpressiveOS phones.
+  `evolution-kodiak/tools/p11-ota.sh` with ExpressiveOS's own feed and folders. Don't publish
+  `ota_property_files` yet. With `system_update_engine` 0001, update_engine refuses a payload that isn't
+  signed with ExpressiveOS's key even when it streams one, but that has to be seen on a 1.0 phone first:
+  `update_engine_client --verify` must refuse an Evolution X cheetah OTA's metadata
+  (`kDownloadMetadataSignatureMismatch`) and take ExpressiveOS's ("Payload is applicable"). It writes
+  no partition; root comes from KernelSU Next:
+
+  ```bash
+  python3 -I -c 'import sys,struct,zipfile; f=zipfile.ZipFile(sys.argv[1]).open("payload.bin"); h=f.read(24); _,_,m,s=struct.unpack(">4sQQI",h); open(sys.argv[2],"wb").write(h+f.read(m+s))' <ota.zip> meta.bin
+  adb push meta.bin /data/local/tmp/eos-meta.bin
+  adb shell su -c 'cp /data/local/tmp/eos-meta.bin /data/ota_package/eos-meta.bin; update_engine_client --verify --metadata=/data/ota_package/eos-meta.bin; echo rc=$?; rm -f /data/ota_package/eos-meta.bin'
+  adb logcat -d | grep -E 'Failed to validate metadata signature|Payload is (not )?applicable'
+  ```
+- The incremental OTA script: `ota_from_target_files -i` from a release's target-files to the next, signed
+  with the tree's release key, everything but the dynamic partitions in full (`--full_ota_partitions`), and
+  offered only to phones on that base build (`packages_apps_Updater` 0005's `base_timestamp`).
 - Freezing the tree: 318 projects follow branch heads. After the first good build, rebuild from its
   `out/eos/manifest.xml` until moving on is a decision.
-- Decisions still open: patch-level properties in cheetah's vbmeta, ExpressiveLauncher as the default
-  home app, the Updater's other evolution-x.org links, purging the old keystore from this repo's history.
+- Decisions still open: patch-level properties in cheetah's vbmeta, purging the old keystore from this
+  repo's history.
