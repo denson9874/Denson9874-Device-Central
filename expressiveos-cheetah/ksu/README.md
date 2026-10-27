@@ -60,13 +60,15 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
   first and written last, so make never sees it without its files.
 - **Two make passes** (`tools/ksu-images.sh [top]`, which `../tools/eos-images.sh` runs; the lunch
   target is `EOS_LUNCH` in `../eos.conf`): lunch, `build_kernel`, `ksu-module.sh`, pass 1 with a stock
-  init_boot, then `tools/cheetah-ksu.sh` checks `boot.img`'s kernel is the KMI in `ksu.conf` and our
+  init_boot (only `bootimage initbootimage vendorkernelbootimage`, the images `cheetah-ksu.sh` reads:
+  pass 2's init_boot changes the board config, so it builds and packages everything anyway), then
+  `tools/cheetah-ksu.sh` checks `boot.img`'s kernel is the KMI in `ksu.conf` and our
   module's sublevel, patches that init_boot with
   `ksud boot-patch --kmi android14-6.1 -m out/ksu/kernelsu.ko` into
   `out/ksu/init_boot-ksu.img` (the unpatched one stays as `out/ksu/init_boot-stock.img`) and checks
   the patched ramdisk (ksuinit as `init`, this build's `init` as `init.real`, our `kernelsu.ko`); pass 2
   runs with `CHEETAH_KSU_INIT_BOOT`. Both passes share `BUILD_DATETIME` and `BUILD_NUMBER`, and
-  pass 1's package is deleted so it can't be taken for the release. The last line is
+  older builds' packages are deleted first, so `out/` holds only this build's. The last line is
   `MAKE_EXIT=0` only if pass 2 shipped the patched init_boot (`ksu-check.sh images`). `TOP`, `OUT`
   and the other variables a shell set up for another tree are cleared first, and lunch must land in
   `~/expressiveos`. The kernel source follows branch heads, so it is synced once (lunch runs
