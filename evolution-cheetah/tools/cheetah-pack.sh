@@ -4,19 +4,22 @@
 #
 #   cheetah-pack.sh            # verify + pack into ~/releases/cheetah/check (replaced each time)
 #   cheetah-pack.sh --upload   # verify + pack into ~/releases/cheetah + upload to SourceForge (cheetah/17)
+#   cheetah-pack.sh --stage    # as --upload, but list what to upload (STAGED line) instead
 #
 # The zip holds what out/fastboot-info.txt flashes (ROM partitions and
 # super_empty), not the bootloader and radio: like the Pixel 11 zips, users
 # flash the latest stock release first, and the OTA carries the firmware.
 set -euo pipefail
 MODE=${1:-}
+# --stage is a release (as --upload) whose upload p11-routine.sh runs later, with p11-upload.sh
+STAGE=0; if [ "$MODE" = "--stage" ]; then STAGE=1; MODE=--upload; fi
 
 cd ~/evolution
 O=out/target/product/cheetah
 H=out/host/linux-x86/bin
 V=vendor/google/cheetah
 # The build's own name, e.g. EvolutionX-17.0-20261018-cheetah-12.3-Unofficial
-NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)-fastboot.zip
+NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2 || true)-fastboot.zip
 DEST=~/releases/cheetah
 # A check (no --upload) isn't a release: keep one copy aside, out of the release folder
 [ "$MODE" = "--upload" ] || DEST=~/releases/cheetah/check
@@ -29,7 +32,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 # its posted SHA-256) must never be overwritten.
 if [ "$MODE" = "--upload" ]; then
     base=${NAME%-fastboot.zip}; r=2
-    while [ -e "$DEST/$NAME" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
+    while [ -e "$DEST/$NAME" ] || [ -e "$DEST/$NAME.sha256" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
 else
     rm -f "$DEST"/*-fastboot.zip "$DEST"/*-fastboot.zip.sha256
 fi
@@ -115,7 +118,9 @@ spl=$(sed -n "s/.*com.android.build.system.security_patch -> '\(.*\)'/\1/p" <<<"
 echo "OK: $(ls $T/x | wc -l) files, all identical to out/, unrooted, system patch level $spl"
 ls -la $ZIP; cat $DEST/$NAME.sha256
 
-if [ "$MODE" = "--upload" ]; then
+if [ "$MODE" = "--upload" ] && [ $STAGE = 1 ]; then
+    echo "STAGED $ZIP $DEST/$NAME.sha256"
+elif [ "$MODE" = "--upload" ]; then
     echo "== upload to SourceForge: $SF_DIR"
     printf -- "-mkdir /home/frs/project/denson9874-s-user-builds/cheetah\n-mkdir $SF_DIR\nput $ZIP $SF_DIR/$NAME\nput $DEST/$NAME.sha256 $SF_DIR/$NAME.sha256\nls -l $SF_DIR\nbye\n" \
         | sftp -b - -o BatchMode=yes -i ~/.ssh/sourceforge_ed25519 $SF_USER@frs.sourceforge.net
