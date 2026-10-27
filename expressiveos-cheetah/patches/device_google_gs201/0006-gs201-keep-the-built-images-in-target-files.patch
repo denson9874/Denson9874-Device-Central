@@ -1,0 +1,46 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 04:13:15 +0000
+Subject: [PATCH] gs201: keep the built images in target-files
+
+target-files made its system, system_ext, product, vendor, vendor_dlkm
+and system_dlkm images again from their folders, with
+ro.build.date.utc as every file's time, while the images the build
+flashes keep each file's time in out/. The OTA package is made
+from target-files' images and the fastboot zip from the build's, so
+an incremental OTA, which checks every source block it reads, would
+refuse phones installed from the fastboot zip.
+
+COPY_IMAGES_FOR_TARGET_FILES_ZIP has target-files take the built
+images (and makes their file times fixed). It takes only images whose
+file system type is set to ext4 or erofs, and system.img's wasn't set
+(ext4 was the default), so set it.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ BoardConfig-common.mk | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/BoardConfig-common.mk b/BoardConfig-common.mk
+index 9629057..2e7527c 100644
+--- a/BoardConfig-common.mk
++++ b/BoardConfig-common.mk
+@@ -151,6 +151,15 @@ BOARD_USERDATAIMAGE_PARTITION_SIZE := 11796480000
+ PRODUCT_FS_COMPRESSION := 1
+ BOARD_FLASH_BLOCK_SIZE := 4096
+ 
++# ExpressiveOS: target-files takes the images the build made instead of making them
++# again, so they're the very images the fastboot zip flashes, and an incremental OTA
++# from a build applies on phones installed from its fastboot zip too. It takes only
++# images whose file system type is set to ext4 or erofs, so system.img's is set here.
++COPY_IMAGES_FOR_TARGET_FILES_ZIP := true
++
++# system.img
++BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := ext4
++
+ # product.img
+ BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := ext4
+ TARGET_COPY_OUT_PRODUCT := product
+-- 
+2.43.0
+

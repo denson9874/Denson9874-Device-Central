@@ -6,7 +6,7 @@
 # vendor_kernel_boot, whose ramdisk holds the first-stage modules) with the stock
 # init_boot, cheetah-ksu.sh patches that init_boot, and pass 2 builds everything with
 # CHEETAH_KSU_INIT_BOOT (patches/device_google_pantah/0102). Pass 2 must ship the
-# patched init_boot (ksu-check.sh images).
+# patched init_boot (ksu-check.sh images) and keep its target-files zip (tf_zip in lib.sh).
 # The last line is MAKE_EXIT=0 or MAKE_EXIT=1.
 #
 #   ksu-images.sh [top]                  # default ~/expressiveos; lunch target EOS_LUNCH (eos.conf)
@@ -66,8 +66,11 @@ if [[ "${KERNEL_ONLY:-0}" = 1 ]]; then done=1; echo "MAKE_EXIT=0"; exit 0; fi
 # partition whose build.prop changed (and names another zip after midnight)
 export BUILD_DATETIME=${BUILD_DATETIME:-$(date +%s)}
 export BUILD_NUMBER=${BUILD_NUMBER:-eng.$(whoami).$(date -ud "@$BUILD_DATETIME" +%Y%m%d.%H%M%S)}
-# Older builds' packages out of the way: after this run, out/ holds only this build's
-pkgs() { rm -f -- "$O"/ExpressiveOS-*.zip "$O"/ExpressiveOS-*.zip.sha256sum "$O/cheetah.json"; }
+# Older builds' packages out of the way: after this run, out/ holds only this build's,
+# and the target-files zip m evolution keeps (patches/vendor_lineage/0003) is this build's
+tf=$(tf_zip)
+in_top "$top/${tf%/*}"
+pkgs() { rm -f -- "$O"/ExpressiveOS-*.zip "$O"/ExpressiveOS-*.zip.sha256sum "$O/cheetah.json" "$tf"; }
 pkgs
 rm -f -- out/ksu/init_boot-ksu.img out/ksu/init_boot-stock.img
 unset CHEETAH_KSU_INIT_BOOT
@@ -86,6 +89,7 @@ zips=("$O"/ExpressiveOS-*.zip)
 want="ExpressiveOS-*-$(date -ud "@$BUILD_DATETIME" +%Y%m%d)-cheetah-$EOS_VERSION-$EOS_BUILD_TYPE.zip"
 # shellcheck disable=SC2053
 [[ ${zips[0]##*/} == $want ]] || fail "pass 2 made ${zips[0]##*/}, want $want"
+[[ -f $tf ]] || fail "pass 2 kept no target-files zip ($tf): is patches/vendor_lineage/0003 in vendor/lineage?"
 "$here/tools/ksu-check.sh" images "$top/$O" "$top" || fail "pass 2 didn't ship the KernelSU Next init_boot"
 done=1
 echo "OK: ${zips[0]##*/}"

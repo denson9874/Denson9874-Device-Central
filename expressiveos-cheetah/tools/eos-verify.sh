@@ -17,7 +17,8 @@
 #   4. the payload: every partition the build lists plus the firmware; its init_boot
 #      carries the same KernelSU Next ramdisk as out/; its vbmeta (and every partition it
 #      chains), boot, init_boot and vbmeta_system are ExpressiveOS's; its patch levels are
-#      the build's;
+#      the build's; the target-files zip kept with it, for incremental OTAs, is its own
+#      (eos-target-files.sh);
 #   5. KernelSU Next (ksu-check.sh manager and images), and the stock init_boot kept for
 #      users who want no root (no kernelsu.ko, signed with the tree's key);
 #   6. ViPER4Android (v4a-check.sh out) and the boot animation (bootanim.conf's zip, no
@@ -197,6 +198,9 @@ props() { local i; for i in vbmeta vbmeta_system boot; do "$H/avbtool" info_imag
 spl=$(props "$T/x" | sed -n "s/.*system.security_patch -> '\(.*\)'/\1/p")
 bspl=$(props "$T/x" | sed -n "s/.*boot.security_patch -> '\(.*\)'/\1/p")
 echo "OK: patch levels system $spl, boot $bspl"
+echo "== target-files"
+checked "the target-files zip kept with the package isn't its own (eos-target-files.sh)" 'TF_CHECK=OK' \
+    "$kit/tools/eos-target-files.sh" "$top/$ota" "$top"
 
 echo "== KernelSU Next"
 checked "KernelSU Next manager" 'KSU_CHECK=OK' "$kit/ksu/tools/ksu-check.sh" manager "$top"

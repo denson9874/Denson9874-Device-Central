@@ -1,0 +1,89 @@
+From d5647c3018a634d5e51ab15141a5a608cc91f610 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 04:02:37 +0000
+Subject: [PATCH] Updater: offer an incremental update only to the build it's
+ made from
+
+An incremental OTA package applies only over the exact build its
+source target-files came from: update_engine checks every source
+block's hash and refuses any other build, after the whole download.
+The feed can't tell phones apart, so the Updater has to: an entry may
+carry base_timestamp, the timestamp of the build it applies to, and
+the Updater drops it on every other build. Entries without it (full
+packages) are unchanged, and older Updaters ignore the key.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ README.md                                         |  1 +
+ .../evolution/updater/data/UpdatesRepository.kt   | 15 ++++++++++++++-
+ .../updater/data/source/network/NetworkUpdate.kt  |  2 ++
+ 3 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/README.md b/README.md
+index 406112b..47b6ed0 100644
+--- a/README.md
++++ b/README.md
+@@ -33,6 +33,7 @@ a JSON with the following structure:
+ }
+ ```
+ 
++The `base_timestamp` optional attribute makes the OTA update an incremental one: it is offered only to the build whose `timestamp` it names.  
+ The `buildtype` optional attribute is the build type of the OTA update.  
+ The `download` attribute is the URL of the file to be downloaded.  
+ The `filename` attribute is the name of the file to be downloaded.  
+diff --git a/app/src/main/java/org/evolution/updater/data/UpdatesRepository.kt b/app/src/main/java/org/evolution/updater/data/UpdatesRepository.kt
+index fc50a2a..9f77dda 100644
+--- a/app/src/main/java/org/evolution/updater/data/UpdatesRepository.kt
++++ b/app/src/main/java/org/evolution/updater/data/UpdatesRepository.kt
+@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
+ import kotlinx.coroutines.withContext
+ import kotlinx.serialization.SerializationException
+ import org.evolution.updater.data.source.local.UpdatesLocalDataSource
++import org.evolution.updater.data.source.network.NetworkUpdate
+ import org.evolution.updater.data.source.network.UpdatesNetworkDataSource
+ import org.evolution.updater.data.source.network.toSupportInfo
+ import org.evolution.updater.data.source.network.toUpdate
+@@ -63,7 +64,8 @@ class UpdatesRepository(
+         appStateRepository.setSupportInfo(
+             networkResponse.maxByOrNull { it.timestamp }?.toSupportInfo() ?: SupportInfo()
+         )
+-        val networkUpdates = networkResponse.map { it.toUpdate() }.filter { filterUpdates(it) }
++        val networkUpdates = networkResponse.filter { isForThisBuild(it) }
++            .map { it.toUpdate() }.filter { filterUpdates(it) }
+ 
+         if (networkUpdates.isEmpty()) {
+             systemUpdateInfoPublisher.publish()
+@@ -103,6 +105,17 @@ class UpdatesRepository(
+         return System.currentTimeMillis()
+     }
+ 
++    // An incremental update only installs over the exact build it was made from: update_engine
++    // refuses any other after the download
++    private fun isForThisBuild(update: NetworkUpdate): Boolean {
++        val base = update.baseTimestamp ?: return true
++        if (base != DeviceInfoUtils.buildDateTimestamp) {
++            Log.d(TAG, "${update.filename} is an incremental update for another build")
++            return false
++        }
++        return true
++    }
++
+     private fun filterUpdates(update: Update): Boolean {
+         val isCurrentBuild = update.timestamp == DeviceInfoUtils.buildDateTimestamp
+         val isOlderBuild = update.timestamp < DeviceInfoUtils.buildDateTimestamp
+diff --git a/app/src/main/java/org/evolution/updater/data/source/network/NetworkUpdate.kt b/app/src/main/java/org/evolution/updater/data/source/network/NetworkUpdate.kt
+index 6a7b43e..5513a46 100644
+--- a/app/src/main/java/org/evolution/updater/data/source/network/NetworkUpdate.kt
++++ b/app/src/main/java/org/evolution/updater/data/source/network/NetworkUpdate.kt
+@@ -30,6 +30,8 @@ data class NetworkUpdates(
+ @Serializable
+ @JsonIgnoreUnknownKeys
+ data class NetworkUpdate(
++    // An incremental update: the build date (timestamp) of the one build it applies to
++    @SerialName("base_timestamp") val baseTimestamp: Long? = null,
+     @SerialName("buildtype") val buildType: String? = null,
+     // @SerialName("device") val device: String,
+     @SerialName("download") val download: String,
+-- 
+2.43.0
+
