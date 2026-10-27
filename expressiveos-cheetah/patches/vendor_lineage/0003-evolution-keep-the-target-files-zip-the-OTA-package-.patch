@@ -16,22 +16,29 @@ obj/PACKAGING/target_files_intermediates/<product>-target_files.zip,
 where ExpressiveOS's pack script picks it up and keeps it with the
 release.
 
+The zip is made before the package: ota_from_target_files may rewrite
+META/dynamic_partitions_info.txt in the unpacked folder (disable_ublk),
+and soong_zip mustn't be reading the folder while it does.
+
 Co-Authored-By: Claude <noreply@anthropic.com>
 ---
- build/tasks/evolution.mk | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ build/tasks/evolution.mk | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
 diff --git a/build/tasks/evolution.mk b/build/tasks/evolution.mk
-index 939f7ede..341c9905 100644
+index 939f7ede..d99ed2ca 100644
 --- a/build/tasks/evolution.mk
 +++ b/build/tasks/evolution.mk
-@@ -20,11 +20,13 @@ LINEAGE_TARGET_PACKAGE := $(PRODUCT_OUT)/$(LINEAGE_VERSION).zip
+@@ -20,11 +20,16 @@ LINEAGE_TARGET_PACKAGE := $(PRODUCT_OUT)/$(LINEAGE_VERSION).zip
  
  SHA256 := prebuilts/build-tools/path/$(HOST_PREBUILT_TAG)/sha256sum
  
 -$(LINEAGE_TARGET_PACKAGE): $(INTERNAL_OTA_PACKAGE_TARGET)
 +# ExpressiveOS keeps the target-files zip the package is made from: every incremental
 +# OTA from this build starts from it. Only the unpacked copy and its file list go.
++# The zip is made before the package, because ota_from_target_files may rewrite
++# META/dynamic_partitions_info.txt in the unpacked copy (disable_ublk) while it runs.
++$(INTERNAL_OTA_PACKAGE_TARGET): | $(BUILT_TARGET_FILES_PACKAGE)
 +$(LINEAGE_TARGET_PACKAGE): $(INTERNAL_OTA_PACKAGE_TARGET) $(BUILT_TARGET_FILES_PACKAGE)
  	$(hide) mv -f $(INTERNAL_OTA_PACKAGE_TARGET) $(LINEAGE_TARGET_PACKAGE)
  	$(hide) $(SHA256) $(LINEAGE_TARGET_PACKAGE) | sed "s|$(PRODUCT_OUT)/||" > $(LINEAGE_TARGET_PACKAGE).sha256sum
