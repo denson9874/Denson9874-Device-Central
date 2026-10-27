@@ -16,6 +16,12 @@ images (and makes their file times fixed). It takes only images whose
 file system type is set to ext4 or erofs, and system.img's wasn't set
 (ext4 was the default), so set it.
 
+This covers the six dynamic partitions, the ones an incremental patches
+block by block. target-files still makes its own init_boot,
+vendor_boot, vendor_kernel_boot, dtbo and vbmeta (signed with other AVB
+salts), so an incremental from it has to write those whole
+(ota_from_target_files --full_ota_partitions).
+
 Co-Authored-By: Claude <noreply@anthropic.com>
 ---
  BoardConfig-common.mk | 9 +++++++++

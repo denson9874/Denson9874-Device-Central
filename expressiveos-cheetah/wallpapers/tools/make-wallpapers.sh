@@ -28,6 +28,14 @@ done
 mark="${EOS_MARK:-$tools/mark-108.txt}"
 [[ "$(sha256 "$mark")" = "$WALLPAPER_MARK_SHA256" ]] \
     || fail "$mark isn't the pinned mark (../branding/tools/make-brand.py draws it from $WALLPAPER_LOGO)"
+# --preview's fonts, checked before anything in OUTDIR is replaced (mock.py's paths)
+if [[ -n "$preview" ]]; then
+    fonts=${EOS_FONTS:-vendor/extras/prebuilt/product/fonts}
+    for f in GoogleSansFlexClock-Regular.ttf GoogleSansFlex-Regular.ttf; do
+        [[ -f "$fonts/$f" ]] || fail "no $fonts/$f for --preview: run from the tree or set EOS_FONTS (e.g. ~/expressiveos/vendor/extras/prebuilt/product/fonts)"
+    done
+    export EOS_FONTS=$fonts
+fi
 mkdir -p -- "$out"
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/wallpapers.XXXXXX")

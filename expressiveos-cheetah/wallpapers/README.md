@@ -28,8 +28,10 @@ Material TONAL_SPOT from that blue.
 
 1.0 ships Bloom as the first-boot wallpaper and keeps Google's Pixel wallpapers in the picker (Daryl,
 2026-10-27): the picker reads only one wallpaper pack, so `ExpressiveWallpapers/`, which has all four but
-none of Pixel's, isn't built yet. In 1.1 one pack holds both. Until then Dusk, Dawn and Mint are files
-to set by hand.
+none of Pixel's, isn't built yet. In 1.1 one pack holds both. Until then Dusk, Dawn and Mint aren't on
+the phone or in the release: to try one, push it from the kit
+(`adb push ExpressiveWallpapers/res/drawable-nodpi/expressiveos_dawn.png /sdcard/Pictures/`) and set it
+from Photos or Files.
 
 Run `apply-wallpapers.sh` after `repo sync`, along with the other ExpressiveOS kits
 (`../tools/eos-images.sh` does). It checks every PNG against `wallpapers.conf`, stages
@@ -96,15 +98,21 @@ grep ro.config.wallpaper out/target/product/cheetah/product/etc/build.prop
 ```
 
 On the phone, after a clean install: the lock and home screens show Bloom with blue system colours,
-and setting Dawn from its file turns them peach. `adb logcat -s ThemeOverlayController` shows `Default
+and setting Dawn (pushed as above) turns them peach. `adb logcat -s ThemeOverlayController` shows `Default
 seed color read from home wallpaper` on first boot when the hardware-colour defaults are on. A phone
-flashed without a wipe keeps the wallpaper and colours it had: `ro.config.wallpaper` is only the
-wallpaper a phone starts with.
+flashed without a wipe that has a wallpaper of its own keeps it and its colours. One still on the old
+default wallpaper shows Bloom afterwards (the default is looked up again on every load), but keeps any
+colour source its first boot stored: an earlier candidate that booted with the hardware-colour defaults
+on stored a `#0049c7` preset, which stays, and setting a wallpaper doesn't recolour it until the colours
+are set to follow the wallpaper in Wallpaper & style. Without a stored preset, Bloom's colours follow.
+Only a clean install (`fastboot -w`) shows the first-boot colours as intended.
 
 ## Changing them
 
 Edit `tools/final.py` (geometry, colours, glow) or the shared drawing code, run
-`tools/make-wallpapers.sh --preview /tmp/sheet.png`, look at the sheet, and update the `WALLPAPER_*`
+`EOS_FONTS=~/expressiveos/vendor/extras/prebuilt/product/fonts tools/make-wallpapers.sh --preview /tmp/sheet.png`
+(the mock screens need the tree's Google Sans Flex fonts; it checks for them before replacing any PNG),
+look at the sheet, and update the `WALLPAPER_*`
 lines in `wallpapers.conf` from its output. A new default: change `WALLPAPER_DEFAULT`,
 `WALLPAPER_DEFAULT_PATH` and both lines in `wallpapers.mk`; the scripts read the rest from
 `wallpapers.conf`.

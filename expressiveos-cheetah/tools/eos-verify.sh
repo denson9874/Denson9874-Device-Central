@@ -162,6 +162,10 @@ if compgen -G "$kit/patches/system_update_engine/0003-*.patch" > /dev/null; then
     [[ -f $ues ]] || fail "no $ues"
     ! grep -aqF 'Payload signature verification skipped' "$ues" || fail "$ues still skips payload signatures (patches/system_update_engine 0001)"
     grep -aqF 'Public key verification failed, thus update failed.' "$ues" || fail "$ues doesn't check payload signatures in recovery (patches/system_update_engine 0003)"
+    # update_engine_sideload is built from the same hardware_android.cc as update_engine
+    if compgen -G "$kit/patches/system_update_engine/0002-*.patch" > /dev/null; then
+        grep -aqF ro.ota.allow_downgrade "$ues" || fail "$ues installs older builds in recovery (patches/system_update_engine 0002)"
+    fi
     ue_checks+=", and in recovery's sideload too"
 fi
 echo "OK: payload.bin is signed with the pinned OTA key, and update_engine checks $ue_checks"

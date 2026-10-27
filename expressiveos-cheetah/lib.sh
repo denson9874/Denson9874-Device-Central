@@ -79,30 +79,43 @@ subject_of() {   # subject_of <patch>: its Subject:, folded lines joined, [PATCH
 }
 
 am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local commit (git am --3way), unless its subject is in the log
-    local d=$1 label=$2 patch subject before log
+    local d=$1 label=$2 patch subject before log h rc
     shift 2
     project_ok "$d"
     git -C "$d" var GIT_COMMITTER_IDENT >/dev/null || fail "git has no user.name/user.email here; git am needs one"
-    # One git log per project: frameworks/base has over a million commits
+    # One git log per project: frameworks/base has over a million commits. Each line is the
+    # commit's hash, a tab and its subject
     log=$(mktemp "${TMPDIR:-/tmp}/eos-log.XXXXXX")
-    git -C "$d" log --format=%s > "$log" || { rm -f -- "$log"; fail "can't read ${d#"$top"/}'s log"; }
+    git -C "$d" log --format='%H%x09%s' > "$log" || { rm -f -- "$log"; fail "can't read ${d#"$top"/}'s log"; }
     for patch in "$@"; do
         subject=$(subject_of "$patch")
         [[ -n "$subject" ]] || { rm -f -- "$log"; fail "no Subject: in $patch"; }
-        if grep -xF -- "$subject" "$log" >/dev/null; then
+        h=$(S=$subject awk '{ if (substr($0, 42) == ENVIRON["S"]) { print substr($0, 1, 40); exit } }' "$log")
+        if [[ -n "$h" ]]; then
             echo "already applied: $label: $subject"
+            # A kit patch changed in place keeps its subject, so the tree can still have the
+            # older version: then the patch put on that commit's parent doesn't give its tree
+            rc=0
+            same_change "$d" "$h" "$patch" || rc=$?
+            if [[ $rc = 1 ]]; then
+                echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change. If apply.sh or apply-ksu.sh made it (an older version of the patch): repo sync -d ${d#"$top"/}, then build again (tools/eos-images.sh puts the kit's patches back). If it came with Evolution X's source: compare the two, then drop or regenerate the patch"
+            elif [[ $rc != 0 ]]; then
+                echo "note: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/}, but its change can't be compared with the patch here (no parent in this clone, or git failed)"
+            fi
             continue
         fi
         before=$(git -C "$d" rev-parse HEAD)
         # --keep-cr: some files have CRLF line ends (SystemUI's clocks/AnalogClockView.java),
         # and git am would strip the CRs from the patch so it no longer matches them
-        if git -C "$d" am -q --keep-cr --3way "$patch"; then
+        # merge.renames: git am's 3-way merge follows renames even where git config turns them
+        # off, as same_change's does
+        if git -C "$d" -c merge.renames=true am -q --keep-cr --3way "$patch"; then
             # git am exits 0 without a commit when the tree already has the change
             [[ "$(git -C "$d" rev-parse HEAD)" != "$before" && "$(git -C "$d" log -1 --format=%s)" = "$subject" ]] || {
                 rm -f -- "$log"
                 fail "$label: git am made no commit for ${patch##*/}: the project already has that change under another subject (did Evolution X take it?). Check, then drop the patch from the kit"
             }
-            printf '%s\n' "$subject" >> "$log"
+            printf '%s\t%s\n' "$(git -C "$d" rev-parse HEAD)" "$subject" >> "$log"
             echo "applied: $label: $subject"
         else
             rm -f -- "$log"
@@ -112,6 +125,56 @@ am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local co
         fi
     done
     rm -f -- "$log"
+}
+
+same_change() {   # same_change <dir> <commit> <patch>: 0 if git am of the patch on the commit's parent gives the
+    # commit's tree, 1 if not, 2 if that can't be checked here (no parent in this clone, a root commit)
+    local d=$1 h=$2 patch t objs tree base theirs rc=1
+    patch=$(realpath -- "$3") || return 2
+    git -C "$d" rev-parse -q --verify "$h^^{commit}" >/dev/null 2>&1 || return 2
+    objs=$(git -C "$d" rev-parse --path-format=absolute --git-path objects) || return 2
+    t=$(mktemp -d "${TMPDIR:-/tmp}/eos-am.XXXXXX") || return 2
+    [[ "$t" = /* ]] || t=$PWD/$t   # git -C below would read a relative one from the project
+    mkdir -p "$t/mail" "$t/objects"
+    # Every git call below works on scratch indexes and keeps the objects it writes in $t, so
+    # the project's index, files, refs and objects don't change (a split index would put its
+    # shared part in the project's git folder)
+    am_git() { GIT_OBJECT_DIRECTORY=$t/objects GIT_ALTERNATE_OBJECT_DIRECTORIES=$objs git -C "$d" -c core.splitIndex=false "$@"; }
+    # Redo what git am --keep-cr --3way did. The mail is split first, so a line in the commit
+    # message that looks like a hunk isn't read as one
+    if [[ "$(git mailsplit -b --keep-cr -o"$t/mail" -- "$patch" 2>/dev/null)" = 1 ]] \
+        && git mailinfo "$t/msg" "$t/diff" < "$t/mail/0001" >/dev/null 2>&1 \
+        && GIT_INDEX_FILE=$t/index am_git read-tree "$h^" 2>/dev/null; then
+        rc=0
+        # A plain apply to the parent (offsets allowed) ...
+        if GIT_INDEX_FILE=$t/index am_git apply --cached -- "$t/diff" >/dev/null 2>&1; then
+            tree=$(GIT_INDEX_FILE=$t/index am_git write-tree 2>/dev/null) || rc=2
+        # ... else a merge of the patch's own base and result into the parent, renames followed
+        # and directory renames not (git am's fallback; merge-tree follows renames whatever git
+        # config says, so am_patches' git am does too). The fake ancestor takes what the patch
+        # has no blob id for from the index, which for git am was the parent's
+        elif GIT_INDEX_FILE=$t/index am_git apply --build-fake-ancestor="$t/base" -- "$t/diff" >/dev/null 2>&1 \
+            && base=$(GIT_INDEX_FILE=$t/base am_git write-tree 2>/dev/null) \
+            && GIT_INDEX_FILE=$t/base am_git apply --cached -- "$t/diff" >/dev/null 2>&1 \
+            && theirs=$(GIT_INDEX_FILE=$t/base am_git write-tree 2>/dev/null) \
+            && base=$(echo base | GIT_AUTHOR_NAME=eos GIT_AUTHOR_EMAIL=eos@localhost GIT_COMMITTER_NAME=eos \
+                GIT_COMMITTER_EMAIL=eos@localhost am_git commit-tree "$base" 2>/dev/null) \
+            && theirs=$(echo patch | GIT_AUTHOR_NAME=eos GIT_AUTHOR_EMAIL=eos@localhost GIT_COMMITTER_NAME=eos \
+                GIT_COMMITTER_EMAIL=eos@localhost am_git commit-tree "$theirs" 2>/dev/null); then
+            # merge-tree exits 1 on a conflict, and git am would have stopped there
+            tree=$(am_git -c merge.directoryRenames=false merge-tree --write-tree --merge-base="$base" "$h^" "$theirs" 2>/dev/null) \
+                || rc=$(( $? == 1 ? 1 : 2 ))
+            tree=${tree%%$'\n'*}
+        else
+            rc=1
+        fi
+        [[ $rc != 0 || "$tree" = "$(git -C "$d" rev-parse "$h^{tree}")" ]] || rc=1
+    else
+        rc=2
+    fi
+    unset -f am_git
+    rm -rf -- "$t"
+    return "$rc"
 }
 
 has_subject() {   # has_subject <dir> <subject>: the project's log has a commit with exactly that subject

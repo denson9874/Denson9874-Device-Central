@@ -5,7 +5,6 @@
                                     for ota_extractor -payload_offset
   payload.py partitions <ota.zip>   the partitions the payload writes, one per line, sorted
 """
-import re
 import struct
 import sys
 import zipfile
@@ -32,10 +31,63 @@ def partitions(path):
         f.read(8)  # major version
         manifest_len, = struct.unpack('>Q', f.read(8))
         f.read(4)  # metadata signature size
+        if 24 + manifest_len > zipfile.ZipFile(path).getinfo('payload.bin').file_size:
+            sys.exit('%s: payload.bin ends inside its manifest' % path)
         manifest = f.read(manifest_len)
-    # DeltaArchiveManifest.partitions (field 13) -> PartitionUpdate.partition_name (field 1)
-    return sorted({m.group(2).decode() for m in re.finditer(rb'\x0a([\x02-\x20])([a-z0-9_]{2,32})', manifest)
-                   if len(m.group(2)) == m.group(1)[0]})
+    # DeltaArchiveManifest.partitions (field 13) -> PartitionUpdate.partition_name (field 1).
+    # Walked as protobuf: other messages have a field 1 string too (dynamic_partition_metadata's
+    # group name, google_dynamic_partitions)
+    names = set()
+    for field, value in fields(manifest, path):
+        if field == 13:
+            if not isinstance(value, bytes):
+                sys.exit('%s: a partition in the payload manifest is not a message' % path)
+            name = [v for f, v in fields(value, path) if f == 1]
+            if len(name) != 1 or not isinstance(name[0], bytes):
+                sys.exit('%s: a partition in the payload manifest has no name' % path)
+            try:
+                names.add(name[0].decode())
+            except UnicodeDecodeError:
+                sys.exit('%s: a partition name in the payload manifest is not UTF-8' % path)
+    if not names:
+        sys.exit('%s: the payload manifest names no partition' % path)
+    return sorted(names)
+
+
+def fields(data, path):
+    """(field number, value) for each field of a protobuf message: an int, or bytes for a
+    length-delimited field"""
+    def varint():
+        nonlocal i
+        n = shift = 0
+        while True:
+            if i >= len(data) or shift > 63:
+                sys.exit('%s: bad varint in the payload manifest' % path)
+            b = data[i]
+            i += 1
+            n |= (b & 0x7f) << shift
+            shift += 7
+            if b < 0x80:
+                return n
+    i = 0
+    while i < len(data):
+        key = varint()
+        field, wire = key >> 3, key & 7
+        if wire == 0:
+            value = varint()
+        elif wire in (1, 5):
+            size = 8 if wire == 1 else 4
+            value = int.from_bytes(data[i:i + size], 'little')
+            i += size
+        elif wire == 2:
+            size = varint()
+            value = data[i:i + size]
+            i += size
+        else:
+            sys.exit('%s: unknown wire type %d in the payload manifest' % (path, wire))
+        if i > len(data):
+            sys.exit('%s: the payload manifest is cut short' % path)
+        yield field, value
 
 
 def main():

@@ -6,15 +6,22 @@
 #   device_google_pantah 0001, 0002, 0010   ExpressiveOS's own: maintainer, update feed,
 #                                           only ExpressiveOS's boot animation
 #   device_google_pantah 0003-0009,         evolution-cheetah's, copied unchanged
-#   device_google_gs201, vendor_google_cheetah
+#   device_google_gs201 0001-0005,
+#   vendor_google_cheetah
+#   device_google_gs201 0006                ExpressiveOS's own: target-files takes the built
+#                                           system, vendor, product... images (incrementals)
 #   frameworks_base                         the fixes the Evolution X tree carries for
 #                                           every build there (evolution-kodiak's copies)
 #   vendor_lineage 0001                     ExpressiveOS 1.0 names and the build's own date
 #   vendor_lineage 0002                     evolution-kodiak's: stock's 60 fps game default
+#   vendor_lineage 0003                     ExpressiveOS's own: m evolution keeps target-files
 #   frameworks_base 0021-0024, Settings,    ExpressiveOS's branding: no screen names Evolution X
 #   Evolver, Updater and the rest
-#   system_update_engine 0001-0003          OTA payloads must be signed with ExpressiveOS's
-#                                           key again, never older, in recovery too
+#   packages_apps_Updater 0005              ExpressiveOS's own: an incremental is offered
+#                                           only to its base build
+#   system_update_engine 0001-0003          OTA payloads must be signed again (ExpressiveOS's
+#                                           key; recovery's sideload also takes LineageOS's
+#                                           release key, in its otacerts), never older
 # Never evolution-cheetah's apply.sh, or its pantah 0001/0002: they point the Updater
 # at Evolution X's feed. prepare.sh runs this; repo sync drops the commits again.
 #
