@@ -1,0 +1,215 @@
+From 63f57f4f0bf90a1dae44055ff9ec225b97b38c9c Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:32:49 +0000
+Subject: [PATCH] Settings: name ExpressiveOS in the build number toast, drop
+ Evolution X legal
+
+ExpressiveOS is its own ROM: one of the build number toasts bragged
+about Evolution X. The "Evolution X legal" title is no longer shown
+anywhere (Legal information only lists LineageOS legal), so remove it
+and its translations.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ res/values-fr-rFR/evolution_strings.xml                        | 2 --
+ res/values-hu-rHU/evolution_strings.xml                        | 2 --
+ res/values-in-rID/evolution_strings.xml                        | 2 --
+ res/values-it-rIT/evolution_strings.xml                        | 2 --
+ res/values-ku-rTR/evolution_strings.xml                        | 2 --
+ res/values-pl-rPL/evolution_strings.xml                        | 2 --
+ res/values-pt-rBR/evolution_strings.xml                        | 2 --
+ res/values-ru-rRU/evolution_strings.xml                        | 2 --
+ res/values-sk-rSK/evolution_strings.xml                        | 2 --
+ res/values-tr-rTR/evolution_strings.xml                        | 2 --
+ res/values-uk-rUA/evolution_strings.xml                        | 2 --
+ res/values-vi-rVN/evolution_strings.xml                        | 2 --
+ res/values/evolution_strings.xml                               | 3 ---
+ .../settings/deviceinfo/BuildNumberPreferenceController.java   | 2 +-
+ 14 files changed, 1 insertion(+), 28 deletions(-)
+
+diff --git a/res/values-fr-rFR/evolution_strings.xml b/res/values-fr-rFR/evolution_strings.xml
+index 926365bd27..f698194498 100644
+--- a/res/values-fr-rFR/evolution_strings.xml
++++ b/res/values-fr-rFR/evolution_strings.xml
+@@ -4,8 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Device Info screen. Evolution X legal. -->
+-    <string name="evolution_license_title">License d\'Evolution X</string>
+     <!-- Android version screen, build maintainer -->
+     <string name="build_maintainer">Mainteneur de l\'appareil</string>
+     <!-- Notch: Full screen apps -->
+diff --git a/res/values-hu-rHU/evolution_strings.xml b/res/values-hu-rHU/evolution_strings.xml
+index 5079a04d25..49130f8c02 100644
+--- a/res/values-hu-rHU/evolution_strings.xml
++++ b/res/values-hu-rHU/evolution_strings.xml
+@@ -4,8 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Device Info screen. Evolution X legal. -->
+-    <string name="evolution_license_title">Hivatalos Evolution X</string>
+     <!-- Android version screen, build maintainer -->
+     <string name="build_maintainer_label">Készítette</string>
+     <string name="build_maintainer">A kiadás felelőse</string>
+diff --git a/res/values-in-rID/evolution_strings.xml b/res/values-in-rID/evolution_strings.xml
+index f07d8a3485..e2a63c369f 100644
+--- a/res/values-in-rID/evolution_strings.xml
++++ b/res/values-in-rID/evolution_strings.xml
+@@ -4,8 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Device Info screen. Evolution X legal. -->
+-    <string name="evolution_license_title">Evolution X legal</string>
+     <!-- Android version screen, build maintainer -->
+     <string name="build_maintainer_label">Dikelola oleh</string>
+     <string name="build_maintainer">Pengelola</string>
+diff --git a/res/values-it-rIT/evolution_strings.xml b/res/values-it-rIT/evolution_strings.xml
+index 890ddba5fb..76e3fde5af 100644
+--- a/res/values-it-rIT/evolution_strings.xml
++++ b/res/values-it-rIT/evolution_strings.xml
+@@ -4,8 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Device Info screen. Evolution X legal. -->
+-    <string name="evolution_license_title">Licenze Evolution X</string>
+     <!-- Android version screen, build maintainer -->
+     <string name="build_maintainer">Manutentore della build</string>
+     <!-- Hide developer status -->
+diff --git a/res/values-ku-rTR/evolution_strings.xml b/res/values-ku-rTR/evolution_strings.xml
+index 7cee5ee829..f587d273ce 100644
+--- a/res/values-ku-rTR/evolution_strings.xml
++++ b/res/values-ku-rTR/evolution_strings.xml
+@@ -4,8 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Device Info screen. Evolution X legal. -->
+-    <string name="evolution_license_title">یاساکانی Evolution X</string>
+     <!-- Android version screen, build maintainer -->
+     <string name="build_maintainer_label">سەرپەرشتی دەکرێت لەلایەن</string>
+     <string name="build_maintainer">بەرپرسی وەشان</string>
+diff --git a/res/values-pl-rPL/evolution_strings.xml b/res/values-pl-rPL/evolution_strings.xml
+index 879a69ea8f..92dffcc51a 100644
+--- a/res/values-pl-rPL/evolution_strings.xml
++++ b/res/values-pl-rPL/evolution_strings.xml
+@@ -4,8 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Device Info screen. Evolution X legal. -->
+-    <string name="evolution_license_title">Informacje prawne Evolution X</string>
+     <!-- Android version screen, build maintainer -->
+     <string name="build_maintainer_label">Utrzymywane przez</string>
+     <string name="build_maintainer">Opiekun kompilacji</string>
+diff --git a/res/values-pt-rBR/evolution_strings.xml b/res/values-pt-rBR/evolution_strings.xml
+index 5e759ac0ee..d00acb4fc8 100644
+--- a/res/values-pt-rBR/evolution_strings.xml
++++ b/res/values-pt-rBR/evolution_strings.xml
+@@ -4,8 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Device Info screen. Evolution X legal. -->
+-    <string name="evolution_license_title">Evolução X legal</string>
+     <!-- Android version screen, build maintainer -->
+     <string name="build_maintainer_label">Mantido por</string>
+     <string name="build_maintainer">Mantenedor da compilação</string>
+diff --git a/res/values-ru-rRU/evolution_strings.xml b/res/values-ru-rRU/evolution_strings.xml
+index 5a7a412102..df90ca404b 100644
+--- a/res/values-ru-rRU/evolution_strings.xml
++++ b/res/values-ru-rRU/evolution_strings.xml
+@@ -4,8 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Device Info screen. Evolution X legal. -->
+-    <string name="evolution_license_title">Правовая информация Evolution X</string>
+     <!-- Android version screen, build maintainer -->
+     <string name="build_maintainer">Сопровождающий</string>
+     <!-- Hide developer status -->
+diff --git a/res/values-sk-rSK/evolution_strings.xml b/res/values-sk-rSK/evolution_strings.xml
+index f701026a53..1b51c64f4d 100644
+--- a/res/values-sk-rSK/evolution_strings.xml
++++ b/res/values-sk-rSK/evolution_strings.xml
+@@ -4,8 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Device Info screen. Evolution X legal. -->
+-    <string name="evolution_license_title">Evolution X legal</string>
+     <!-- Android version screen, build maintainer -->
+     <string name="build_maintainer">Údržbár kompilácie</string>
+     <!-- Hide developer status -->
+diff --git a/res/values-tr-rTR/evolution_strings.xml b/res/values-tr-rTR/evolution_strings.xml
+index 4e882a5688..d08a3a54ac 100644
+--- a/res/values-tr-rTR/evolution_strings.xml
++++ b/res/values-tr-rTR/evolution_strings.xml
+@@ -4,8 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Device Info screen. Evolution X legal. -->
+-    <string name="evolution_license_title">Evolution X Lisansı</string>
+     <!-- Android version screen, build maintainer -->
+     <string name="build_maintainer">Cihaz sorumlusu</string>
+     <!-- Hide developer status -->
+diff --git a/res/values-uk-rUA/evolution_strings.xml b/res/values-uk-rUA/evolution_strings.xml
+index bd896a8338..8762300438 100644
+--- a/res/values-uk-rUA/evolution_strings.xml
++++ b/res/values-uk-rUA/evolution_strings.xml
+@@ -4,8 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Device Info screen. Evolution X legal. -->
+-    <string name="evolution_license_title">Юридичні застереження Evolution X</string>
+     <!-- Android version screen, build maintainer -->
+     <string name="build_maintainer_label">Підтримується</string>
+     <string name="build_maintainer">Розробник збірки</string>
+diff --git a/res/values-vi-rVN/evolution_strings.xml b/res/values-vi-rVN/evolution_strings.xml
+index 61f989851b..2c091ebf82 100644
+--- a/res/values-vi-rVN/evolution_strings.xml
++++ b/res/values-vi-rVN/evolution_strings.xml
+@@ -4,8 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Device Info screen. Evolution X legal. -->
+-    <string name="evolution_license_title">Giấy phép Evolution X</string>
+     <!-- Android version screen, build maintainer -->
+     <string name="build_maintainer">Người bảo trì</string>
+     <string name="device_name">Thiết bị</string>
+diff --git a/res/values/evolution_strings.xml b/res/values/evolution_strings.xml
+index 1a07d9cd11..5ce2ccc0de 100644
+--- a/res/values/evolution_strings.xml
++++ b/res/values/evolution_strings.xml
+@@ -4,9 +4,6 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <!-- Device Info screen. Evolution X legal. -->
+-    <string name="evolution_license_title">Evolution X legal</string>
+-
+     <!-- Android version screen, build maintainer -->
+     <string name="build_maintainer_label">Maintained by</string>
+     <string name="build_maintainer">Build maintainer</string>
+diff --git a/src/com/android/settings/deviceinfo/BuildNumberPreferenceController.java b/src/com/android/settings/deviceinfo/BuildNumberPreferenceController.java
+index a92c169e8f..484996088d 100644
+--- a/src/com/android/settings/deviceinfo/BuildNumberPreferenceController.java
++++ b/src/com/android/settings/deviceinfo/BuildNumberPreferenceController.java
+@@ -72,7 +72,7 @@ public class BuildNumberPreferenceController extends BasePreferenceController im
+     private boolean mProcessingLastDevHit;
+ 
+     public final static java.lang.String[] insults = {
+-            "Evolution X > your personality",
++            "ExpressiveOS > your personality",
+             "IT'S CLOBBERING TIME!",
+             "Acknowledge me",
+             "You flash ROMs more than you shower",
+-- 
+2.43.0
+

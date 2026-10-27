@@ -14,7 +14,9 @@
 # nothing is removed from under a routine packing into a release folder. The image-*.zip
 # files the pack scripts read for every fastboot zip and the firmware cache are on the
 # keep list, and no folder holding an on-device gate's .device-ok record is removed:
-# nothing kept, or holding it, ever goes.
+# nothing kept, or holding it, ever goes. Nor do the newest ExpressiveOS release's
+# target-files (the source of its next incremental OTA; eos-pack.sh names them in
+# ~/releases/expressiveos-*/target-files/LATEST), whatever a group lists.
 #
 #   server-cleanup.sh list [groups]       # what's there now, with sizes; changes nothing
 #   server-cleanup.sh delete <groups>     # e.g. delete 1,2,3,4,5,6,7
@@ -145,6 +147,18 @@ allowed() {
     done
     return 1
 }
+# The newest ExpressiveOS release's target-files (target-files/LATEST), and the newest by
+# date in each such folder too, should LATEST be missing or stale: kept, with their .sha256
+for d in "$home/$R"/expressiveos-*/target-files; do
+    [[ -d "$d" && ! -L "$d" ]] || continue
+    rel=${d#"$home"/}
+    n=$(head -n 1 -- "$d/LATEST" 2>/dev/null || true)
+    [[ -z "$n" || "$n" =~ ^ExpressiveOS-[A-Za-z0-9._-]+-target_files\.zip$ ]] || fail "$d/LATEST names '$n', not an ExpressiveOS target-files zip"
+    newest=$(find "$d" -maxdepth 1 -type f -name 'ExpressiveOS-*-target_files.zip' -printf '%T@ %f\n' | sort -n | tail -n 1 | cut -d' ' -f2-)
+    [[ "$newest" != "$n" ]] || newest=''
+    keep+=("$rel/LATEST")
+    for z in "$n" "$newest"; do [[ -z "$z" ]] || keep+=("$rel/$z" "$rel/$z.sha256"); done
+done
 # Checksum files the pack scripts and the release step write next to a zip
 sidecars() { local f; for f in "$1.sha256" "$1.sha256sum" "$1.md5sum" "${1%.zip}.sha256"; do [[ -f "$f" && ! -L "$f" ]] && echo "$f"; done; return 0; }
 size_of() { nice -n 19 ionice -c2 -n7 du -s -B1 --apparent-size -- "$@" 2>/dev/null | awk '{s += $1} END {print s + 0}'; }

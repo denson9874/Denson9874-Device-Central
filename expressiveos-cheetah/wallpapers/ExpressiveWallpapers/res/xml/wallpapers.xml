@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Read by the wallpaper picker (WallpaperPicker2's WallpaperParserImpl): attributes have no
+     namespace. "memories" is PixelWallpapers2026's first category, kept so Google Photos'
+     Memories live wallpaper stays in the picker once this APK replaces that one. -->
+<wallpapers>
+    <category
+        id="memories"
+        title="@string/category_memories">
+        <live-wallpaper
+            id="memories"
+            package="com.google.android.apps.photos"
+            service="com.google.android.apps.photos.livewallpaper.LiveWallpaperService" />
+    </category>
+
+    <category
+        id="expressiveos"
+        title="@string/category_expressiveos"
+        thumbnail="@drawable/expressiveos_bloom_thumbnail"
+        featured="expressiveos_bloom">
+        <static-wallpaper
+            id="expressiveos_bloom"
+            src="@drawable/expressiveos_bloom"
+            thumbnail="@drawable/expressiveos_bloom_thumbnail"
+            title="@string/bloom_title"
+            subtitle1="@string/subtitle_expressiveos"
+            subtitle2="@string/bloom_subtitle" />
+        <static-wallpaper
+            id="expressiveos_dusk"
+            src="@drawable/expressiveos_dusk"
+            thumbnail="@drawable/expressiveos_dusk_thumbnail"
+            title="@string/dusk_title"
+            subtitle1="@string/subtitle_expressiveos"
+            subtitle2="@string/dusk_subtitle" />
+        <static-wallpaper
+            id="expressiveos_dawn"
+            src="@drawable/expressiveos_dawn"
+            thumbnail="@drawable/expressiveos_dawn_thumbnail"
+            title="@string/dawn_title"
+            subtitle1="@string/subtitle_expressiveos"
+            subtitle2="@string/dawn_subtitle" />
+        <static-wallpaper
+            id="expressiveos_mint"
+            src="@drawable/expressiveos_mint"
+            thumbnail="@drawable/expressiveos_mint_thumbnail"
+            title="@string/mint_title"
+            subtitle1="@string/subtitle_expressiveos"
+            subtitle2="@string/mint_subtitle" />
+    </category>
+</wallpapers>

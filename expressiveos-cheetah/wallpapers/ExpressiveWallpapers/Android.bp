@@ -1,0 +1,20 @@
+// ExpressiveOS wallpapers for the wallpaper picker (expressiveos-cheetah/wallpapers).
+// A resource-only partner customization APK: the picker (WallpaperPickerGoogleRelease) asks
+// PackageManager for receivers of com.android.launcher3.action.PARTNER_CUSTOMIZATION and reads
+// res/xml/wallpapers.xml from the first system app it finds, so this replaces Google's
+// PixelWallpapers2026 rather than sitting next to it.
+android_app {
+    name: "ExpressiveWallpapers",
+    product_specific: true,
+    sdk_version: "current",
+    resource_dirs: ["res"],
+    manifest: "AndroidManifest.xml",
+    // No code: nothing to compile, dexpreopt or shrink
+    dex_preopt: {
+        enabled: false,
+    },
+    optimize: {
+        enabled: false,
+    },
+    overrides: ["PixelWallpapers2026"],
+}

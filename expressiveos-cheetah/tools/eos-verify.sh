@@ -11,16 +11,22 @@
 #   2. identity: cheetah, Pixel 7 Pro, a user build, every kit patch in its project, the
 #      Updater on ExpressiveOS's feed and never Evolution X's;
 #   3. keys: eos-keys-check.sh out, and the package's zip and payload signatures verify
-#      against the one certificate the build trusts for updates;
+#      against the one certificate the build trusts for updates, which is the pinned one;
+#      update_engine checks payload signatures again (and refuses older builds, and checks
+#      in recovery too, with patches/system_update_engine 0002 and 0003);
 #   4. the payload: every partition the build lists plus the firmware; its init_boot
 #      carries the same KernelSU Next ramdisk as out/; its vbmeta (and every partition it
 #      chains), boot, init_boot and vbmeta_system are ExpressiveOS's; its patch levels are
-#      the build's;
+#      the build's; the target-files zip kept with it, for incremental OTAs, is its own
+#      (eos-target-files.sh);
 #   5. KernelSU Next (ksu-check.sh manager and images), and the stock init_boot kept for
 #      users who want no root (no kernelsu.ko, signed with the tree's key);
-#   6. ViPER4Android (v4a-check.sh out) and the boot animation (bootanim.conf's zip, no
-#      other styles);
-#   7. firmware and the fastboot files the pack script reads.
+#   6. ViPER4Android (v4a-check.sh out), the boot animation (bootanim.conf's zip, no
+#      other styles) and the wallpaper (wallpapers.conf's default on ro.config.wallpaper,
+#      the theme from the wallpaper);
+#   7. branding: no app, framework string or crash report header names Evolution X
+#      (brand-check.py), apart from the few links it lists on purpose;
+#   8. firmware and the fastboot files the pack script reads.
 set -euo pipefail
 done=0 T=''
 cleanup() {
@@ -90,14 +96,8 @@ echo "OK: cheetah, Pixel 7 Pro, user build"
 n=0
 for d in "$kit"/patches/* "$kit"/ksu/patches/* "$kit"/viper4android/patches/*; do
     [[ -d $d ]] || continue
-    p=${d##*/}
-    case $p in
-        device_google_*) p=device/google/${p#device_google_} ;;
-        vendor_google_*) p=vendor/google/${p#vendor_google_} ;;
-        vendor_lineage) p=vendor/lineage ;;
-        frameworks_*) p=frameworks/${p#frameworks_} ;;
-        *) fail "don't know which project $d patches" ;;
-    esac
+    p=$(patch_project "$d")
+    [[ -d $p ]] || fail "${d#"$kit"/} patches $p, which this tree doesn't have"
     git -C "$p" log --format=%s > "$T/log" || fail "can't read $p's log"
     for f in "$d"/*.patch; do
         s=$(subject_of "$f")
@@ -134,6 +134,37 @@ certs=("$T"/otacerts/*)
 "$H/check_ota_package_signature" "${certs[0]}" "$ota" > "$T/sig.log" 2>&1 || { tail -5 "$T/sig.log" >&2; fail "the package's signature doesn't verify against otacerts.zip"; }
 grep -q "Payload signatures VERIFIED" "$T/sig.log" || fail "the payload signatures aren't verified"
 echo "OK: the package's zip and payload signatures verify against the build's otacerts"
+# Evolution X's update_engine took any payload signature (59fbd47), and so did the host's
+# delta_generator, built from the same payload_verifier.cc, under the check above. So
+# payload-sig.py checks both signatures without update_engine's code, against the pinned
+# certificate, and delta_generator must refuse a key that didn't sign the payload.
+pin=${EOS_OTA_CERT_SHA256:-$(openssl x509 -in "${certs[0]}" -noout -fingerprint -sha256 | sed 's/.*=//; s/://g')}
+r=$(python3 -I "$kit/tools/payload-sig.py" "$ota" "$O/system/etc/security/otacerts.zip" 2>&1 | tail -1) || true
+[[ $r = "PAYLOAD_SIG=OK $pin" ]] || fail "payload.bin isn't signed with ExpressiveOS's OTA key $pin ($r)"
+unzip -p -- "$ota" payload.bin > "$T/payload.bin" || fail "can't extract payload.bin from $ota"
+openssl x509 -in build/make/target/product/security/testkey.x509.pem -noout -pubkey > "$T/aosp.pub.pem" \
+    || fail "can't read AOSP's test key (build/make/target/product/security/testkey.x509.pem)"
+if "$H/delta_generator" --in_file="$T/payload.bin" --public_key="$T/aosp.pub.pem" > "$T/dg.log" 2>&1; then
+    fail "delta_generator takes AOSP's test key for this payload: the tree's payload_verifier.cc checks no signature (patches/system_update_engine 0001)"
+fi
+rm -f -- "$T/payload.bin"
+ue=$O/system/bin/update_engine
+[[ -f $ue ]] || fail "no $ue"
+! grep -aqF 'Payload signature verification skipped' "$ue" || fail "$ue still skips payload signatures (patches/system_update_engine 0001)"
+grep -aqF ' signatures is correct. Expected hash before padding:' "$ue" || fail "$ue has no payload signature check (patches/system_update_engine 0001)"
+ue_checks="payload signatures"
+if compgen -G "$kit/patches/system_update_engine/0002-*.patch" > /dev/null; then
+    grep -aqF ro.ota.allow_downgrade "$ue" || fail "$ue installs older builds (patches/system_update_engine 0002)"
+    ue_checks+=", no downgrades"
+fi
+if compgen -G "$kit/patches/system_update_engine/0003-*.patch" > /dev/null; then
+    ues=$O/recovery/root/system/bin/update_engine_sideload
+    [[ -f $ues ]] || fail "no $ues"
+    ! grep -aqF 'Payload signature verification skipped' "$ues" || fail "$ues still skips payload signatures (patches/system_update_engine 0001)"
+    grep -aqF 'Public key verification failed, thus update failed.' "$ues" || fail "$ues doesn't check payload signatures in recovery (patches/system_update_engine 0003)"
+    ue_checks+=", and in recovery's sideload too"
+fi
+echo "OK: payload.bin is signed with the pinned OTA key, and update_engine checks $ue_checks"
 
 echo "== payload"
 off=$(python3 -I "$kit/tools/payload.py" offset "$ota") || fail "can't find payload.bin in $ota"
@@ -168,6 +199,9 @@ props() { local i; for i in vbmeta vbmeta_system boot; do "$H/avbtool" info_imag
 spl=$(props "$T/x" | sed -n "s/.*system.security_patch -> '\(.*\)'/\1/p")
 bspl=$(props "$T/x" | sed -n "s/.*boot.security_patch -> '\(.*\)'/\1/p")
 echo "OK: patch levels system $spl, boot $bspl"
+echo "== target-files"
+checked "the target-files zip kept with the package isn't its own (eos-target-files.sh)" 'TF_CHECK=OK' \
+    "$kit/tools/eos-target-files.sh" "$top/$ota" "$top"
 
 echo "== KernelSU Next"
 checked "KernelSU Next manager" 'KSU_CHECK=OK' "$kit/ksu/tools/ksu-check.sh" manager "$top"
@@ -186,7 +220,7 @@ mkdir -- "$T/sv"; cp -- "$stock" "$T/sv/init_boot.img"
 checked "$stock isn't signed with ExpressiveOS's key" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vbmeta "$stock" "$top"
 echo "OK: $stock has no KernelSU Next, verifies and is signed with the tree's key"
 
-echo "== ViPER4Android and boot animation"
+echo "== ViPER4Android, boot animation and wallpaper"
 checked "ViPER4Android" 'V4A_CHECK=OK' "$kit/viper4android/tools/v4a-check.sh" out "$top/$O" "$top/out/host/linux-x86"
 # shellcheck source=../bootanimation/bootanim.conf
 source "$kit/bootanimation/bootanim.conf"
@@ -195,6 +229,28 @@ ba=$O/product/media/bootanimation.zip
 extra=$(find "$O/product/media" -maxdepth 1 -name 'bootanimation_*.zip' -printf '%f ')
 [[ -z "$extra" ]] || fail "Evolution X's other boot animation styles shipped: $extra(TARGET_INCLUDE_BOOT_ANIMATIONS)"
 echo "OK: ExpressiveOS's boot animation, no other styles"
+# shellcheck source=../wallpapers/wallpapers.conf
+source "$kit/wallpapers/wallpapers.conf"
+wpd=$O$WALLPAPER_DEFAULT_PATH dvar="WALLPAPER_${WALLPAPER_DEFAULT#expressiveos_}"; dvar="${dvar^^}_SHA256"
+[[ -n "${!dvar:-}" && -f $wpd && "$(sha256sum -- "$wpd" | cut -d' ' -f1)" = "${!dvar}" ]] || fail "$wpd isn't wallpapers.conf's $WALLPAPER_DEFAULT"
+[[ "$(prop ro.config.wallpaper)" = "$WALLPAPER_DEFAULT_PATH" ]] \
+    || fail "ro.config.wallpaper is '$(prop ro.config.wallpaper)', not $WALLPAPER_DEFAULT_PATH (wallpapers/wallpapers.mk)"
+# 1.0 keeps Pixel's wallpapers in the picker, which reads one partner APK only (wallpapers/README.md)
+[[ ! -e $O/product/app/ExpressiveWallpapers ]] || fail "ExpressiveWallpapers shipped: 1.0's picker keeps PixelWallpapers2026 (wallpapers/wallpapers.mk)"
+[[ -x $H/aapt2 ]] || fail "no $H/aapt2 (m evolution builds it)"
+rros=("$O"/product/overlay/framework-res__*auto_generated_rro_product.apk)
+[[ ${#rros[@]} = 1 && -f ${rros[0]} ]] || fail "not one framework-res product auto-RRO in $O/product/overlay: ${rros[*]}"
+"$H/aapt2" dump resources "${rros[0]}" > "$T/rro.txt" 2>&1 || fail "aapt2 can't read ${rros[0]}"
+# The array's own lines: from its resource line to the next resource
+awk '/^ *resource 0x/ { on = /array\/theming_defaults/ } on' "$T/rro.txt" > "$T/td.txt"
+[[ -s $T/td.txt ]] || fail "${rros[0]##*/} has no theming_defaults (wallpapers/overlay)"
+{ grep -qF '*|TONAL_SPOT|home_wallpaper' "$T/td.txt" && ! grep -qiF '#0049c7' "$T/td.txt"; } \
+    || fail "framework-res's theming_defaults isn't *|TONAL_SPOT|home_wallpaper (wallpapers/overlay), so the theme won't follow the wallpaper: $(tr -s ' \n' ' ' < "$T/td.txt" | head -c 300)"
+echo "OK: $WALLPAPER_DEFAULT is the first-boot wallpaper and the theme follows the wallpaper"
+
+echo "== branding"
+checked "the build still shows Evolution X somewhere (patches/: Settings, Evolver, Updater...)" 'BRAND_CHECK=OK' \
+    python3 -I "$kit/tools/brand-check.py" "$top/$O"
 
 echo "== firmware and fastboot files"
 fw=$(cat vendor/google/cheetah/FIRMWARE_SOURCE 2>/dev/null || echo "the vendor repo's own")

@@ -1,0 +1,204 @@
+From c4deef0bfcc8a68f3b062109533548a29c7511f7 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:48:03 +0000
+Subject: [PATCH] EvoEgg: fly ExpressiveOS's mark and use it as the app icon
+
+ExpressiveOS is its own ROM: the easter egg flew Evolution X's logo and
+its icon showed that logo on a blue disc. Draw the four-petal mark with
+its petal gradients instead, and the icon as the mark on black.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ res/drawable/evo.xml                    | 57 +++++++++++++++++---
+ res/drawable/ic_launcher_background.xml | 16 +-----
+ res/drawable/ic_launcher_foreground.xml | 72 +++++++++++++++++--------
+ 3 files changed, 100 insertions(+), 45 deletions(-)
+
+diff --git a/res/drawable/evo.xml b/res/drawable/evo.xml
+index a9dc36a..81f2c7e 100644
+--- a/res/drawable/evo.xml
++++ b/res/drawable/evo.xml
+@@ -16,16 +16,57 @@
+ -->
+ 
+ <vector xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:aapt="http://schemas.android.com/aapt"
+     android:width="48dp"
+     android:height="48dp"
+     android:viewportWidth="24"
+     android:viewportHeight="24">
+-    <path
+-        android:fillColor="?android:attr/colorAccent"
+-        android:fillType="evenOdd"
+-        android:pathData="M15,24c-0.2,0 -0.5,-0.1 -0.6,-0.2L4.1,14.7c-0.3,-0.2 -0.4,-0.6 -0.3,-1l0.9,-3.4c0.1,-0.4 0.5,-0.7 0.9,-0.7h10.1c0.3,0 0.6,0.1 0.7,0.4l2.8,3.4c0.2,0.3 0.3,0.7 0.1,1c-0.2,0.3 -0.5,0.5 -0.9,0.5h-5.8l3.8,3.4c0.3,0.2 0.4,0.6 0.3,0.9l-0.9,4c-0.1,0.3 -0.3,0.6 -0.6,0.7C15.2,24 15.1,24 15,24zM5.8,13.7l8.6,7.6l0.4,-1.9l-5.3,-4.7c-0.3,-0.3 -0.4,-0.7 -0.3,-1.1c0.1,-0.4 0.5,-0.6 0.9,-0.6h6.4l-1.2,-1.5H6.4L5.8,13.7z" />
+-    <path
+-        android:fillColor="?android:attr/colorAccent"  
+-        android:fillType="evenOdd"
+-        android:pathData="M17.6,7.4H8.9c-0.2,0 -0.5,-0.1 -0.7,-0.3L4.6,3.7C4.3,3.4 4.2,3 4.3,2.6C4.5,2.2 4.8,2 5.2,2h13.3c0.3,0 0.6,0.1 0.8,0.4c0.2,0.2 0.2,0.5 0.2,0.8l-0.9,3.4C18.4,7.1 18,7.4 17.6,7.4zM9.3,5.4h7.6l0.4,-1.5H7.6L9.3,5.4z" />
++    <path android:pathData="M14.85,14.03C14.55,13.93 14.39,13.7 14.39,13.35C14.39,13.15 14.39,13.16 14.68,12.61C14.77,12.43 14.78,12.4 14.79,12.16C14.8,11.87 14.75,11.74 14.52,11.41C14.32,11.11 14.32,11.11 14.3,9.84C14.28,9.03 14.27,8.64 14.24,8.45C14.08,7.43 13.81,6.57 13.3,5.5C12.99,4.84 12.97,4.66 13.17,4.23C13.42,3.69 14.07,3.18 14.75,2.98C16.56,2.46 18.67,3.39 20.15,5.36C21.29,6.87 21.67,8.48 21.2,9.81C20.81,10.9 19.99,11.72 18.25,12.73C17.16,13.36 15.64,14.01 15.12,14.07C15.02,14.08 14.95,14.07 14.85,14.03Z">
++        <aapt:attr name="android:fillColor">
++            <gradient
++                android:type="linear"
++                android:startX="19.44"
++                android:startY="4.55"
++                android:endX="14.39"
++                android:endY="11.18"
++                android:startColor="#FF76BCFB"
++                android:endColor="#FF1842D1"/>
++        </aapt:attr>
++    </path>
++    <path android:pathData="M15.48,21.14C14.13,20.97 13.13,20.4 12.19,19.29C11.92,18.96 11.81,18.78 11.75,18.57L11.71,18.4L11.8,18C11.92,17.51 12.03,16.9 12.12,16.28C12.24,15.33 12.31,15.14 12.6,14.82C12.86,14.53 13.15,14.44 13.43,14.56C13.49,14.59 13.65,14.72 13.79,14.84C14.13,15.16 14.28,15.23 14.64,15.24C15.4,15.26 17.12,14.6 18.87,13.6C19.45,13.26 19.61,13.21 19.82,13.25C20.77,13.47 21.57,14.88 21.43,16.13C21.26,17.76 20.21,19.29 18.58,20.32C17.63,20.92 16.35,21.26 15.48,21.14Z">
++        <aapt:attr name="android:fillColor">
++            <gradient
++                android:type="linear"
++                android:startX="20.07"
++                android:startY="19.07"
++                android:endX="12.97"
++                android:endY="14.55"
++                android:startColor="#FFACEFB3"
++                android:endColor="#FF18A07C"/>
++        </aapt:attr>
++    </path>
++    <path android:pathData="M7.85,21.08C6.29,20.9 4.72,19.86 3.56,18.24C2.85,17.25 2.47,16.08 2.55,15.14C2.68,13.61 3.49,12.52 5.19,11.62C6.1,11.14 8.61,10.14 9.15,10.05C9.72,9.95 10.14,10.47 9.9,10.97C9.84,11.08 9.77,11.16 9.58,11.32C9.12,11.71 9,12.07 9.19,12.48C9.28,12.68 9.38,12.78 9.79,13.09C10.5,13.63 10.98,14.2 11.12,14.65C11.19,14.86 11.19,15.13 11.12,15.6C11.1,15.79 11.06,16.06 11.04,16.2C10.97,16.88 10.82,17.55 10.66,17.96L10.54,18.25L10.54,18.64C10.54,18.85 10.55,19.13 10.55,19.26C10.56,19.71 10.41,20.07 10.06,20.41C9.53,20.94 8.75,21.18 7.85,21.08Z">
++        <aapt:attr name="android:fillColor">
++            <gradient
++                android:type="linear"
++                android:startX="3.92"
++                android:startY="18.71"
++                android:endX="10.36"
++                android:endY="13.58"
++                android:startColor="#FFFDCF8E"
++                android:endColor="#FFD33952"/>
++        </aapt:attr>
++    </path>
++    <path android:pathData="M4.36,10.43C3.53,10.23 2.85,9.52 2.63,8.61C2,6.07 5.31,2.75 8.35,2.87C9.84,2.93 11.11,3.75 11.93,5.18C12.52,6.19 13,7.44 13.11,8.24C13.17,8.62 13.04,8.89 12.76,9.03C12.62,9.1 12.6,9.1 12.16,9.1C11.75,9.11 11.68,9.11 11.51,9.17C11.22,9.26 11.09,9.25 10.67,9.11C10.12,8.93 9.5,8.89 8.92,9C8.5,9.08 7.13,9.59 5.63,10.23C4.95,10.51 4.79,10.54 4.36,10.43Z">
++        <aapt:attr name="android:fillColor">
++            <gradient
++                android:type="linear"
++                android:startX="3.79"
++                android:startY="5.09"
++                android:endX="11.39"
++                android:endY="9.2"
++                android:startColor="#FFF3B1FC"
++                android:endColor="#FF6B2BBB"/>
++        </aapt:attr>
++    </path>
+ </vector>
+diff --git a/res/drawable/ic_launcher_background.xml b/res/drawable/ic_launcher_background.xml
+index 44201f9..6f82d16 100644
+--- a/res/drawable/ic_launcher_background.xml
++++ b/res/drawable/ic_launcher_background.xml
+@@ -4,23 +4,11 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <vector xmlns:android="http://schemas.android.com/apk/res/android"
+-    xmlns:aapt="http://schemas.android.com/aapt"
+     android:width="108dp"
+     android:height="108dp"
+     android:viewportWidth="108"
+     android:viewportHeight="108">
+   <path
+-      android:pathData="M0,0h108v108h-108z">
+-    <aapt:attr name="android:fillColor">
+-      <gradient
+-          android:centerX="54"
+-          android:centerY="54"
+-          android:gradientRadius="51.5"
+-          android:type="radial">
+-        <item android:offset="0.63" android:color="#FF12408E"/>
+-        <item android:offset="0.71" android:color="#FF133A7D"/>
+-        <item android:offset="1" android:color="#FF1B2A41"/>
+-      </gradient>
+-    </aapt:attr>
+-  </path>
++      android:pathData="M0,0h108v108h-108z"
++      android:fillColor="#FF000000"/>
+ </vector>
+diff --git a/res/drawable/ic_launcher_foreground.xml b/res/drawable/ic_launcher_foreground.xml
+index 9c67ea4..5e82fba 100644
+--- a/res/drawable/ic_launcher_foreground.xml
++++ b/res/drawable/ic_launcher_foreground.xml
+@@ -4,31 +4,57 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <vector xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:aapt="http://schemas.android.com/aapt"
+     android:width="108dp"
+     android:height="108dp"
+     android:viewportWidth="108"
+     android:viewportHeight="108">
+-  <path
+-      android:pathData="M22.1,54a31.9,31.9 0,1 0,63.8 0a31.9,31.9 0,1 0,-63.8 0"
+-      android:fillColor="#212121"
+-      android:strokeWidth="2.2"
+-      android:strokeColor="#0060FF"/>
+-  <group
+-      android:scaleX="0.6674"
+-      android:scaleY="0.6674"
+-      android:translateX="40.63"
+-      android:translateY="37.41">
+-    <path
+-        android:pathData="M37.0867,2H4.60425L13.0256,10.3138H35.4826L37.0867,2Z"
+-        android:fillColor="#909090"
+-        android:strokeWidth="1.873"
+-        android:strokeColor="#FFFFFF"
+-        android:strokeLineJoin="round"/>
+-    <path
+-        android:pathData="M34.2794,20.2111H5.4061L3,28.9208L28.6651,50.695L31.0712,40.7976L17.4366,28.9208H36.6855L34.2794,20.2111Z"
+-        android:fillColor="#909090"
+-        android:strokeWidth="1.873"
+-        android:strokeColor="#FFFFFF"
+-        android:strokeLineJoin="round"/>
+-  </group>
++  <path android:pathData="M62.35,60.52C60.86,59.94 60.28,58.18 61.09,56.66C61.97,55 61.95,55.07 61.94,54.39C61.94,53.71 61.75,53.23 61.16,52.41C60.56,51.57 60.57,51.6 60.5,47.88C60.46,45.46 60.42,44.32 60.33,43.73C59.87,40.75 59.1,38.15 57.9,35.55C56.63,32.83 56.75,33.18 56.75,32.18C56.75,31.35 56.77,31.25 57,30.73C57.97,28.49 60.55,26.67 63.39,26.24C65.26,25.95 67.78,26.18 69.65,26.8C75.86,28.85 81.88,36.14 82.53,42.42C83.02,47.07 81.24,50.72 76.9,54.01C73.74,56.39 68.69,59.03 64.85,60.3C63.89,60.61 62.85,60.71 62.35,60.52Z">
++    <aapt:attr name="android:fillColor">
++      <gradient
++          android:type="linear"
++          android:startX="76.68"
++          android:startY="31.38"
++          android:endX="60.72"
++          android:endY="51.65"
++          android:startColor="#FF76BCFB"
++          android:endColor="#FF1842D1"/>
++    </aapt:attr>
++  </path>
++  <path android:pathData="M63.53,81.74C60.09,81.23 56.93,79.33 54.29,76.21C52.72,74.36 52.52,73.67 52.99,71.81C53.29,70.61 53.71,68.27 54,66.21C54.36,63.6 54.55,63.12 55.63,62.02C56.91,60.72 58.07,60.74 59.55,62.11C61.1,63.54 61.79,63.63 64.71,62.75C67.6,61.88 71.14,60.29 74.5,58.34C76.14,57.39 76.48,57.27 77.26,57.31C78.93,57.41 81.03,59.31 81.98,61.6C84.14,66.78 81.64,73.45 75.82,78.01C71.94,81.05 67.64,82.36 63.53,81.74Z">
++    <aapt:attr name="android:fillColor">
++      <gradient
++          android:type="linear"
++          android:startX="78.9"
++          android:startY="75.05"
++          android:endX="56.76"
++          android:endY="61.21"
++          android:startColor="#FFACEFB3"
++          android:endColor="#FF18A07C"/>
++    </aapt:attr>
++  </path>
++  <path android:pathData="M41.21,81.63C36.57,81.07 31.74,77.81 28.29,72.91C24.98,68.22 24.31,63.39 26.37,59C27.8,55.97 30.96,53.38 35.8,51.28C37.68,50.47 42.64,48.51 43.86,48.1C45.69,47.48 46.83,47.57 47.64,48.38C48.45,49.19 48.56,50.47 47.9,51.42C47.79,51.59 47.37,52 46.98,52.34C45.8,53.35 45.5,54.21 45.97,55.25C46.24,55.84 46.39,55.99 47.68,56.97C49.74,58.54 51.25,60.28 51.77,61.68C51.99,62.28 51.99,63.64 51.76,65.16C51.68,65.76 51.56,66.6 51.52,67.02C51.3,68.94 50.89,70.81 50.43,71.96C49.98,73.08 49.92,73.56 50.04,74.94C50.14,76.21 50.1,76.78 49.82,77.56C49.19,79.37 47.36,80.87 45.1,81.45C44.25,81.67 42.28,81.76 41.21,81.63Z">
++    <aapt:attr name="android:fillColor">
++      <gradient
++          android:type="linear"
++          android:startX="29.93"
++          android:startY="75"
++          android:endX="49.62"
++          android:endY="58.66"
++          android:startColor="#FFFDCF8E"
++          android:endColor="#FFD33952"/>
++    </aapt:attr>
++  </path>
++  <path android:pathData="M31.6,49.85C28.87,49.52 26.32,47.15 25.51,44.19C25.23,43.2 25.16,41.28 25.35,40.16C26.33,34.55 32.26,28.52 38.55,26.75C44.99,24.94 50.8,27.42 54.27,33.45C55.31,35.26 56.3,37.46 56.93,39.36C58.19,43.13 58.06,44.72 56.44,45.52C56.08,45.69 55.97,45.71 54.74,45.71C53.6,45.72 53.34,45.74 52.84,45.89C51.77,46.22 51.24,46.2 50,45.8C47.56,45.01 45.82,45.04 43.08,45.94C41.94,46.31 37.74,47.96 35.12,49.06C33.11,49.91 32.74,49.99 31.6,49.85Z">
++    <aapt:attr name="android:fillColor">
++      <gradient
++          android:type="linear"
++          android:startX="28.61"
++          android:startY="33.53"
++          android:endX="52.25"
++          android:endY="46.05"
++          android:startColor="#FFF3B1FC"
++          android:endColor="#FF6B2BBB"/>
++    </aapt:attr>
++  </path>
+ </vector>
+-- 
+2.43.0
+

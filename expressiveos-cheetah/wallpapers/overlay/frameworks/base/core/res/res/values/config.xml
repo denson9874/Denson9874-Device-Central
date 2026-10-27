@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ExpressiveOS (expressiveos-cheetah/wallpapers): the system colours come from the wallpaper,
+     on first boot and after every change. Evolution X's vendor/lineage/overlay/common sets
+     "*|TONAL_SPOT|#0049c7", a preset that SystemUI's ThemeOverlayController keeps even when the
+     user picks another wallpaper; this is AOSP's own default again. -->
+<resources>
+    <string-array name="theming_defaults" translatable="false">
+        <item>*|TONAL_SPOT|home_wallpaper</item>
+    </string-array>
+</resources>
