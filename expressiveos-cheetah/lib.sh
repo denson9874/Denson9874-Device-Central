@@ -79,7 +79,7 @@ subject_of() {   # subject_of <patch>: its Subject:, folded lines joined, [PATCH
 }
 
 am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local commit (git am --3way), unless its subject is in the log
-    local d=$1 label=$2 patch subject before log h want have
+    local d=$1 label=$2 patch subject before log h
     shift 2
     project_ok "$d"
     git -C "$d" var GIT_COMMITTER_IDENT >/dev/null || fail "git has no user.name/user.email here; git am needs one"
@@ -93,14 +93,10 @@ am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local co
         h=$(S=$subject awk '{ if (substr($0, 42) == ENVIRON["S"]) { print substr($0, 1, 40); exit } }' "$log")
         if [[ -n "$h" ]]; then
             echo "already applied: $label: $subject"
-            # A kit patch changed in place keeps its subject: the tree then has the older
-            # version, until a repo sync of the project drops it and this applies the new one
-            want=$(git patch-id --stable < "$patch" | cut -d' ' -f1) || want=
-            # (with format-patch's diff options, binary diffs included, so git config can't change it)
-            have=$( { git -C "$d" show --binary --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ -M -U3 "$h" \
-                | git patch-id --stable | cut -d' ' -f1; } 2>/dev/null) || have=
-            [[ -z "$want" || -z "$have" || "$want" = "$have" ]] \
-                || echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change (an older version of the patch?): repo sync -d ${d#"$top"/}, then run apply.sh again to take the kit's"
+            # A kit patch changed in place keeps its subject, so the tree can still have the
+            # older version: then the patch put on that commit's parent doesn't give its tree
+            same_change "$d" "$h" "$patch" \
+                || echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change. If apply.sh or apply-ksu.sh made it (an older version of the patch): repo sync -d ${d#"$top"/}, then build again (tools/eos-images.sh puts the kit's patches back). If it came with Evolution X's source: compare the two, then drop or regenerate the patch"
             continue
         fi
         before=$(git -C "$d" rev-parse HEAD)
@@ -122,6 +118,22 @@ am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local co
         fi
     done
     rm -f -- "$log"
+}
+
+same_change() {   # same_change <dir> <commit> <patch>: the patch put on the commit's parent gives the commit's tree
+    local d=$1 h=$2 patch t ok=1
+    patch=$(realpath -- "$3") || return 1
+    t=$(mktemp -d "${TMPDIR:-/tmp}/eos-idx.XXXXXX") || return 1
+    [[ "$t" = /* ]] || t=$PWD/$t   # git -C below would read a relative one from the project
+    # In a scratch index, so the project's own index and files don't change. git apply --3way
+    # falls back to a merge as git am --3way does, so a patch that needed one compares equal
+    if GIT_INDEX_FILE=$t/index git -C "$d" read-tree "$h^" 2>/dev/null \
+        && GIT_INDEX_FILE=$t/index git -C "$d" apply --cached --3way "$patch" >/dev/null 2>&1 \
+        && [[ "$(GIT_INDEX_FILE=$t/index git -C "$d" write-tree 2>/dev/null)" = "$(git -C "$d" rev-parse "$h^{tree}")" ]]; then
+        ok=0
+    fi
+    rm -rf -- "$t"
+    return "$ok"
 }
 
 has_subject() {   # has_subject <dir> <subject>: the project's log has a commit with exactly that subject
