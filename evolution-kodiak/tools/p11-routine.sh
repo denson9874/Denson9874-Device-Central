@@ -46,7 +46,10 @@
 #                     publish failed (the network); needs no tree lock. A routine whose tree
 #                     is the one staged does the same instead of building it again.
 #
-# The last line is ROUTINE_RESULT=PUBLISHED|BUILT|NOCHANGE|DRYRUN|MARKED|FAILED.
+# A staged release older than the build the Updater already has (one published by hand, say) is
+# never published: it's dropped, with its zips that never reached SourceForge (SUPERSEDED).
+#
+# The last line is ROUTINE_RESULT=PUBLISHED|BUILT|NOCHANGE|DRYRUN|MARKED|SUPERSEDED|FAILED.
 set -uo pipefail
 
 dev=${1:-}; [ $# -gt 0 ] && shift
@@ -78,6 +81,13 @@ fail() { echo "FAIL: $*"; finish FAILED 1; }
 trees=; snap=; staging=; me=
 cleanup() { rm -f "$trees" "$snap" "$me"; [ -z "$staging" ] || rm -rf "$staging"; }
 trap cleanup EXIT
+# Scripts too old for staged publishing (an install from an older ref) would fail only after the build
+if [ $UPLOAD = 1 ] && [ $MARK = 0 ]; then
+    for need in "$PACK:--stage" ~/p11-ota.sh:--check-newer ~/p11-upload.sh:UPLOAD_DONE; do
+        grep -q -- "${need##*:}" "${need%:*}" 2>/dev/null \
+            || fail "${need%:*} is missing or predates staged publishing: install the routine scripts again (runner action routine-install)"
+    done
+fi
 # Projects outside this device's build: the husky and cheetah ports' local manifests
 # (evolution-<dev>/local_manifests/<dev>.xml), whose projects only that device's runs check
 # out (they carry its locally committed patches, and for cheetah its firmware).
@@ -91,14 +101,46 @@ case $dev in
     *)       SKIP="^($HUSKY|$CHEETAH)( |\$)" ;;
 esac
 
+# A staged release (step 5) is a folder ~/releases/<dev>/staged-<time>: files (the pack script's
+# STAGED list), ota/ (p11-ota.sh --stage: publish.env names the OTA package in ~/releases/<dev>) and
+# state/ (what a publish records). release-cleanup.sh keeps every file one names.
+newest_staged() { ls -d "$STATE"/staged-* 2>/dev/null | sort | tail -1; }
+staged_files() {    # staged_files <dir>: every file the release uploads, one per line
+    tr ' ' '\n' < "$1/files" 2>/dev/null | sed '/^$/d'
+    sed -n "s|^P_NAME=|$STATE/|p" "$1/ota/publish.env" 2>/dev/null
+}
+staged_complete() {   # staged_complete <dir>: all its parts and files are still there
+    local f
+    [ -s "$1/files" ] && [ -f "$1/ota/publish.env" ] && [ -f "$1/ota/builds/$dev.json" ] && [ -f "$1/state/LAST_STATE" ] || return 1
+    for f in $(staged_files "$1"); do [ -f "$f" ] || { echo "   $f is gone"; return 1; }; done
+}
+# drop_staged <dir> <why>: forget a staged release, and delete its zips that never reached SourceForge
+# (their .sha256 stay, so the names stay taken), unless another staged release names them too
+drop_staged() {
+    local S=$1 f o others=
+    for o in "$STATE"/staged-*; do [ -d "$o" ] && [ "$o" != "$S" ] && others+=$'\n'$(staged_files "$o"); done
+    for f in $(staged_files "$S"); do
+        [[ $f == *.zip ]] && [ -f "$f" ] && [ ! -f "$f.uploaded" ] || continue
+        grep -qxF "$f" <<<"$others" || { rm -f "$f" && echo "   deleted $f (never uploaded)"; }
+    done
+    rm -rf "$S"
+    echo "== dropped $(basename "$S"): $2"
+}
+# Exit status of p11-ota.sh --check-newer for the staged release: 0 newer than the Updater's build,
+# 3 not (superseded), else the check failed
+check_newer() { ~/p11-ota.sh "$dev" --check-newer "$1/ota" 2>&1 8>&- 9>&-; }
+
 # Upload and publish a release staged in $1 (step 6); the tree lock isn't needed. Records the
-# published state, then drops the staged releases this one supersedes: publishing an older one
-# would take the Updater back.
+# published state, then drops the staged releases this one supersedes. Ends the routine
+# (SUPERSEDED) when the Updater already has a newer build.
 publish_staged() {
-    local S=$1 files=() z up=1 o
+    local S=$1 files=() z up=1 o rc
     read -r -a files < "$S/files" || true
-    [ ${#files[@]} -gt 0 ] && [ -f "$S/ota/publish.env" ] && [ -f "$S/state/LAST_STATE" ] || fail "$S isn't a complete staged release"
+    staged_complete "$S" || fail "$S isn't a complete staged release (above)"
     echo "== publish $(basename "$S")"
+    check_newer "$S"; rc=$?
+    if [ $rc = 3 ]; then drop_staged "$S" "the Updater already has a newer build"; finish SUPERSEDED; fi
+    [ $rc = 0 ] || fail "couldn't compare $(basename "$S") with the Updater's build; the release stays staged (retry: p11-routine.sh $dev --publish-staged)"
     # p11-upload.sh marks the zips once every file is up, so a retry after a failed OTA publish skips it
     for z in "${files[@]}"; do [[ $z != *.zip ]] || [ -f "$z.uploaded" ] || up=0; done
     if [ $up = 1 ]; then
@@ -109,17 +151,19 @@ publish_staged() {
             || fail "the upload failed; the release stays staged in $S (retry: p11-routine.sh $dev --publish-staged)"
     fi
     ~/p11-ota.sh "$dev" --publish "$S/ota" 2>&1 8>&- | tee "$S/publish.log"
-    [ "${PIPESTATUS[0]}" = 0 ] && grep -q "^OTA_PUBLISHED" "$S/publish.log" \
+    rc=${PIPESTATUS[0]}
+    if [ "$rc" = 3 ]; then drop_staged "$S" "the Updater got a newer build meanwhile"; finish SUPERSEDED; fi
+    [ "$rc" = 0 ] && grep -q "^OTA_PUBLISHED" "$S/publish.log" \
         || fail "the OTA wasn't published; the release stays staged in $S (retry: p11-routine.sh $dev --publish-staged)"
     # Only a published build moves the baseline
     cp "$S/state/LAST_STATE" "$S/state/LAST_TREES" "$STATE/"
     [ ! -f "$S/state/LAST_MANIFEST.xml" ] || cp "$S/state/LAST_MANIFEST.xml" "$STATE/"
+    rm -rf "$S"
     for o in "$STATE"/staged-*; do
         [ -d "$o" ] && [[ ! $o > $S ]] || continue
-        rm -rf "$o"; [ "$o" = "$S" ] || echo "== dropped $(basename "$o"), an older release staged and never published"
+        drop_staged "$o" "an older release, staged and never published"
     done
 }
-newest_staged() { ls -d "$STATE"/staged-* 2>/dev/null | sort | tail -1; }
 
 echo "== $(date '+%F %T %Z') $dev routine (dry-run=$DRY force=$FORCE upload=$UPLOAD mark=$MARK no-sync=$NOSYNC publish-staged=$REPUBLISH)"
 
@@ -127,7 +171,9 @@ echo "== $(date '+%F %T %Z') $dev routine (dry-run=$DRY force=$FORCE upload=$UPL
 # not inherit the locks, or a straggler (Bazel's server, say) would keep holding them.
 exec 8>~/.evolution-publish-$dev.lock
 if [ $DRY = 1 ]; then
-    flock -n 8 || echo "note: a $dev publish is still running; the state below is compared with the build before it"
+    # Only looks: the device's real routine mustn't wait for a dry run
+    if flock -n 8; then flock -u 8; else echo "note: a $dev publish is still running; the state below is compared with the build before it"; fi
+    exec 8>&-
 else
     flock -n 8 || { echo "== waiting for the $dev routine that is still running (publish lock)"; flock -w 28800 8; } \
         || fail "waited 8 h for the other $dev routine"
@@ -135,6 +181,10 @@ fi
 if [ $REPUBLISH = 1 ]; then
     S=$(newest_staged)
     [ -n "$S" ] || fail "no release staged in $STATE"
+    if ! staged_complete "$S"; then
+        drop_staged "$S" "files it needs are gone, so it can't be published; the next routine builds again"
+        finish FAILED 1
+    fi
     publish_staged "$S"
     ~/release-cleanup.sh "$dev" 8>&- || echo "== cleanup kept zips it couldn't verify (above); retry: ~/release-cleanup.sh $dev"
     finish PUBLISHED
@@ -153,8 +203,9 @@ rank() {    # rank <dev>: lower goes first
 }
 exec 9>~/.evolution-tree.lock
 echo "== waiting for the tree lock"
-if [ $DRY = 1 ]; then
-    # A dry run reads for a minute or two: it doesn't queue
+if [ $DRY = 1 ] || [ $MARK = 1 ]; then
+    # A dry run or a mark reads for a minute or two: it doesn't queue (a mark records the tree as it
+    # is now, before a routine it would let go first syncs it)
     flock -w 28800 9 || fail "waited 8 h for the tree lock"
 else
     Q=~/.evolution-queue; mkdir -p "$Q"; me=$Q/$dev.$$; : > "$me"
@@ -162,13 +213,16 @@ else
     while :; do
         left=$(( deadline - $(date +%s) ))
         [ $left -gt 0 ] || fail "waited 8 h for the tree lock"
-        flock -w $(( left < 60 ? left : 60 )) 9 || continue
+        # One long wait keeps this routine's place among the lock's waiters (Linux wakes them in turn)
+        flock -w "$left" 9 || continue
         ahead=
         for w in "$Q"/*; do
             [ -f "$w" ] && [ "$w" != "$me" ] || continue
             pid=${w##*.}; d=$(basename "${w%.*}")
-            # A marker whose routine is gone (killed while waiting) is stale
-            if ! [[ $pid =~ ^[0-9]+$ ]] || ! kill -0 "$pid" 2>/dev/null || ! grep -qa p11-routine "/proc/$pid/cmdline" 2>/dev/null; then
+            # A marker whose routine is gone (killed while waiting) is stale, and so is one whose pid is
+            # now another process's
+            if ! [[ $pid =~ ^[0-9]+$ ]] || [ "$pid" = $$ ] || ! kill -0 "$pid" 2>/dev/null \
+                || ! tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -qE "p11-routine\.sh $d( |\$)"; then
                 rm -f "$w"; continue
             fi
             [ "$(rank "$d")" -lt "$(rank "$dev")" ] && ahead+=" $d"
@@ -258,6 +312,7 @@ if [ $MARK = 1 ]; then
     [ $DRY = 1 ] && { echo "== would record $cur as the published state"; finish DRYRUN; }
     echo "$cur" > "$STATE/LAST_STATE"; cp "$trees" "$STATE/LAST_TREES"
     repo manifest -r -o "$STATE/LAST_MANIFEST.xml" 2>/dev/null
+    ls -d "$STATE"/staged-* 2>/dev/null | sed 's|^|note: still staged, not published: |'
     finish MARKED
 fi
 
@@ -265,15 +320,33 @@ if [ "$cur" = "$prev" ] && [ $FORCE = 0 ]; then
     echo "== nothing changed since the last published $dev build"
     finish NOCHANGE
 fi
-# A release of this same tree staged by an earlier run whose publish failed: publish it, don't rebuild
+# A release of this same tree staged by an earlier run whose publish failed: publish it rather than
+# build it again, if it's all still there and newer than the Updater's build
 S=$(newest_staged)
 if [ -n "$S" ] && [ "$(cat "$S/state/LAST_STATE" 2>/dev/null)" = "$cur" ] && [ $FORCE = 0 ] && [ $UPLOAD = 1 ]; then
-    [ $DRY = 1 ] && { echo "== would publish $(basename "$S"), staged from this same tree, instead of building"; finish DRYRUN; }
-    echo "== $(basename "$S") holds a release of this same tree that wasn't published: publishing it instead of building again"
-    flock -u 9; exec 9>&-
-    publish_staged "$S"
-    ~/release-cleanup.sh "$dev" 8>&- || echo "== cleanup kept zips it couldn't verify (above); retry: ~/release-cleanup.sh $dev"
-    finish PUBLISHED
+    echo "== $(basename "$S") holds a release of this same tree that wasn't published"
+    use=1
+    if ! staged_complete "$S"; then
+        use=0; [ $DRY = 1 ] || drop_staged "$S" "files it needs are gone; building again"
+    else
+        check_newer "$S"; rc=$?
+        [ $rc = 0 ] || use=0
+        if [ $rc = 3 ] && [ $DRY = 0 ]; then drop_staged "$S" "the Updater already has a newer build; building again"; fi
+        # Publishing a rebuild would need the same check, so a failed check (GitHub, ~/evolution_ota)
+        # keeps the release staged rather than building the same tree again
+        if [ $rc != 0 ] && [ $rc != 3 ]; then
+            [ $DRY = 1 ] && { echo "== couldn't compare it with the Updater's build (above)"; finish DRYRUN; }
+            fail "couldn't compare $(basename "$S") with the Updater's build (above); it stays staged (retry: p11-routine.sh $dev --publish-staged)"
+        fi
+    fi
+    if [ $use = 1 ]; then
+        [ $DRY = 1 ] && { echo "== would publish $(basename "$S") instead of building"; finish DRYRUN; }
+        echo "== publishing it instead of building again"
+        flock -u 9; exec 9>&-
+        publish_staged "$S"
+        ~/release-cleanup.sh "$dev" 8>&- || echo "== cleanup kept zips it couldn't verify (above); retry: ~/release-cleanup.sh $dev"
+        finish PUBLISHED
+    fi
 fi
 if [ -f "$STATE/LAST_TREES" ]; then
     echo "== projects changed since the last published build:"

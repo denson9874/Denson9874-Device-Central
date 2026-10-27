@@ -19,7 +19,7 @@ O=out/target/product/cheetah
 H=out/host/linux-x86/bin
 V=vendor/google/cheetah
 # The build's own name, e.g. EvolutionX-17.0-20261018-cheetah-12.3-Unofficial
-NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)-fastboot.zip
+NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2 || true)-fastboot.zip
 DEST=~/releases/cheetah
 # A check (no --upload) isn't a release: keep one copy aside, out of the release folder
 [ "$MODE" = "--upload" ] || DEST=~/releases/cheetah/check
