@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 01:00:00 +0000
+Subject: [PATCH] update_engine: refuse OTA downgrades on user builds again
+
+Evolution X's 59fbd47 also makes HardwareAndroid::AllowDowngrade()
+return true, so update_engine applies a payload older than the running
+build (ErrorCode::kPayloadTimestampError is never returned). Put back
+LineageOS's check (9b4309a): a downgrade only with
+ro.ota.allow_downgrade=true on a build that isn't a user build. On
+ExpressiveOS's user builds that means never.
+---
+ aosp/hardware_android.cc |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/aosp/hardware_android.cc b/aosp/hardware_android.cc
+index 9bef40dd..61b23886 100644
+--- a/aosp/hardware_android.cc
++++ b/aosp/hardware_android.cc
+@@ -265,7 +265,8 @@ int64_t HardwareAndroid::GetBuildTimestamp() const {
+ // Returns true if the device runs an userdebug build, and explicitly allows OTA
+ // downgrade.
+ bool HardwareAndroid::AllowDowngrade() const {
+-  return true;
++  return GetBoolProperty("ro.ota.allow_downgrade", false) &&
++         GetProperty("ro.build.type", "") != "user";
+ }
+ 
+ bool HardwareAndroid::GetFirstActiveOmahaPingSent() const {
+-- 
+2.43.0
+

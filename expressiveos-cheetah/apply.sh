@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Apply the ExpressiveOS cheetah tree patches (idempotent): patches/<project path with
 # underscores>/*.patch as local commits (git am --3way, skipping a patch whose subject
-# is already in the project's log), the same convention as evolution-cheetah. The set:
+# is already in the project's log), the same convention as evolution-cheetah; a folder
+# whose project has a _ of its own names it in a PROJECT file. The set:
 #   device_google_pantah 0001, 0002, 0010   ExpressiveOS's own: maintainer, update feed,
 #                                           only ExpressiveOS's boot animation
 #   device_google_pantah 0003-0009,         evolution-cheetah's, copied unchanged
@@ -12,6 +13,8 @@
 #   vendor_lineage 0002                     evolution-kodiak's: stock's 60 fps game default
 #   frameworks_base 0021-0024, Settings,    ExpressiveOS's branding: no screen names Evolution X
 #   Evolver, Updater and the rest
+#   system_update_engine 0001-0003          OTA payloads must be signed with ExpressiveOS's
+#                                           key again, never older, in recovery too
 # Never evolution-cheetah's apply.sh, or its pantah 0001/0002: they point the Updater
 # at Evolution X's feed. prepare.sh runs this; repo sync drops the commits again.
 #
@@ -32,7 +35,8 @@ for dir in "$kit"/patches/*/; do
     project=$(basename "$dir")             # e.g. device_google_pantah
     patches=("$dir"*.patch)
     [[ -e "${patches[0]}" ]] || continue
-    am_patches "$top/$(patch_project "$dir")" "$project" "${patches[@]}"
+    p=$(patch_project "$dir")
+    am_patches "$top/$p" "$project" "${patches[@]}"
 done
 
 # Evolution X's own identity patches must not be in this tree (evolution-cheetah's
