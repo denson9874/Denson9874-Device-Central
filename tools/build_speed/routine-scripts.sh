@@ -3,8 +3,10 @@
 # server. Some copies in ~ were edited on the server after their last commit, so this
 # comes before any install.
 #
-#   routine-scripts.sh <checkout>
+#   routine-scripts.sh <checkout> [<file in ~>...]
 #
+# Files named after the checkout (plain *.sh or *.py names in ~, such as scripts only the
+# server has) are printed whole, with the same lines hidden.
 # For every ~/*.sh and ~/*.py with a namesake in the checkout's tool folders, and for the
 # ~/evolution-cheetah and ~/evolution-husky kits: same or differs, and for each copy that
 # differs, its time and a unified diff (checkout -> server; lines that look like they
@@ -13,8 +15,11 @@
 # builds, ccache's settings and hit kinds, the shell startup files' ccache lines, the
 # server's crontab, and what holds the tree lock now.
 set -uo pipefail
-repo=${1:?usage: routine-scripts.sh <checkout>}
+repo=${1:?usage: routine-scripts.sh <checkout> [<file in ~>...]}; shift
 [[ -d $repo/evolution-kodiak/tools ]] || { echo "no evolution-kodiak/tools in $repo"; exit 1; }
+for n in "$@"; do
+    [[ $n =~ ^[A-Za-z0-9][A-Za-z0-9._-]*\.(sh|py)$ ]] || { echo "not a plain *.sh or *.py name: $n"; exit 1; }
+done
 hide() { sed -E 's/^([-+ ]?).*(token|secret|passw|api[_-]?key|private key|authorization|bearer|cookie).*$/\1[line hidden: it may hold a secret]/I'; }
 show_diff() { diff -u --label "checkout/$3" --label "server/$4" "$1" "$2" | hide | head -400; }
 
@@ -38,6 +43,16 @@ for d in "${differ[@]}"; do
     r=${d%%|*}; n=${d#*|}
     echo "-- ~/$n"
     show_diff "$repo/$r" ~/"$n" "$r" "~/$n"
+done
+
+for n in "$@"; do
+    echo "== ~/$n (whole file)"
+    if [[ -f ~/$n ]]; then
+        echo "$(date -r ~/"$n" '+%F %T'), $(wc -l < ~/"$n") lines"
+        hide < ~/"$n" | head -500
+    else
+        echo "absent"
+    fi
 done
 
 for kit in evolution-cheetah evolution-husky; do

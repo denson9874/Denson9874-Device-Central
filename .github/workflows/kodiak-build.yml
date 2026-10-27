@@ -103,7 +103,7 @@ on:
           disks, ccache and past build timings. build-explain: read-only: why a
           product's next build redoes the framework steps (see query).
           routine-scripts: read-only: how the server's routine scripts differ
-          from this ref's.
+          from this ref's (query: names of scripts in ~ to print whole).
           server-cleanup-list: read-only: what
           server-cleanup.sh's groups hold now. server-cleanup: permanently remove
           the groups in query. expressiveos-status: read-only: the ExpressiveOS
@@ -751,7 +751,9 @@ jobs:
 
       - name: Routine scripts on the server
         if: inputs.action == 'routine-scripts'
-        run: bash tools/build_speed/routine-scripts.sh "$GITHUB_WORKSPACE"
+        run: |
+          read -r -a q <<< "$QUERY"
+          bash tools/build_speed/routine-scripts.sh "$GITHUB_WORKSPACE" "${q[@]}"
 
       # Not while a build runs (Preflight): ninja loads a product's whole graph
       - name: Check out the build-explain script
