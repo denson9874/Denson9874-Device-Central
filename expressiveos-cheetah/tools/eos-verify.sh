@@ -20,7 +20,9 @@
 #      users who want no root (no kernelsu.ko, signed with the tree's key);
 #   6. ViPER4Android (v4a-check.sh out) and the boot animation (bootanim.conf's zip, no
 #      other styles);
-#   7. firmware and the fastboot files the pack script reads.
+#   7. branding: no app, framework string or crash report header names Evolution X
+#      (brand-check.py), apart from the few links it lists on purpose;
+#   8. firmware and the fastboot files the pack script reads.
 set -euo pipefail
 done=0 T=''
 cleanup() {
@@ -189,6 +191,10 @@ ba=$O/product/media/bootanimation.zip
 extra=$(find "$O/product/media" -maxdepth 1 -name 'bootanimation_*.zip' -printf '%f ')
 [[ -z "$extra" ]] || fail "Evolution X's other boot animation styles shipped: $extra(TARGET_INCLUDE_BOOT_ANIMATIONS)"
 echo "OK: ExpressiveOS's boot animation, no other styles"
+
+echo "== branding"
+checked "the build still shows Evolution X somewhere (patches/: Settings, Evolver, Updater...)" 'BRAND_CHECK=OK' \
+    python3 -I "$kit/tools/brand-check.py" "$top/$O"
 
 echo "== firmware and fastboot files"
 fw=$(cat vendor/google/cheetah/FIRMWARE_SOURCE 2>/dev/null || echo "the vendor repo's own")

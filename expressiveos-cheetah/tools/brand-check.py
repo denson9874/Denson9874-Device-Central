@@ -8,10 +8,13 @@ Scans, in UTF-8 and UTF-16 (resource string pools use either):
     AndroidManifest.xml, and for the apps the kit rebrands every res/ XML too;
   - the dex code of the apps the kit rebrands, framework.jar and services.jar, for text
     and links;
-  - system/bin and system/lib64 for the crash report header (debuggerd's tombstones).
+  - system/bin, system/lib64 and the APEXes' payload images (raw bytes: they hold crash_dump
+    and the apps some APEXes carry) for the same text and for the crash report header
+    (debuggerd's tombstones).
 Every hit must be on the allowlist below: links the build keeps on purpose, none of them
 shown to users. Prints one FAIL line per other hit, then BRAND_CHECK=OK or BRAND_CHECK=FAIL.
 """
+import io
 import os
 import re
 import sys
@@ -41,8 +44,8 @@ ALLOW = [
 ]
 # The apps (by APK name) whose resource XML and dex are scanned in full
 REBRANDED = {"SettingsGoogle", "Settings", "Updater", "EvoEgg", "AxSandbox", "LineageParts",
-             "SystemUIGoogle", "SystemUI", "framework-res", "org.lineageos.platform-res",
-             "PixelSetupWizardOverlayExpressive"}
+             "LineageSettingsProvider", "SystemUIGoogle", "SystemUI", "framework-res",
+             "org.lineageos.platform-res", "PixelSetupWizardOverlayExpressive"}
 JARS = ["system/framework/framework.jar", "system/framework/services.jar"]
 
 out = sys.argv[1] if len(sys.argv) == 2 else sys.exit(__doc__)
@@ -116,25 +119,56 @@ for jar in JARS:
             scan(f"{jar}!{e}", z.read(e))
             n += 1
 
-# debuggerd writes "<ROM> Version: '...'" at the top of every tombstone and bug report
+
+def apex_payload(path):
+    """An .apex's payload image (a .capex's from its original_apex), or None."""
+    try:
+        z = zipfile.ZipFile(path)
+        if "original_apex" in z.namelist():
+            z = zipfile.ZipFile(io.BytesIO(z.read("original_apex")))
+        return z.read("apex_payload.img") if "apex_payload.img" in z.namelist() else None
+    except (zipfile.BadZipFile, KeyError):
+        return None
+
+
+# debuggerd writes "<ROM> Version: '...'" at the top of every tombstone and bug report: the
+# linkers and pbtombstone in system/bin, crash_dump in the runtime APEX
 header = False
+blobs = []
 for d in ("system/bin", "system/lib64"):
     for root, dirs, files in os.walk(os.path.join(out, d)):
         for f in files:
             p = os.path.join(root, f)
-            if os.path.islink(p) or not os.path.isfile(p):
-                continue
-            data = open(p, "rb").read()
-            if b"Evolution X Version" in data:
-                bad += 1
-                print(f"FAIL: {os.path.relpath(p, out)}: tombstones say 'Evolution X Version'")
-            header = header or b"ExpressiveOS Version" in data
+            if not os.path.islink(p) and os.path.isfile(p):
+                blobs.append(os.path.relpath(p, out))
+napex = 0
+for part in ("system", "system_ext", "product", "vendor"):
+    d = os.path.join(out, part, "apex")
+    for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        if f.endswith((".apex", ".capex")):
+            blobs.append(os.path.join(part, "apex", f))
+for rel in blobs:
+    data = open(os.path.join(out, rel), "rb").read()
+    if rel.endswith((".apex", ".capex")):
+        data = apex_payload(os.path.join(out, rel))
+        if data is None:
+            print(f"note: {rel} has no payload image to read")
+            continue
+        napex += 1
+        # The payload is a file system image: the apps inside keep their string pools as is
+        scan(f"{rel}!apex_payload.img", data)
+        n += 1
+    if b"Evolution X Version" in data:
+        bad += 1
+        print(f"FAIL: {rel}: tombstones say 'Evolution X Version'")
+    header = header or b"ExpressiveOS Version" in data
 if not header:
     bad += 1
-    print("FAIL: no binary in system/bin or system/lib64 writes 'ExpressiveOS Version' (patches/system_core)")
+    print("FAIL: no binary or APEX writes 'ExpressiveOS Version' in tombstones (patches/system_core)")
 
 for (s, why), wheres in sorted(kept.items()):
     print(f"note: kept {s!r} ({why}) in {', '.join(sorted(wheres))}")
-print(f"OK: {len(apks)} APKs, {n} entries scanned" if bad == 0 else f"{bad} Evolution X strings found")
+print(f"OK: {len(apks)} APKs and {napex} APEX payloads, {n} entries scanned" if bad == 0
+      else f"{bad} Evolution X strings found")
 print("BRAND_CHECK=OK" if bad == 0 else "BRAND_CHECK=FAIL")
 sys.exit(1 if bad else 0)
