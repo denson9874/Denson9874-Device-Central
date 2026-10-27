@@ -3,6 +3,7 @@
 # it, and upload it to SourceForge. Refuses to upload if any check fails.
 #
 #   kodiak-release-pack.sh            # pack + verify only
+#   kodiak-release-pack.sh --stage    # pack + verify, then list what to upload (STAGED line)
 #   kodiak-release-pack.sh --upload   # pack + verify + upload
 set -euo pipefail
 
@@ -49,6 +50,10 @@ cmp -s $T/init_boot.img $O/init_boot.img || fail "init_boot differs from out/ (p
 echo "unrooted, vbmeta boot patch level 2026-10-05, init_boot = out/"
 ls -la $ZIP; cat $DEST/$NAME.sha256
 
+if [ "${1:-}" = "--stage" ]; then
+    # p11-routine.sh uploads these with p11-upload.sh once it has released the tree lock
+    echo "STAGED $ZIP $DEST/$NAME.sha256"
+fi
 if [ "${1:-}" = "--upload" ]; then
     echo "== upload to SourceForge: $SF_DIR"
     K=~/.ssh/sourceforge_ed25519

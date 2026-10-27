@@ -101,6 +101,13 @@ crontab -l 2>/dev/null | grep -v -E '^\s*(#|$)' | sed 's/^/ /' | hide || echo "n
 
 echo "== now"
 echo "tree lock: $(flock -n ~/.evolution-tree.lock true 2>/dev/null && echo free || echo held)"
+for l in ~/.evolution-publish-*.lock; do
+    [ -e "$l" ] || continue
+    d=${l##*/.evolution-publish-}; echo "publish lock ${d%.lock}: $(flock -n "$l" true 2>/dev/null && echo free || echo held)"
+done
+echo "waiting for the tree: $(ls ~/.evolution-queue 2>/dev/null | paste -sd' ' | sed 's/^$/none/')"
+echo "last build in out/: $(cat ~/.evolution-last-build 2>/dev/null || echo "not recorded")"
+ls -d ~/releases/*/staged-* 2>/dev/null | sed 's/^/staged, not published: /'
 pgrep -a -u "$(id -u)" -f 'p11-routine|release-chain|eos-images|eos-pack|soong_ui|derp-build' 2>/dev/null \
     | grep -v -E "^$$ |routine-scripts" | cut -c1-160 || echo "no routine or build running"
 tmux ls 2>/dev/null | cut -d: -f1 | sed 's/^/tmux: /'
