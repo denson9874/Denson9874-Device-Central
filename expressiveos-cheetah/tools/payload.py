@@ -40,10 +40,15 @@ def partitions(path):
     names = set()
     for field, value in fields(manifest, path):
         if field == 13:
+            if not isinstance(value, bytes):
+                sys.exit('%s: a partition in the payload manifest is not a message' % path)
             name = [v for f, v in fields(value, path) if f == 1]
             if len(name) != 1 or not isinstance(name[0], bytes):
                 sys.exit('%s: a partition in the payload manifest has no name' % path)
-            names.add(name[0].decode())
+            try:
+                names.add(name[0].decode())
+            except UnicodeDecodeError:
+                sys.exit('%s: a partition name in the payload manifest is not UTF-8' % path)
     if not names:
         sys.exit('%s: the payload manifest names no partition' % path)
     return sorted(names)
