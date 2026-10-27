@@ -1,0 +1,29 @@
+From 9999ddf889ffc67a14a0993446e3ecc191463559 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:50:48 +0000
+Subject: [PATCH] SystemUI: CutoutRingView: preview an ExpressiveOS file name
+
+The cutout download ring's geometry preview showed a sample file name of
+an Evolution X build. Show an ExpressiveOS build name instead.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ .../android/systemui/cutoutprogress/ring/CutoutRingView.java    | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/cutoutprogress/ring/CutoutRingView.java b/packages/SystemUI/src/com/android/systemui/cutoutprogress/ring/CutoutRingView.java
+index bf86929a..da40044a 100644
+--- a/packages/SystemUI/src/com/android/systemui/cutoutprogress/ring/CutoutRingView.java
++++ b/packages/SystemUI/src/com/android/systemui/cutoutprogress/ring/CutoutRingView.java
+@@ -786,7 +786,7 @@ public final class CutoutRingView extends View {
+ 
+         boolean geoPreview = mAnim.isGeometryPreviewActive();
+         String fname = mFilenameHint != null ? mFilenameHint
+-                : geoPreview ? "EvolutionX-16.0-arm64.zip" : null;
++                : geoPreview ? "ExpressiveOS-17.0-cheetah.zip" : null;
+ 
+         if (sCfgFname && fname != null && (mDownloadCount <= 1 || geoPreview)) {
+             String display = truncate(fname, sCfgFnameMaxChars, sCfgFnameTruncate);
+-- 
+2.43.0
+

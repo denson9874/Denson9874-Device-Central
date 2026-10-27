@@ -1,0 +1,43 @@
+From 0b090462c6d2352993376f63b0b6e389d4552efc Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:48:03 +0000
+Subject: [PATCH] EvoEgg: call the easter egg ExpressiveOS Egg
+
+ExpressiveOS is its own ROM: the app was titled "Evo Egg" and its
+activity carried a hardcoded "EvoEgg" label; use the app title string
+for both.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ AndroidManifest.xml    | 2 +-
+ res/values/strings.xml | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index bf39526..40d5e99 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -24,7 +24,7 @@
+             <activity
+ 		android:name=".EasterEgg"
+ 		android:exported="true"
+-		android:label="EvoEgg"
++		android:label="@string/app_title"
+ 		android:hardwareAccelerated="true"
+ 		android:launchMode="singleInstance"
+ 		android:excludeFromRecents="true">
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index 6648c7f..eb0c9b7 100644
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -16,6 +16,6 @@
+     limitations under the License.
+ -->
+ <resources>
+-    <string name="app_title">Evo Egg</string>
++    <string name="app_title">ExpressiveOS Egg</string>
+     <string name="app_summary">Haha</string>
+ </resources>
+-- 
+2.43.0
+

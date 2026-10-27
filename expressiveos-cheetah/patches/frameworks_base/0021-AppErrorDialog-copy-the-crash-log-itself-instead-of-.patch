@@ -1,0 +1,404 @@
+From a4375768b2c08d41e4c5b606b19f2945ef3c7bae Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:49:49 +0000
+Subject: [PATCH] AppErrorDialog: copy the crash log itself instead of
+ uploading it
+
+The crash dialog's Copy button uploaded the whole crash log to
+paste.evolution-x.org, Evolution X's paste server, and copied the link.
+ExpressiveOS is its own ROM and shouldn't send crash logs to another
+project's server: put the log text (its first 100k chars) on the
+clipboard and confirm with a toast. Drop the translations of the two
+reworded strings so the new English text shows.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ .../res/values-be-rBY/evolution_strings.xml   |  2 -
+ .../res/values-cs-rCZ/evolution_strings.xml   |  2 -
+ .../res/values-el-rGR/evolution_strings.xml   |  2 -
+ .../res/values-es-rES/evolution_strings.xml   |  2 -
+ .../res/values-fa-rIR/evolution_strings.xml   |  2 -
+ .../res/values-fr-rFR/evolution_strings.xml   |  2 -
+ .../res/values-hu-rHU/evolution_strings.xml   |  2 -
+ .../res/values-in-rID/evolution_strings.xml   |  2 -
+ .../res/values-it-rIT/evolution_strings.xml   |  2 -
+ .../res/values-ku-rTR/evolution_strings.xml   |  2 -
+ .../res/values-pl-rPL/evolution_strings.xml   |  2 -
+ .../res/values-pt-rBR/evolution_strings.xml   |  2 -
+ .../res/values-ru-rRU/evolution_strings.xml   |  2 -
+ .../res/values-sk-rSK/evolution_strings.xml   |  2 -
+ .../res/values-tr-rTR/evolution_strings.xml   |  2 -
+ .../res/values-uk-rUA/evolution_strings.xml   |  2 -
+ .../res/values-vi-rVN/evolution_strings.xml   |  2 -
+ .../res/values-zh-rCN/evolution_strings.xml   |  2 -
+ .../res/values-zh-rTW/evolution_strings.xml   |  2 -
+ core/res/res/values/evolution_strings.xml     |  6 +--
+ .../com/android/server/am/AppErrorDialog.java | 37 ++++++++-----------
+ .../java/com/android/server/am/AppErrors.java |  2 +-
+ 22 files changed, 20 insertions(+), 63 deletions(-)
+
+diff --git a/core/res/res/values-be-rBY/evolution_strings.xml b/core/res/res/values-be-rBY/evolution_strings.xml
+index ca0431c1..73e39cb2 100644
+--- a/core/res/res/values-be-rBY/evolution_strings.xml
++++ b/core/res/res/values-be-rBY/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Капіяваць URL журнала памылкі</string>
+-    <string name="url_copy_success">Спасылка паспяхова скапіявана</string>
+     <string name="url_copy_failed">Адбылася памылка падчас загрузкі лога на Pasty</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">Патрабуецца перазагрузка налад</string>
+diff --git a/core/res/res/values-cs-rCZ/evolution_strings.xml b/core/res/res/values-cs-rCZ/evolution_strings.xml
+index da45e42e..0fc797ec 100644
+--- a/core/res/res/values-cs-rCZ/evolution_strings.xml
++++ b/core/res/res/values-cs-rCZ/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Kopírovat URL protokolu o selhání</string>
+-    <string name="url_copy_success">URL úspěšně zkopírována</string>
+     <string name="url_copy_failed">Při nahrávání protokolu o\u00a0selhání na Pasty došlo k\u00a0chybě</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">Je vyžadován restart nastavení</string>
+diff --git a/core/res/res/values-el-rGR/evolution_strings.xml b/core/res/res/values-el-rGR/evolution_strings.xml
+index c37f93e0..bd2779b9 100644
+--- a/core/res/res/values-el-rGR/evolution_strings.xml
++++ b/core/res/res/values-el-rGR/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Αντιγραφή URL αρχείου καταγραφής σφαλμάτων</string>
+-    <string name="url_copy_success">Το URL αντιγράφηκε επιτυχώς</string>
+     <string name="url_copy_failed">Παρουσιάστηκε σφάλμα κατά τη μεταφόρτωση του αρχείου καταγραφής στο Pasty</string>
+     <!-- Pocket Lock -->
+     <!-- Cycle through ringer modes -->
+diff --git a/core/res/res/values-es-rES/evolution_strings.xml b/core/res/res/values-es-rES/evolution_strings.xml
+index 8dd70bb8..329864ad 100644
+--- a/core/res/res/values-es-rES/evolution_strings.xml
++++ b/core/res/res/values-es-rES/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Copiar URL del registro de errores</string>
+-    <string name="url_copy_success">URL copiada satisfactoriamente</string>
+     <string name="url_copy_failed">Se ha producido un error al cargar el registro en Pasty</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">Es necesario reiniciar Ajustes</string>
+diff --git a/core/res/res/values-fa-rIR/evolution_strings.xml b/core/res/res/values-fa-rIR/evolution_strings.xml
+index 0b7d80c7..c4f86d74 100644
+--- a/core/res/res/values-fa-rIR/evolution_strings.xml
++++ b/core/res/res/values-fa-rIR/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">کپی کردن آدرس گزارش خرابی</string>
+-    <string name="url_copy_success">آدرس با موفقیت کپی شد</string>
+     <string name="url_copy_failed">هنگام بارگزاری گزارش در Pasty خطایی روی داد</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">تنظیمات نیاز به راه‌اندازی مجدد دارند</string>
+diff --git a/core/res/res/values-fr-rFR/evolution_strings.xml b/core/res/res/values-fr-rFR/evolution_strings.xml
+index 8882b5d5..348ccacd 100644
+--- a/core/res/res/values-fr-rFR/evolution_strings.xml
++++ b/core/res/res/values-fr-rFR/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Copier l\'URL du rapport d\'erreur</string>
+-    <string name="url_copy_success">URL copiée avec succès</string>
+     <string name="url_copy_failed">Une erreur est survenue pendant l\'envoi du rapport à hastebin</string>
+     <!-- PowerOffAlarmService -->
+     <string name="notification_channel_poweroff_alarm">Alarme appareil éteint</string>
+diff --git a/core/res/res/values-hu-rHU/evolution_strings.xml b/core/res/res/values-hu-rHU/evolution_strings.xml
+index 5a17e647..b0c5b6df 100644
+--- a/core/res/res/values-hu-rHU/evolution_strings.xml
++++ b/core/res/res/values-hu-rHU/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Az összeomlási napló URL-jének másolása</string>
+-    <string name="url_copy_success">Az URL sikeresen másolva</string>
+     <string name="url_copy_failed">Hiba történt a napló feltöltése során</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">A Beállítások újraindítása szükséges</string>
+diff --git a/core/res/res/values-in-rID/evolution_strings.xml b/core/res/res/values-in-rID/evolution_strings.xml
+index a420cba4..e8603825 100644
+--- a/core/res/res/values-in-rID/evolution_strings.xml
++++ b/core/res/res/values-in-rID/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Salin tautan log kerusakan</string>
+-    <string name="url_copy_success">Tautan berhasil disalin</string>
+     <string name="url_copy_failed">Terjadi kesalahan pada saat mengunggah log ke dogbin</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">Mulai ulang Setelan diperlukan</string>
+diff --git a/core/res/res/values-it-rIT/evolution_strings.xml b/core/res/res/values-it-rIT/evolution_strings.xml
+index 950ffc09..68dbcc67 100644
+--- a/core/res/res/values-it-rIT/evolution_strings.xml
++++ b/core/res/res/values-it-rIT/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Copia l\'URL del log di crash</string>
+-    <string name="url_copy_success">URL copiato con successo</string>
+     <string name="url_copy_failed">Si è verificato un errore durante il caricamento del log su dogbin</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">Riavvio delle impostazioni richiesto</string>
+diff --git a/core/res/res/values-ku-rTR/evolution_strings.xml b/core/res/res/values-ku-rTR/evolution_strings.xml
+index e9d68fdf..9896e738 100644
+--- a/core/res/res/values-ku-rTR/evolution_strings.xml
++++ b/core/res/res/values-ku-rTR/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">کۆپیکردنی بەستەری لۆگی تێکچوون</string>
+-    <string name="url_copy_success">بەستەرەکە بە سەرکەوتوویی کۆپی کرا</string>
+     <string name="url_copy_failed">هەڵەیەک ڕوویدا لە کاتی بەرزکردنەوەی لۆگەکە بۆ Pasty</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">پێویستە ڕێکخستنەکان دەستپێبکاتەوە</string>
+diff --git a/core/res/res/values-pl-rPL/evolution_strings.xml b/core/res/res/values-pl-rPL/evolution_strings.xml
+index ea017c79..ad9e2bee 100644
+--- a/core/res/res/values-pl-rPL/evolution_strings.xml
++++ b/core/res/res/values-pl-rPL/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Skopiuj link dziennika awarii</string>
+-    <string name="url_copy_success">Łącze skopiowano pomyślnie</string>
+     <string name="url_copy_failed">Wystąpił błąd podczas przesyłania dziennika do wklejki</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">Wymagany restart ustawień</string>
+diff --git a/core/res/res/values-pt-rBR/evolution_strings.xml b/core/res/res/values-pt-rBR/evolution_strings.xml
+index ab89190b..14f0c37d 100644
+--- a/core/res/res/values-pt-rBR/evolution_strings.xml
++++ b/core/res/res/values-pt-rBR/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Copiar URL do registro de falhas</string>
+-    <string name="url_copy_success">URL copiado com sucesso</string>
+     <string name="url_copy_failed">Ocorreu um erro ao enviar o log para o Pasty</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">É necessário reiniciar as Configurações</string>
+diff --git a/core/res/res/values-ru-rRU/evolution_strings.xml b/core/res/res/values-ru-rRU/evolution_strings.xml
+index 3d31fe0c..59f7ed4e 100644
+--- a/core/res/res/values-ru-rRU/evolution_strings.xml
++++ b/core/res/res/values-ru-rRU/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Скопировать URL журнала ошибки</string>
+-    <string name="url_copy_success">Ссылка скопирована успешно</string>
+     <string name="url_copy_failed">Произошла ошибка во время загрузки лога на Hastebin</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">Требуется перезапуск настроек</string>
+diff --git a/core/res/res/values-sk-rSK/evolution_strings.xml b/core/res/res/values-sk-rSK/evolution_strings.xml
+index 18c9fcc8..aff4f65d 100644
+--- a/core/res/res/values-sk-rSK/evolution_strings.xml
++++ b/core/res/res/values-sk-rSK/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Kopírovať URL adresu záznamu o chybe.</string>
+-    <string name="url_copy_success">URL úspešne skopírované</string>
+     <string name="url_copy_failed">Pri nahrávaní protokolu o zlyhaní došlo k chybe</string>
+     <!-- Pocket Lock -->
+     <string name="pocket_lock_message_long_press">Stlačte a podržte tlačidlo napájania pre odomknutie</string>
+diff --git a/core/res/res/values-tr-rTR/evolution_strings.xml b/core/res/res/values-tr-rTR/evolution_strings.xml
+index e7c88f73..952dd7b5 100644
+--- a/core/res/res/values-tr-rTR/evolution_strings.xml
++++ b/core/res/res/values-tr-rTR/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Çökme günlüğü URL\' sini kopyala</string>
+-    <string name="url_copy_success">URL başarıyla kopyalandı</string>
+     <string name="url_copy_failed">Günlük hastebin\'e yüklenirken bir hata oluştu</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">Ayarların yeniden başlatılması gerekiyor</string>
+diff --git a/core/res/res/values-uk-rUA/evolution_strings.xml b/core/res/res/values-uk-rUA/evolution_strings.xml
+index aeb1d226..1ca063f8 100644
+--- a/core/res/res/values-uk-rUA/evolution_strings.xml
++++ b/core/res/res/values-uk-rUA/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Копіювати URL лог збою</string>
+-    <string name="url_copy_success">URL успішно скопійовано</string>
+     <string name="url_copy_failed">Помилка під час завантаження файла звіту до pasty</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">Налаштування потребують перезавантаження</string>
+diff --git a/core/res/res/values-vi-rVN/evolution_strings.xml b/core/res/res/values-vi-rVN/evolution_strings.xml
+index f32117cd..0f063681 100644
+--- a/core/res/res/values-vi-rVN/evolution_strings.xml
++++ b/core/res/res/values-vi-rVN/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Sao chép URL nhật ký sự cố</string>
+-    <string name="url_copy_success">Đã sao chép URL thành công</string>
+     <string name="url_copy_failed">Đã xảy ra lỗi khi tải nhật ký lên Pasty</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">Yêu cầu khởi động lại ứng dụng Cài đặt</string>
+diff --git a/core/res/res/values-zh-rCN/evolution_strings.xml b/core/res/res/values-zh-rCN/evolution_strings.xml
+index d5947041..c75fe152 100644
+--- a/core/res/res/values-zh-rCN/evolution_strings.xml
++++ b/core/res/res/values-zh-rCN/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">复制崩溃日志链接</string>
+-    <string name="url_copy_success">已成功复制链接</string>
+     <string name="url_copy_failed">将日志上传到 Pasty 时出错</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">需要重启设置</string>
+diff --git a/core/res/res/values-zh-rTW/evolution_strings.xml b/core/res/res/values-zh-rTW/evolution_strings.xml
+index 1e579ac6..bd4e3ec3 100644
+--- a/core/res/res/values-zh-rTW/evolution_strings.xml
++++ b/core/res/res/values-zh-rTW/evolution_strings.xml
+@@ -5,8 +5,6 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">複製錯誤紀錄連結</string>
+-    <string name="url_copy_success">連結已成功複製</string>
+     <string name="url_copy_failed">上傳錯誤記錄至 Dogbin 時發生錯誤</string>
+     <!-- Settings Restart -->
+     <string name="settings_restart_title">需要重新啟動設定</string>
+diff --git a/core/res/res/values/evolution_strings.xml b/core/res/res/values/evolution_strings.xml
+index 399b3b82..6197d6f0 100644
+--- a/core/res/res/values/evolution_strings.xml
++++ b/core/res/res/values/evolution_strings.xml
+@@ -6,9 +6,9 @@
+ 
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+ 
+-    <!-- Button that copies the url to the log of a crashed application -->
+-    <string name="aerr_copy">Copy crash log URL</string>
+-    <string name="url_copy_success">URL copied successfully</string>
++    <!-- Button that copies the log of a crashed application -->
++    <string name="aerr_copy">Copy crash log</string>
++    <string name="url_copy_success">Crash log copied</string>
+     <string name="url_copy_failed">An error occured while uploading the log to Pasty</string>
+ 
+     <!-- PowerOffAlarmService -->
+diff --git a/services/core/java/com/android/server/am/AppErrorDialog.java b/services/core/java/com/android/server/am/AppErrorDialog.java
+index fa59c646..d92603d6 100644
+--- a/services/core/java/com/android/server/am/AppErrorDialog.java
++++ b/services/core/java/com/android/server/am/AppErrorDialog.java
+@@ -17,8 +17,6 @@
+ package com.android.server.am;
+ 
+ import static android.app.ActivityTaskManager.INVALID_TASK_ID;
+-import com.android.internal.util.PastyUtils;
+-import com.android.internal.util.PastyUtils.UploadResultCallback;
+ 
+ import android.content.ClipboardManager;
+ import android.content.ClipData;
+@@ -30,7 +28,6 @@ import android.os.Handler;
+ import android.os.Message;
+ import android.provider.Settings;
+ import android.text.BidiFormatter;
+-import android.util.Log;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.WindowManager;
+@@ -40,8 +37,6 @@ import android.widget.Toast;
+ 
+ final class AppErrorDialog extends BaseErrorDialog implements View.OnClickListener {
+ 
+-    private static final String TAG = "AppErrorDialog";
+-
+     private final ActivityManagerService mService;
+     private final ActivityManagerGlobalLock mProcLock;
+     private final Data mData;
+@@ -66,6 +61,10 @@ final class AppErrorDialog extends BaseErrorDialog implements View.OnClickListen
+     // 5-minute timeout, then we automatically dismiss the crash dialog
+     static final long DISMISS_TIMEOUT = 1000 * 60 * 5;
+ 
++    // Crash logs can be huge and a clip of a few hundred KB can fail to cross binder
++    // when it is read back, so only the first 100k chars of the log are copied
++    private static final int MAX_COPY_LENGTH = 100_000;
++
+     public AppErrorDialog(Context context, ActivityManagerService service, Data data) {
+         super(context);
+         Resources res = context.getResources();
+@@ -198,7 +197,7 @@ final class AppErrorDialog extends BaseErrorDialog implements View.OnClickListen
+                 mHandler.obtainMessage(FORCE_QUIT_AND_REPORT).sendToTarget();
+                 break;
+             case com.android.internal.R.id.aerr_copy:
+-                postToPastyAndCopyURL();
++                copyCrashLog();
+                 mHandler.obtainMessage(FORCE_QUIT).sendToTarget();
+                 break;
+             case com.android.internal.R.id.aerr_close:
+@@ -215,23 +214,19 @@ final class AppErrorDialog extends BaseErrorDialog implements View.OnClickListen
+         }
+     }
+ 
+-    private void postToPastyAndCopyURL() {
+-        // Post to Pasty
+-        PastyUtils.upload(mPaste, new UploadResultCallback() {
+-            public void onSuccess(String url) {
+-                // Copy to clipboard
+-                ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
+-                clipboard.setPrimaryClip(ClipData.newPlainText("Log URL", url));
++    private void copyCrashLog() {
++        if (mPaste == null) {
++            return;
++        }
++        final String log = mPaste.length() > MAX_COPY_LENGTH
++                ? mPaste.substring(0, MAX_COPY_LENGTH) : mPaste;
+ 
+-                // Show toast
+-                Toast.makeText(getContext(), com.android.internal.R.string.url_copy_success, Toast.LENGTH_LONG).show();
+-            }
++        // Copy the log text itself to the clipboard, nothing is uploaded
++        ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
++        clipboard.setPrimaryClip(ClipData.newPlainText("Crash log", log));
+ 
+-            public void onFail(String message, Exception e) {
+-                Toast.makeText(getContext(), com.android.internal.R.string.url_copy_failed, Toast.LENGTH_LONG).show();
+-                Log.e(TAG, message, e);
+-            }
+-        });
++        // Show toast
++        Toast.makeText(getContext(), com.android.internal.R.string.url_copy_success, Toast.LENGTH_LONG).show();
+     }
+ 
+     static class Data {
+diff --git a/services/core/java/com/android/server/am/AppErrors.java b/services/core/java/com/android/server/am/AppErrors.java
+index acab985d..97e7a9a6 100644
+--- a/services/core/java/com/android/server/am/AppErrors.java
++++ b/services/core/java/com/android/server/am/AppErrors.java
+@@ -703,7 +703,7 @@ class AppErrors {
+                 return;
+             }
+ 
+-            // Add paste content for Pasty option
++            // Crash log text for the dialog's "Copy crash log" option
+             data.paste = "time: " + timeMillis + "\n" +
+             "msg: " + longMsg + "\n" +
+             "stacktrace: " + stackTrace;
+-- 
+2.43.0
+

@@ -1,0 +1,58 @@
+From 46210a1aa6dd8ab23d31c9918e2a80deb9ec304d Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:49:17 +0000
+Subject: [PATCH] sandbox: stop linking the version row to Evolution X's GitHub
+
+ExpressiveOS is its own ROM: tapping the version in Sandbox settings
+opened github.com/Evolution-X/packages_apps_Sandbox. Keep the version
+row, without the link.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ src/com/android/axion/sandbox/ui/SettingsScreen.kt | 11 +----------
+ 1 file changed, 1 insertion(+), 10 deletions(-)
+
+diff --git a/src/com/android/axion/sandbox/ui/SettingsScreen.kt b/src/com/android/axion/sandbox/ui/SettingsScreen.kt
+index 0907800..75794b5 100644
+--- a/src/com/android/axion/sandbox/ui/SettingsScreen.kt
++++ b/src/com/android/axion/sandbox/ui/SettingsScreen.kt
+@@ -15,8 +15,6 @@
+  */
+ package com.android.axion.sandbox.ui
+ 
+-import android.content.Intent
+-import android.net.Uri
+ import androidx.compose.foundation.layout.fillMaxSize
+ import androidx.compose.foundation.layout.height
+ import androidx.compose.foundation.layout.padding
+@@ -37,7 +35,6 @@ import androidx.compose.material.icons.outlined.SettingsBackupRestore
+ import androidx.compose.material3.ExperimentalMaterial3Api
+ import androidx.compose.runtime.Composable
+ import androidx.compose.ui.Modifier
+-import androidx.compose.ui.platform.LocalContext
+ import androidx.compose.ui.res.stringResource
+ import androidx.compose.ui.unit.dp
+ import com.android.axion.compose.preferences.BasePreference
+@@ -383,18 +380,12 @@ private fun PrivateSectionBehaviorSection(
+ 
+ @Composable
+ private fun AboutSection() {
+-    val context = LocalContext.current
+     PreferenceGroup(title = stringResource(R.string.settings_about_title)) {
+         item {
+-            ClickablePreference(
++            BasePreference(
+                 title = stringResource(R.string.settings_version),
+                 summary = stringResource(R.string.settings_version_value),
+                 icon = Icons.Outlined.Info,
+-                showExternalIcon = true,
+-                onClick = {
+-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Evolution-X/packages_apps_Sandbox"))
+-                    context.startActivity(intent)
+-                }
+             )
+         }
+     }
+-- 
+2.43.0
+

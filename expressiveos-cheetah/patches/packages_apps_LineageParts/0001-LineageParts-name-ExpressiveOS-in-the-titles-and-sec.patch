@@ -1,0 +1,1375 @@
+From 938d4e84ea6de68b40f2034d275073dcf0416903 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:44:35 +0000
+Subject: [PATCH] LineageParts: name ExpressiveOS in the titles and security
+ text
+
+ExpressiveOS is its own ROM: the settings title, the privacy category,
+the easter egg title and the security patch explanation still named
+Evolution X (or LineageOS in a few translations).
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ res/values-ar/strings.xml      | 4 ++--
+ res/values-ast-rES/strings.xml | 4 ++--
+ res/values-az/strings.xml      | 4 ++--
+ res/values-be/strings.xml      | 2 +-
+ res/values-bg/strings.xml      | 4 ++--
+ res/values-bn/strings.xml      | 2 +-
+ res/values-ca/strings.xml      | 4 ++--
+ res/values-ckb/strings.xml     | 4 ++--
+ res/values-cs/strings.xml      | 4 ++--
+ res/values-cy/strings.xml      | 4 ++--
+ res/values-da/strings.xml      | 4 ++--
+ res/values-de/strings.xml      | 4 ++--
+ res/values-el/strings.xml      | 4 ++--
+ res/values-en-rAU/strings.xml  | 4 ++--
+ res/values-en-rCA/strings.xml  | 4 ++--
+ res/values-en-rGB/strings.xml  | 4 ++--
+ res/values-en-rIN/strings.xml  | 4 ++--
+ res/values-es-rUS/strings.xml  | 4 ++--
+ res/values-es/strings.xml      | 4 ++--
+ res/values-et/strings.xml      | 4 ++--
+ res/values-eu/strings.xml      | 4 ++--
+ res/values-fa/strings.xml      | 4 ++--
+ res/values-fi/strings.xml      | 4 ++--
+ res/values-fr/strings.xml      | 4 ++--
+ res/values-fur-rIT/strings.xml | 4 ++--
+ res/values-fy-rNL/strings.xml  | 4 ++--
+ res/values-ga-rIE/strings.xml  | 4 ++--
+ res/values-gd/strings.xml      | 4 ++--
+ res/values-gl/strings.xml      | 4 ++--
+ res/values-hr/strings.xml      | 2 +-
+ res/values-hu/strings.xml      | 4 ++--
+ res/values-in/strings.xml      | 2 +-
+ res/values-is/strings.xml      | 4 ++--
+ res/values-it/strings.xml      | 4 ++--
+ res/values-iw/strings.xml      | 4 ++--
+ res/values-ja/strings.xml      | 2 +-
+ res/values-ka/strings.xml      | 4 ++--
+ res/values-kab-rDZ/strings.xml | 2 +-
+ res/values-kn/strings.xml      | 4 ++--
+ res/values-ko/strings.xml      | 4 ++--
+ res/values-nl/strings.xml      | 4 ++--
+ res/values-nn-rNO/strings.xml  | 4 ++--
+ res/values-pl/strings.xml      | 4 ++--
+ res/values-pt-rBR/strings.xml  | 4 ++--
+ res/values-pt-rPT/strings.xml  | 4 ++--
+ res/values-ro/strings.xml      | 4 ++--
+ res/values-ru/strings.xml      | 4 ++--
+ res/values-sc-rIT/strings.xml  | 4 ++--
+ res/values-sk/strings.xml      | 4 ++--
+ res/values-sl/strings.xml      | 4 ++--
+ res/values-sq/strings.xml      | 4 ++--
+ res/values-sr/strings.xml      | 4 ++--
+ res/values-sv/strings.xml      | 4 ++--
+ res/values-ta/strings.xml      | 2 +-
+ res/values-th/strings.xml      | 4 ++--
+ res/values-tr/strings.xml      | 4 ++--
+ res/values-ug/strings.xml      | 4 ++--
+ res/values-vi/strings.xml      | 4 ++--
+ res/values-zh-rCN/strings.xml  | 4 ++--
+ res/values-zh-rTW/strings.xml  | 4 ++--
+ res/values/strings.xml         | 8 ++++----
+ 61 files changed, 117 insertions(+), 117 deletions(-)
+
+diff --git a/res/values-ar/strings.xml b/res/values-ar/strings.xml
+index db95a27..1f175d2 100644
+--- a/res/values-ar/strings.xml
++++ b/res/values-ar/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">إعدادات Evolution X</string>
++    <string name="lineageparts_title">إعدادات ExpressiveOS</string>
+     <string name="loading">تحميل\u2026</string>
+     <string name="dlg_ok">موافق</string>
+     <string name="cancel">إلغاء</string>
+@@ -470,7 +470,7 @@
+     <string name="trust_feature_security_patches_value_new">آخِر إصدار</string>
+     <string name="trust_feature_security_patches_value_medium">بضعة أشهر قبل آخر تحديث</string>
+     <string name="trust_feature_security_patches_value_old">غير محدّث</string>
+-    <string name="trust_feature_security_patches_explain">تصدر تصحيحات الأمان شهريًا من Google بالتعاون مع موردي SoC لمعالجة العيوب التي يمكن استغلالها من قبل تطبيقات خبيثة لتجاوز القيود الأمنية ويتسبب في ذلك في ضرر دائم لجهازك. التحديثات التي أتاحتها Google تطبق كل شهر على جميع الأجهزة المدعومة، ولكن يمكن تطبيق تصحيحات رمز الملكية فقط من الشركة المصنعة لجهازك. للحفاظ على جعل جهازك آمن برجاء التأكد بأن اصدار Evolution X الخاص بك محدث باستمرار، وضمان تحديث (إذا كان ممكنًا) صورة موردك إلى آخر اصدار موصى به من Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">تصدر تصحيحات الأمان شهريًا من Google بالتعاون مع موردي SoC لمعالجة العيوب التي يمكن استغلالها من قبل تطبيقات خبيثة لتجاوز القيود الأمنية ويتسبب في ذلك في ضرر دائم لجهازك. التحديثات التي أتاحتها Google تطبق كل شهر على جميع الأجهزة المدعومة، ولكن يمكن تطبيق تصحيحات رمز الملكية فقط من الشركة المصنعة لجهازك. للحفاظ على جعل جهازك آمن برجاء التأكد بأن اصدار ExpressiveOS الخاص بك محدث باستمرار، وضمان تحديث (إذا كان ممكنًا) صورة موردك إلى آخر اصدار موصى به من ExpressiveOS.</string>
+     <string name="trust_feature_encryption">التشفير</string>
+     <string name="trust_feature_encryption_value_enabled">مفعل</string>
+     <string name="trust_feature_encryption_value_nolock">يحتاج شاشة قفل آمنة</string>
+diff --git a/res/values-ast-rES/strings.xml b/res/values-ast-rES/strings.xml
+index d423328..7072703 100644
+--- a/res/values-ast-rES/strings.xml
++++ b/res/values-ast-rES/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Configuración de Evolution X</string>
++    <string name="lineageparts_title">Configuración de ExpressiveOS</string>
+     <string name="loading">Cargando\u2026</string>
+     <string name="dlg_ok">D\'acuerdu</string>
+     <string name="cancel">Encaboxar</string>
+@@ -241,7 +241,7 @@
+     <string name="trust_feature_security_patches_value_new">Anovaos</string>
+     <string name="trust_feature_security_patches_value_medium">Ensin anovar hai unos meses</string>
+     <string name="trust_feature_security_patches_value_old">Ensin anovar</string>
+-    <string name="trust_feature_security_patches_explain">Google, n\'andecha colos fabricantes de SoC, espubliza mensualmente parches de seguranza pa iguar fallos que podríen esplotar aplicaciones malicioses pa saltar les llendes de seguranza y causar un dañu permanente nel preséu. Los parches forníos por Google aplíquense cada mes en tolos preseos compatibles, mas los parches pa códigu privativu namás pue aplicalos el fabricante del preséu. Pa caltener el preséu seguru, asegúrate de que la versión de LineageOS ta anovada siempre, y (si ye posible) asegúrate tamién de que la imaxe del fabricante ta anovada a la última versión qu\'aconseya Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Google, n\'andecha colos fabricantes de SoC, espubliza mensualmente parches de seguranza pa iguar fallos que podríen esplotar aplicaciones malicioses pa saltar les llendes de seguranza y causar un dañu permanente nel preséu. Los parches forníos por Google aplíquense cada mes en tolos preseos compatibles, mas los parches pa códigu privativu namás pue aplicalos el fabricante del preséu. Pa caltener el preséu seguru, asegúrate de que la versión de ExpressiveOS ta anovada siempre, y (si ye posible) asegúrate tamién de que la imaxe del fabricante ta anovada a la última versión qu\'aconseya ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Cifráu</string>
+     <string name="trust_feature_encryption_value_enabled">Activóse</string>
+     <string name="trust_feature_encryption_value_nolock">Precisa una pantalla de bloquéu segura</string>
+diff --git a/res/values-az/strings.xml b/res/values-az/strings.xml
+index 86c7184..1bba8aa 100644
+--- a/res/values-az/strings.xml
++++ b/res/values-az/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X Ayarları</string>
++    <string name="lineageparts_title">ExpressiveOS Ayarları</string>
+     <string name="loading">Yüklənir\u2026</string>
+     <string name="dlg_ok">Oldu</string>
+     <string name="cancel">İmtina</string>
+@@ -517,7 +517,7 @@
+     <string name="trust_feature_security_patches_value_new">Güncəldir</string>
+     <string name="trust_feature_security_patches_value_medium">Bir neçə ay köhnəlib</string>
+     <string name="trust_feature_security_patches_value_old">Köhnəlib</string>
+-    <string name="trust_feature_security_patches_explain">Güvənlik yamaqları Google tərəfindən, SoC satıcıları ilə əməkdaşlıq edilərək, güvənlik məhdudiyyətlərini ötürmək və cihazınıza zərər vurmaq üçün zərərli tətbiqlər tərəfindən istismar edilə biləcək çatışmazlıqları aradan qaldırmaq üçün aylıq olaraq yayımlanır. Google tərəfindən hazırlanan yamaqlar hər ay bütün dəstəklənən cihazlara tətbiq olunur, ancaq xüsusi kodlu yamaqlar yalnız cihazınızın istehsalçısı tərəfindən tətbiq oluna bilər. Cihazınızı güvənli şəkildə saxlamaq üçün Evolution X quruluşunuzun həmişə güncəl olduğuna və (mümkündürsə) satıcı faylınızın Evolution X tərəfindən məsləhət görülən ən son versiyaya güncəlləndiyinə əmin olun.</string>
++    <string name="trust_feature_security_patches_explain">Güvənlik yamaqları Google tərəfindən, SoC satıcıları ilə əməkdaşlıq edilərək, güvənlik məhdudiyyətlərini ötürmək və cihazınıza zərər vurmaq üçün zərərli tətbiqlər tərəfindən istismar edilə biləcək çatışmazlıqları aradan qaldırmaq üçün aylıq olaraq yayımlanır. Google tərəfindən hazırlanan yamaqlar hər ay bütün dəstəklənən cihazlara tətbiq olunur, ancaq xüsusi kodlu yamaqlar yalnız cihazınızın istehsalçısı tərəfindən tətbiq oluna bilər. Cihazınızı güvənli şəkildə saxlamaq üçün ExpressiveOS quruluşunuzun həmişə güncəl olduğuna və (mümkündürsə) satıcı faylınızın ExpressiveOS tərəfindən məsləhət görülən ən son versiyaya güncəlləndiyinə əmin olun.</string>
+     <string name="trust_feature_encryption">Şifrələmə</string>
+     <string name="trust_feature_encryption_value_enabled">Fəaldır</string>
+     <string name="trust_feature_encryption_value_nolock">Təhlükəsiz bir kilid ekranı lazımdır</string>
+diff --git a/res/values-be/strings.xml b/res/values-be/strings.xml
+index a4cdb61..a5c8a99 100644
+--- a/res/values-be/strings.xml
++++ b/res/values-be/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Налады Evolution X</string>
++    <string name="lineageparts_title">Налады ExpressiveOS</string>
+     <string name="loading">Загрузка\u2026</string>
+     <string name="cancel">Скасаваць</string>
+     <string name="add">Дадаць</string>
+diff --git a/res/values-bg/strings.xml b/res/values-bg/strings.xml
+index 89adfe2..ea9c686 100644
+--- a/res/values-bg/strings.xml
++++ b/res/values-bg/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Настройки Evolution X</string>
++    <string name="lineageparts_title">Настройки ExpressiveOS</string>
+     <string name="loading">Зареждане\u2026</string>
+     <string name="dlg_ok">ОK</string>
+     <string name="cancel">Отмени</string>
+@@ -507,7 +507,7 @@
+     <string name="trust_feature_security_patches_value_new">Актуално</string>
+     <string name="trust_feature_security_patches_value_medium">необновявано от няколко месеца</string>
+     <string name="trust_feature_security_patches_value_old">Неактуална версия</string>
+-    <string name="trust_feature_security_patches_explain">Защитните пакети се разпространяват ежемесечно от Google заедно с доставчиците на SoC, за да се поправят уязвимостите в системата, които могат да бъдат използвани от злонамерени приложения, който да заобиколят ограниченията за сигурност и да причинят необратими щети на вашето устройство. Корекциите, предоставени от Google, се прилагат всеки месец на всички поддържани устройства, но поправките за патентования код могат да се прилагат само от производителя на устройството ви. За да поддържате устройството си в безопасно състояние, уверете се, че използвате последната версия на Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Защитните пакети се разпространяват ежемесечно от Google заедно с доставчиците на SoC, за да се поправят уязвимостите в системата, които могат да бъдат използвани от злонамерени приложения, който да заобиколят ограниченията за сигурност и да причинят необратими щети на вашето устройство. Корекциите, предоставени от Google, се прилагат всеки месец на всички поддържани устройства, но поправките за патентования код могат да се прилагат само от производителя на устройството ви. За да поддържате устройството си в безопасно състояние, уверете се, че използвате последната версия на ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Криптиране</string>
+     <string name="trust_feature_encryption_value_enabled">Активирано</string>
+     <string name="trust_feature_encryption_value_nolock">Нуждае е се от заключване на екрана</string>
+diff --git a/res/values-bn/strings.xml b/res/values-bn/strings.xml
+index 4d6b057..36fd0ca 100644
+--- a/res/values-bn/strings.xml
++++ b/res/values-bn/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X সেটিংস</string>
++    <string name="lineageparts_title">ExpressiveOS সেটিংস</string>
+     <string name="battery_light_enable_title">ব্যাটারি লাইট চালু করো</string>
+     <string name="notification_light_enable_title">বিজ্ঞপ্তি লাইট চালু করো</string>
+     <string name="swap_capacitive_keys_title">ক্যাপাসিটিভ বোতামগুলো বিনিময় করো</string>
+diff --git a/res/values-ca/strings.xml b/res/values-ca/strings.xml
+index 30f3a94..a67ad18 100644
+--- a/res/values-ca/strings.xml
++++ b/res/values-ca/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Configuració de Evolution X</string>
++    <string name="lineageparts_title">Configuració de ExpressiveOS</string>
+     <string name="loading">S\'està carregant\u2026</string>
+     <string name="dlg_ok">D\'ACORD</string>
+     <string name="cancel">Cancel·la</string>
+@@ -516,7 +516,7 @@
+     <string name="trust_feature_security_patches_value_new">Actualitzat</string>
+     <string name="trust_feature_security_patches_value_medium">Obsolet uns mesos</string>
+     <string name="trust_feature_security_patches_value_old">Obsolet</string>
+-    <string name="trust_feature_security_patches_explain">Els pegats de seguretat són publicats mensualment per Google en cooperació amb proveïdors de SoC per abordar falles que podrien ser explotades per aplicacions malicioses per eludir les restriccions de seguretat i causar danys permanents al dispositiu. Els pegats posats a disposició per Google s\'apliquen tots els mesos en tots els dispositius compatibles, però els pegats per al codi propietari només poden ser aplicats pel fabricant del dispositiu. Per mantenir el dispositiu segur, assegureu-vos que la compilació de Evolution X estigui sempre actualitzada i, si és possible, assegureu-vos que la imatge del proveïdor estigui actualitzada a la més recent recomanada per Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Els pegats de seguretat són publicats mensualment per Google en cooperació amb proveïdors de SoC per abordar falles que podrien ser explotades per aplicacions malicioses per eludir les restriccions de seguretat i causar danys permanents al dispositiu. Els pegats posats a disposició per Google s\'apliquen tots els mesos en tots els dispositius compatibles, però els pegats per al codi propietari només poden ser aplicats pel fabricant del dispositiu. Per mantenir el dispositiu segur, assegureu-vos que la compilació de ExpressiveOS estigui sempre actualitzada i, si és possible, assegureu-vos que la imatge del proveïdor estigui actualitzada a la més recent recomanada per ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Xifrat</string>
+     <string name="trust_feature_encryption_value_enabled">Activat</string>
+     <string name="trust_feature_encryption_value_nolock">Necessita una pantalla de bloqueig segura</string>
+diff --git a/res/values-ckb/strings.xml b/res/values-ckb/strings.xml
+index d321d2b..f24c296 100644
+--- a/res/values-ckb/strings.xml
++++ b/res/values-ckb/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">ڕێکخستنەکانی LineageOS</string>
++    <string name="lineageparts_title">ڕێکخستنەکانی ExpressiveOS</string>
+     <string name="loading">باردەکرێت\u2026</string>
+     <string name="dlg_ok">باشە</string>
+     <string name="cancel">پاشگەزبوونەوە</string>
+@@ -517,7 +517,7 @@
+     <string name="trust_feature_security_patches_value_new">نوێیە</string>
+     <string name="trust_feature_security_patches_value_medium">چەند مانگێک کۆنە</string>
+     <string name="trust_feature_security_patches_value_old">کۆن بووە</string>
+-    <string name="trust_feature_security_patches_explain">پارچەکانی پاراستن مانگانە لەلایەن Googleـەوە بە هاوکاری کۆمپانیاکانی دروستکەری پارچە (SoC) بڵاودەکرێنەوە بۆ پڕکردنەوەی ئەو کەلێنانەی کە لەوانەیە لەلایەن بەرنامە زیانبەخشەکانەوە بەکاربهێنرێن بۆ تێپەڕاندنی قەدەغەکردنەکانی پاراستن. ئەو پارچانەی Google بڵاویان دەکاتەوە مانگانە لەسەر هەموو ئامێرە پاڵپشتیکراوەکان جێبەجێ دەکرێن، بەڵام پارچەکانی تایبەت بە کۆدی دروستکەر تەنها لەلایەن کۆمپانیای دروستکەری ئامێرەکەوە دەتوانرێت جێبەجێ بکرێن. بۆ هێشتنەوەی ئامێرەکەت بە پارێزراوی، دڵنیابە کە وەشانی LineageOSـەکەت هەمیشە نوێیە.</string>
++    <string name="trust_feature_security_patches_explain">پارچەکانی پاراستن مانگانە لەلایەن Googleـەوە بە هاوکاری کۆمپانیاکانی دروستکەری پارچە (SoC) بڵاودەکرێنەوە بۆ پڕکردنەوەی ئەو کەلێنانەی کە لەوانەیە لەلایەن بەرنامە زیانبەخشەکانەوە بەکاربهێنرێن بۆ تێپەڕاندنی قەدەغەکردنەکانی پاراستن. ئەو پارچانەی Google بڵاویان دەکاتەوە مانگانە لەسەر هەموو ئامێرە پاڵپشتیکراوەکان جێبەجێ دەکرێن، بەڵام پارچەکانی تایبەت بە کۆدی دروستکەر تەنها لەلایەن کۆمپانیای دروستکەری ئامێرەکەوە دەتوانرێت جێبەجێ بکرێن. بۆ هێشتنەوەی ئامێرەکەت بە پارێزراوی، دڵنیابە کە وەشانی ExpressiveOSـەکەت هەمیشە نوێیە.</string>
+     <string name="trust_feature_encryption">کۆدکردن (Encryption)</string>
+     <string name="trust_feature_encryption_value_enabled">چالاکە</string>
+     <string name="trust_feature_encryption_value_nolock">پێویستی بە قوفڵێکی پارێزراوی ڕوونما هەیە</string>
+diff --git a/res/values-cs/strings.xml b/res/values-cs/strings.xml
+index 194dd8b..06e3a58 100644
+--- a/res/values-cs/strings.xml
++++ b/res/values-cs/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Nastavení Evolution X</string>
++    <string name="lineageparts_title">Nastavení ExpressiveOS</string>
+     <string name="loading">Načítání\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Zrušit</string>
+@@ -505,7 +505,7 @@
+     <string name="trust_feature_security_patches_value_new">Aktuální</string>
+     <string name="trust_feature_security_patches_value_medium">Několik měsíců zastaralé</string>
+     <string name="trust_feature_security_patches_value_old">Zastaralé</string>
+-    <string name="trust_feature_security_patches_explain">Bezpečnostní záplaty jsou vydávány měsíčně společností Google ve spolupráci s dodavateli čipů, aby odstranili nedostatky, kterých by mohly zneužít škodlivé aplikace tím, že obejdou bezpečnostní omezení a způsobí trvalé poškození vašemu zařízení. Záplaty, které společnost Google poskytuje, jsou aplikovány každý měsíc na všech podporovaných zařízeních, ale záplaty mohou být do kódu aplikovány pouze výrobcem zařízení. Chcete-li zařízení udržet v bezpečí, ujistěte se, že je vaše sestavení Evolution X vždy aktuální, a (pokud možno) ujistěte se, že je obraz systému dodavatele aktualizován na poslední verzi doporučenou Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Bezpečnostní záplaty jsou vydávány měsíčně společností Google ve spolupráci s dodavateli čipů, aby odstranili nedostatky, kterých by mohly zneužít škodlivé aplikace tím, že obejdou bezpečnostní omezení a způsobí trvalé poškození vašemu zařízení. Záplaty, které společnost Google poskytuje, jsou aplikovány každý měsíc na všech podporovaných zařízeních, ale záplaty mohou být do kódu aplikovány pouze výrobcem zařízení. Chcete-li zařízení udržet v bezpečí, ujistěte se, že je vaše sestavení ExpressiveOS vždy aktuální, a (pokud možno) ujistěte se, že je obraz systému dodavatele aktualizován na poslední verzi doporučenou ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Šifrování</string>
+     <string name="trust_feature_encryption_value_enabled">Povoleno</string>
+     <string name="trust_feature_encryption_value_nolock">Je potřeba zabezpečená zamykací obrazovka</string>
+diff --git a/res/values-cy/strings.xml b/res/values-cy/strings.xml
+index 611524d..c6d64f8 100644
+--- a/res/values-cy/strings.xml
++++ b/res/values-cy/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Gosodiadau Evolution X</string>
++    <string name="lineageparts_title">Gosodiadau ExpressiveOS</string>
+     <string name="loading">Yn llwytho\u2026</string>
+     <string name="dlg_ok">Iawn</string>
+     <string name="cancel">Canslo</string>
+@@ -508,7 +508,7 @@
+     <string name="trust_feature_security_patches_value_new">Yn gyfredol</string>
+     <string name="trust_feature_security_patches_value_medium">Rhai misoedd yn hen</string>
+     <string name="trust_feature_security_patches_value_old">Yn hen</string>
+-    <string name="trust_feature_security_patches_explain">Mae Google yn rhyddhau cyweiriadau diogelwch (security patches) yn fisol ar y cyd â darparwyr i fynd i\'r afael â namau y gellir cael eu hecsbloetio gan apiau maleisus er mwyn osgoi cyfyngiadau diogelwch ac achosi niwed parhaol i dy ddyfais. Mae cyweiriadau gan Google yn cael eu rhyddhau pob mis ond gall cyweiriadau i god dy ddyfais fel arfer ond cael eu gosod gan y gwneuthurwr. Wrth dy fod wedi gosod Evolution X i gymryd lle\'r fersiwn Android gwreiddiol ar dy ddyfais, mae\'r materion hyn yn dy ddwylo dy hun. I gadw dy ddyfais yn ddiogel, sicrha dy fod yn diweddaru dy adeiledd Evolution X i\'w gadw yn gyfredol ac, os yn berthnasol, sicrha bod y ddelwedd darparwr (vendor image) yn cael ei ddiweddaru i\'r un mwyaf diweddar a argymhellir gan Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Mae Google yn rhyddhau cyweiriadau diogelwch (security patches) yn fisol ar y cyd â darparwyr i fynd i\'r afael â namau y gellir cael eu hecsbloetio gan apiau maleisus er mwyn osgoi cyfyngiadau diogelwch ac achosi niwed parhaol i dy ddyfais. Mae cyweiriadau gan Google yn cael eu rhyddhau pob mis ond gall cyweiriadau i god dy ddyfais fel arfer ond cael eu gosod gan y gwneuthurwr. Wrth dy fod wedi gosod ExpressiveOS i gymryd lle\'r fersiwn Android gwreiddiol ar dy ddyfais, mae\'r materion hyn yn dy ddwylo dy hun. I gadw dy ddyfais yn ddiogel, sicrha dy fod yn diweddaru dy adeiledd ExpressiveOS i\'w gadw yn gyfredol ac, os yn berthnasol, sicrha bod y ddelwedd darparwr (vendor image) yn cael ei ddiweddaru i\'r un mwyaf diweddar a argymhellir gan ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Amgryptiad</string>
+     <string name="trust_feature_encryption_value_enabled">Galluogwyd</string>
+     <string name="trust_feature_encryption_value_nolock">Mae angen scrin cloi diogel</string>
+diff --git a/res/values-da/strings.xml b/res/values-da/strings.xml
+index 14b878b..3e00e02 100644
+--- a/res/values-da/strings.xml
++++ b/res/values-da/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X Indstillinger</string>
++    <string name="lineageparts_title">ExpressiveOS Indstillinger</string>
+     <string name="loading">Indlæser\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Annuller</string>
+@@ -484,7 +484,7 @@
+     <string name="trust_feature_security_patches_value_new">Opdateret</string>
+     <string name="trust_feature_security_patches_value_medium">Et par måneder forældet</string>
+     <string name="trust_feature_security_patches_value_old">Forældet</string>
+-    <string name="trust_feature_security_patches_explain">Sikkerhedsrettelser frigives månedligt af Google i samarbejde med SoC-leverandører, for at adressere fejl, som kunne blive udnyttet af ondsindede apps, til at omgå sikkerhedsrestriktioner, og forårsage permanent skade på din enhed. Rettelser gjort tilgængelige af Google anvendes hver måned, på alle understøttede enheder, men rettelser til proprietær kode kun kan anvendes af din enheds producent. Sørg for at dit Evolution X-build altid er ajour, for at holde din enhed sikker, og (hvis gældende) sikre at dit producent-billede er opdateret til den seneste, som anbefales af Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Sikkerhedsrettelser frigives månedligt af Google i samarbejde med SoC-leverandører, for at adressere fejl, som kunne blive udnyttet af ondsindede apps, til at omgå sikkerhedsrestriktioner, og forårsage permanent skade på din enhed. Rettelser gjort tilgængelige af Google anvendes hver måned, på alle understøttede enheder, men rettelser til proprietær kode kun kan anvendes af din enheds producent. Sørg for at dit ExpressiveOS-build altid er ajour, for at holde din enhed sikker, og (hvis gældende) sikre at dit producent-billede er opdateret til den seneste, som anbefales af ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Kryptering</string>
+     <string name="trust_feature_encryption_value_enabled">Aktiveret</string>
+     <string name="trust_feature_encryption_value_nolock">Har brug for en sikker låseskærm</string>
+diff --git a/res/values-de/strings.xml b/res/values-de/strings.xml
+index b5d60ee..2cfc9b7 100644
+--- a/res/values-de/strings.xml
++++ b/res/values-de/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X-Einstellungen</string>
++    <string name="lineageparts_title">ExpressiveOS-Einstellungen</string>
+     <string name="loading">Wird geladen\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Abbrechen</string>
+@@ -514,7 +514,7 @@
+     <string name="trust_feature_security_patches_value_new">aktuell</string>
+     <string name="trust_feature_security_patches_value_medium">einige Monate veraltet</string>
+     <string name="trust_feature_security_patches_value_old">veraltet</string>
+-    <string name="trust_feature_security_patches_explain">Sicherheitspatches werden monatlich von Google in Zusammenarbeit mit SoC-Anbietern veröffentlicht. Diese beheben Fehler, mittels derer bösartige Anwendungen Sicherheitseinschränkungen umgehen und dein Gerät dauerhaft beschädigen können. Von Google bereitgestellte Patches werden jeden Monat auf alle unterstützten Geräte angewendet, aber Patches für proprietären Code können nur vom Hersteller deines Gerätes bereitgestellt werden. Um dein Gerät sicher zu halten, aktualisiere Evolution X und (wenn möglich) dein Vendor-Image stets auf das von Evolution X empfohlene.</string>
++    <string name="trust_feature_security_patches_explain">Sicherheitspatches werden monatlich von Google in Zusammenarbeit mit SoC-Anbietern veröffentlicht. Diese beheben Fehler, mittels derer bösartige Anwendungen Sicherheitseinschränkungen umgehen und dein Gerät dauerhaft beschädigen können. Von Google bereitgestellte Patches werden jeden Monat auf alle unterstützten Geräte angewendet, aber Patches für proprietären Code können nur vom Hersteller deines Gerätes bereitgestellt werden. Um dein Gerät sicher zu halten, aktualisiere ExpressiveOS und (wenn möglich) dein Vendor-Image stets auf das von ExpressiveOS empfohlene.</string>
+     <string name="trust_feature_encryption">Verschlüsselung</string>
+     <string name="trust_feature_encryption_value_enabled">Aktiviert</string>
+     <string name="trust_feature_encryption_value_nolock">Benötigt einen sicheren Sperrbildschirm</string>
+diff --git a/res/values-el/strings.xml b/res/values-el/strings.xml
+index e6cf08e..ef6baa8 100644
+--- a/res/values-el/strings.xml
++++ b/res/values-el/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Ρυθμίσεις Evolution X</string>
++    <string name="lineageparts_title">Ρυθμίσεις ExpressiveOS</string>
+     <string name="loading">Φόρτωση\u2026</string>
+     <string name="dlg_ok">ΟΚ</string>
+     <string name="cancel">Ακύρωση</string>
+@@ -519,7 +519,7 @@
+     <string name="trust_feature_security_patches_value_new">Ενημερωμένη</string>
+     <string name="trust_feature_security_patches_value_medium">Μερικούς μήνες παλιά</string>
+     <string name="trust_feature_security_patches_value_old">Ξεπερασμένη</string>
+-    <string name="trust_feature_security_patches_explain">Οι ενημερωμένες εκδόσεις ασφαλείας αποστέλλονται κάθε μήνα από την Google σε συνεργασία με τους κατασκευαστές SoC για την αντιμετώπιση σφαλμάτων τα οποία θα μπορούσαν να εκμεταλλευτούν από κακόβουλες εφαρμογές για να παρακάμψουν τους περιορισμούς ασφαλείας και να προκαλέσουν μόνιμη βλάβη στη συσκευή σας.\nΟι ενημερώσεις ασφαλείας που διατίθενται από την Google εφαρμόζονται για όλες τις υποστηριζόμενες συσκευές κάθε μήνα, αλλά οι ενημερώσεις ασφαλείας για κλειστό κώδικα μπορούν να εφαρμοστούν μόνο από τον κατασκευαστή της συσκευής σας.\nΓια να διατηρήσετε τη συσκευή σας ασφαλή, βεβαιωθείτε ότι χρησιμοποιείτε πάντα μια ενημερωμένη έκδοση του Evolution X και (ενδεχομένως) σιγουρευτείτε ότι η εικόνα \"vendor\" είναι ενημερωμένη στην πιο πρόσφατη έκδοση προτεινόμενη από το Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Οι ενημερωμένες εκδόσεις ασφαλείας αποστέλλονται κάθε μήνα από την Google σε συνεργασία με τους κατασκευαστές SoC για την αντιμετώπιση σφαλμάτων τα οποία θα μπορούσαν να εκμεταλλευτούν από κακόβουλες εφαρμογές για να παρακάμψουν τους περιορισμούς ασφαλείας και να προκαλέσουν μόνιμη βλάβη στη συσκευή σας.\nΟι ενημερώσεις ασφαλείας που διατίθενται από την Google εφαρμόζονται για όλες τις υποστηριζόμενες συσκευές κάθε μήνα, αλλά οι ενημερώσεις ασφαλείας για κλειστό κώδικα μπορούν να εφαρμοστούν μόνο από τον κατασκευαστή της συσκευής σας.\nΓια να διατηρήσετε τη συσκευή σας ασφαλή, βεβαιωθείτε ότι χρησιμοποιείτε πάντα μια ενημερωμένη έκδοση του ExpressiveOS και (ενδεχομένως) σιγουρευτείτε ότι η εικόνα \"vendor\" είναι ενημερωμένη στην πιο πρόσφατη έκδοση προτεινόμενη από το ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Κρυπτογράφηση</string>
+     <string name="trust_feature_encryption_value_enabled">Ενεργή</string>
+     <string name="trust_feature_encryption_value_nolock">Απαιτεί ασφαλή οθόνη κλειδώματος</string>
+diff --git a/res/values-en-rAU/strings.xml b/res/values-en-rAU/strings.xml
+index 4a5d305..f9ef5e5 100644
+--- a/res/values-en-rAU/strings.xml
++++ b/res/values-en-rAU/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X Settings</string>
++    <string name="lineageparts_title">ExpressiveOS Settings</string>
+     <string name="loading">Loading\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Cancel</string>
+@@ -517,7 +517,7 @@
+     <string name="trust_feature_security_patches_value_new">Up to date</string>
+     <string name="trust_feature_security_patches_value_medium">A few months out of date</string>
+     <string name="trust_feature_security_patches_value_old">Out of date</string>
+-    <string name="trust_feature_security_patches_explain">Security patches are released monthly by Google in cooperation with SoC vendors to address flaws which could be exploited by malicious apps to bypass security restrictions and cause permanent damage to your device. Patches made available by Google are applied every month on all supported devices, but patches to proprietary code can only be applied by your device\'s manufacturer. To keep your device safe make sure your Evolution X build is always up-to-date, and (if applicable) ensure your vendor image is updated to the latest one recommended by Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Security patches are released monthly by Google in cooperation with SoC vendors to address flaws which could be exploited by malicious apps to bypass security restrictions and cause permanent damage to your device. Patches made available by Google are applied every month on all supported devices, but patches to proprietary code can only be applied by your device\'s manufacturer. To keep your device safe make sure your ExpressiveOS build is always up-to-date, and (if applicable) ensure your vendor image is updated to the latest one recommended by ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Encryption</string>
+     <string name="trust_feature_encryption_value_enabled">Enabled</string>
+     <string name="trust_feature_encryption_value_nolock">Needs a secure lock screen</string>
+diff --git a/res/values-en-rCA/strings.xml b/res/values-en-rCA/strings.xml
+index 78ecf4b..018f5e1 100644
+--- a/res/values-en-rCA/strings.xml
++++ b/res/values-en-rCA/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X Settings</string>
++    <string name="lineageparts_title">ExpressiveOS Settings</string>
+     <string name="loading">Loading\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Cancel</string>
+@@ -517,7 +517,7 @@
+     <string name="trust_feature_security_patches_value_new">Up to date</string>
+     <string name="trust_feature_security_patches_value_medium">A few months out of date</string>
+     <string name="trust_feature_security_patches_value_old">Out of date</string>
+-    <string name="trust_feature_security_patches_explain">Security patches are released monthly by Google in cooperation with SoC vendors to address flaws which could be exploited by malicious apps to bypass security restrictions and cause permanent damage to your device. Patches made available by Google are applied every month on all supported devices, but patches to proprietary code can only be applied by your device\'s manufacturer. To keep your device safe make sure your Evolution X build is always up-to-date, and (if applicable) ensure your vendor image is updated to the latest one recommended by Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Security patches are released monthly by Google in cooperation with SoC vendors to address flaws which could be exploited by malicious apps to bypass security restrictions and cause permanent damage to your device. Patches made available by Google are applied every month on all supported devices, but patches to proprietary code can only be applied by your device\'s manufacturer. To keep your device safe make sure your ExpressiveOS build is always up-to-date, and (if applicable) ensure your vendor image is updated to the latest one recommended by ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Encryption</string>
+     <string name="trust_feature_encryption_value_enabled">Enabled</string>
+     <string name="trust_feature_encryption_value_nolock">Needs a secure lock screen</string>
+diff --git a/res/values-en-rGB/strings.xml b/res/values-en-rGB/strings.xml
+index ad39984..4640e13 100644
+--- a/res/values-en-rGB/strings.xml
++++ b/res/values-en-rGB/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X Settings</string>
++    <string name="lineageparts_title">ExpressiveOS Settings</string>
+     <string name="loading">Loading\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Cancel</string>
+@@ -517,7 +517,7 @@
+     <string name="trust_feature_security_patches_value_new">Up to date</string>
+     <string name="trust_feature_security_patches_value_medium">A few months out of date</string>
+     <string name="trust_feature_security_patches_value_old">Out of date</string>
+-    <string name="trust_feature_security_patches_explain">Security patches are released monthly by Google in cooperation with SoC vendors to address flaws which could be exploited by malicious apps to bypass security restrictions and cause permanent damage to your device. Patches made available by Google are applied every month on all supported devices, but patches to proprietary code can only be applied by your device\'s manufacturer. To keep your device safe make sure your Evolution X build is always up-to-date, and (if applicable) ensure your vendor image is updated to the latest one recommended by Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Security patches are released monthly by Google in cooperation with SoC vendors to address flaws which could be exploited by malicious apps to bypass security restrictions and cause permanent damage to your device. Patches made available by Google are applied every month on all supported devices, but patches to proprietary code can only be applied by your device\'s manufacturer. To keep your device safe make sure your ExpressiveOS build is always up-to-date, and (if applicable) ensure your vendor image is updated to the latest one recommended by ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Encryption</string>
+     <string name="trust_feature_encryption_value_enabled">Enabled</string>
+     <string name="trust_feature_encryption_value_nolock">Needs a secure lock screen</string>
+diff --git a/res/values-en-rIN/strings.xml b/res/values-en-rIN/strings.xml
+index 69884f0..83ebc4c 100644
+--- a/res/values-en-rIN/strings.xml
++++ b/res/values-en-rIN/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X Settings</string>
++    <string name="lineageparts_title">ExpressiveOS Settings</string>
+     <string name="loading">Loading\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Cancel</string>
+@@ -517,7 +517,7 @@
+     <string name="trust_feature_security_patches_value_new">Up to date</string>
+     <string name="trust_feature_security_patches_value_medium">A few months out of date</string>
+     <string name="trust_feature_security_patches_value_old">Out of date</string>
+-    <string name="trust_feature_security_patches_explain">Security patches are released monthly by Google in cooperation with SoC vendors to address flaws which could be exploited by malicious apps to bypass security restrictions and cause permanent damage to your device. Patches made available by Google are applied every month on all supported devices, but patches to proprietary code can only be applied by your device\'s manufacturer. To keep your device safe make sure your Evolution X build is always up-to-date, and (if applicable) ensure your vendor image is updated to the latest one recommended by Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Security patches are released monthly by Google in cooperation with SoC vendors to address flaws which could be exploited by malicious apps to bypass security restrictions and cause permanent damage to your device. Patches made available by Google are applied every month on all supported devices, but patches to proprietary code can only be applied by your device\'s manufacturer. To keep your device safe make sure your ExpressiveOS build is always up-to-date, and (if applicable) ensure your vendor image is updated to the latest one recommended by ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Encryption</string>
+     <string name="trust_feature_encryption_value_enabled">Enabled</string>
+     <string name="trust_feature_encryption_value_nolock">Needs a secure lock screen</string>
+diff --git a/res/values-es-rUS/strings.xml b/res/values-es-rUS/strings.xml
+index 5cb93ca..adb250c 100644
+--- a/res/values-es-rUS/strings.xml
++++ b/res/values-es-rUS/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Ajustes de Evolution X</string>
++    <string name="lineageparts_title">Ajustes de ExpressiveOS</string>
+     <string name="loading">Cargando\u2026</string>
+     <string name="dlg_ok">Aceptar</string>
+     <string name="cancel">Cancelar</string>
+@@ -451,7 +451,7 @@
+     <string name="trust_feature_selinux_explain">SELinux dicta qué procesos tienen acceso a qué archivos en el dispositivo.\n Esto evita que las aplicaciones y servicios tengan acceso a archivos con los que no deben tratar: de esta manera, un proceso malicioso tiene acceso limitado, por lo que su seguridad se mantiene.</string>
+     <string name="trust_feature_security_patches">Parches de seguridad de Android</string>
+     <string name="trust_feature_security_patches_value_base">Plataforma: %1$s\nProveedor: %2$s</string>
+-    <string name="trust_feature_security_patches_explain">Google publica mensualmente parches de seguridad en colaboración con los proveedores de SoC para solucionar los fallos que podrían ser explotados por aplicaciones maliciosas para eludir las restricciones de seguridad y causar daños permanentes al dispositivo. Los parches puestos a disposición por Google se aplican todos los meses en todos los dispositivos compatibles, pero los parches para el código propietario sólo pueden ser aplicados por el fabricante del dispositivo. Para mantener el dispositivo seguro, asegúrese de que su compilación Evolution X esté siempre actualizada, y (si corresponde) asegúrese de que su imagen de vendedor esté actualizada a la última recomendada por Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Google publica mensualmente parches de seguridad en colaboración con los proveedores de SoC para solucionar los fallos que podrían ser explotados por aplicaciones maliciosas para eludir las restricciones de seguridad y causar daños permanentes al dispositivo. Los parches puestos a disposición por Google se aplican todos los meses en todos los dispositivos compatibles, pero los parches para el código propietario sólo pueden ser aplicados por el fabricante del dispositivo. Para mantener el dispositivo seguro, asegúrese de que su compilación ExpressiveOS esté siempre actualizada, y (si corresponde) asegúrese de que su imagen de vendedor esté actualizada a la última recomendada por ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Cifrado</string>
+     <string name="trust_feature_encryption_value_enabled">Activado</string>
+     <string name="trust_feature_encryption_value_nolock">Necesita una pantalla de bloqueo segura</string>
+diff --git a/res/values-es/strings.xml b/res/values-es/strings.xml
+index eba7bf9..5b63d68 100644
+--- a/res/values-es/strings.xml
++++ b/res/values-es/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Ajustes de Evolution X</string>
++    <string name="lineageparts_title">Ajustes de ExpressiveOS</string>
+     <string name="loading">Cargando\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Cancelar</string>
+@@ -515,7 +515,7 @@
+     <string name="trust_feature_security_patches_value_new">Actualizado</string>
+     <string name="trust_feature_security_patches_value_medium">Desactualizado varios meses</string>
+     <string name="trust_feature_security_patches_value_old">Desactualizado</string>
+-    <string name="trust_feature_security_patches_explain">Google publica mensualmente parches de seguridad en cooperación con los proveedores de SoC para corregir fallos que podrían ser aprovechados por aplicaciones maliciosas para eludir las restricciones de seguridad y causar daños permanentes a tu dispositivo. Los parches disponibles de Google se aplican cada mes en todos los dispositivos soportados, pero los parches al código propio solo pueden ser aplicados por el fabricante del dispositivo. Para mantener tu dispositivo seguro, asegúrate de que la compilación de LineageOS esté siempre actualizada y, si aplica, asegúrate de que la imagen de tu proveedor está actualizada a la última recomendada por LineageOS.</string>
++    <string name="trust_feature_security_patches_explain">Google publica mensualmente parches de seguridad en cooperación con los proveedores de SoC para corregir fallos que podrían ser aprovechados por aplicaciones maliciosas para eludir las restricciones de seguridad y causar daños permanentes a tu dispositivo. Los parches disponibles de Google se aplican cada mes en todos los dispositivos soportados, pero los parches al código propio solo pueden ser aplicados por el fabricante del dispositivo. Para mantener tu dispositivo seguro, asegúrate de que la compilación de ExpressiveOS esté siempre actualizada y, si aplica, asegúrate de que la imagen de tu proveedor está actualizada a la última recomendada por ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Cifrado</string>
+     <string name="trust_feature_encryption_value_enabled">Activado</string>
+     <string name="trust_feature_encryption_value_nolock">Necesita una pantalla de bloqueo segura</string>
+diff --git a/res/values-et/strings.xml b/res/values-et/strings.xml
+index ed8cd70..6c46326 100644
+--- a/res/values-et/strings.xml
++++ b/res/values-et/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X\'i seaded</string>
++    <string name="lineageparts_title">ExpressiveOS\'i seaded</string>
+     <string name="loading">Laadimine\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Tühista</string>
+@@ -472,7 +472,7 @@ andmete eelvaade.</string>
+     <string name="trust_feature_security_patches_value_new">Ajakohane</string>
+     <string name="trust_feature_security_patches_value_medium">Paar kuud vana</string>
+     <string name="trust_feature_security_patches_value_old">Vananenud</string>
+-    <string name="trust_feature_security_patches_explain">Google väljastab iga kuu turvapaikasid koostöös SoC tarnijatega, parandamaks vigu, mida võivad pahatahtlikud rakendused ära kasutada, et pääseda mööda turvapiirangutest ning põhjustada püsivat kahju sinu seadmele. Paigad, mille Google väljastab rakendatakse iga kuu kõikidele toetatud seadmetele, aga omandiõigustega koodile saab paiku määrata ainult sinu seadme tootja. Et hoida oma seade turvalisena, veendu, et sinu Evolution X järk on alati kaasaegne ning (võimalusel) veendu, et sinu tarnija tõmmis on uuendatud Evolution X\'i poolt viimasena soovitatud versioonile.</string>
++    <string name="trust_feature_security_patches_explain">Google väljastab iga kuu turvapaikasid koostöös SoC tarnijatega, parandamaks vigu, mida võivad pahatahtlikud rakendused ära kasutada, et pääseda mööda turvapiirangutest ning põhjustada püsivat kahju sinu seadmele. Paigad, mille Google väljastab rakendatakse iga kuu kõikidele toetatud seadmetele, aga omandiõigustega koodile saab paiku määrata ainult sinu seadme tootja. Et hoida oma seade turvalisena, veendu, et sinu ExpressiveOS järk on alati kaasaegne ning (võimalusel) veendu, et sinu tarnija tõmmis on uuendatud ExpressiveOS\'i poolt viimasena soovitatud versioonile.</string>
+     <string name="trust_feature_encryption">Krüpteerimine</string>
+     <string name="trust_feature_encryption_value_enabled">Lubatud</string>
+     <string name="trust_feature_encryption_value_nolock">Vajab turvalist lukustuskuva</string>
+diff --git a/res/values-eu/strings.xml b/res/values-eu/strings.xml
+index 73c60c4..bf1b312 100644
+--- a/res/values-eu/strings.xml
++++ b/res/values-eu/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X ezarpenak</string>
++    <string name="lineageparts_title">ExpressiveOS ezarpenak</string>
+     <string name="loading">Kargatzen\u2026</string>
+     <string name="dlg_ok">Ados</string>
+     <string name="cancel">Utzi</string>
+@@ -442,7 +442,7 @@ Informazio hau gailuaren abio bakoitzean bidaltzen da.\n\nBidalitako informazioa
+     <string name="trust_feature_selinux_explain">SELinux-ek prozesuek zeintsu fitxategi edo bide atzitzeko baimena duten agintzen du.\nHonek aplikazio eta zerbitzuek ez dagozkien fitxategiak atzitu ahal izatea ekiditen du: honela potentzialki gaiztoa den prozesu batek sarbide mugatua du eta zure segurtasuna babesten da.</string>
+     <string name="trust_feature_security_patches">Android segurtasun partxeak</string>
+     <string name="trust_feature_security_patches_value_base">Plataforma: %1$s\nEkoizlea: %2$s</string>
+-    <string name="trust_feature_security_patches_explain">Segurtasun partxeak hilabetero kaleratzen ditu Googlek ekoizleekin elkarlanean, aplikazio gaizkileek segurtasun mugak inguratzeko eta gailuan kalte iraunkorra sortzeko erabili ditzaketen ahuleziak konpontzeko. Googlek argitaratutako partxeak onartutako gailu guztietan aplikatzen dira hilabetero, baina jabeduna den kodean ekoizleak besterik ezin du aplikatu partxea. Gailua seguru mantentzeko egiaztatu Evolution X beti egunean dagoela eta (baldin eta badagokio) egiaztatu zure ekoizlearen irudia Evolution X-ek aholkatutako azkenera eguneratu dela.</string>
++    <string name="trust_feature_security_patches_explain">Segurtasun partxeak hilabetero kaleratzen ditu Googlek ekoizleekin elkarlanean, aplikazio gaizkileek segurtasun mugak inguratzeko eta gailuan kalte iraunkorra sortzeko erabili ditzaketen ahuleziak konpontzeko. Googlek argitaratutako partxeak onartutako gailu guztietan aplikatzen dira hilabetero, baina jabeduna den kodean ekoizleak besterik ezin du aplikatu partxea. Gailua seguru mantentzeko egiaztatu ExpressiveOS beti egunean dagoela eta (baldin eta badagokio) egiaztatu zure ekoizlearen irudia ExpressiveOS-ek aholkatutako azkenera eguneratu dela.</string>
+     <string name="trust_feature_encryption">Zifratzea</string>
+     <string name="trust_feature_encryption_value_enabled">Gaituta</string>
+     <string name="trust_feature_encryption_value_nolock">Blokeo-pantaila seguru bat behar du</string>
+diff --git a/res/values-fa/strings.xml b/res/values-fa/strings.xml
+index 5d88229..300bb98 100644
+--- a/res/values-fa/strings.xml
++++ b/res/values-fa/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">تنظیمات LineageOS</string>
++    <string name="lineageparts_title">تنظیمات ExpressiveOS</string>
+     <string name="loading">در حال بارگذاری\u2026</string>
+     <string name="dlg_ok">باشه</string>
+     <string name="cancel">لغو</string>
+@@ -520,7 +520,7 @@
+     <string name="trust_feature_security_patches_value_new">به روز</string>
+     <string name="trust_feature_security_patches_value_medium">چند ماه گذشته</string>
+     <string name="trust_feature_security_patches_value_old">قدیمی</string>
+-    <string name="trust_feature_security_patches_explain">وصله‌های امنیتی ماهانه توسط گوگل با همکاری فروشندگان SoC منتشر می‌شوند تا نقص‌هایی را برطرف کنند که می‌تواند توسط برنامه‌های مخرب برای دور زدن محدودیت‌های امنیتی و ایجاد آسیب دائمی به دستگاه شما استفاده شود. وصله‌هایی که توسط گوگل ارائه می‌شوند هر ماه روی تمامی دستگاه‌های پشتیبانی‌شده اعمال می‌شوند، اما وصله‌های کد اختصاصی تنها توسط سازنده دستگاه شما قابل اعمال هستند. برای ایمن نگه داشتن دستگاه خود، مطمئن شوید که نسخه LineageOS شما همیشه به‌روز است و (در صورت لزوم) اطمینان حاصل کنید که ایمیج فروشنده شما به آخرین نسخه توصیه‌شده توسط LineageOS به‌روز است.</string>
++    <string name="trust_feature_security_patches_explain">وصله‌های امنیتی ماهانه توسط گوگل با همکاری فروشندگان SoC منتشر می‌شوند تا نقص‌هایی را برطرف کنند که می‌تواند توسط برنامه‌های مخرب برای دور زدن محدودیت‌های امنیتی و ایجاد آسیب دائمی به دستگاه شما استفاده شود. وصله‌هایی که توسط گوگل ارائه می‌شوند هر ماه روی تمامی دستگاه‌های پشتیبانی‌شده اعمال می‌شوند، اما وصله‌های کد اختصاصی تنها توسط سازنده دستگاه شما قابل اعمال هستند. برای ایمن نگه داشتن دستگاه خود، مطمئن شوید که نسخه ExpressiveOS شما همیشه به‌روز است و (در صورت لزوم) اطمینان حاصل کنید که ایمیج فروشنده شما به آخرین نسخه توصیه‌شده توسط ExpressiveOS به‌روز است.</string>
+     <string name="trust_feature_encryption">رمزنگاری</string>
+     <string name="trust_feature_encryption_value_enabled">فعال</string>
+     <string name="trust_feature_encryption_value_nolock">به یک صفحه قفل امن نیاز دارد</string>
+diff --git a/res/values-fi/strings.xml b/res/values-fi/strings.xml
+index e75a900..27585a3 100644
+--- a/res/values-fi/strings.xml
++++ b/res/values-fi/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X Asetukset</string>
++    <string name="lineageparts_title">ExpressiveOS Asetukset</string>
+     <string name="loading">Ladataan\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Peruuta</string>
+@@ -467,7 +467,7 @@
+     <string name="trust_feature_selinux_explain">SELinux määrittelee millä prosesseilla on pääsy laitteesi tiedostoihin/polkuihin.\nTämä ehkäisee sovelluksia ja palveluita pääsemästä tiedostoihin joihin niiden ei kuuluisi päästä: tällä tavalla potentiaaliset haitalliset prosessit estetään, ja turvallisuutesi turvataan.</string>
+     <string name="trust_feature_security_patches">Android-tietoturvakorjaukset</string>
+     <string name="trust_feature_security_patches_value_base">Alusta: %1$s\nValmistaja: %2$s</string>
+-    <string name="trust_feature_security_patches_explain">Google julkaisee tietoturvapäivityksiä kuukausittain yhteistyössä alustan valmistajien kanssa korjatakseen ongelmia joita haitalliset sovellukset voisivat käyttää ohittaakseen turvallisuusmäärityksiä ja aiheuttaakseen vahinkoa laitteellesi. Googlen julkaisemat päivitykset lisätään joka kuukausi kaikkiin tuettuihin laitteisiin, mutta suljettuun koodiin tehdyt muutokset voi julkaista vain laitteen valmistaja. Pitääksesi laitteesi turvassa, varmista että käytössä on aina tuore Evolution X-koontiversio, ja (jos mahdollista) laitevalmistajan versio on viimeisin Evolution X:n suosittelema.</string>
++    <string name="trust_feature_security_patches_explain">Google julkaisee tietoturvapäivityksiä kuukausittain yhteistyössä alustan valmistajien kanssa korjatakseen ongelmia joita haitalliset sovellukset voisivat käyttää ohittaakseen turvallisuusmäärityksiä ja aiheuttaakseen vahinkoa laitteellesi. Googlen julkaisemat päivitykset lisätään joka kuukausi kaikkiin tuettuihin laitteisiin, mutta suljettuun koodiin tehdyt muutokset voi julkaista vain laitteen valmistaja. Pitääksesi laitteesi turvassa, varmista että käytössä on aina tuore ExpressiveOS-koontiversio, ja (jos mahdollista) laitevalmistajan versio on viimeisin ExpressiveOS:n suosittelema.</string>
+     <string name="trust_feature_encryption">Salaus</string>
+     <string name="trust_feature_encryption_value_enabled">Käytössä</string>
+     <string name="trust_feature_encryption_value_nolock">Vaatii turvallisen lukitusnäytön</string>
+diff --git a/res/values-fr/strings.xml b/res/values-fr/strings.xml
+index f99fdb9..3ced251 100644
+--- a/res/values-fr/strings.xml
++++ b/res/values-fr/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Paramètres de Evolution X</string>
++    <string name="lineageparts_title">Paramètres de ExpressiveOS</string>
+     <string name="loading">Chargement\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Annuler</string>
+@@ -515,7 +515,7 @@
+     <string name="trust_feature_security_patches_value_new">À jour</string>
+     <string name="trust_feature_security_patches_value_medium">Obsolète de quelques mois</string>
+     <string name="trust_feature_security_patches_value_old">Obsolète</string>
+-    <string name="trust_feature_security_patches_explain">Les correctifs de sécurité sont publiés chaque mois par Google, en coopération avec les fournisseurs de SoC. Ils permettent de corriger des failles que des applications malveillantes sont susceptibles d\'exploiter pour contourner les restrictions de sécurité et endommager votre appareil de façon définitive. Les correctifs fournis par Google sont appliqués chaque mois à tous les appareils compatibles, mais ceux concernant le code propriétaire ne peuvent l\'être que par le fabricant de votre appareil. Pour garantir la sécurité de votre appareil, veillez à toujours utiliser la dernière version de Evolution X et, le cas échéant, mettez à jour votre fichier vendor.img afin qu\'il corresponde à la dernière version recommandée par Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Les correctifs de sécurité sont publiés chaque mois par Google, en coopération avec les fournisseurs de SoC. Ils permettent de corriger des failles que des applications malveillantes sont susceptibles d\'exploiter pour contourner les restrictions de sécurité et endommager votre appareil de façon définitive. Les correctifs fournis par Google sont appliqués chaque mois à tous les appareils compatibles, mais ceux concernant le code propriétaire ne peuvent l\'être que par le fabricant de votre appareil. Pour garantir la sécurité de votre appareil, veillez à toujours utiliser la dernière version de ExpressiveOS et, le cas échéant, mettez à jour votre fichier vendor.img afin qu\'il corresponde à la dernière version recommandée par ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Chiffrement</string>
+     <string name="trust_feature_encryption_value_enabled">Activé</string>
+     <string name="trust_feature_encryption_value_nolock">Écran de verrouillage sécurisé requis</string>
+diff --git a/res/values-fur-rIT/strings.xml b/res/values-fur-rIT/strings.xml
+index aa65a41..6e67edc 100644
+--- a/res/values-fur-rIT/strings.xml
++++ b/res/values-fur-rIT/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Impostazions di Evolution X</string>
++    <string name="lineageparts_title">Impostazions di ExpressiveOS</string>
+     <string name="loading">Daûr a cjariâ\u2026</string>
+     <string name="dlg_ok">Va ben</string>
+     <string name="cancel">Anule</string>
+@@ -507,7 +507,7 @@
+     <string name="trust_feature_security_patches_value_new">Inzornade</string>
+     <string name="trust_feature_security_patches_value_medium">No inzornadis di cualchi mês</string>
+     <string name="trust_feature_security_patches_value_old">No inzornadis</string>
+-    <string name="trust_feature_security_patches_explain">Lis corezions di sigurece a vegnin publicadis ogni mês di Google in cooperazion cui produtôrs di SoC par risolvi problemis che a podaressin vignî sfrutâts da lis aplicazions malevulis par scjavalgjâ lis restrizions di sigurece e provocâ dams permanents al dispositîf. Lis corezions dadis fûr di Google a son aplicadis a ducj i dispositîfs supuartâts, ma chês relativis ai components proprietaris a puedin jessi aplicadis dome dal produtôr dal dispositîf. Par mantignî il dispositîf sigûr, controle che la tô version di Evolution X e sedi simpri inzornade e in câs controle che i components proprietaris, come i firmwares e la imagjin dal vendidôr, a sedin chei racomandâts di Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Lis corezions di sigurece a vegnin publicadis ogni mês di Google in cooperazion cui produtôrs di SoC par risolvi problemis che a podaressin vignî sfrutâts da lis aplicazions malevulis par scjavalgjâ lis restrizions di sigurece e provocâ dams permanents al dispositîf. Lis corezions dadis fûr di Google a son aplicadis a ducj i dispositîfs supuartâts, ma chês relativis ai components proprietaris a puedin jessi aplicadis dome dal produtôr dal dispositîf. Par mantignî il dispositîf sigûr, controle che la tô version di ExpressiveOS e sedi simpri inzornade e in câs controle che i components proprietaris, come i firmwares e la imagjin dal vendidôr, a sedin chei racomandâts di ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Criptazion</string>
+     <string name="trust_feature_encryption_value_enabled">Ative</string>
+     <string name="trust_feature_encryption_value_nolock">E necessite di une schermade di bloc sigure</string>
+diff --git a/res/values-fy-rNL/strings.xml b/res/values-fy-rNL/strings.xml
+index 7d1a9f2..3199ad3 100644
+--- a/res/values-fy-rNL/strings.xml
++++ b/res/values-fy-rNL/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X-ynstellingen</string>
++    <string name="lineageparts_title">ExpressiveOS-ynstellingen</string>
+     <string name="loading">Lade\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Annulearje</string>
+@@ -446,7 +446,7 @@
+     <string name="trust_feature_selinux_explain">SELinux bepaalt hokker prosessen tagong hawwe ta hokker bestannen/mappen op jo apparaat.\nDit foarkomt dat applikaasjes en tsjinsten tagong krije ta bestannen dy\'t se net nedich hawwe: op dizze manier wurdt in potinsjeel kwea-aardich proses beheind en jo feilichheid behâlden.</string>
+     <string name="trust_feature_security_patches">Android-befeiligingspatches</string>
+     <string name="trust_feature_security_patches_value_base">Platfoarm: %1$s\nLeveransier: %2$s</string>
+-    <string name="trust_feature_security_patches_explain">Befeiligingspatches wurde elke moanne troch Google frijjûn yn gearwurking mei SoC-leveransiers om flaters oan te pakken dy\'t misbrûkt wurde kinne troch kweawollende apps om befeiligingsbeheiningen te omsilen en permaninte skea oan jo apparaat te feroarsaakjen. Patches dy\'t troch Google beskikber steld wurde, wurde elke moanne op alle stipe apparaten tapast, mar patches foar bedriuwseigen koade kinne allinnich troch de fabrikant fan jo apparaat tapast wurde. Om jo apparaat feilich te hâlden, moatte jo derfoar soargje dat jo Evolution X-build altyd by-de-tiid is en (wannear fan tapassing) soargje dat jo leveransiers-image fernijd wurdt nei de lêste dy\'t troch Evolution X oanrekommandearre wurdt.</string>
++    <string name="trust_feature_security_patches_explain">Befeiligingspatches wurde elke moanne troch Google frijjûn yn gearwurking mei SoC-leveransiers om flaters oan te pakken dy\'t misbrûkt wurde kinne troch kweawollende apps om befeiligingsbeheiningen te omsilen en permaninte skea oan jo apparaat te feroarsaakjen. Patches dy\'t troch Google beskikber steld wurde, wurde elke moanne op alle stipe apparaten tapast, mar patches foar bedriuwseigen koade kinne allinnich troch de fabrikant fan jo apparaat tapast wurde. Om jo apparaat feilich te hâlden, moatte jo derfoar soargje dat jo ExpressiveOS-build altyd by-de-tiid is en (wannear fan tapassing) soargje dat jo leveransiers-image fernijd wurdt nei de lêste dy\'t troch ExpressiveOS oanrekommandearre wurdt.</string>
+     <string name="trust_feature_encryption">Fersifering</string>
+     <string name="trust_feature_encryption_value_enabled">Ynskeakele</string>
+     <string name="trust_feature_encryption_value_nolock">Fereasket in feilich beskoattelingsskerm</string>
+diff --git a/res/values-ga-rIE/strings.xml b/res/values-ga-rIE/strings.xml
+index cf0cdcb..1e74578 100644
+--- a/res/values-ga-rIE/strings.xml
++++ b/res/values-ga-rIE/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">LineageOS Socruithe</string>
++    <string name="lineageparts_title">ExpressiveOS Socruithe</string>
+     <string name="loading">Ag lódáil\u2026</string>
+     <string name="dlg_ok">Ceart go leor</string>
+     <string name="cancel">Cealaigh</string>
+@@ -517,7 +517,7 @@
+     <string name="trust_feature_security_patches_value_new">Go dáta</string>
+     <string name="trust_feature_security_patches_value_medium">Cúpla mí as dáta</string>
+     <string name="trust_feature_security_patches_value_old">As dáta</string>
+-    <string name="trust_feature_security_patches_explain">Eisíonn Google paistí slándála go míosúil i gcomhar le díoltóirí SoC chun aghaidh a thabhairt ar lochtanna a d’fhéadfadh aipeanna mailíseacha leas a bhaint astu chun srianta slándála a sheachbhóthar agus chun damáiste buan a dhéanamh do do ghléas. Cuirtear paistí a chuireann Google ar fáil gach mí ar gach gléas a dtacaítear leo, ach ní féidir ach le monaróir do ghléis paistí go dtí an cód dílseánaigh a chur i bhfeidhm. Chun do ghléas a choinneáil sábháilte déan cinnte go bhfuil do leagan LineageOS cothrom le dáta i gcónaí, agus (más infheidhme) cinntigh go ndéantar d’íomhá díoltóir a nuashonrú chuig an gceann is déanaí a mhol LineageOS.</string>
++    <string name="trust_feature_security_patches_explain">Eisíonn Google paistí slándála go míosúil i gcomhar le díoltóirí SoC chun aghaidh a thabhairt ar lochtanna a d’fhéadfadh aipeanna mailíseacha leas a bhaint astu chun srianta slándála a sheachbhóthar agus chun damáiste buan a dhéanamh do do ghléas. Cuirtear paistí a chuireann Google ar fáil gach mí ar gach gléas a dtacaítear leo, ach ní féidir ach le monaróir do ghléis paistí go dtí an cód dílseánaigh a chur i bhfeidhm. Chun do ghléas a choinneáil sábháilte déan cinnte go bhfuil do leagan ExpressiveOS cothrom le dáta i gcónaí, agus (más infheidhme) cinntigh go ndéantar d’íomhá díoltóir a nuashonrú chuig an gceann is déanaí a mhol ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Criptiú</string>
+     <string name="trust_feature_encryption_value_enabled">Cumasaithe</string>
+     <string name="trust_feature_encryption_value_nolock">Teastaíonn scáileán glas slán</string>
+diff --git a/res/values-gd/strings.xml b/res/values-gd/strings.xml
+index dd7829f..1bf53fc 100644
+--- a/res/values-gd/strings.xml
++++ b/res/values-gd/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Roghainnean Evolution X</string>
++    <string name="lineageparts_title">Roghainnean ExpressiveOS</string>
+     <string name="loading">’Ga luchdadh\u2026</string>
+     <string name="dlg_ok">Ceart ma-thà</string>
+     <string name="cancel">Sguir dheth</string>
+@@ -481,7 +481,7 @@
+     <string name="trust_feature_security_patches_value_new">Cho ùr ’s a ghabhas</string>
+     <string name="trust_feature_security_patches_value_medium">Corra mìos ro shean</string>
+     <string name="trust_feature_security_patches_value_old">Dh’fhalbh an ùine air</string>
+-    <string name="trust_feature_security_patches_explain">Sgaoilidh Google ’s reiceadairean SoC brèidean tèarainteachd gach mìos a dhèiligeas ri easbhaidhean a b’ urrainn do dh’aplacaidean droch-rùnach a chleachdadh airson cuingeachaidhean tèarainteachd a sheachnadh is cron maireannach a dhèanamh air an uidheam agad. Thèid na brèidean a chuireas Google gu làimh a chur an sàs gach mìos air gach uidheam ris a bheil taic ach cha ghabh brèidean air còd fo shealbh a chur an sàs ach le dèanadair an uidheim agad. Airson an t-uidheam agad a chumail sàbhailte, dèan cinnteach gu bheil an togail agad dhe Evolution X cho ùr ’s a ghabhas an-còmhnaidh agus (ma tha seo iomchaidh) dèan cinnteach gun deach ìomhaigh an reiceadair agad ùrachadh dhan fhear as ùire a mholas Evolution X dhut.</string>
++    <string name="trust_feature_security_patches_explain">Sgaoilidh Google ’s reiceadairean SoC brèidean tèarainteachd gach mìos a dhèiligeas ri easbhaidhean a b’ urrainn do dh’aplacaidean droch-rùnach a chleachdadh airson cuingeachaidhean tèarainteachd a sheachnadh is cron maireannach a dhèanamh air an uidheam agad. Thèid na brèidean a chuireas Google gu làimh a chur an sàs gach mìos air gach uidheam ris a bheil taic ach cha ghabh brèidean air còd fo shealbh a chur an sàs ach le dèanadair an uidheim agad. Airson an t-uidheam agad a chumail sàbhailte, dèan cinnteach gu bheil an togail agad dhe ExpressiveOS cho ùr ’s a ghabhas an-còmhnaidh agus (ma tha seo iomchaidh) dèan cinnteach gun deach ìomhaigh an reiceadair agad ùrachadh dhan fhear as ùire a mholas ExpressiveOS dhut.</string>
+     <string name="trust_feature_encryption">Crioptachadh</string>
+     <string name="trust_feature_encryption_value_enabled">An comas</string>
+     <string name="trust_feature_encryption_value_nolock">Feumach air sgrìn-ghlasaidh thèarainte</string>
+diff --git a/res/values-gl/strings.xml b/res/values-gl/strings.xml
+index 586f7f8..755a24c 100644
+--- a/res/values-gl/strings.xml
++++ b/res/values-gl/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Configuración de Evolution X</string>
++    <string name="lineageparts_title">Configuración de ExpressiveOS</string>
+     <string name="loading">Cargando\u2026</string>
+     <string name="dlg_ok">ACEPTAR</string>
+     <string name="cancel">Cancelar</string>
+@@ -480,7 +480,7 @@
+     <string name="trust_feature_security_patches_value_new">Actualizada</string>
+     <string name="trust_feature_security_patches_value_medium">Desactualizada desde hai uns meses</string>
+     <string name="trust_feature_security_patches_value_old">Desactualizada</string>
+-    <string name="trust_feature_security_patches_explain">Os parches de seguranza son liberados mensualmente por Google coa cooperación dos fabricantes de SoC para corrixir fallos que poden ser aproveitados por aplicacións maliciosas para saltar as restricións de seguranza e causar danos permanentes o teu dispositivo. Os parches dispoñíbeis dende Google aplícanse mensualmente en tódolos dispositivos compatíbeis, agás os de código propietario que serán aplicados polo fabricante do teu dispositivo. Para manter o teu dispositivo seguro verifica que a versión do Evolution X está actualizada, e (se aplica) asegúrate que a imaxe do teu fabricante está actualizada á máis recente recomendada polo equipo do Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Os parches de seguranza son liberados mensualmente por Google coa cooperación dos fabricantes de SoC para corrixir fallos que poden ser aproveitados por aplicacións maliciosas para saltar as restricións de seguranza e causar danos permanentes o teu dispositivo. Os parches dispoñíbeis dende Google aplícanse mensualmente en tódolos dispositivos compatíbeis, agás os de código propietario que serán aplicados polo fabricante do teu dispositivo. Para manter o teu dispositivo seguro verifica que a versión do ExpressiveOS está actualizada, e (se aplica) asegúrate que a imaxe do teu fabricante está actualizada á máis recente recomendada polo equipo do ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Cifrado</string>
+     <string name="trust_feature_encryption_value_enabled">Activado</string>
+     <string name="trust_feature_encryption_value_nolock">Precisas dunha pantalla de bloqueo segura</string>
+diff --git a/res/values-hr/strings.xml b/res/values-hr/strings.xml
+index 2d17e13..1136e2c 100644
+--- a/res/values-hr/strings.xml
++++ b/res/values-hr/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X Postavke</string>
++    <string name="lineageparts_title">ExpressiveOS Postavke</string>
+     <string name="loading">Učitavanje\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Odustani</string>
+diff --git a/res/values-hu/strings.xml b/res/values-hu/strings.xml
+index c61a6cd..2aaac28 100644
+--- a/res/values-hu/strings.xml
++++ b/res/values-hu/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X - Beállítások</string>
++    <string name="lineageparts_title">ExpressiveOS - Beállítások</string>
+     <string name="loading">Betöltés\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Mégse</string>
+@@ -516,7 +516,7 @@
+     <string name="trust_feature_security_patches_value_new">Naprakész</string>
+     <string name="trust_feature_security_patches_value_medium">Pár hónapja elavult</string>
+     <string name="trust_feature_security_patches_value_old">Elavult</string>
+-    <string name="trust_feature_security_patches_explain">Az Androidos biztonsági hibajavító csomagok havonta jelennek meg a Google és a SoC gyártók jóvoltából, a rendszerben fellépő olyan hibák kezelésére, amelyeket a rosszindulatú alkalmazások kihasználhatnak a biztonsági korlátozások megkerülésére, és ideiglenesen vagy tartósan károsíthatják a készüléket.\nMíg a platformjavítások havonta frissülnek globálisan, a gyártói javításokat csak időnként frissítik az OEM-eken keresztül.\nA készülékbiztonság megőrzéséhez győződjön meg róla, hogy az Ön Evolution X kiadása mindig naprakész-e, és (ha elérhető) biztosítja, hogy a gyártói képet a Evolution X által ajánlott legfrissebbre frissítse.</string>
++    <string name="trust_feature_security_patches_explain">Az Androidos biztonsági hibajavító csomagok havonta jelennek meg a Google és a SoC gyártók jóvoltából, a rendszerben fellépő olyan hibák kezelésére, amelyeket a rosszindulatú alkalmazások kihasználhatnak a biztonsági korlátozások megkerülésére, és ideiglenesen vagy tartósan károsíthatják a készüléket.\nMíg a platformjavítások havonta frissülnek globálisan, a gyártói javításokat csak időnként frissítik az OEM-eken keresztül.\nA készülékbiztonság megőrzéséhez győződjön meg róla, hogy az Ön ExpressiveOS kiadása mindig naprakész-e, és (ha elérhető) biztosítja, hogy a gyártói képet az ExpressiveOS által ajánlott legfrissebbre frissítse.</string>
+     <string name="trust_feature_encryption">Titkosítás</string>
+     <string name="trust_feature_encryption_value_enabled">Engedélyezve</string>
+     <string name="trust_feature_encryption_value_nolock">Biztonságos zárolási képernyő szükséges</string>
+diff --git a/res/values-in/strings.xml b/res/values-in/strings.xml
+index d4d8253..af2578b 100644
+--- a/res/values-in/strings.xml
++++ b/res/values-in/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Setelan Evolution X</string>
++    <string name="lineageparts_title">Setelan ExpressiveOS</string>
+     <string name="loading">Memuat\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Batal</string>
+diff --git a/res/values-is/strings.xml b/res/values-is/strings.xml
+index 1f0f3fb..b5726af 100644
+--- a/res/values-is/strings.xml
++++ b/res/values-is/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X stillingar</string>
++    <string name="lineageparts_title">ExpressiveOS stillingar</string>
+     <string name="loading">Hleð inn\u2026</string>
+     <string name="dlg_ok">Í lagi</string>
+     <string name="cancel">Hætta við</string>
+@@ -488,7 +488,7 @@
+     <string name="trust_feature_security_patches_value_new">Nýjasta útgáfa</string>
+     <string name="trust_feature_security_patches_value_medium">Nokkra mánuði úr takti</string>
+     <string name="trust_feature_security_patches_value_old">Úrelt</string>
+-    <string name="trust_feature_security_patches_explain">Google gefur út öryggisplástra mánaðarlega í sambandi við SoC öryggissérfræðinga til að bæta úr göllum, sem óvinveitt forrit gætu nýtt sér til að komast framhjá öryggistakmörkunum og þannig valdið alvarlegum skemmdum á kerfinu þínu. Öryggisplástrar Google eru settir inn í hverjum mánuði á öll studd tæki, en öryggisplástra á séreignakóða getur einungis framleiðandi tækisins sett inn. Til að halda tækinu þinu öruggu ættirðu að sjá til þess að útgáfa þín af Evolution X sé ávallt af nýjustu gerð og (ef við á) tryggja að kerfisdiskmynd framleiðanda sé uppfærð í þá nýjustu sem Evolution X mælir með.</string>
++    <string name="trust_feature_security_patches_explain">Google gefur út öryggisplástra mánaðarlega í sambandi við SoC öryggissérfræðinga til að bæta úr göllum, sem óvinveitt forrit gætu nýtt sér til að komast framhjá öryggistakmörkunum og þannig valdið alvarlegum skemmdum á kerfinu þínu. Öryggisplástrar Google eru settir inn í hverjum mánuði á öll studd tæki, en öryggisplástra á séreignakóða getur einungis framleiðandi tækisins sett inn. Til að halda tækinu þinu öruggu ættirðu að sjá til þess að útgáfa þín af ExpressiveOS sé ávallt af nýjustu gerð og (ef við á) tryggja að kerfisdiskmynd framleiðanda sé uppfærð í þá nýjustu sem ExpressiveOS mælir með.</string>
+     <string name="trust_feature_encryption">Dulritun</string>
+     <string name="trust_feature_encryption_value_enabled">Virkt</string>
+     <string name="trust_feature_encryption_value_nolock">Þarf öruggan læsiskjá</string>
+diff --git a/res/values-it/strings.xml b/res/values-it/strings.xml
+index 841809c..dae0cb2 100644
+--- a/res/values-it/strings.xml
++++ b/res/values-it/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Impostazioni Evolution X</string>
++    <string name="lineageparts_title">Impostazioni ExpressiveOS</string>
+     <string name="loading">Caricamento\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Annulla</string>
+@@ -515,7 +515,7 @@
+     <string name="trust_feature_security_patches_value_new">Aggiornate</string>
+     <string name="trust_feature_security_patches_value_medium">Non aggiornate da qualche mese</string>
+     <string name="trust_feature_security_patches_value_old">Non aggiornate</string>
+-    <string name="trust_feature_security_patches_explain">Le patch di sicurezza vengono rilasciate mensilmente da Google in cooperazione con i produttori di SoC per risolvere problemi che potrebbero essere sfruttati dalle app dannose per aggirare le restrizioni di sicurezza e causare danni permanenti al dispositivo. Le patch rese disponibili da Google sono applicate a tutti i dispositivi supportati, ma quelle relative ai componenti proprietari possono essere applicati solo dal produttore del dispositivo. Per mantenere il dispositivo sicuro, controlla che la tua versione di Evolution X sia sempre aggiornata ed eventualmente assicurati che i componenti proprietari come firmware e immagine vendor siano quelli raccomandati da Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Le patch di sicurezza vengono rilasciate mensilmente da Google in cooperazione con i produttori di SoC per risolvere problemi che potrebbero essere sfruttati dalle app dannose per aggirare le restrizioni di sicurezza e causare danni permanenti al dispositivo. Le patch rese disponibili da Google sono applicate a tutti i dispositivi supportati, ma quelle relative ai componenti proprietari possono essere applicati solo dal produttore del dispositivo. Per mantenere il dispositivo sicuro, controlla che la tua versione di ExpressiveOS sia sempre aggiornata ed eventualmente assicurati che i componenti proprietari come firmware e immagine vendor siano quelli raccomandati da ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Cifratura</string>
+     <string name="trust_feature_encryption_value_enabled">Attiva</string>
+     <string name="trust_feature_encryption_value_nolock">Necessita di un blocco schermo sicuro</string>
+diff --git a/res/values-iw/strings.xml b/res/values-iw/strings.xml
+index d861bbf..762d0aa 100644
+--- a/res/values-iw/strings.xml
++++ b/res/values-iw/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">הגדרות Evolution X</string>
++    <string name="lineageparts_title">הגדרות ExpressiveOS</string>
+     <string name="loading">טוען\u2026</string>
+     <string name="dlg_ok">אישור</string>
+     <string name="cancel">ביטול</string>
+@@ -515,7 +515,7 @@
+     <string name="trust_feature_security_patches_value_new">עדכני</string>
+     <string name="trust_feature_security_patches_value_medium">לא מעודכן כבר כמה חודשים</string>
+     <string name="trust_feature_security_patches_value_old">לא עדכני</string>
+-    <string name="trust_feature_security_patches_explain">עדכוני אבטחה מתפרסמים מדי חודש על ידי Google בשיתוף פעולה עם יצרני מערכות על שבב על מנת לפתור פגמים שיכולים להיות מנוצלים על ידי יישומים זדוניים במטרה לעקוף מגבלות אבטחה ולגרום נזק קבוע למכשירך. העדכונים המוצעים על ידי Google מוחלים על כל ההתקנים התומכים, אך עדכונים לקוד קנייני ניתנים להשמה אך ורק על ידי יצרן המכשיר שלך. על מנת לשמור על אבטחת מכשירך, יש לוודא כי גרסת Evolution X שברשותך תמיד עדכנית, וכמו כן (במידה ונדרש)  יש לוודא כי תמונת המערכת של היצרן מעודכנת לגרסה האחרונה המומלצת על די Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">עדכוני אבטחה מתפרסמים מדי חודש על ידי Google בשיתוף פעולה עם יצרני מערכות על שבב על מנת לפתור פגמים שיכולים להיות מנוצלים על ידי יישומים זדוניים במטרה לעקוף מגבלות אבטחה ולגרום נזק קבוע למכשירך. העדכונים המוצעים על ידי Google מוחלים על כל ההתקנים התומכים, אך עדכונים לקוד קנייני ניתנים להשמה אך ורק על ידי יצרן המכשיר שלך. על מנת לשמור על אבטחת מכשירך, יש לוודא כי גרסת ExpressiveOS שברשותך תמיד עדכנית, וכמו כן (במידה ונדרש)  יש לוודא כי תמונת המערכת של היצרן מעודכנת לגרסה האחרונה המומלצת על די ExpressiveOS.</string>
+     <string name="trust_feature_encryption">הצפנה</string>
+     <string name="trust_feature_encryption_value_enabled">מופעלת</string>
+     <string name="trust_feature_encryption_value_nolock">נדרשת נעילת מסך מאובטחת</string>
+diff --git a/res/values-ja/strings.xml b/res/values-ja/strings.xml
+index aca8c49..bd76053 100644
+--- a/res/values-ja/strings.xml
++++ b/res/values-ja/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X の設定</string>
++    <string name="lineageparts_title">ExpressiveOS の設定</string>
+     <string name="loading">読み込み中\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">キャンセル</string>
+diff --git a/res/values-ka/strings.xml b/res/values-ka/strings.xml
+index daa85d1..0b5618d 100644
+--- a/res/values-ka/strings.xml
++++ b/res/values-ka/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X პარამეტრები</string>
++    <string name="lineageparts_title">ExpressiveOS პარამეტრები</string>
+     <string name="loading">იტვირთება\u2026</string>
+     <string name="dlg_ok">კარგი</string>
+     <string name="cancel">გაუქმება</string>
+@@ -511,7 +511,7 @@
+     <string name="trust_feature_security_patches_value_new">განახლებულია</string>
+     <string name="trust_feature_security_patches_value_medium">რამდენიმე თვეა გასაახლებელია</string>
+     <string name="trust_feature_security_patches_value_old">გასაახლებელია</string>
+-    <string name="trust_feature_security_patches_explain">უსაფრთხოების შესწორებებს Google ყოველთვიურად უშვებს მწარმოებლებთან თანამშრომლობით, რომ აღმოიფხვრას სისუსტეები, რომელთაც მავნე პროგრამები იყენებენ დაცვის გვერდის ასავლელად და მოწყობილობისთვის გამოუსწორებელი ზიანის მისაყენებლად. შესწორებებს, რომელთაც უზრუნველყოფს Google, ყოველთვიურად მიიღებს ყველა მხარდაჭერილი მოწყობილობა, მაგრამ იმ შესწორებების მიღება, რომლებიც დახურულ კოდს შეიცავს, მხოლოდ მოწყობილობის უშუალო მწარმოებლისგან შეიძლება. თქვენი მოწყობილობის უსაფრთხოებისთვის მუდმივად განაახლეთ Evolution X-ანაწყობი და ამასთანავე დარწმუნდით (თუ ესადაგება თქვენს შემთხვევას), რომ მწარმოებლის ის გამოშვებაც უახლესი გაქვთ, რომელსაც მხარს უჭერს Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">უსაფრთხოების შესწორებებს Google ყოველთვიურად უშვებს მწარმოებლებთან თანამშრომლობით, რომ აღმოიფხვრას სისუსტეები, რომელთაც მავნე პროგრამები იყენებენ დაცვის გვერდის ასავლელად და მოწყობილობისთვის გამოუსწორებელი ზიანის მისაყენებლად. შესწორებებს, რომელთაც უზრუნველყოფს Google, ყოველთვიურად მიიღებს ყველა მხარდაჭერილი მოწყობილობა, მაგრამ იმ შესწორებების მიღება, რომლებიც დახურულ კოდს შეიცავს, მხოლოდ მოწყობილობის უშუალო მწარმოებლისგან შეიძლება. თქვენი მოწყობილობის უსაფრთხოებისთვის მუდმივად განაახლეთ ExpressiveOS-ანაწყობი და ამასთანავე დარწმუნდით (თუ ესადაგება თქვენს შემთხვევას), რომ მწარმოებლის ის გამოშვებაც უახლესი გაქვთ, რომელსაც მხარს უჭერს ExpressiveOS.</string>
+     <string name="trust_feature_encryption">დაშიფვრა</string>
+     <string name="trust_feature_encryption_value_enabled">ჩართული</string>
+     <string name="trust_feature_encryption_value_nolock">საჭიროებს ეკრანის დაცულ ჩამკეტს</string>
+diff --git a/res/values-kab-rDZ/strings.xml b/res/values-kab-rDZ/strings.xml
+index 2595473..b6499ca 100644
+--- a/res/values-kab-rDZ/strings.xml
++++ b/res/values-kab-rDZ/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Iγewwaṛen n Evolution X</string>
++    <string name="lineageparts_title">Iγewwaṛen n ExpressiveOS</string>
+     <string name="loading">Asali\u2026</string>
+     <string name="dlg_ok">Ok</string>
+     <string name="cancel">Sefex</string>
+diff --git a/res/values-kn/strings.xml b/res/values-kn/strings.xml
+index cd9ee67..30847bd 100644
+--- a/res/values-kn/strings.xml
++++ b/res/values-kn/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X ಅಳವಡಿಕೆಗಳು</string>
++    <string name="lineageparts_title">ExpressiveOS ಅಳವಡಿಕೆಗಳು</string>
+     <string name="loading">ಭರಿಸುತ್ತಿದೆ\u2026</string>
+     <string name="dlg_ok">ಸರಿ</string>
+     <string name="cancel">ರದ್ದು</string>
+@@ -437,7 +437,7 @@
+     <string name="trust_feature_selinux_explain">SELinux ನಿಮ್ಮ ಯಂತ್ರದಲ್ಲಿನ ಯಾವ ಕಡತಗಳು/ಮಾರ್ಗಗಳಿಗೆ ಯಾವ ಆಪ್ಗಳು ಎಟುಕುಹಕ್ಕನ್ನು ಹೊಂದಿವೆಯಂದು ಆದೇಶಿಸುತ್ತದೆ.\nಇದರಿಂದ ಆಪ್ಗಳು ಮತ್ತು ಸೇವೆಗಳು ಎಟುಕುಹಕ್ಕಿಲ್ಲದ ಕಡತಗಳನ್ನು ಎಟುಕುವುದನ್ನು ತಡೆಯುತ್ತದೆ. ಈ ರೀತಿ ಸಂಭಾವ್ಯ ದುರುದ್ದೇಶಪೂರಿತ ಆಪ್ ಮೊಟಕಾಗುತ್ತದೆ ಮತ್ತು ನಿಮ್ಮ ಭದ್ರತೆ ಸುರಕ್ಷ.</string>
+     <string name="trust_feature_security_patches">Android ಭದ್ರತಾ ತೇಪೆಗಳು</string>
+     <string name="trust_feature_security_patches_value_base">ವೇದಿಕೆ: %1$s\nತಯಾರಕ: %2$s</string>
+-    <string name="trust_feature_security_patches_explain">ಭದ್ರತಾ ನಿರ್ಬಂಧಗಳನ್ನು ತಪ್ಪಿಸಿ ಮತ್ತು ನಿಮ್ಮ ಸಾಧನಕ್ಕೆ ಶಾಶ್ವತ ಹಾನಿಯನ್ನು ಉಂಟುಮಾಡಲು ದುರುದ್ದೇಶಪೂರಿತ ಆಪ್ಗಳು ಬಳಸಿಕೊಳ್ಳಬಹುದಾದ ದೋಷಗಳನ್ನು ಪರಿಹರಿಸಲು ಭದ್ರತಾ ತೇಪೆಗಳನ್ನು Google SoC ಮಾರಾಟಗಾರರ ಸಹಯೋಗದೊಂದಿಗೆ ಮಾಸಿಕವಾಗಿ ಬಿಡುಗಡೆ ಮಾಡುತ್ತದೆ. Google ನಿಂದ ಲಭ್ಯವಿರುವ ತೇಪೆಗಳನ್ನು ಎಲ್ಲಾ ಬೆಂಬಲಿತ ಯಂತ್ರಗಳಲ್ಲಿ ಅನ್ವಯಿಸಲಾಗುತ್ತದೆ, ಆದರೆ ಸ್ವಾಮ್ಯದ ತಂತ್ರಾಂಶ ತೇಪೆಗಳನ್ನು ನಿಮ್ಮ ಯಂತ್ರದ ತಯಾರಕರಿಂದ ಮಾತ್ರ ಅನ್ವಯಿಸಬಹುದು. ನಿಮ್ಮ ಯಂತ್ರವನ್ನು ಸುರಕ್ಷಿತವಾಗಿಡಲು Evolution X ಸದಾ ನವೀಕೃತವಾಗಿರುತ್ತದೆ ಮತ್ತು ಸಾಧ್ಯವಾದರೆ ನಿಮ್ಮ ಮಾರಾಟಗಾರರ ತಂತ್ರಾಂಶದ ಆವೃತ್ತಿ Evolution X ಸಲಹೆಯಂತೆ ನವೀಕರಿಸಲಾಗಿದೆ ಎಂದು ಖಚಿತಪಡಿಸಿಕೊಳ್ಳಿ.</string>
++    <string name="trust_feature_security_patches_explain">ಭದ್ರತಾ ನಿರ್ಬಂಧಗಳನ್ನು ತಪ್ಪಿಸಿ ಮತ್ತು ನಿಮ್ಮ ಸಾಧನಕ್ಕೆ ಶಾಶ್ವತ ಹಾನಿಯನ್ನು ಉಂಟುಮಾಡಲು ದುರುದ್ದೇಶಪೂರಿತ ಆಪ್ಗಳು ಬಳಸಿಕೊಳ್ಳಬಹುದಾದ ದೋಷಗಳನ್ನು ಪರಿಹರಿಸಲು ಭದ್ರತಾ ತೇಪೆಗಳನ್ನು Google SoC ಮಾರಾಟಗಾರರ ಸಹಯೋಗದೊಂದಿಗೆ ಮಾಸಿಕವಾಗಿ ಬಿಡುಗಡೆ ಮಾಡುತ್ತದೆ. Google ನಿಂದ ಲಭ್ಯವಿರುವ ತೇಪೆಗಳನ್ನು ಎಲ್ಲಾ ಬೆಂಬಲಿತ ಯಂತ್ರಗಳಲ್ಲಿ ಅನ್ವಯಿಸಲಾಗುತ್ತದೆ, ಆದರೆ ಸ್ವಾಮ್ಯದ ತಂತ್ರಾಂಶ ತೇಪೆಗಳನ್ನು ನಿಮ್ಮ ಯಂತ್ರದ ತಯಾರಕರಿಂದ ಮಾತ್ರ ಅನ್ವಯಿಸಬಹುದು. ನಿಮ್ಮ ಯಂತ್ರವನ್ನು ಸುರಕ್ಷಿತವಾಗಿಡಲು ExpressiveOS ಸದಾ ನವೀಕೃತವಾಗಿರುತ್ತದೆ ಮತ್ತು ಸಾಧ್ಯವಾದರೆ ನಿಮ್ಮ ಮಾರಾಟಗಾರರ ತಂತ್ರಾಂಶದ ಆವೃತ್ತಿ ExpressiveOS ಸಲಹೆಯಂತೆ ನವೀಕರಿಸಲಾಗಿದೆ ಎಂದು ಖಚಿತಪಡಿಸಿಕೊಳ್ಳಿ.</string>
+     <string name="trust_feature_encryption">ಗುಪ್ತಲಿಪೀಕರಣ</string>
+     <string name="trust_feature_encryption_value_enabled">ಸಶಕ್ತ</string>
+     <string name="trust_feature_encryption_value_nolock">ಬಂಧಿತ ಪರದೆಯೊಂದು ಬೇಕು</string>
+diff --git a/res/values-ko/strings.xml b/res/values-ko/strings.xml
+index 3a20c1f..2c6be62 100644
+--- a/res/values-ko/strings.xml
++++ b/res/values-ko/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X 설정</string>
++    <string name="lineageparts_title">ExpressiveOS 설정</string>
+     <string name="loading">불러오는 중\u2026</string>
+     <string name="dlg_ok">확인</string>
+     <string name="cancel">취소</string>
+@@ -514,7 +514,7 @@
+     <string name="trust_feature_security_patches_value_new">최신</string>
+     <string name="trust_feature_security_patches_value_medium">수 개월 지남</string>
+     <string name="trust_feature_security_patches_value_old">오래됨</string>
+-    <string name="trust_feature_security_patches_explain">보안 패치는 Google이 SoC 공급업체와의 협력으로 매월 발표됩니다. 이 보안 패치는 유해한 앱을 통해 보안을 우회하여 기기를 영구적으로 손상시킬 수 있는 취약점을 막아냅니다. Google에서 제공하는 패치는 지원하는 모든 기기에 적용할 수 있으나, 비공개 코드에 대한 패치는 기기의 공급업체에서 패치를 제공해야만 적용할 수 있습니다. 기기를 보호하려면 Evolution X를 항상 최신 버전으로 업데이트하고, 가능하면 기기의 공급업체 이미지가 Evolution X에서 권장하는 최신 이미지인지 확인하세요.</string>
++    <string name="trust_feature_security_patches_explain">보안 패치는 Google이 SoC 공급업체와의 협력으로 매월 발표됩니다. 이 보안 패치는 유해한 앱을 통해 보안을 우회하여 기기를 영구적으로 손상시킬 수 있는 취약점을 막아냅니다. Google에서 제공하는 패치는 지원하는 모든 기기에 적용할 수 있으나, 비공개 코드에 대한 패치는 기기의 공급업체에서 패치를 제공해야만 적용할 수 있습니다. 기기를 보호하려면 ExpressiveOS를 항상 최신 버전으로 업데이트하고, 가능하면 기기의 공급업체 이미지가 ExpressiveOS에서 권장하는 최신 이미지인지 확인하세요.</string>
+     <string name="trust_feature_encryption">암호화</string>
+     <string name="trust_feature_encryption_value_enabled">활성화됨</string>
+     <string name="trust_feature_encryption_value_nolock">보안성 높은 잠금 화면 필요</string>
+diff --git a/res/values-nl/strings.xml b/res/values-nl/strings.xml
+index c48a5eb..4a0c922 100644
+--- a/res/values-nl/strings.xml
++++ b/res/values-nl/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X-instellingen</string>
++    <string name="lineageparts_title">ExpressiveOS-instellingen</string>
+     <string name="loading">Aan het laden\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Annuleer</string>
+@@ -505,7 +505,7 @@
+     <string name="trust_feature_security_patches_value_new">Bijgewerkt</string>
+     <string name="trust_feature_security_patches_value_medium">Een paar maanden oud</string>
+     <string name="trust_feature_security_patches_value_old">Verouderd</string>
+-    <string name="trust_feature_security_patches_explain">Beveiligingspatches worden maandelijks door Google vrijgegeven in samenwerking met SoC-leveranciers om fouten aan te pakken die kunnen worden uitgebuit door kwaadwillende apps om beveiligingsbeperkingen te omzeilen en permanente schade aan uw apparaat te veroorzaken. Patches die door Google beschikbaar worden gesteld, worden elke maand op alle ondersteunde apparaten toegepast, maar patches voor bedrijfseigen code kunnen alleen door de fabrikant van uw apparaat worden toegepast. Om uw apparaat veilig te houden, moet u ervoor zorgen dat uw Evolution X-build altijd up-to-date is en (indien van toepassing) zorgen dat uw leveranciers-image wordt geüpdatet naar de laatste die door Evolution X wordt aanbevolen.</string>
++    <string name="trust_feature_security_patches_explain">Beveiligingspatches worden maandelijks door Google vrijgegeven in samenwerking met SoC-leveranciers om fouten aan te pakken die kunnen worden uitgebuit door kwaadwillende apps om beveiligingsbeperkingen te omzeilen en permanente schade aan uw apparaat te veroorzaken. Patches die door Google beschikbaar worden gesteld, worden elke maand op alle ondersteunde apparaten toegepast, maar patches voor bedrijfseigen code kunnen alleen door de fabrikant van uw apparaat worden toegepast. Om uw apparaat veilig te houden, moet u ervoor zorgen dat uw ExpressiveOS-build altijd up-to-date is en (indien van toepassing) zorgen dat uw leveranciers-image wordt geüpdatet naar de laatste die door ExpressiveOS wordt aanbevolen.</string>
+     <string name="trust_feature_encryption">Encryptie</string>
+     <string name="trust_feature_encryption_value_enabled">Ingeschakeld</string>
+     <string name="trust_feature_encryption_value_nolock">Vereist een veilig vergrendelingsscherm</string>
+diff --git a/res/values-nn-rNO/strings.xml b/res/values-nn-rNO/strings.xml
+index 41c4e5e..fa4ec76 100644
+--- a/res/values-nn-rNO/strings.xml
++++ b/res/values-nn-rNO/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">LineageOS-innstillingar</string>
++    <string name="lineageparts_title">ExpressiveOS-innstillingar</string>
+     <string name="loading">Lastar inn \u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Avbryt</string>
+@@ -515,7 +515,7 @@
+     <string name="trust_feature_security_patches_value_new">Oppdatert</string>
+     <string name="trust_feature_security_patches_value_medium">Nokre månader gamal</string>
+     <string name="trust_feature_security_patches_value_old">Utdatert</string>
+-    <string name="trust_feature_security_patches_explain">Sikkerheitsoppdateringar vert gjevne ut kvar månad av Google i samarbeid med brikkeleverandørar for å tetta hol som kan utnyttast av skadelege appar for å gå utanom sikkerheitsavgrensingar og gjera varig skade på eininga di. Oppdateringar frå Google vert lagde inn kvar månad på alle støtta einingar, men oppdateringar for produsenten sin eigen kode kan berre leggjast inn av produsenten sjølv. For å halda eininga di trygg må du fylgja med på at LineageOS-versjonen din alltid er oppdatert, og (dersom aktuelt) sjå til at leverandørbiletet ditt er oppdatert til det nyaste som LineageOS tilrår.</string>
++    <string name="trust_feature_security_patches_explain">Sikkerheitsoppdateringar vert gjevne ut kvar månad av Google i samarbeid med brikkeleverandørar for å tetta hol som kan utnyttast av skadelege appar for å gå utanom sikkerheitsavgrensingar og gjera varig skade på eininga di. Oppdateringar frå Google vert lagde inn kvar månad på alle støtta einingar, men oppdateringar for produsenten sin eigen kode kan berre leggjast inn av produsenten sjølv. For å halda eininga di trygg må du fylgja med på at ExpressiveOS-versjonen din alltid er oppdatert, og (dersom aktuelt) sjå til at leverandørbiletet ditt er oppdatert til det nyaste som ExpressiveOS tilrår.</string>
+     <string name="trust_feature_encryption">Kryptering</string>
+     <string name="trust_feature_encryption_value_enabled">Påslått</string>
+     <string name="trust_feature_encryption_value_nolock">Treng ein trygg skjermlås</string>
+diff --git a/res/values-pl/strings.xml b/res/values-pl/strings.xml
+index f41243f..b7f87ef 100644
+--- a/res/values-pl/strings.xml
++++ b/res/values-pl/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Ustawienia Evolution X</string>
++    <string name="lineageparts_title">Ustawienia ExpressiveOS</string>
+     <string name="loading">Ładowanie\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Anuluj</string>
+@@ -517,7 +517,7 @@
+     <string name="trust_feature_security_patches_value_new">Aktualne</string>
+     <string name="trust_feature_security_patches_value_medium">Przestarzałe od kilku miesięcy</string>
+     <string name="trust_feature_security_patches_value_old">Nieaktualne</string>
+-    <string name="trust_feature_security_patches_explain">Aktualizacje zabezpieczeń są wydawane co miesiąc przez Google w kooperacji z dostawcami SoC w celu łatania luk w systemie, które mogą zostać wykorzystane przez złośliwe oprogramowanie w celu obejścia zabezpieczeń oraz wyrządzenia trwałych szkód w twoim urządzeniu. Łatki udostępniane przez Google są aplikowane w każdym miesiącu na wszystkich wspieranych urządzeniach, ale poprawki dla kodu własnościowego mogą być aplikowane tylko przez producenta twojego telefonu. By utrzymać twój telefon bezpiecznym, zawsze używaj najnowsze wersji Evolution X i (jeżeli dotyczy) twój obraz vendor jest zaktualizowany do najnowszej wersji zalecanej przez Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Aktualizacje zabezpieczeń są wydawane co miesiąc przez Google w kooperacji z dostawcami SoC w celu łatania luk w systemie, które mogą zostać wykorzystane przez złośliwe oprogramowanie w celu obejścia zabezpieczeń oraz wyrządzenia trwałych szkód w twoim urządzeniu. Łatki udostępniane przez Google są aplikowane w każdym miesiącu na wszystkich wspieranych urządzeniach, ale poprawki dla kodu własnościowego mogą być aplikowane tylko przez producenta twojego telefonu. By utrzymać twój telefon bezpiecznym, zawsze używaj najnowsze wersji ExpressiveOS i (jeżeli dotyczy) twój obraz vendor jest zaktualizowany do najnowszej wersji zalecanej przez ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Szyfrowanie</string>
+     <string name="trust_feature_encryption_value_enabled">Włączono</string>
+     <string name="trust_feature_encryption_value_nolock">Wymaga zabezpieczonego ekranu blokady</string>
+diff --git a/res/values-pt-rBR/strings.xml b/res/values-pt-rBR/strings.xml
+index f1e8fc3..dbf7be7 100644
+--- a/res/values-pt-rBR/strings.xml
++++ b/res/values-pt-rBR/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Configurações do Evolution X</string>
++    <string name="lineageparts_title">Configurações do ExpressiveOS</string>
+     <string name="loading">Carregando\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Cancelar</string>
+@@ -515,7 +515,7 @@
+     <string name="trust_feature_security_patches_value_new">Atualizado</string>
+     <string name="trust_feature_security_patches_value_medium">Desatualizado há alguns meses</string>
+     <string name="trust_feature_security_patches_value_old">Desatualizado</string>
+-    <string name="trust_feature_security_patches_explain">As atualizações de segurança são lançadas mensalmente pela Google em cooperação com as fabricantes de SoC para corrigir falhas que possam ser exploradas por apps maliciosos que visam burlar as restrições de segurança e causar danos permanentes em seu dispositivo. As atualizações disponibilizadas pela Google são aplicadas mensalmente em todos os dispositivos suportados, mas as atualizações para o código proprietário só podem ser aplicadas pela fabricante do seu dispositivo. Para manter o seu dispositivo seguro, certifique-se de que a sua versão do Evolution X esteja sempre atualizada e, se aplicável, assegure-se de que a imagem da sua fabricante esteja atualizada para a versão recomendada pelo Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">As atualizações de segurança são lançadas mensalmente pela Google em cooperação com as fabricantes de SoC para corrigir falhas que possam ser exploradas por apps maliciosos que visam burlar as restrições de segurança e causar danos permanentes em seu dispositivo. As atualizações disponibilizadas pela Google são aplicadas mensalmente em todos os dispositivos suportados, mas as atualizações para o código proprietário só podem ser aplicadas pela fabricante do seu dispositivo. Para manter o seu dispositivo seguro, certifique-se de que a sua versão do ExpressiveOS esteja sempre atualizada e, se aplicável, assegure-se de que a imagem da sua fabricante esteja atualizada para a versão recomendada pelo ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Criptografia</string>
+     <string name="trust_feature_encryption_value_enabled">Ativada</string>
+     <string name="trust_feature_encryption_value_nolock">Requer uma tela de bloqueio segura</string>
+diff --git a/res/values-pt-rPT/strings.xml b/res/values-pt-rPT/strings.xml
+index f4563e9..749c54b 100644
+--- a/res/values-pt-rPT/strings.xml
++++ b/res/values-pt-rPT/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Definições Evolution X</string>
++    <string name="lineageparts_title">Definições ExpressiveOS</string>
+     <string name="loading">A carregar\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Cancelar</string>
+@@ -515,7 +515,7 @@
+     <string name="trust_feature_security_patches_value_new">Atualizado</string>
+     <string name="trust_feature_security_patches_value_medium">Alguns meses desatualizado</string>
+     <string name="trust_feature_security_patches_value_old">Desatualizado</string>
+-    <string name="trust_feature_security_patches_explain">Os patches de segurança são lançados mensalmente pela Google em cooperação com os fabricantes de SoC para corrigirem falhas que possam ser exploradas por aplicações maliciosas a fim de contornarem restrições de segurança e causarem danos permanentes no seu dispositivo. Os patches disponibilizados pela Google são aplicados todos os meses em todos os dispositivos suportados, mas os patches a código proprietário só podem ser aplicados pelo fabricante do seu dispositivo. Para manter o seu dispositivo seguro certifique-se de que a sua compilação Evolution X está sempre atualizada e, se aplicável, certifique-se de que a sua imagem do fabricante é atualizada para a mais recente recomendada pela equipa Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Os patches de segurança são lançados mensalmente pela Google em cooperação com os fabricantes de SoC para corrigirem falhas que possam ser exploradas por aplicações maliciosas a fim de contornarem restrições de segurança e causarem danos permanentes no seu dispositivo. Os patches disponibilizados pela Google são aplicados todos os meses em todos os dispositivos suportados, mas os patches a código proprietário só podem ser aplicados pelo fabricante do seu dispositivo. Para manter o seu dispositivo seguro certifique-se de que a sua compilação ExpressiveOS está sempre atualizada e, se aplicável, certifique-se de que a sua imagem do fabricante é atualizada para a mais recente recomendada pela equipa ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Encriptação</string>
+     <string name="trust_feature_encryption_value_enabled">Ativada</string>
+     <string name="trust_feature_encryption_value_nolock">Necessita de um ecrã de bloqueio seguro</string>
+diff --git a/res/values-ro/strings.xml b/res/values-ro/strings.xml
+index 9f0c2f2..89862b3 100644
+--- a/res/values-ro/strings.xml
++++ b/res/values-ro/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Setări Evolution X</string>
++    <string name="lineageparts_title">Setări ExpressiveOS</string>
+     <string name="loading">Încărcare\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Revocați</string>
+@@ -517,7 +517,7 @@
+     <string name="trust_feature_security_patches_value_new">La zi</string>
+     <string name="trust_feature_security_patches_value_medium">Expirate de câteva luni</string>
+     <string name="trust_feature_security_patches_value_old">Expirat</string>
+-    <string name="trust_feature_security_patches_explain">Corecțiile de securitate sunt lansate lunar de către Google în cooperare cu vânzătorii SoC pentru a remedia problemele care pot fi exploatate de aplicațiile malițioase pentru a trece peste restricțiile de securitate și să cauzeze daune permanente în dispozitivul dvs. Patch-urile făcute disponibile de Google sunt aplicate lunar pe toate dispozitivele compatibile, dar patch-urile la codul proprietar pot fi aplicate numai de către producătorul dispozitivului. Pentru a vă menține dispozitivul în siguranță, asigurați-vă că build-ul Evolution X al dvs. este la zi și (dacă se aplică) asigurați-vă că imaginea vendor-ului este actualizată la cea recomandată de Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Corecțiile de securitate sunt lansate lunar de către Google în cooperare cu vânzătorii SoC pentru a remedia problemele care pot fi exploatate de aplicațiile malițioase pentru a trece peste restricțiile de securitate și să cauzeze daune permanente în dispozitivul dvs. Patch-urile făcute disponibile de Google sunt aplicate lunar pe toate dispozitivele compatibile, dar patch-urile la codul proprietar pot fi aplicate numai de către producătorul dispozitivului. Pentru a vă menține dispozitivul în siguranță, asigurați-vă că build-ul ExpressiveOS al dvs. este la zi și (dacă se aplică) asigurați-vă că imaginea vendor-ului este actualizată la cea recomandată de ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Criptare</string>
+     <string name="trust_feature_encryption_value_enabled">Activat</string>
+     <string name="trust_feature_encryption_value_nolock">Necesită un ecran de blocare securizat</string>
+diff --git a/res/values-ru/strings.xml b/res/values-ru/strings.xml
+index 3e6c457..4d455be 100644
+--- a/res/values-ru/strings.xml
++++ b/res/values-ru/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Настройки Evolution X</string>
++    <string name="lineageparts_title">Настройки ExpressiveOS</string>
+     <string name="loading">Загрузка\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Отмена</string>
+@@ -515,7 +515,7 @@
+     <string name="trust_feature_security_patches_value_new">актуален</string>
+     <string name="trust_feature_security_patches_value_medium">устарел на несколько месяцев</string>
+     <string name="trust_feature_security_patches_value_old">устарел</string>
+-    <string name="trust_feature_security_patches_explain">Исправления безопасности ежемесячно выпускаются Google совместно с поставщиками SoC для устранения уязвимостей в системе, которые могут быть использованы вредоносными приложениями для обхода ограничений безопасности и нанесения необратимого повреждения вашему устройству. Исправления, предоставляемые Google, применяются каждый месяц на всех поддерживаемых устройствах, но исправления для проприетарного кода могут применяться только производителем вашего устройства. Для поддержания вашего устройства в безопасном состоянии, убедитесь, что ваша сборка Evolution X актуальна ​​и (если применимо) образ производителя обновлен до последней версии, рекомендованной Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Исправления безопасности ежемесячно выпускаются Google совместно с поставщиками SoC для устранения уязвимостей в системе, которые могут быть использованы вредоносными приложениями для обхода ограничений безопасности и нанесения необратимого повреждения вашему устройству. Исправления, предоставляемые Google, применяются каждый месяц на всех поддерживаемых устройствах, но исправления для проприетарного кода могут применяться только производителем вашего устройства. Для поддержания вашего устройства в безопасном состоянии, убедитесь, что ваша сборка ExpressiveOS актуальна ​​и (если применимо) образ производителя обновлен до последней версии, рекомендованной ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Шифрование</string>
+     <string name="trust_feature_encryption_value_enabled">Включено</string>
+     <string name="trust_feature_encryption_value_nolock">Необходима защита экрана блокировки</string>
+diff --git a/res/values-sc-rIT/strings.xml b/res/values-sc-rIT/strings.xml
+index 1ace97f..25f0e11 100644
+--- a/res/values-sc-rIT/strings.xml
++++ b/res/values-sc-rIT/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Cunfiguratziones de LineageOS</string>
++    <string name="lineageparts_title">Cunfiguratziones de ExpressiveOS</string>
+     <string name="loading">Carrighende\u2026</string>
+     <string name="dlg_ok">AB</string>
+     <string name="cancel">Annulla</string>
+@@ -512,7 +512,7 @@
+     <string name="trust_feature_security_patches_value_new">Atualizadu</string>
+     <string name="trust_feature_security_patches_value_medium">No atualizadas dae calicunu mese</string>
+     <string name="trust_feature_security_patches_value_old">No atualizadas</string>
+-    <string name="trust_feature_security_patches_explain">Is patch de seguresa essint onni mese dae sa Google in cooperatzione cun is produtores de SoC pro nch\'isòrvere problemas chi diant pòdere isfrutare is aplicatziones dannàrgias pro inghiriare is restritziones de seguresa e causare dannos permanentes a su dispositivu. Is patch dispostos dae sa Google sunt aplicados a totu is dispositivos cumpatìbiles, ma cussos chi pertocant a su còdighe propietàriu ddas podet aplicare isceti su produtore de su dispositivu tuo. Pro mantènnere su dispositivu in seguresa controlla chi sa versione tua de LineageOS siat semper atualizada e s\'in casu assegura·ti chi s\'immàgine de su produtore tuo siat atualizada a s\'ùrtima versione cussigiada dae LineageOS.</string>
++    <string name="trust_feature_security_patches_explain">Is patch de seguresa essint onni mese dae sa Google in cooperatzione cun is produtores de SoC pro nch\'isòrvere problemas chi diant pòdere isfrutare is aplicatziones dannàrgias pro inghiriare is restritziones de seguresa e causare dannos permanentes a su dispositivu. Is patch dispostos dae sa Google sunt aplicados a totu is dispositivos cumpatìbiles, ma cussos chi pertocant a su còdighe propietàriu ddas podet aplicare isceti su produtore de su dispositivu tuo. Pro mantènnere su dispositivu in seguresa controlla chi sa versione tua de ExpressiveOS siat semper atualizada e s\'in casu assegura·ti chi s\'immàgine de su produtore tuo siat atualizada a s\'ùrtima versione cussigiada dae ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Tzifradura</string>
+     <string name="trust_feature_encryption_value_enabled">Ativada</string>
+     <string name="trust_feature_encryption_value_nolock">Rechedet un\'ischermu de blocu seguru</string>
+diff --git a/res/values-sk/strings.xml b/res/values-sk/strings.xml
+index 08ad451..1e6eb7a 100644
+--- a/res/values-sk/strings.xml
++++ b/res/values-sk/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Nastavenia Evolution X</string>
++    <string name="lineageparts_title">Nastavenia ExpressiveOS</string>
+     <string name="loading">Nahrávanie\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Zrušiť</string>
+@@ -470,7 +470,7 @@
+     <string name="trust_feature_security_patches_value_new">Aktuálne</string>
+     <string name="trust_feature_security_patches_value_medium">Staré niekoľko mesiacov</string>
+     <string name="trust_feature_security_patches_value_old">Neaktuálne</string>
+-    <string name="trust_feature_security_patches_explain">Bezpečnostné záplaty sú vydávané mesačne spoločnosťou Google a dodávateľmi SoC na riešenie nedostatkov v systéme, ktoré by mohli byť zneužiť škodlivými aplikáciami na obídenie bezpečnostných obmedzení a mohli by spôsobiť dočasné alebo trvalé poškodenie vášho zariadenia.\nZatiaľ čo záplaty platformy sú aktualizované globálne každý mesiac, záplaty OEM dodávateľov sú aktualizované z času na čas.\nAk chcete, aby vaše zariadenie bolo v bezpečí, uistite sa, že vaša zostava Evolution X je vždy aktuálna.</string>
++    <string name="trust_feature_security_patches_explain">Bezpečnostné záplaty sú vydávané mesačne spoločnosťou Google a dodávateľmi SoC na riešenie nedostatkov v systéme, ktoré by mohli byť zneužiť škodlivými aplikáciami na obídenie bezpečnostných obmedzení a mohli by spôsobiť dočasné alebo trvalé poškodenie vášho zariadenia.\nZatiaľ čo záplaty platformy sú aktualizované globálne každý mesiac, záplaty OEM dodávateľov sú aktualizované z času na čas.\nAk chcete, aby vaše zariadenie bolo v bezpečí, uistite sa, že vaša zostava ExpressiveOS je vždy aktuálna.</string>
+     <string name="trust_feature_encryption">Šifrovanie</string>
+     <string name="trust_feature_encryption_value_enabled">Zapnuté</string>
+     <string name="trust_feature_encryption_value_nolock">Je potrebná zabezpečená obrazovka uzamknutia</string>
+diff --git a/res/values-sl/strings.xml b/res/values-sl/strings.xml
+index aaddbe6..45125a6 100644
+--- a/res/values-sl/strings.xml
++++ b/res/values-sl/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Nastavitve Evolution X</string>
++    <string name="lineageparts_title">Nastavitve ExpressiveOS</string>
+     <string name="loading">Nalaganje \u2026</string>
+     <string name="dlg_ok">V redu</string>
+     <string name="cancel">Prekliči</string>
+@@ -517,7 +517,7 @@
+     <string name="trust_feature_security_patches_value_new">Posodobljeno</string>
+     <string name="trust_feature_security_patches_value_medium">Nekaj mesecev zastarelo</string>
+     <string name="trust_feature_security_patches_value_old">Zastarelo</string>
+-    <string name="trust_feature_security_patches_explain">Varnostni popravki so izdani mesečno s strani Googla v sodelovanju s proizvajalci SoC-ov, da naslovijo pomanjkljivosti, ki jih lahko zlonamerne aplikacije izrabijo za obvoz varnostnih omejitev in lahko povzročijo trajne poškodbe vaše naprave. Popravki s strani Googla so na vseh podprtih napravah uveljavljeni vsak mesec, vendar so lahko popravki lastniške kode uveljavljeni samo s strani proizvajalca naprave. Da ohranite vašo napravo varno, poskrbite, da je vaša izgradnja Evolution X-a vedno posodobljena in (v kolikor je na voljo) odtis dobavitelja posodobobljen na zadnjo različico priporočeno s strani Evolution X-a.</string>
++    <string name="trust_feature_security_patches_explain">Varnostni popravki so izdani mesečno s strani Googla v sodelovanju s proizvajalci SoC-ov, da naslovijo pomanjkljivosti, ki jih lahko zlonamerne aplikacije izrabijo za obvoz varnostnih omejitev in lahko povzročijo trajne poškodbe vaše naprave. Popravki s strani Googla so na vseh podprtih napravah uveljavljeni vsak mesec, vendar so lahko popravki lastniške kode uveljavljeni samo s strani proizvajalca naprave. Da ohranite vašo napravo varno, poskrbite, da je vaša izgradnja ExpressiveOS-a vedno posodobljena in (v kolikor je na voljo) odtis dobavitelja posodobobljen na zadnjo različico priporočeno s strani ExpressiveOS-a.</string>
+     <string name="trust_feature_encryption">Šifriranje</string>
+     <string name="trust_feature_encryption_value_enabled">Omogočeno</string>
+     <string name="trust_feature_encryption_value_nolock">Potreben je varni zaklenjen zaslon</string>
+diff --git a/res/values-sq/strings.xml b/res/values-sq/strings.xml
+index 7773271..0323c8a 100644
+--- a/res/values-sq/strings.xml
++++ b/res/values-sq/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Cilësimet e Evolution X</string>
++    <string name="lineageparts_title">Cilësimet e ExpressiveOS</string>
+     <string name="loading">Duke u ngarkuar\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Anullo</string>
+@@ -514,7 +514,7 @@
+     <string name="trust_feature_security_patches_value_new">E përditësuar</string>
+     <string name="trust_feature_security_patches_value_medium">Disa muaj e pa përditësuar</string>
+     <string name="trust_feature_security_patches_value_old">E vjetërsuar</string>
+-    <string name="trust_feature_security_patches_explain">korrigjimet e sigurisë nxiren çdo muaj nga Google në bashkëpunim me prodhuesit e SoC për të trajtuar gabimet nga të cilat mund të shfrytëzohen nga programet keqadashëse për të shmangur kufizimet e sigurisë dhe shkaktojnë probleme të përhershme në paisjen tuaj. korrigjimet e nxjera nga Google zbatohen çdo muaj në të gjitha paisjet. Por korrigjimet tek kodet e patentuara mund të kryehen vetëm nga prodhuesi i telefonit tuaj. Për të qëndruar i sigurtë, sigurohuni që sistemi juaj LineageOS është gjithmonë i përditësuar, dhe (nesë është e vlefshme) sigurohu që dhe imazhet e prodhuesit janë gjithmonë më të fundit dhe të sygjeruara nga Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">korrigjimet e sigurisë nxiren çdo muaj nga Google në bashkëpunim me prodhuesit e SoC për të trajtuar gabimet nga të cilat mund të shfrytëzohen nga programet keqadashëse për të shmangur kufizimet e sigurisë dhe shkaktojnë probleme të përhershme në paisjen tuaj. korrigjimet e nxjera nga Google zbatohen çdo muaj në të gjitha paisjet. Por korrigjimet tek kodet e patentuara mund të kryehen vetëm nga prodhuesi i telefonit tuaj. Për të qëndruar i sigurtë, sigurohuni që sistemi juaj ExpressiveOS është gjithmonë i përditësuar, dhe (nesë është e vlefshme) sigurohu që dhe imazhet e prodhuesit janë gjithmonë më të fundit dhe të sygjeruara nga ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Enkriptimi</string>
+     <string name="trust_feature_encryption_value_enabled">E aktivizuar</string>
+     <string name="trust_feature_encryption_value_nolock">Nevojitet një mbyllje e sigurtë e ekranit</string>
+diff --git a/res/values-sr/strings.xml b/res/values-sr/strings.xml
+index d04662e..62bef07 100644
+--- a/res/values-sr/strings.xml
++++ b/res/values-sr/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Подешавања Evolution X-а</string>
++    <string name="lineageparts_title">Подешавања ExpressiveOS-а</string>
+     <string name="loading">Учитавам\u2026</string>
+     <string name="dlg_ok">У реду</string>
+     <string name="cancel">Откажи</string>
+@@ -440,7 +440,7 @@
+     <string name="trust_feature_selinux_explain">SELinux одређује који процеси имају приступ којим фајловима/путањама на Вашем уређају.\nОво спречава апликације и сервисе да добију приступ фајловима којима не би требало: овако се малициозни процеси ограничавају и осигурава се ваша сигурност.</string>
+     <string name="trust_feature_security_patches">Андроид безбедоносне закрпе</string>
+     <string name="trust_feature_security_patches_value_base">Платформа: %1$s\nДобављач: %2$s</string>
+-    <string name="trust_feature_security_patches_explain">Сигуроносне закрпе се раде на месечном нивоу од стране Google-а у сарадњи са SoC добављачем да реше преблеме које могу искористити злонамерне апликације да заобиђу сигурносне рестрикције и да трајно оштете уређај. Закрпе које су доступне Google прави сваког месеца на свим подржаним уређајима, али закрпе може поставити само произвођач уређаја. Да осигурате сигурност уређаја нека Evolution X увек буде ажуриран, и (ако је примењиво) осигурајте да је слика добављача ажурирана по препоруци Evolution X-а.</string>
++    <string name="trust_feature_security_patches_explain">Сигуроносне закрпе се раде на месечном нивоу од стране Google-а у сарадњи са SoC добављачем да реше преблеме које могу искористити злонамерне апликације да заобиђу сигурносне рестрикције и да трајно оштете уређај. Закрпе које су доступне Google прави сваког месеца на свим подржаним уређајима, али закрпе може поставити само произвођач уређаја. Да осигурате сигурност уређаја нека ExpressiveOS увек буде ажуриран, и (ако је примењиво) осигурајте да је слика добављача ажурирана по препоруци ExpressiveOS-а.</string>
+     <string name="trust_feature_encryption">Enkripcija</string>
+     <string name="trust_feature_encryption_value_enabled">Омогућено</string>
+     <string name="trust_feature_encryption_value_nolock">Захтева безбедни екран закљувања</string>
+diff --git a/res/values-sv/strings.xml b/res/values-sv/strings.xml
+index 05d6bc8..27c3f69 100644
+--- a/res/values-sv/strings.xml
++++ b/res/values-sv/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Inställningar för Evolution X</string>
++    <string name="lineageparts_title">Inställningar för ExpressiveOS</string>
+     <string name="loading">Laddar\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Avbryt</string>
+@@ -452,7 +452,7 @@
+     <string name="trust_feature_selinux_explain">SELinux bestämmer vilka filer och sökvägar olika processer har åtkomst till.\nFunktionen förhindrar appar och tjänster från att komma åt filer de inte ska kunna komma åt, och begränsar därigenom möjligheten för skadlig programvara att äventyra säkerheten.</string>
+     <string name="trust_feature_security_patches">Säkerhetsuppdateringar för Android</string>
+     <string name="trust_feature_security_patches_value_base">Plattform: %1$s\nTillverkare: %2$s</string>
+-    <string name="trust_feature_security_patches_explain">Varje månad släpper Google säkerhetsuppdateringar tillsammans med chiptillverkare för att rätta till säkerhetsfel som skadlig programvara skulle kunna använda för att ta sig runt säkerhetsreglerna och skada enheten. Evolution X tillämpar Googles korrigeringar en gång i månaden på alla enheter som stöds men tillverkarspecifik programkod kan bara korrigeras av tillverkarna. För att hålla din enhet säker bör du se till att du använder den senaste versionen av Evolution X samt att systemets fasta programvara har uppdaterats till den senaste versionen som Evolution X rekommenderar.</string>
++    <string name="trust_feature_security_patches_explain">Varje månad släpper Google säkerhetsuppdateringar tillsammans med chiptillverkare för att rätta till säkerhetsfel som skadlig programvara skulle kunna använda för att ta sig runt säkerhetsreglerna och skada enheten. ExpressiveOS tillämpar Googles korrigeringar en gång i månaden på alla enheter som stöds men tillverkarspecifik programkod kan bara korrigeras av tillverkarna. För att hålla din enhet säker bör du se till att du använder den senaste versionen av ExpressiveOS samt att systemets fasta programvara har uppdaterats till den senaste versionen som ExpressiveOS rekommenderar.</string>
+     <string name="trust_feature_encryption">Kryptering</string>
+     <string name="trust_feature_encryption_value_enabled">Aktiverat</string>
+     <string name="trust_feature_encryption_value_nolock">En säker låsskärm behövs</string>
+diff --git a/res/values-ta/strings.xml b/res/values-ta/strings.xml
+index 05f8d10..20436d9 100644
+--- a/res/values-ta/strings.xml
++++ b/res/values-ta/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">LineageOS அமைப்புகள்</string>
++    <string name="lineageparts_title">ExpressiveOS அமைப்புகள்</string>
+     <string name="loading">ஏற்றுகின்றது\u2026</string>
+     <string name="dlg_ok">சரி</string>
+     <string name="cancel">விலக்குக</string>
+diff --git a/res/values-th/strings.xml b/res/values-th/strings.xml
+index 4a9613d..4484e82 100644
+--- a/res/values-th/strings.xml
++++ b/res/values-th/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">การตั้งค่า Evolution X</string>
++    <string name="lineageparts_title">การตั้งค่า ExpressiveOS</string>
+     <string name="loading">กำลังโหลด\u2026</string>
+     <string name="dlg_ok">ตกลง</string>
+     <string name="cancel">ยกเลิก</string>
+@@ -458,7 +458,7 @@
+     <string name="trust_feature_security_patches_value_new">รุ่นล่าสุด</string>
+     <string name="trust_feature_security_patches_value_medium">ล้าหลังไม่กี่เดือน</string>
+     <string name="trust_feature_security_patches_value_old">ล้าสมัย</string>
+-    <string name="trust_feature_security_patches_explain">Google ออกแพตช์รักษาความปลอดภัยเป็นประจำทุกเดือนโดยร่วมมือกับผู้ขาย SoC เพื่อแก้ไขข้อบกพร่องซึ่งอาจถูกใช้โดยแอปที่เป็นอันตรายเพื่อข้ามข้อจำกัดในด้านความปลอดภัยและทำให้อุปกรณ์ของคุณเสียหายอย่างถาวร Google มีการติดตั้งแพตช์แก้ไขทุกเดือนในอุปกรณ์ที่รองรับทั้งหมด แต่ผู้ผลิตอุปกรณ์ของคุณสามารถแก้ไขข้อบกพร่องสำหรับโค้ดที่เป็นกรรมสิทธิ์ได้เท่านั้น เพื่อให้อุปกรณ์ของคุณปลอดภัยตรวจสอบให้แน่ใจว่ารุ่น Evolution X ที่คุณใช้งานอยู่เป็นรุ่นล่าสุดอยู่เสมอและ (ถ้ามี) ให้แน่ใจว่าไฟล์ภาพผู้ขายของคุณได้รับการอัปเดตเป็นรุ่นล่าสุดที่ถูกแนะนำโดย Evolution X</string>
++    <string name="trust_feature_security_patches_explain">Google ออกแพตช์รักษาความปลอดภัยเป็นประจำทุกเดือนโดยร่วมมือกับผู้ขาย SoC เพื่อแก้ไขข้อบกพร่องซึ่งอาจถูกใช้โดยแอปที่เป็นอันตรายเพื่อข้ามข้อจำกัดในด้านความปลอดภัยและทำให้อุปกรณ์ของคุณเสียหายอย่างถาวร Google มีการติดตั้งแพตช์แก้ไขทุกเดือนในอุปกรณ์ที่รองรับทั้งหมด แต่ผู้ผลิตอุปกรณ์ของคุณสามารถแก้ไขข้อบกพร่องสำหรับโค้ดที่เป็นกรรมสิทธิ์ได้เท่านั้น เพื่อให้อุปกรณ์ของคุณปลอดภัยตรวจสอบให้แน่ใจว่ารุ่น ExpressiveOS ที่คุณใช้งานอยู่เป็นรุ่นล่าสุดอยู่เสมอและ (ถ้ามี) ให้แน่ใจว่าไฟล์ภาพผู้ขายของคุณได้รับการอัปเดตเป็นรุ่นล่าสุดที่ถูกแนะนำโดย ExpressiveOS</string>
+     <string name="trust_feature_encryption">การเข้ารหัส</string>
+     <string name="trust_feature_encryption_value_enabled">เปิดใช้งาน</string>
+     <string name="trust_feature_encryption_value_nolock">ต้องการหน้าจอล็อกที่ปลอดภัย</string>
+diff --git a/res/values-tr/strings.xml b/res/values-tr/strings.xml
+index ecdb759..1e6d965 100644
+--- a/res/values-tr/strings.xml
++++ b/res/values-tr/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X Ayarları</string>
++    <string name="lineageparts_title">ExpressiveOS Ayarları</string>
+     <string name="loading">Yükleniyor\u2026</string>
+     <string name="dlg_ok">TAMAM</string>
+     <string name="cancel">İptal</string>
+@@ -512,7 +512,7 @@
+     <string name="trust_feature_security_patches_value_new">Güncel</string>
+     <string name="trust_feature_security_patches_value_medium">Birkaç ay eski</string>
+     <string name="trust_feature_security_patches_value_old">Güncellenmemiş</string>
+-    <string name="trust_feature_security_patches_explain">Güvenlik kısıtlamalarını atlamak ve cihazınızda kalıcı hasara neden olmak için kötü amaçlı uygulamalar tarafından kötüye kullanılabilecek hataları gidermek için SoC satıcılarıyla işbirliği içinde Google tarafından aylık olarak güvenlik yamaları yayınlanır. Google tarafından kullanıma sunulan yamalar, desteklenen tüm cihazlarda her ay uygulanır, ancak tescilli koddaki yamalar sadece cihazınızın üreticisi tarafından uygulanabilir. Cihazınızı güvende tutmak için Evolution X yapınızın her zaman güncel olduğundan ve (varsa) satıcı dosyanızın Evolution X tarafından önerilen en yeni sürüme güncellendiğinden emin olun.</string>
++    <string name="trust_feature_security_patches_explain">Güvenlik kısıtlamalarını atlamak ve cihazınızda kalıcı hasara neden olmak için kötü amaçlı uygulamalar tarafından kötüye kullanılabilecek hataları gidermek için SoC satıcılarıyla işbirliği içinde Google tarafından aylık olarak güvenlik yamaları yayınlanır. Google tarafından kullanıma sunulan yamalar, desteklenen tüm cihazlarda her ay uygulanır, ancak tescilli koddaki yamalar sadece cihazınızın üreticisi tarafından uygulanabilir. Cihazınızı güvende tutmak için ExpressiveOS yapınızın her zaman güncel olduğundan ve (varsa) satıcı dosyanızın ExpressiveOS tarafından önerilen en yeni sürüme güncellendiğinden emin olun.</string>
+     <string name="trust_feature_encryption">Şifreleme</string>
+     <string name="trust_feature_encryption_value_enabled">Etkin</string>
+     <string name="trust_feature_encryption_value_nolock">Güvenli bir kilit ekranına ihtiyaç duyar</string>
+diff --git a/res/values-ug/strings.xml b/res/values-ug/strings.xml
+index 1833544..486e7ee 100644
+--- a/res/values-ug/strings.xml
++++ b/res/values-ug/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">LineageOS تەڭشەكلىرى</string>
++    <string name="lineageparts_title">ExpressiveOS تەڭشەكلىرى</string>
+     <string name="loading">يۈكلەۋاتىدۇ\u2026</string>
+     <string name="dlg_ok">جەزملە</string>
+     <string name="cancel">ۋاز كەچ</string>
+@@ -517,7 +517,7 @@
+     <string name="trust_feature_security_patches_value_new">ئەڭ يېڭى</string>
+     <string name="trust_feature_security_patches_value_medium">بىر قانچە ئاي ۋاقتى ئۆتكەن</string>
+     <string name="trust_feature_security_patches_value_old">ۋاقتى ئۆتكەن</string>
+-    <string name="trust_feature_security_patches_explain">بىخەتەرلىك ياماقلىرى Google بىلەن SoC ساتقۇچىلار ھەمكارلىشىپ ھەر ئايدا تارقىتىلىدۇ، يامان غەرەزلىك ئەپ ئارقىلىق بىخەتەرلىك چەكلىمىسىدىن ئۆتۈپ، ئۈسكۈنىڭىزگە مەڭگۈلۈك زىيان سالىدىغان كەمتۈكلۈكلەرنى ھەل قىلىدۇ. Google شىركىتى تەمىنلىگەن ياماقلار ھەر ئايدا بارلىق قوللايدىغان ئۈسكۈنىلەردە قوللىنىلىدۇ، ئەمما پەقەت ئۈسكۈنىڭىزنى ئىشلەپچىقارغۇچى شەخسىي كودقا ياماق تەمىنلىيەلەيدۇ. ئۈسكۈنىڭىزنىڭ بىخەتەرلىكىنى قوغداش ئۈچۈن LineageOS نەشرىنىڭ ھەر ۋاقىت يېڭىلىنىپ تۇرۇشىغا كاپالەتلىك قىلىڭ، (ئەگەر مۇمكىن بولسا) ساتقۇچى نەشرىڭىزنىڭ LineageOS تەۋسىيە قىلغان ئەڭ يېڭى نەشرىگە يېڭىلىنىشىغا كاپالەتلىك قىلىڭ.</string>
++    <string name="trust_feature_security_patches_explain">بىخەتەرلىك ياماقلىرى Google بىلەن SoC ساتقۇچىلار ھەمكارلىشىپ ھەر ئايدا تارقىتىلىدۇ، يامان غەرەزلىك ئەپ ئارقىلىق بىخەتەرلىك چەكلىمىسىدىن ئۆتۈپ، ئۈسكۈنىڭىزگە مەڭگۈلۈك زىيان سالىدىغان كەمتۈكلۈكلەرنى ھەل قىلىدۇ. Google شىركىتى تەمىنلىگەن ياماقلار ھەر ئايدا بارلىق قوللايدىغان ئۈسكۈنىلەردە قوللىنىلىدۇ، ئەمما پەقەت ئۈسكۈنىڭىزنى ئىشلەپچىقارغۇچى شەخسىي كودقا ياماق تەمىنلىيەلەيدۇ. ئۈسكۈنىڭىزنىڭ بىخەتەرلىكىنى قوغداش ئۈچۈن ExpressiveOS نەشرىنىڭ ھەر ۋاقىت يېڭىلىنىپ تۇرۇشىغا كاپالەتلىك قىلىڭ، (ئەگەر مۇمكىن بولسا) ساتقۇچى نەشرىڭىزنىڭ ExpressiveOS تەۋسىيە قىلغان ئەڭ يېڭى نەشرىگە يېڭىلىنىشىغا كاپالەتلىك قىلىڭ.</string>
+     <string name="trust_feature_encryption">شىفىرلاش</string>
+     <string name="trust_feature_encryption_value_enabled">قوزغىتىلغان</string>
+     <string name="trust_feature_encryption_value_nolock">بىخەتەر ئېكران قۇلۇپىنى تەڭشەك كېرەك</string>
+diff --git a/res/values-vi/strings.xml b/res/values-vi/strings.xml
+index ccb80f6..b807194 100644
+--- a/res/values-vi/strings.xml
++++ b/res/values-vi/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Cài Đặt Evolution X</string>
++    <string name="lineageparts_title">Cài Đặt ExpressiveOS</string>
+     <string name="loading">Đang tải\u2026</string>
+     <string name="dlg_ok">OK</string>
+     <string name="cancel">Hủy</string>
+@@ -515,7 +515,7 @@
+     <string name="trust_feature_security_patches_value_new">Đã cập nhật</string>
+     <string name="trust_feature_security_patches_value_medium">Đã hết hạn một vài tháng</string>
+     <string name="trust_feature_security_patches_value_old">Đã cũ</string>
+-    <string name="trust_feature_security_patches_explain">Các bản vá bảo mật được Google phát hành hàng tháng với sự hợp tác của các nhà cung cấp SoC để giải quyết các lỗi có thể bị các ứng dụng độc hại khai thác để vượt qua các hạn chế bảo mật và gây thiệt hại vĩnh viễn cho thiết bị của bạn. Các bản vá được Google cung cấp được áp dụng hàng tháng trên tất cả các thiết bị được hỗ trợ, nhưng bản vá cho mã độc quyền chỉ có thể được nhà sản xuất thiết bị của bạn áp dụng. Để giữ cho thiết bị của bạn an toàn, hãy đảm bảo rằng việc xây dựng Evolution X của bạn luôn được cập nhật và (nếu có) đảm bảo hình ảnh của nhà cung cấp của bạn được cập nhật thành hình ảnh mới nhất do Evolution X đề xuất.</string>
++    <string name="trust_feature_security_patches_explain">Các bản vá bảo mật được Google phát hành hàng tháng với sự hợp tác của các nhà cung cấp SoC để giải quyết các lỗi có thể bị các ứng dụng độc hại khai thác để vượt qua các hạn chế bảo mật và gây thiệt hại vĩnh viễn cho thiết bị của bạn. Các bản vá được Google cung cấp được áp dụng hàng tháng trên tất cả các thiết bị được hỗ trợ, nhưng bản vá cho mã độc quyền chỉ có thể được nhà sản xuất thiết bị của bạn áp dụng. Để giữ cho thiết bị của bạn an toàn, hãy đảm bảo rằng việc xây dựng ExpressiveOS của bạn luôn được cập nhật và (nếu có) đảm bảo hình ảnh của nhà cung cấp của bạn được cập nhật thành hình ảnh mới nhất do ExpressiveOS đề xuất.</string>
+     <string name="trust_feature_encryption">Mã hóa</string>
+     <string name="trust_feature_encryption_value_enabled">Đã bật</string>
+     <string name="trust_feature_encryption_value_nolock">Cần một màn hình khóa an toàn</string>
+diff --git a/res/values-zh-rCN/strings.xml b/res/values-zh-rCN/strings.xml
+index b35f605..eabc456 100644
+--- a/res/values-zh-rCN/strings.xml
++++ b/res/values-zh-rCN/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X 设置</string>
++    <string name="lineageparts_title">ExpressiveOS 设置</string>
+     <string name="loading">正在加载\u2026</string>
+     <string name="dlg_ok">确定</string>
+     <string name="cancel">取消</string>
+@@ -515,7 +515,7 @@
+     <string name="trust_feature_security_patches_value_new">已是最新</string>
+     <string name="trust_feature_security_patches_value_medium">数月未更新</string>
+     <string name="trust_feature_security_patches_value_old">已过时</string>
+-    <string name="trust_feature_security_patches_explain">安全补丁由 Google 和 SoC 厂商每月发布，用以修复可能会被恶意应用利用、绕过安全限制对你的设备造成暂时或永久损坏的缺陷。\n平台补丁每个月都会统一更新，但厂商补丁只能每次从 OEM 取得。\n要保证您的设备安全，请使用最新版本的 Evolution X。</string>
++    <string name="trust_feature_security_patches_explain">安全补丁由 Google 和 SoC 厂商每月发布，用以修复可能会被恶意应用利用、绕过安全限制对你的设备造成暂时或永久损坏的缺陷。\n平台补丁每个月都会统一更新，但厂商补丁只能每次从 OEM 取得。\n要保证您的设备安全，请使用最新版本的 ExpressiveOS。</string>
+     <string name="trust_feature_encryption">加密</string>
+     <string name="trust_feature_encryption_value_enabled">已启用</string>
+     <string name="trust_feature_encryption_value_nolock">需要设置安全的屏幕锁定</string>
+diff --git a/res/values-zh-rTW/strings.xml b/res/values-zh-rTW/strings.xml
+index a34185b..b8ac929 100644
+--- a/res/values-zh-rTW/strings.xml
++++ b/res/values-zh-rTW/strings.xml
+@@ -5,7 +5,7 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <string name="lineageparts_title">Evolution X 設定</string>
++    <string name="lineageparts_title">ExpressiveOS 設定</string>
+     <string name="loading">載入中\u2026</string>
+     <string name="dlg_ok">確定</string>
+     <string name="cancel">取消</string>
+@@ -502,7 +502,7 @@
+     <string name="trust_feature_security_patches_value_new">已是最新</string>
+     <string name="trust_feature_security_patches_value_medium">幾個月未更新</string>
+     <string name="trust_feature_security_patches_value_old">已過期</string>
+-    <string name="trust_feature_security_patches_explain">安全性修補由 Google 和 SoC 廠商每月發佈，用以修復可能會被惡意應用程式利用、繞過安全限制對您的裝置造成暫時或永久損壞的缺陷。\n平台修補每個月都會統一更新，但廠商修補只能每次從 OEM 取得。\n要保證您的裝置安全，請使用最新的 Evolution X 版本。</string>
++    <string name="trust_feature_security_patches_explain">安全性修補由 Google 和 SoC 廠商每月發佈，用以修復可能會被惡意應用程式利用、繞過安全限制對您的裝置造成暫時或永久損壞的缺陷。\n平台修補每個月都會統一更新，但廠商修補只能每次從 OEM 取得。\n要保證您的裝置安全，請使用最新的 ExpressiveOS 版本。</string>
+     <string name="trust_feature_encryption">加密</string>
+     <string name="trust_feature_encryption_value_enabled">已啟用</string>
+     <string name="trust_feature_encryption_value_nolock">需要設定鎖定畫面密碼</string>
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index d3330bc..ac01243 100644
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -6,7 +6,7 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+ 
+-    <string name="lineageparts_title">Evolution X Settings</string>
++    <string name="lineageparts_title">ExpressiveOS Settings</string>
+ 
+     <!-- Generic stuff used everywhere -->
+     <string name="loading">Loading\u2026</string>
+@@ -34,7 +34,7 @@
+ 
+     <!-- Privacy Settings Header item -->
+     <string name="privacy_settings_title">Privacy</string>
+-    <string name="privacy_settings_category" translatable="false">Evolution X</string>
++    <string name="privacy_settings_category" translatable="false">ExpressiveOS</string>
+ 
+     <!-- Notification channels -->
+     <string name="channel_light_settings_id" translatable="false">light_settings</string>
+@@ -659,7 +659,7 @@
+     <string name="touchscreen_gesture_action_ambient_display">Show ambient display</string>
+ 
+     <!-- Egg: Title for the easter egg activity -->
+-    <string name="egg_title" translatable="false">Evolution X Easter Egg</string>
++    <string name="egg_title" translatable="false">ExpressiveOS Easter Egg</string>
+ 
+     <!-- Trust interface -->
+     <string name="trust_title" translatable="false">@*lineageos.platform:string/trust_feature_name</string>
+@@ -673,7 +673,7 @@
+     <string name="trust_feature_security_patches_value_new">Up to date</string>
+     <string name="trust_feature_security_patches_value_medium">A few months out of date</string>
+     <string name="trust_feature_security_patches_value_old">Out of date</string>
+-    <string name="trust_feature_security_patches_explain">Security patches are released monthly by Google in cooperation with SoC vendors to address flaws which could be exploited by malicious apps to bypass security restrictions and cause permanent damage to your device. Patches made available by Google are applied every month on all supported devices, but patches to proprietary code can only be applied by your device\'s manufacturer. To keep your device safe make sure your Evolution X build is always up-to-date, and (if applicable) ensure your vendor image is updated to the latest one recommended by Evolution X.</string>
++    <string name="trust_feature_security_patches_explain">Security patches are released monthly by Google in cooperation with SoC vendors to address flaws which could be exploited by malicious apps to bypass security restrictions and cause permanent damage to your device. Patches made available by Google are applied every month on all supported devices, but patches to proprietary code can only be applied by your device\'s manufacturer. To keep your device safe make sure your ExpressiveOS build is always up-to-date, and (if applicable) ensure your vendor image is updated to the latest one recommended by ExpressiveOS.</string>
+     <string name="trust_feature_encryption">Encryption</string>
+     <string name="trust_feature_encryption_value_enabled">Enabled</string>
+     <string name="trust_feature_encryption_value_nolock">Needs a secure lock screen</string>
+-- 
+2.43.0
+

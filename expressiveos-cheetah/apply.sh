@@ -10,6 +10,8 @@
 #                                           every build there (evolution-kodiak's copies)
 #   vendor_lineage 0001                     ExpressiveOS 1.0 names and the build's own date
 #   vendor_lineage 0002                     evolution-kodiak's: stock's 60 fps game default
+#   frameworks_base 0021-0024, Settings,    ExpressiveOS's branding: no screen names Evolution X
+#   Evolver, Updater and the rest
 # Never evolution-cheetah's apply.sh, or its pantah 0001/0002: they point the Updater
 # at Evolution X's feed. prepare.sh runs this; repo sync drops the commits again.
 #

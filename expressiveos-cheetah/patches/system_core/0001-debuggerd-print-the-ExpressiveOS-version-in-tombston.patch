@@ -1,0 +1,29 @@
+From bfc4e29fef877738f7411031163d8bc0b8066364 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:51:20 +0000
+Subject: [PATCH] debuggerd: print the ExpressiveOS version in tombstones
+
+ExpressiveOS is its own ROM: every tombstone and crash report started
+with an "Evolution X Version" line.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ debuggerd/libdebuggerd/tombstone_proto_to_text.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/debuggerd/libdebuggerd/tombstone_proto_to_text.cpp b/debuggerd/libdebuggerd/tombstone_proto_to_text.cpp
+index 4e1cbb6..33b3cdc 100644
+--- a/debuggerd/libdebuggerd/tombstone_proto_to_text.cpp
++++ b/debuggerd/libdebuggerd/tombstone_proto_to_text.cpp
+@@ -700,7 +700,7 @@ static void print_guest_thread(CallbackType callback, SymbolizeCallbackType symb
+ bool tombstone_proto_to_text(const Tombstone& tombstone, CallbackType callback,
+                              SymbolizeCallbackType symbolize, bool display_sp) {
+   CBL("*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***");
+-  CBL("Evolution X Version: '%s'", tombstone.lineage_version().c_str());
++  CBL("ExpressiveOS Version: '%s'", tombstone.lineage_version().c_str());
+   CBL("Build fingerprint: '%s'", tombstone.build_fingerprint().c_str());
+   if (!tombstone.kernel_release().empty()) {
+     CBL("Kernel Release: '%s'", tombstone.kernel_release().c_str());
+-- 
+2.43.0
+

@@ -1,0 +1,124 @@
+From 19ea52b4b39e50e21e06936d67925aeb0192c8e0 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:50:33 +0000
+Subject: [PATCH] SystemUI: drop the "Evolution X" default_user_name
+ translations
+
+Eight locales (hu, in, ku, pl, pt-BR, ru, tr, uk) carried
+default_user_name as "Evolution X" (Ukrainian: "Evolution X logo"), a
+mistranslation that showed Evolution X's name. The default-locale
+evolution_strings.xml has no such string any more; like the Sleep mode
+and Essential notifications strings next to it, these are leftovers, so
+remove them.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ packages/SystemUI/res/values-hu-rHU/evolution_strings.xml | 1 -
+ packages/SystemUI/res/values-in-rID/evolution_strings.xml | 1 -
+ packages/SystemUI/res/values-ku-rTR/evolution_strings.xml | 1 -
+ packages/SystemUI/res/values-pl-rPL/evolution_strings.xml | 1 -
+ packages/SystemUI/res/values-pt-rBR/evolution_strings.xml | 1 -
+ packages/SystemUI/res/values-ru-rRU/evolution_strings.xml | 1 -
+ packages/SystemUI/res/values-tr-rTR/evolution_strings.xml | 1 -
+ packages/SystemUI/res/values-uk-rUA/evolution_strings.xml | 1 -
+ 8 files changed, 8 deletions(-)
+
+diff --git a/packages/SystemUI/res/values-hu-rHU/evolution_strings.xml b/packages/SystemUI/res/values-hu-rHU/evolution_strings.xml
+index 141bf4a7..8d27b124 100644
+--- a/packages/SystemUI/res/values-hu-rHU/evolution_strings.xml
++++ b/packages/SystemUI/res/values-hu-rHU/evolution_strings.xml
+@@ -143,7 +143,6 @@
+     <string name="omnijaws_label_default">Időjárás</string>
+     <!-- Sleep Mode -->
+     <string name="quick_settings_sleep_mode_label">Alvómód</string>
+-    <string name="default_user_name">Evolution X</string>
+     <!-- Essential Notifications -->
+     <string name="essential_notifications_title">Legfontosabbak</string>
+     <string name="essential_notifications_summary">A fontos üzenetek és riasztások</string>
+diff --git a/packages/SystemUI/res/values-in-rID/evolution_strings.xml b/packages/SystemUI/res/values-in-rID/evolution_strings.xml
+index 3736eda2..19d8b4c0 100644
+--- a/packages/SystemUI/res/values-in-rID/evolution_strings.xml
++++ b/packages/SystemUI/res/values-in-rID/evolution_strings.xml
+@@ -142,7 +142,6 @@
+     <string name="omnijaws_label_default">Cuaca</string>
+     <!-- Sleep Mode -->
+     <string name="quick_settings_sleep_mode_label">Mode Tidur</string>
+-    <string name="default_user_name">Evolution X</string>
+     <!-- Essential Notifications -->
+     <string name="essential_notifications_title">Hal-hal penting</string>
+     <string name="essential_notifications_summary">Pesan dan peringatan penting</string>
+diff --git a/packages/SystemUI/res/values-ku-rTR/evolution_strings.xml b/packages/SystemUI/res/values-ku-rTR/evolution_strings.xml
+index 0ff30004..0fa11f4b 100644
+--- a/packages/SystemUI/res/values-ku-rTR/evolution_strings.xml
++++ b/packages/SystemUI/res/values-ku-rTR/evolution_strings.xml
+@@ -135,7 +135,6 @@
+     <string name="omnijaws_label_default">کەشوهەوا</string>
+     <!-- Sleep Mode -->
+     <string name="quick_settings_sleep_mode_label">دۆخی خەوتن</string>
+-    <string name="default_user_name">Evolution X</string>
+     <!-- Essential Notifications -->
+     <string name="essential_notifications_title">ئاگادارییە بنەڕەتییەکان</string>
+     <string name="essential_notifications_summary">نامە و ئاگادارکردنەوە گرنگەکان</string>
+diff --git a/packages/SystemUI/res/values-pl-rPL/evolution_strings.xml b/packages/SystemUI/res/values-pl-rPL/evolution_strings.xml
+index cc28bb86..79378c27 100644
+--- a/packages/SystemUI/res/values-pl-rPL/evolution_strings.xml
++++ b/packages/SystemUI/res/values-pl-rPL/evolution_strings.xml
+@@ -147,7 +147,6 @@
+     <string name="omnijaws_label_default">Pogoda</string>
+     <!-- Sleep Mode -->
+     <string name="quick_settings_sleep_mode_label">Tryb uśpienia</string>
+-    <string name="default_user_name">Evolution X</string>
+     <!-- Essential Notifications -->
+     <string name="essential_notifications_title">Podstawowe</string>
+     <string name="essential_notifications_summary">Ważne wiadomości i alerty</string>
+diff --git a/packages/SystemUI/res/values-pt-rBR/evolution_strings.xml b/packages/SystemUI/res/values-pt-rBR/evolution_strings.xml
+index 687cae84..e2110888 100644
+--- a/packages/SystemUI/res/values-pt-rBR/evolution_strings.xml
++++ b/packages/SystemUI/res/values-pt-rBR/evolution_strings.xml
+@@ -143,7 +143,6 @@
+     <string name="omnijaws_label_default">Clima</string>
+     <!-- Sleep Mode -->
+     <string name="quick_settings_sleep_mode_label">Modo de suspensão</string>
+-    <string name="default_user_name">Evolution X</string>
+     <!-- Essential Notifications -->
+     <string name="essential_notifications_title">Essenciais</string>
+     <string name="essential_notifications_summary">Mensagens e alertas importantes</string>
+diff --git a/packages/SystemUI/res/values-ru-rRU/evolution_strings.xml b/packages/SystemUI/res/values-ru-rRU/evolution_strings.xml
+index 194e2e54..c54ee306 100644
+--- a/packages/SystemUI/res/values-ru-rRU/evolution_strings.xml
++++ b/packages/SystemUI/res/values-ru-rRU/evolution_strings.xml
+@@ -145,7 +145,6 @@
+     <string name="omnijaws_label_default">Погода</string>
+     <!-- Sleep Mode -->
+     <string name="quick_settings_sleep_mode_label">Спящий режим</string>
+-    <string name="default_user_name">Evolution X</string>
+     <!-- Essential Notifications -->
+     <string name="essential_notifications_title">Самое главное</string>
+     <string name="essential_notifications_summary">Важные сообщения и уведомления</string>
+diff --git a/packages/SystemUI/res/values-tr-rTR/evolution_strings.xml b/packages/SystemUI/res/values-tr-rTR/evolution_strings.xml
+index 51c86e12..c041033b 100644
+--- a/packages/SystemUI/res/values-tr-rTR/evolution_strings.xml
++++ b/packages/SystemUI/res/values-tr-rTR/evolution_strings.xml
+@@ -143,7 +143,6 @@
+     <string name="omnijaws_label_default">Hava Durumu</string>
+     <!-- Sleep Mode -->
+     <string name="quick_settings_sleep_mode_label">Uyku Modu</string>
+-    <string name="default_user_name">Evolution X</string>
+     <!-- Essential Notifications -->
+     <string name="essential_notifications_title">Önemliler</string>
+     <string name="essential_notifications_summary">Önemli mesajlar ve uyarılar</string>
+diff --git a/packages/SystemUI/res/values-uk-rUA/evolution_strings.xml b/packages/SystemUI/res/values-uk-rUA/evolution_strings.xml
+index d7b05a22..9e3f2b6d 100644
+--- a/packages/SystemUI/res/values-uk-rUA/evolution_strings.xml
++++ b/packages/SystemUI/res/values-uk-rUA/evolution_strings.xml
+@@ -145,7 +145,6 @@
+     <string name="omnijaws_label_default">Погода</string>
+     <!-- Sleep Mode -->
+     <string name="quick_settings_sleep_mode_label">Режим сну</string>
+-    <string name="default_user_name">Логотип Evolution X</string>
+     <!-- Essential Notifications -->
+     <string name="essential_notifications_title">Основні речі</string>
+     <string name="essential_notifications_summary">Важливі повідомлення та сповіщення</string>
+-- 
+2.43.0
+

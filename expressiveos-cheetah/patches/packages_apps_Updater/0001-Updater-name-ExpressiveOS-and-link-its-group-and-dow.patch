@@ -1,0 +1,1054 @@
+From c549af68949b96737e1abe20c59f5a3e0de2d4d9 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:41:22 +0000
+Subject: [PATCH] Updater: name ExpressiveOS and link its group and downloads
+
+ExpressiveOS is its own ROM: the updater called every build "Evolution X",
+sent "Report issues" to Evolution X's wiki and opened evolution-x.org for
+downloads and blocked updates. Name ExpressiveOS in all locales, link
+the ExpressiveOS Telegram group and the device's SourceForge folder, and
+export updates to "ExpressiveOS updates/". Also repair two Irish strings
+whose escaped, duplicated markup showed raw tags and the value twice.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ app/src/main/res/values-ar/strings.xml        |  4 ++--
+ app/src/main/res/values-ast-rES/strings.xml   |  4 ++--
+ app/src/main/res/values-az/strings.xml        |  4 ++--
+ app/src/main/res/values-be/strings.xml        |  4 ++--
+ app/src/main/res/values-bg/strings.xml        |  4 ++--
+ app/src/main/res/values-ca/strings.xml        |  4 ++--
+ app/src/main/res/values-ckb/strings.xml       |  4 ++--
+ app/src/main/res/values-cs/strings.xml        |  4 ++--
+ app/src/main/res/values-cy/strings.xml        |  4 ++--
+ app/src/main/res/values-da/strings.xml        |  4 ++--
+ app/src/main/res/values-de/strings.xml        |  4 ++--
+ app/src/main/res/values-el/strings.xml        |  4 ++--
+ app/src/main/res/values-en-rAU/strings.xml    |  4 ++--
+ app/src/main/res/values-en-rCA/strings.xml    |  4 ++--
+ app/src/main/res/values-en-rGB/strings.xml    |  4 ++--
+ app/src/main/res/values-en-rIN/strings.xml    |  4 ++--
+ app/src/main/res/values-es-rUS/strings.xml    |  4 ++--
+ app/src/main/res/values-es/strings.xml        |  4 ++--
+ app/src/main/res/values-eu/strings.xml        |  4 ++--
+ app/src/main/res/values-fa/strings.xml        |  4 ++--
+ app/src/main/res/values-fi/strings.xml        |  4 ++--
+ app/src/main/res/values-fr/strings.xml        |  4 ++--
+ app/src/main/res/values-fur-rIT/strings.xml   |  4 ++--
+ app/src/main/res/values-fy-rNL/strings.xml    |  4 ++--
+ app/src/main/res/values-ga-rIE/strings.xml    |  8 ++++----
+ app/src/main/res/values-gd/strings.xml        |  4 ++--
+ app/src/main/res/values-gl/strings.xml        |  4 ++--
+ app/src/main/res/values-hr/strings.xml        |  4 ++--
+ app/src/main/res/values-hu/strings.xml        |  4 ++--
+ app/src/main/res/values-in/strings.xml        |  4 ++--
+ app/src/main/res/values-is/strings.xml        |  4 ++--
+ app/src/main/res/values-it/strings.xml        |  4 ++--
+ app/src/main/res/values-iw/strings.xml        |  4 ++--
+ app/src/main/res/values-ja/strings.xml        |  4 ++--
+ app/src/main/res/values-ka/strings.xml        |  4 ++--
+ app/src/main/res/values-kab-rDZ/strings.xml   |  4 ++--
+ app/src/main/res/values-kn/strings.xml        |  4 ++--
+ app/src/main/res/values-ko/strings.xml        |  4 ++--
+ app/src/main/res/values-nb/strings.xml        |  4 ++--
+ app/src/main/res/values-nl/strings.xml        |  4 ++--
+ app/src/main/res/values-nn-rNO/strings.xml    |  4 ++--
+ app/src/main/res/values-pl/strings.xml        |  4 ++--
+ app/src/main/res/values-pt-rBR/strings.xml    |  4 ++--
+ app/src/main/res/values-pt-rPT/strings.xml    |  4 ++--
+ app/src/main/res/values-ro/strings.xml        |  4 ++--
+ app/src/main/res/values-ru/strings.xml        |  4 ++--
+ app/src/main/res/values-sc-rIT/strings.xml    |  4 ++--
+ app/src/main/res/values-sk/strings.xml        |  4 ++--
+ app/src/main/res/values-sl/strings.xml        |  4 ++--
+ app/src/main/res/values-sq/strings.xml        |  4 ++--
+ app/src/main/res/values-sr/strings.xml        |  4 ++--
+ app/src/main/res/values-sv/strings.xml        |  4 ++--
+ app/src/main/res/values-ta/strings.xml        |  4 ++--
+ app/src/main/res/values-tr/strings.xml        |  4 ++--
+ app/src/main/res/values-ug/strings.xml        |  4 ++--
+ app/src/main/res/values-uk/strings.xml        |  4 ++--
+ app/src/main/res/values-vi/strings.xml        |  4 ++--
+ app/src/main/res/values-zh-rCN/strings.xml    |  4 ++--
+ app/src/main/res/values-zh-rTW/strings.xml    |  4 ++--
+ app/src/main/res/values/config.xml            |  2 +-
+ app/src/main/res/values/evolution_strings.xml |  4 ++--
+ app/src/main/res/values/strings.xml           | 16 ++++++++--------
+ 62 files changed, 131 insertions(+), 131 deletions(-)
+
+diff --git a/app/src/main/res/values-ar/strings.xml b/app/src/main/res/values-ar/strings.xml
+index 59b4d12..2438ac0 100644
+--- a/app/src/main/res/values-ar/strings.xml
++++ b/app/src/main/res/values-ar/strings.xml
+@@ -34,8 +34,8 @@
+     <string name="snack_download_verification_failed">فشل التحقق من التحديث.</string>
+     <string name="snack_download_verified">اكتمل التنزيل.</string>
+     <string name="snack_update_not_installable">لا يمكن تثبيت هذا التحديث على الاصدار الحالي.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> من <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> من <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">جارٍ التحقق من التحديث</string>
+diff --git a/app/src/main/res/values-ast-rES/strings.xml b/app/src/main/res/values-ast-rES/strings.xml
+index 63cc2ef..c396167 100644
+--- a/app/src/main/res/values-ast-rES/strings.xml
++++ b/app/src/main/res/values-ast-rES/strings.xml
+@@ -41,8 +41,8 @@
+     <string name="snack_download_verification_failed">La comprobación d\'anovamientos falló</string>
+     <string name="snack_download_verified">Completóse la descarga.</string>
+     <string name="snack_update_not_installable">Esti anovamientu nun se pue instalar sobre la versión actual.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> de <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> de <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">Verificando l\'anovamientu</string>
+diff --git a/app/src/main/res/values-az/strings.xml b/app/src/main/res/values-az/strings.xml
+index 580d52a..2968eb3 100644
+--- a/app/src/main/res/values-az/strings.xml
++++ b/app/src/main/res/values-az/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">Xəta tapmısınız? Xəta hesabatı bələdçimizlə bildirin:</string>
+     <string name="updates_zero_state_title">Güncəlləmə yoxdur</string>
+     <string name="updates_zero_state_description">Bu cihaz üçün yeni versiyalar mövcud olduğu zaman burada görünəcək.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Güncəlləmə ölçüsü: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Təhlükəsizlik güncəlləmələri: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Əsas Android yüksəltməsi</string>
+diff --git a/app/src/main/res/values-be/strings.xml b/app/src/main/res/values-be/strings.xml
+index d464e6e..2b0a904 100644
+--- a/app/src/main/res/values-be/strings.xml
++++ b/app/src/main/res/values-be/strings.xml
+@@ -16,8 +16,8 @@
+     <string name="menu_export_update">Экспартаванне абнаўлення</string>
+     <string name="menu_ab_perf_mode">Прыярытэт працэсу абнаўлення</string>
+     <string name="snack_no_updates_found">Абнаўленні не знойдзены</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="action_download">Спампаваць</string>
+     <string name="action_install">Усталяваць</string>
+     <string name="action_delete">Выдаліць</string>
+diff --git a/app/src/main/res/values-bg/strings.xml b/app/src/main/res/values-bg/strings.xml
+index 4be9245..44dc0f4 100644
+--- a/app/src/main/res/values-bg/strings.xml
++++ b/app/src/main/res/values-bg/strings.xml
+@@ -40,8 +40,8 @@
+     <string name="snack_download_verification_failed">Проверката на актуализацията е неуспешна.</string>
+     <string name="snack_download_verified">Изтеглянето приключи.</string>
+     <string name="snack_update_not_installable">Тази актуализация не може да бъде инсталирана на текущата версия.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> от <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> от  <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">Проверка на актуализацията</string>
+diff --git a/app/src/main/res/values-ca/strings.xml b/app/src/main/res/values-ca/strings.xml
+index 80759a3..5dce4a8 100644
+--- a/app/src/main/res/values-ca/strings.xml
++++ b/app/src/main/res/values-ca/strings.xml
+@@ -82,8 +82,8 @@
+     <string name="found_bug">Heu trobat cap error? Informeu-ne amb la nostra guia d\'informes d\'errors:</string>
+     <string name="updates_zero_state_title">No hi ha actualitzacions disponibles</string>
+     <string name="updates_zero_state_description">Les noves compilacions per a aquest dispositiu apareixeran aquí quan estiguin disponibles.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Mida de l\'actualització: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Actualització de seguretat: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Actualització important d\'Android</string>
+diff --git a/app/src/main/res/values-ckb/strings.xml b/app/src/main/res/values-ckb/strings.xml
+index 89d341a..0cee3d6 100644
+--- a/app/src/main/res/values-ckb/strings.xml
++++ b/app/src/main/res/values-ckb/strings.xml
+@@ -80,8 +80,8 @@
+     <string name="found_bug">کێشەت دۆزیوەتەوە؟ بەپێی ڕێبەری ڕاپۆرتکردنی کێشەکان ڕاپۆرتی بکە:</string>
+     <string name="updates_zero_state_title">هیچ نوێکارییەک بەردەست نییە</string>
+     <string name="updates_zero_state_description">وەشانە نوێیەکان بۆ ئەم ئامێرە لێرە دەردەکەون کاتێک بەردەست دەبن.</string>
+-    <string name="list_build_version">Evolution X %1$s</string>
+-    <string name="list_build_version_date">Evolution X %1$s - %2$s</string>
++    <string name="list_build_version">ExpressiveOS %1$s</string>
++    <string name="list_build_version_date">ExpressiveOS %1$s - %2$s</string>
+     <string name="list_update_size">قەبارەی نوێکاری: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">نوێکاریی ئاسایش: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">نوێکاریی سەرەکیی ئەندرۆید</string>
+diff --git a/app/src/main/res/values-cs/strings.xml b/app/src/main/res/values-cs/strings.xml
+index cb5a882..676ce3d 100644
+--- a/app/src/main/res/values-cs/strings.xml
++++ b/app/src/main/res/values-cs/strings.xml
+@@ -40,8 +40,8 @@
+     <string name="snack_download_verification_failed">Ověření aktualizace se nezdařilo.</string>
+     <string name="snack_download_verified">Stahování úspěšné.</string>
+     <string name="snack_update_not_installable">Tuto aktualizaci nelze nainstalovat přes aktuální sestavení.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> z(e) <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> z(e) <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">Ověření aktualizace</string>
+diff --git a/app/src/main/res/values-cy/strings.xml b/app/src/main/res/values-cy/strings.xml
+index ccf2a60..ae67adc 100644
+--- a/app/src/main/res/values-cy/strings.xml
++++ b/app/src/main/res/values-cy/strings.xml
+@@ -34,8 +34,8 @@
+     <string name="snack_download_verification_failed">Methodd dilysiad y diweddariad.</string>
+     <string name="snack_download_verified">Lawrlwytho wedi cwblhau.</string>
+     <string name="snack_update_not_installable">Ni ellir gosod y diweddariad hwn ar ben yr adeiledd cyfredol.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> o <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> o <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">Yn gwireddu\'r diweddariad</string>
+diff --git a/app/src/main/res/values-da/strings.xml b/app/src/main/res/values-da/strings.xml
+index d67100c..49656c3 100644
+--- a/app/src/main/res/values-da/strings.xml
++++ b/app/src/main/res/values-da/strings.xml
+@@ -34,8 +34,8 @@
+     <string name="snack_download_verification_failed">Opdateringsbekræftelsen fejlede.</string>
+     <string name="snack_download_verified">Overførsel fuldført.</string>
+     <string name="snack_update_not_installable">Denne opdatering kan ikke installeres ovenpå det nuværende build.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> af <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> af <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">Bekræfter opdatering</string>
+diff --git a/app/src/main/res/values-de/strings.xml b/app/src/main/res/values-de/strings.xml
+index ce80a29..fe529a3 100644
+--- a/app/src/main/res/values-de/strings.xml
++++ b/app/src/main/res/values-de/strings.xml
+@@ -40,8 +40,8 @@
+     <string name="snack_download_verification_failed">Die Update-Überprüfung ist fehlgeschlagen.</string>
+     <string name="snack_download_verified">Herunterladen abgeschlossen.</string>
+     <string name="snack_update_not_installable">Dieses Update kann nicht auf die bestehende Installation angewendet werden.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> von <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> von <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">Update wird geprüft</string>
+diff --git a/app/src/main/res/values-el/strings.xml b/app/src/main/res/values-el/strings.xml
+index 8c24781..34ece74 100644
+--- a/app/src/main/res/values-el/strings.xml
++++ b/app/src/main/res/values-el/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">Βρήκατε πρόβλημα; Αναφέρετέ το με τον βοηθό αναφοράς σφαλμάτων:</string>
+     <string name="updates_zero_state_title">Δεν υπάρχουν διαθέσιμες ενημερώσεις</string>
+     <string name="updates_zero_state_description">Νέες εκδόσεις για αυτήν τη συσκευή θα εμφανιστούν εδώ όταν είναι διαθέσιμες.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Μέγεθος ενημέρωσης: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Ενημέρωση ασφάλειας: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Σημαντική αναβάθμιση Android</string>
+diff --git a/app/src/main/res/values-en-rAU/strings.xml b/app/src/main/res/values-en-rAU/strings.xml
+index 5513f22..4d63d8c 100644
+--- a/app/src/main/res/values-en-rAU/strings.xml
++++ b/app/src/main/res/values-en-rAU/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">Found a bug? Report it with our bug report guide:</string>
+     <string name="updates_zero_state_title">No updates available</string>
+     <string name="updates_zero_state_description">New builds for this device will appear here when available.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Update size: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Security update: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Major Android upgrade</string>
+diff --git a/app/src/main/res/values-en-rCA/strings.xml b/app/src/main/res/values-en-rCA/strings.xml
+index c169a7f..e2ff82c 100644
+--- a/app/src/main/res/values-en-rCA/strings.xml
++++ b/app/src/main/res/values-en-rCA/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">Found a bug? Report it with our bug report guide:</string>
+     <string name="updates_zero_state_title">No updates available</string>
+     <string name="updates_zero_state_description">New builds for this device will appear here when available.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Update size: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Security update: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Major Android upgrade</string>
+diff --git a/app/src/main/res/values-en-rGB/strings.xml b/app/src/main/res/values-en-rGB/strings.xml
+index 5513f22..4d63d8c 100644
+--- a/app/src/main/res/values-en-rGB/strings.xml
++++ b/app/src/main/res/values-en-rGB/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">Found a bug? Report it with our bug report guide:</string>
+     <string name="updates_zero_state_title">No updates available</string>
+     <string name="updates_zero_state_description">New builds for this device will appear here when available.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Update size: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Security update: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Major Android upgrade</string>
+diff --git a/app/src/main/res/values-en-rIN/strings.xml b/app/src/main/res/values-en-rIN/strings.xml
+index 5513f22..4d63d8c 100644
+--- a/app/src/main/res/values-en-rIN/strings.xml
++++ b/app/src/main/res/values-en-rIN/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">Found a bug? Report it with our bug report guide:</string>
+     <string name="updates_zero_state_title">No updates available</string>
+     <string name="updates_zero_state_description">New builds for this device will appear here when available.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Update size: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Security update: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Major Android upgrade</string>
+diff --git a/app/src/main/res/values-es-rUS/strings.xml b/app/src/main/res/values-es-rUS/strings.xml
+index 6478041..da71e86 100644
+--- a/app/src/main/res/values-es-rUS/strings.xml
++++ b/app/src/main/res/values-es-rUS/strings.xml
+@@ -31,8 +31,8 @@
+     <string name="snack_download_verification_failed">La verificación de la actualización falló.</string>
+     <string name="snack_download_verified">Descarga completada.</string>
+     <string name="snack_update_not_installable">Esta actualización no puede instalarse encima de la versión actual.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_verifying_update">Verificando actualización</string>
+     <string name="action_download">Descargar</string>
+     <string name="action_pause">Pausar</string>
+diff --git a/app/src/main/res/values-es/strings.xml b/app/src/main/res/values-es/strings.xml
+index 5b122d6..cd1aa90 100644
+--- a/app/src/main/res/values-es/strings.xml
++++ b/app/src/main/res/values-es/strings.xml
+@@ -80,8 +80,8 @@
+     <string name="found_bug">¿Has encontrado un error? Notifícalo según nuestra guía para informar de errores:</string>
+     <string name="updates_zero_state_title">No hay actualizaciones disponibles</string>
+     <string name="updates_zero_state_description">Las nuevas compilaciones para este dispositivo aparecerán aquí cuando estén disponibles.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Tamaño de la actualización: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Actualización de seguridad: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Actualización importante de Android</string>
+diff --git a/app/src/main/res/values-eu/strings.xml b/app/src/main/res/values-eu/strings.xml
+index f44aafe..41678e3 100644
+--- a/app/src/main/res/values-eu/strings.xml
++++ b/app/src/main/res/values-eu/strings.xml
+@@ -31,8 +31,8 @@
+     <string name="snack_download_verification_failed">Eguneraketaren egiaztaketak huts egin du.</string>
+     <string name="snack_download_verified">Deskarga osatuta.</string>
+     <string name="snack_update_not_installable">Eguneraketa hau ezin da instalatu uneko konpilazioaren gainean.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_verifying_update">Eguneraketa egiaztatzen</string>
+     <string name="action_download">Deskargatu</string>
+     <string name="action_pause">Pausatu</string>
+diff --git a/app/src/main/res/values-fa/strings.xml b/app/src/main/res/values-fa/strings.xml
+index 86fd370..3b5f2c6 100644
+--- a/app/src/main/res/values-fa/strings.xml
++++ b/app/src/main/res/values-fa/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">باگی پیدا کردید؟ آن را با راهنمای گزارش اشکال ما گزارش دهید:</string>
+     <string name="updates_zero_state_title">به‌روزرسانی موجود نيست</string>
+     <string name="updates_zero_state_description">نسخه‌های جدید این دستگاه به محض انتشار، اینجا نمایش داده خواهند شد.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">حجم به‌روزرسانی: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">به‌روزرسانی امنیتی: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">ارتقاء عمده اندروید</string>
+diff --git a/app/src/main/res/values-fi/strings.xml b/app/src/main/res/values-fi/strings.xml
+index c994890..8fdd739 100644
+--- a/app/src/main/res/values-fi/strings.xml
++++ b/app/src/main/res/values-fi/strings.xml
+@@ -33,8 +33,8 @@
+     <string name="snack_download_verification_failed">Päivityksen vahvistaminen epäonnistui.</string>
+     <string name="snack_download_verified">Lataus suoritettu.</string>
+     <string name="snack_update_not_installable">Tätä päivitystä ei voida asentaa nykyisen version päälle.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_verifying_update">Todentaa päivitystä</string>
+     <string name="action_download">Lataa</string>
+     <string name="action_pause">Tauko</string>
+diff --git a/app/src/main/res/values-fr/strings.xml b/app/src/main/res/values-fr/strings.xml
+index 40a785a..b46d445 100644
+--- a/app/src/main/res/values-fr/strings.xml
++++ b/app/src/main/res/values-fr/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">Vous avez trouvé un bug ? Signalez-le avec notre guide de rapport de bug :</string>
+     <string name="updates_zero_state_title">Aucune mise à jour disponible</string>
+     <string name="updates_zero_state_description">Les nouvelles versions pour cet appareil apparaîtront ici quand elles seront disponibles.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Taille de la mise à jour : <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Mise à jour de sécurité : <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Mise à jour majeure d\'Android</string>
+diff --git a/app/src/main/res/values-fur-rIT/strings.xml b/app/src/main/res/values-fur-rIT/strings.xml
+index e03d0f9..82ab012 100644
+--- a/app/src/main/res/values-fur-rIT/strings.xml
++++ b/app/src/main/res/values-fur-rIT/strings.xml
+@@ -41,8 +41,8 @@
+     <string name="snack_download_verification_failed">Verifiche dal inzornament falide.</string>
+     <string name="snack_download_verified">Discjariament completât.</string>
+     <string name="snack_update_not_installable">Nol è pussibil instalâ chest inzornament sore di cheste version.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="Lui 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="Lui 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> di <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> di <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">Verifiche inzornament</string>
+diff --git a/app/src/main/res/values-fy-rNL/strings.xml b/app/src/main/res/values-fy-rNL/strings.xml
+index 5004c37..333e2d5 100644
+--- a/app/src/main/res/values-fy-rNL/strings.xml
++++ b/app/src/main/res/values-fy-rNL/strings.xml
+@@ -32,8 +32,8 @@
+     <string name="snack_download_verification_failed">Ferifikaasje fan de fernijing mislearre.</string>
+     <string name="snack_download_verified">Downloaden foltôge.</string>
+     <string name="snack_update_not_installable">Dizze fernijing kin net ynstallearre wurde boppe-op de aktuele ferzje.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_verifying_update">Fernijing ferifiearje</string>
+     <string name="action_download">Downloade</string>
+     <string name="action_pause">Pauzeearje</string>
+diff --git a/app/src/main/res/values-ga-rIE/strings.xml b/app/src/main/res/values-ga-rIE/strings.xml
+index 7dee47e..a954046 100644
+--- a/app/src/main/res/values-ga-rIE/strings.xml
++++ b/app/src/main/res/values-ga-rIE/strings.xml
+@@ -42,7 +42,7 @@
+     <string name="check_your_internet_connection">Seiceáil do nasc idirlín</string>
+     <string name="updates_check_failed">Theip ar an seiceáil nuashonraithe. Déan iarracht arís ar ball.</string>
+     <string name="header_last_updates_check_time">Seiceáilte go deireanach: <xliff:g id="time" example="01:23">%1$s</xliff:g></string>
+-    <string name="header_last_updates_check">Seiceáilte go deireanach: &lt;xliff:g id="date" example="Jan 12"&gt;%1$s&lt;/xliff:g&gt;%1$s&lt;/xliff:g&gt; (&lt;xliff:g id="time" example="01:23"&gt;%2$s&lt;/xliff:g&gt;)</string>
++    <string name="header_last_updates_check">Seiceáilte go deireanach: <xliff:g id="date" example="Jan 12">%1$s</xliff:g> (<xliff:g id="time" example="01:23">%2$s</xliff:g>)</string>
+     <string name="pref_category_background_sync">Sioncrónú cúlra</string>
+     <string name="menu_auto_updates_check">Seiceáil go tréimhsiúil le haghaidh nuashonruithe</string>
+     <string name="menu_auto_updates_check_summary">Seiceáil le haghaidh nuashonruithe sa chúlra</string>
+@@ -80,10 +80,10 @@
+     <string name="found_bug">An bhfuair tú fabht? Tuairiscigh é lenár dtreoir tuairiscithe fabht:</string>
+     <string name="updates_zero_state_title">Níl aon nuashonruithe ar fáil</string>
+     <string name="updates_zero_state_description">Beidh leaganacha nua den fheiste seo le feiceáil anseo nuair a bheidh siad ar fáil.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Méid an nuashonraithe: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+-    <string name="list_security_update">Nuashonrú slándála: &lt;xliff:g id="date" example="Jan 2026"&gt;%1$s&lt;/xliff:g&gt;%1$s&lt;/xliff:g&gt;</string>
++    <string name="list_security_update">Nuashonrú slándála: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Uasghrádú mór Android</string>
+     <string name="list_full_install">Suiteáil iomlán: Sábháilte le suiteáil thar aon tógáil roimhe seo</string>
+     <string name="list_major_upgrade_recovery_install">Ní mór uasghráduithe móra ar leaganacha <xliff:g id="brand_name" example="LineageOS">%1$s</xliff:g> a shuiteáil de láimh. Féach ar threoir do ghléis le leanúint ar aghaidh.</string>
+diff --git a/app/src/main/res/values-gd/strings.xml b/app/src/main/res/values-gd/strings.xml
+index b58b176..0c693fd 100644
+--- a/app/src/main/res/values-gd/strings.xml
++++ b/app/src/main/res/values-gd/strings.xml
+@@ -33,8 +33,8 @@
+     <string name="snack_download_verification_failed">Dh’fhàillig le dearbhadh an ùrachaidh.</string>
+     <string name="snack_download_verified">Tha an luchdadh a-nuas deiseil.</string>
+     <string name="snack_update_not_installable">Chan urrainn dhut an t-ùrachadh seo a’ stàladh air an togail làithreach agad.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> – <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> – <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_verifying_update">A’ dearbhadh an ùrachaidh</string>
+     <string name="action_download">Luchdaich a-nuas</string>
+     <string name="action_pause">Cuir ’na stad</string>
+diff --git a/app/src/main/res/values-gl/strings.xml b/app/src/main/res/values-gl/strings.xml
+index 47490d8..fec3d49 100644
+--- a/app/src/main/res/values-gl/strings.xml
++++ b/app/src/main/res/values-gl/strings.xml
+@@ -33,8 +33,8 @@
+     <string name="snack_download_verification_failed">Fallou a verificación da actualización.</string>
+     <string name="snack_download_verified">Descarga completada.</string>
+     <string name="snack_update_not_installable">Non é posíbel instalar esta actualización sobre a compilación actual.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_verifying_update">Comprobando actualización</string>
+     <string name="action_download">Descarga</string>
+     <string name="action_pause">Pausar</string>
+diff --git a/app/src/main/res/values-hr/strings.xml b/app/src/main/res/values-hr/strings.xml
+index eac0af6..48db5d1 100644
+--- a/app/src/main/res/values-hr/strings.xml
++++ b/app/src/main/res/values-hr/strings.xml
+@@ -28,8 +28,8 @@
+     <string name="snack_download_verification_failed">Provjera ažuriranja nije uspjela.</string>
+     <string name="snack_download_verified">Preuzimanje je završeno.</string>
+     <string name="snack_update_not_installable">Ovo se ažuriranje ne može instalirati na trenutnu verziju.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="7.1.2">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s </xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s </xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="7.1.2">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s </xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s </xliff:g></string>
+     <string name="list_verifying_update">Provjera ažuriranja</string>
+     <string name="action_download">Preuzmi</string>
+     <string name="confirm_delete_dialog_title">Izbriši datoteku</string>
+diff --git a/app/src/main/res/values-hu/strings.xml b/app/src/main/res/values-hu/strings.xml
+index d71a041..3981b41 100644
+--- a/app/src/main/res/values-hu/strings.xml
++++ b/app/src/main/res/values-hu/strings.xml
+@@ -81,8 +81,8 @@ illetve, ha éppen tölt, akkor még <xliff:g id="percent_charging">%2$d</xliff:
+     <string name="found_bug">Hibát talált? Kövesse a hibabejelentési útmutatót:</string>
+     <string name="updates_zero_state_title">Nincs elérhető frissítés</string>
+     <string name="updates_zero_state_description">A készülékhez készülő új kiadások itt fognak megjelenni, amikor elérhetővé válnak.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Frissítés mérete: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Biztonsági frissítés: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Fő Android-frissítés</string>
+diff --git a/app/src/main/res/values-in/strings.xml b/app/src/main/res/values-in/strings.xml
+index f179899..cd2c806 100644
+--- a/app/src/main/res/values-in/strings.xml
++++ b/app/src/main/res/values-in/strings.xml
+@@ -57,8 +57,8 @@
+     <string name="header_android_version">Android <xliff:g id="version" example="16">%1$s</xliff:g></string>
+     <string name="report_issues">Laporkan masalah</string>
+     <string name="updates_zero_state_title">Tidak ada pembaruan yang tersedia</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Ukuran pembaruan: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> dari <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> dari <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+diff --git a/app/src/main/res/values-is/strings.xml b/app/src/main/res/values-is/strings.xml
+index 6cc8a6f..3feb9cf 100644
+--- a/app/src/main/res/values-is/strings.xml
++++ b/app/src/main/res/values-is/strings.xml
+@@ -63,8 +63,8 @@
+     <string name="found_bug">Fannstu galla? Tilkynntu hann með leiðarvísi villutilkynninga:</string>
+     <string name="updates_zero_state_title">Engar uppfærslur tiltækar</string>
+     <string name="updates_zero_state_description">Nýjar samsetningar fyrir þetta tæki munu birtast hér þegar þær verða tiltækar.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Stóruppfærsla Android</string>
+     <string name="list_full_install">Full uppsetning: Öruggt að setja upp yfir allar fyrri samsetningar</string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> of <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+diff --git a/app/src/main/res/values-it/strings.xml b/app/src/main/res/values-it/strings.xml
+index d81a586..7cb2fa6 100644
+--- a/app/src/main/res/values-it/strings.xml
++++ b/app/src/main/res/values-it/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">Trovato un bug? Segnalalo con la nostra guida alla segnalazione di bug:</string>
+     <string name="updates_zero_state_title">Nessun aggiornamento disponibile</string>
+     <string name="updates_zero_state_description">Le nuove build per questo dispositivo appariranno qui quando disponibili.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="Luglio 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="Luglio 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Dimensione aggiornamento: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Aggiornamento di sicurezza: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Aggiornamento versione di Android</string>
+diff --git a/app/src/main/res/values-iw/strings.xml b/app/src/main/res/values-iw/strings.xml
+index 52071ce..5cb32f0 100644
+--- a/app/src/main/res/values-iw/strings.xml
++++ b/app/src/main/res/values-iw/strings.xml
+@@ -79,8 +79,8 @@
+     <string name="found_bug">מצאת תקלה? כדאי לדווח עליו לפי מדריך הדיווח שלנו:</string>
+     <string name="updates_zero_state_title">אין עדכונים זמינים</string>
+     <string name="updates_zero_state_description">גרסאות חדשות עבור מכשיר זה יופיעו כאן כאשר יהיו זמינות.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">גודל העדכון: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">עדכון אבטחה: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">שדרוג אנדרואיד משמעותי</string>
+diff --git a/app/src/main/res/values-ja/strings.xml b/app/src/main/res/values-ja/strings.xml
+index 21a81ba..3090529 100644
+--- a/app/src/main/res/values-ja/strings.xml
++++ b/app/src/main/res/values-ja/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">バグを見つけましたか？バグレポートガイドの通りに報告してください：</string>
+     <string name="updates_zero_state_title">アップデートはありません</string>
+     <string name="updates_zero_state_description">利用可能な場合、このデバイスの新しいビルドがここに表示されます。</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">アップデートのサイズ: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">セキュリティアップデート: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">メジャー Android アップグレード</string>
+diff --git a/app/src/main/res/values-ka/strings.xml b/app/src/main/res/values-ka/strings.xml
+index 27279d5..ec464e3 100644
+--- a/app/src/main/res/values-ka/strings.xml
++++ b/app/src/main/res/values-ka/strings.xml
+@@ -34,8 +34,8 @@
+     <string name="snack_download_verification_failed">განახლების დამოწმება ვერ მოხერხდა.</string>
+     <string name="snack_download_verified">ჩამოტვირთვა დასრულებულია.</string>
+     <string name="snack_update_not_installable">განახლების ვერ დაყენდება მიმდინარე ანაწყობზე.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_major_upgrade_recovery_install">ძირეული <xliff:g id="brand_name" example="LineageOS">%1$s</xliff:g> ვერსიის განახლებები ხელით უნდა დაყენდეს. გაეცანით თქვენი მოწყობილობის სახელმძღვანელოს გასაგრძელებლად.</string>
+     <string name="list_downgrade_blocked">ეს ანაწყობი ძველია დაყენებულთან შედარებით და ვერ მიესადაგება.</string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g>, სულ <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+diff --git a/app/src/main/res/values-kab-rDZ/strings.xml b/app/src/main/res/values-kab-rDZ/strings.xml
+index 80430cd..c986df8 100644
+--- a/app/src/main/res/values-kab-rDZ/strings.xml
++++ b/app/src/main/res/values-kab-rDZ/strings.xml
+@@ -27,8 +27,8 @@
+     <string name="snack_download_failed">Icceḍ usider. Txilek senqed tuqqna-k γer internet sakin ɛreḍ tikelt nniḍen ticki.</string>
+     <string name="snack_download_verification_failed">Icceḍ usenqed n ulqem.</string>
+     <string name="snack_download_verified">Asider yemmed.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_verifying_update">Asenqed n welqem</string>
+     <string name="action_download">Sider</string>
+     <string name="action_pause">Steɛfu</string>
+diff --git a/app/src/main/res/values-kn/strings.xml b/app/src/main/res/values-kn/strings.xml
+index 16a7881..ee68ed4 100644
+--- a/app/src/main/res/values-kn/strings.xml
++++ b/app/src/main/res/values-kn/strings.xml
+@@ -19,8 +19,8 @@
+     <string name="menu_export_update">ನವೀಕರಿಣ ನಿರ್ಯಾತ</string>
+     <string name="menu_ab_perf_mode">ನವೀಕರಣಕ್ಕೆ ಆದ್ಯತೆ ಕೊಡು</string>
+     <string name="snack_download_verified">ಇಳಿಸುವಿಕೆ ಪೂರ್ಣಗೊಂಡಿದೆ.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_verifying_update">ನವೀಕರಣ ಪರಿಶೀಲಿಸುತ್ತಿದೆ</string>
+     <string name="action_download">ಇಳಿಸು</string>
+     <string name="action_install">ಸ್ಥಾಪಿಸು</string>
+diff --git a/app/src/main/res/values-ko/strings.xml b/app/src/main/res/values-ko/strings.xml
+index 9730584..70bf73b 100644
+--- a/app/src/main/res/values-ko/strings.xml
++++ b/app/src/main/res/values-ko/strings.xml
+@@ -41,8 +41,8 @@
+     <string name="snack_download_verification_failed">업데이트 검증에 실패했습니다.</string>
+     <string name="snack_download_verified">다운로드가 완료되었습니다.</string>
+     <string name="snack_update_not_installable">현재 빌드에서는 이 업데이트를 설치할 수 없습니다.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> / <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> / <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">업데이트 검증 중</string>
+diff --git a/app/src/main/res/values-nb/strings.xml b/app/src/main/res/values-nb/strings.xml
+index 0a8528c..48f2d75 100644
+--- a/app/src/main/res/values-nb/strings.xml
++++ b/app/src/main/res/values-nb/strings.xml
+@@ -28,8 +28,8 @@
+     <string name="snack_download_verification_failed">Oppdateringsbekreftelsen mislyktes.</string>
+     <string name="snack_download_verified">Nedlasting fullført.</string>
+     <string name="snack_update_not_installable">Denne oppdateringen kan ikke installeres over gjeldende installasjon.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_verifying_update">Bekrefter oppdatering</string>
+     <string name="action_download">Last ned</string>
+     <string name="action_pause">Sett på pause</string>
+diff --git a/app/src/main/res/values-nl/strings.xml b/app/src/main/res/values-nl/strings.xml
+index 34e40cc..72fc2a9 100644
+--- a/app/src/main/res/values-nl/strings.xml
++++ b/app/src/main/res/values-nl/strings.xml
+@@ -39,8 +39,8 @@
+     <string name="snack_download_verification_failed">Verificatie van de update mislukt.</string>
+     <string name="snack_download_verified">Downloaden voltooid.</string>
+     <string name="snack_update_not_installable">Deze update kan niet worden geïnstalleerd bovenop de huidige versie.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> van <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> van <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">Update verifiëren</string>
+diff --git a/app/src/main/res/values-nn-rNO/strings.xml b/app/src/main/res/values-nn-rNO/strings.xml
+index 38d1ee6..f795bd6 100644
+--- a/app/src/main/res/values-nn-rNO/strings.xml
++++ b/app/src/main/res/values-nn-rNO/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">Fann du ein feil? Meld frå med feilmeldingsrettleiaren vår:</string>
+     <string name="updates_zero_state_title">Ingen oppdateringar tilgjengelege</string>
+     <string name="updates_zero_state_description">Nye versjonar for denne eininga kjem til syne her når dei er klare.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Storleik på oppdatering: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Tryggingsoppdatering: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Større Android-oppgradering</string>
+diff --git a/app/src/main/res/values-pl/strings.xml b/app/src/main/res/values-pl/strings.xml
+index 984cada..ea91db0 100644
+--- a/app/src/main/res/values-pl/strings.xml
++++ b/app/src/main/res/values-pl/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">Jakiś błąd? Zgłoś go z naszym przewodnikiem zgłaszania błędów:</string>
+     <string name="updates_zero_state_title">Brak dostępnych aktualizacji</string>
+     <string name="updates_zero_state_description">Nowe kompilacje dla tego urządzenia pojawią się tutaj, gdy będą dostępne.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Rozmiar aktualizacji: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Aktualizacje bezpieczeństwa: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Znacząca aktualizacja systemu Android</string>
+diff --git a/app/src/main/res/values-pt-rBR/strings.xml b/app/src/main/res/values-pt-rBR/strings.xml
+index 628ff74..e13bc18 100644
+--- a/app/src/main/res/values-pt-rBR/strings.xml
++++ b/app/src/main/res/values-pt-rBR/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">Encontrou um bug? Reporte com nosso guia de relatórios de bug:</string>
+     <string name="updates_zero_state_title">Não há atualizações disponíveis</string>
+     <string name="updates_zero_state_description">Novas compilações para este dispositivo aparecerão aqui quando disponíveis.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Tamanho da atualização: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Atualização de segurança: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Atualização maior do Android</string>
+diff --git a/app/src/main/res/values-pt-rPT/strings.xml b/app/src/main/res/values-pt-rPT/strings.xml
+index 64a8f4a..af876d2 100644
+--- a/app/src/main/res/values-pt-rPT/strings.xml
++++ b/app/src/main/res/values-pt-rPT/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">Encontrou um erro? Reporte com o nosso guia de relatórios de erro:</string>
+     <string name="updates_zero_state_title">Sem atualizações disponíveis</string>
+     <string name="updates_zero_state_description">Novas compilações para este dispositivo aparecerão aqui, quando disponíveis.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Tamanho da atualização: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Atualização de segurança: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Atualização principal do Android</string>
+diff --git a/app/src/main/res/values-ro/strings.xml b/app/src/main/res/values-ro/strings.xml
+index 3ce3422..fe19c44 100644
+--- a/app/src/main/res/values-ro/strings.xml
++++ b/app/src/main/res/values-ro/strings.xml
+@@ -80,8 +80,8 @@
+     <string name="found_bug">Ați găsit un bug? Raportați-l cu ghidul nostru de raportare a erorilor:</string>
+     <string name="updates_zero_state_title">Nu există actualizări disponibile</string>
+     <string name="updates_zero_state_description">Noi build-uri pentru acest dispozitiv vor apărea aici atunci când vor fi disponibile.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Dimensiune actualizare: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Actualizare de securitate: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Îmbunătățire majoră Android</string>
+diff --git a/app/src/main/res/values-ru/strings.xml b/app/src/main/res/values-ru/strings.xml
+index 862ed6d..c8f960e 100644
+--- a/app/src/main/res/values-ru/strings.xml
++++ b/app/src/main/res/values-ru/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">Нашли ошибку? Сообщите об этом с помощью нашего руководства по исправлению ошибок:</string>
+     <string name="updates_zero_state_title">Обновления отсутствуют</string>
+     <string name="updates_zero_state_description">Новые сборки для этого устройства будут появляться здесь, когда они станут доступны.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Размер обновления: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Обновление безопасности: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Большое обновление Android</string>
+diff --git a/app/src/main/res/values-sc-rIT/strings.xml b/app/src/main/res/values-sc-rIT/strings.xml
+index c7a6c86..275f807 100644
+--- a/app/src/main/res/values-sc-rIT/strings.xml
++++ b/app/src/main/res/values-sc-rIT/strings.xml
+@@ -41,8 +41,8 @@
+     <string name="snack_download_verification_failed">Verìfica de atualizatzione faddida.</string>
+     <string name="snack_download_verified">Iscarrigamentu cumpletadu.</string>
+     <string name="snack_update_not_installable">Custa atualizatzione non podet èssere installada in pitzus de sa compilatzione atuale.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> de <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> de <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">Verìfica de s\'atualizatzione in cursu</string>
+diff --git a/app/src/main/res/values-sk/strings.xml b/app/src/main/res/values-sk/strings.xml
+index a55312b..27741c1 100644
+--- a/app/src/main/res/values-sk/strings.xml
++++ b/app/src/main/res/values-sk/strings.xml
+@@ -33,8 +33,8 @@
+     <string name="snack_download_verification_failed">Overovanie aktualizácie zlyhalo.</string>
+     <string name="snack_download_verified">Sťahovanie dokončené.</string>
+     <string name="snack_update_not_installable">Táto aktualizácia sa nedá nainštalovať na aktuálnu zostavu.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_verifying_update">Overujem aktualizáciu</string>
+     <string name="action_download">Stiahnuť</string>
+     <string name="action_pause">Pauza</string>
+diff --git a/app/src/main/res/values-sl/strings.xml b/app/src/main/res/values-sl/strings.xml
+index d72fae1..5a81211 100644
+--- a/app/src/main/res/values-sl/strings.xml
++++ b/app/src/main/res/values-sl/strings.xml
+@@ -80,8 +80,8 @@
+     <string name="found_bug">Najdena napaka? Prijavite jo z našim vodičem za prijavo napake:</string>
+     <string name="updates_zero_state_title">Ni razpoložljivih posodobitev</string>
+     <string name="updates_zero_state_description">Nove izgradnje za to napravo se bodo pojavile tukaj, ko bodo na voljo.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Velikost posodobitve: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Varnostna posodobitev: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Večja Android posodobitev</string>
+diff --git a/app/src/main/res/values-sq/strings.xml b/app/src/main/res/values-sq/strings.xml
+index 0b8d11d..7605058 100644
+--- a/app/src/main/res/values-sq/strings.xml
++++ b/app/src/main/res/values-sq/strings.xml
+@@ -39,8 +39,8 @@
+     <string name="snack_download_verification_failed">Verifikim i përditësimit dështoi.</string>
+     <string name="snack_download_verified">Shkarkimi përfundoi.</string>
+     <string name="snack_update_not_installable">Ky përditësim nuk mund të instalohet mbi këtë version aktual.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> nga <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> nga <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">Duke verifikuar përditësimin</string>
+diff --git a/app/src/main/res/values-sr/strings.xml b/app/src/main/res/values-sr/strings.xml
+index b515729..240fe6b 100644
+--- a/app/src/main/res/values-sr/strings.xml
++++ b/app/src/main/res/values-sr/strings.xml
+@@ -31,8 +31,8 @@
+     <string name="snack_download_verification_failed">Неуспешна провера ажурирања.</string>
+     <string name="snack_download_verified">Преузимање је завршено.</string>
+     <string name="snack_update_not_installable">Није могуће инсталирати ово анжурирање преко ваше верзије система.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s </xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s </xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s </xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s </xliff:g></string>
+     <string name="list_verifying_update">Верификација анжурирања</string>
+     <string name="action_download">Преузми</string>
+     <string name="action_pause">Паузирај</string>
+diff --git a/app/src/main/res/values-sv/strings.xml b/app/src/main/res/values-sv/strings.xml
+index f12dac6..2d90694 100644
+--- a/app/src/main/res/values-sv/strings.xml
++++ b/app/src/main/res/values-sv/strings.xml
+@@ -24,8 +24,8 @@
+     <string name="snack_no_updates_found">Inga nya uppdateringar hittades</string>
+     <string name="snack_download_verified">Nedladdningen är slutförd.</string>
+     <string name="snack_update_not_installable">Uppdateringen kan inte installeras över den nuvarande versionen.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> – <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> – <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> av <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> av <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">Verifierar uppdateringen</string>
+diff --git a/app/src/main/res/values-ta/strings.xml b/app/src/main/res/values-ta/strings.xml
+index 3f87739..246ebdd 100644
+--- a/app/src/main/res/values-ta/strings.xml
++++ b/app/src/main/res/values-ta/strings.xml
+@@ -80,8 +80,8 @@
+     <string name="found_bug">வழுகண்டீரா? எமது வழு அறிக்கை வழிகாட்டிமூலம் அறிவி:</string>
+     <string name="updates_zero_state_title">இற்றை எதுவுமில்லை</string>
+     <string name="updates_zero_state_description">இக்கருவியின் புதியகட்டமைப்புக் கிடைக்கையில் இங்குத் தோன்றும்.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">இற்றையளவு: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">பாதுகாப்பு இற்றை: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">முதன்மை ஆண்ட்ராய்டு மேம்பாடு</string>
+diff --git a/app/src/main/res/values-tr/strings.xml b/app/src/main/res/values-tr/strings.xml
+index 2563444..17be5cf 100644
+--- a/app/src/main/res/values-tr/strings.xml
++++ b/app/src/main/res/values-tr/strings.xml
+@@ -40,8 +40,8 @@
+     <string name="snack_download_verification_failed">Güncelleme doğrulaması başarısız oldu.</string>
+     <string name="snack_download_verified">İndirme tamamlandı.</string>
+     <string name="snack_update_not_installable">Bu güncelleştirme mevcut yapı üstüne kurulamaz.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> / <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> / <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">Güncelleme doğrulanıyor</string>
+diff --git a/app/src/main/res/values-ug/strings.xml b/app/src/main/res/values-ug/strings.xml
+index 42084f3..a5bc519 100644
+--- a/app/src/main/res/values-ug/strings.xml
++++ b/app/src/main/res/values-ug/strings.xml
+@@ -81,8 +81,8 @@
+     <string name="found_bug">كەمتۈك بايقالدىمۇ؟ ئۇنى كەمتۈك مەلۇم قىلىش يېتەكچىسىگە مەلۇم قىلىڭ:</string>
+     <string name="updates_zero_state_title">ھېچقانداق يېڭىلانما يوق</string>
+     <string name="updates_zero_state_description">ئۈسكۈنىڭىز ئۈچۈن يېڭى تارقىتىلمىنى ئىشلەتكىلى بولسا بۇ جايدا كۆرۈنىدۇ.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">يېڭىلانما چوڭلۇقى: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">بىخەتەرلىك يېڭىلانما: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Android نىڭ چوڭ يۈكسىلىشى</string>
+diff --git a/app/src/main/res/values-uk/strings.xml b/app/src/main/res/values-uk/strings.xml
+index 636a167..3ccefe3 100644
+--- a/app/src/main/res/values-uk/strings.xml
++++ b/app/src/main/res/values-uk/strings.xml
+@@ -29,8 +29,8 @@
+     <string name="snack_download_verification_failed">Не пройшла перевірка оновлення.</string>
+     <string name="snack_download_verified">Завантаження завершено.</string>
+     <string name="snack_update_not_installable">Це оновлення не можна інсталювати на поточну збірку.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> of <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">Перевірка оновлення</string>
+     <string name="action_download">Завантажити</string>
+diff --git a/app/src/main/res/values-vi/strings.xml b/app/src/main/res/values-vi/strings.xml
+index 46a0eb8..3dedd94 100644
+--- a/app/src/main/res/values-vi/strings.xml
++++ b/app/src/main/res/values-vi/strings.xml
+@@ -80,8 +80,8 @@
+     <string name="found_bug">Phát hiện lỗi? Hãy báo cáo lỗi bằng hướng dẫn báo cáo lỗi của chúng tôi:</string>
+     <string name="updates_zero_state_title">Không có bản cập nhật nào</string>
+     <string name="updates_zero_state_description">Các bản cập nhật mới cho thiết bị này sẽ xuất hiện ở đây khi có sẵn.</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Kích thước cập nhật: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Cập nhật bảo mật: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Bản nâng cấp Android chính</string>
+diff --git a/app/src/main/res/values-zh-rCN/strings.xml b/app/src/main/res/values-zh-rCN/strings.xml
+index c224e07..760c873 100644
+--- a/app/src/main/res/values-zh-rCN/strings.xml
++++ b/app/src/main/res/values-zh-rCN/strings.xml
+@@ -80,8 +80,8 @@
+     <string name="found_bug">发现问题？请使用我们的漏洞报告指南进行报告：</string>
+     <string name="updates_zero_state_title">暂无可用更新</string>
+     <string name="updates_zero_state_description">此设备的新版本将在可用时在此处显示。</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">更新大小：<xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">安全更新：<xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">重大 Android 升级</string>
+diff --git a/app/src/main/res/values-zh-rTW/strings.xml b/app/src/main/res/values-zh-rTW/strings.xml
+index cf69e1f..f6dc74a 100644
+--- a/app/src/main/res/values-zh-rTW/strings.xml
++++ b/app/src/main/res/values-zh-rTW/strings.xml
+@@ -40,8 +40,8 @@
+     <string name="snack_download_verification_failed">更新驗證失敗。</string>
+     <string name="snack_download_verified">下載已完成。</string>
+     <string name="snack_update_not_installable">此更新無法安裝在目前版本上。</string>
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g>-<xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g>-<xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> / <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
+     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> / <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>
+     <string name="list_verifying_update">正在驗證更新</string>
+diff --git a/app/src/main/res/values/config.xml b/app/src/main/res/values/config.xml
+index f3079a6..eb8c550 100644
+--- a/app/src/main/res/values/config.xml
++++ b/app/src/main/res/values/config.xml
+@@ -5,5 +5,5 @@
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+     <!-- URL template for opening the device-specific downloads page from the update menu. -->
+-    <string name="menu_downloads_url" translatable="false">https://evolution-x.org/devices/<xliff:g id="device_name">%1$s</xliff:g></string>
++    <string name="menu_downloads_url" translatable="false">https://sourceforge.net/projects/denson9874-s-user-builds/files/expressiveos/<xliff:g id="device_name">%1$s</xliff:g>/</string>
+ </resources>
+diff --git a/app/src/main/res/values/evolution_strings.xml b/app/src/main/res/values/evolution_strings.xml
+index 215f862..e5c65bb 100644
+--- a/app/src/main/res/values/evolution_strings.xml
++++ b/app/src/main/res/values/evolution_strings.xml
+@@ -13,8 +13,8 @@
+ 
+     <string name="pref_category_appearance">Appearance</string>
+     <string name="menu_show_logo">Show logo</string>
+-    <string name="menu_show_logo_summary">Show the Evolution X logo on the main screen</string>
++    <string name="menu_show_logo_summary">Show the ExpressiveOS logo on the main screen</string>
+     <string name="menu_show_updater_icon">Show updater icon</string>
+-    <string name="menu_show_updater_icon_summary">Show the updater icon in the top bar. When off, the Evolution X logo is shown there instead</string>
++    <string name="menu_show_updater_icon_summary">Show the updater icon in the top bar. When off, the ExpressiveOS logo is shown there instead</string>
+ 
+ </resources>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index 5fa43b0..98075c8 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -16,7 +16,7 @@
+ 
+     <!-- Directory where the downloads will be exported to.
+          The path is relative to the root of the external storage.-->
+-    <string name="export_path" translatable="false">Evolution X updates/</string>
++    <string name="export_path" translatable="false">ExpressiveOS updates/</string>
+ 
+     <!--
+         Optional placeholders replaced at runtime:
+@@ -134,21 +134,21 @@
+     <string name="header_android_version">Android <xliff:g id="version" example="16">%1$s</xliff:g></string>
+ 
+     <!-- Banner -->
+-    <string name="brand_name" translatable="false">Evolution X</string>
+-    <string name="header_build_version" translatable="false">Evolution X <xliff:g id="version" example="23.2">%1$s</xliff:g></string>
++    <string name="brand_name" translatable="false">ExpressiveOS</string>
++    <string name="header_build_version" translatable="false">ExpressiveOS <xliff:g id="version" example="23.2">%1$s</xliff:g></string>
+     <string name="build_date">Build date</string>
+     <string name="security_update">Security update</string>
+     <string name="report_issues">Report issues</string>
+-    <string name="report_issue_url" translatable="false">https://wiki.evolution-x.org/reporting-a-bug</string>
++    <string name="report_issue_url" translatable="false">https://t.me/ExpressiveGroup</string>
+     <string name="header_review_updates">Review updates and recent changes on</string>
+-    <string name="header_download_url" translatable="false">evolution-x.org</string>
++    <string name="header_download_url" translatable="false">t.me/ExpressiveGroup</string>
+     <string name="found_bug">Found a bug? Report it with our bug report guide:</string>
+ 
+     <string name="updates_zero_state_title">No updates available</string>
+     <string name="updates_zero_state_description">New builds for this device will appear here when available.</string>
+ 
+-    <string name="list_build_version">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+-    <string name="list_build_version_date">Evolution X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
++    <string name="list_build_version">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
++    <string name="list_build_version_date">ExpressiveOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+     <string name="list_update_size">Update size: <xliff:g id="size" example="1.34 GB">%1$s</xliff:g></string>
+     <string name="list_security_update">Security update: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
+     <string name="list_major_android_upgrade">Major Android upgrade</string>
+@@ -195,7 +195,7 @@
+ 
+     <string name="blocked_update_dialog_title">Update blocked</string>
+     <string name="blocked_update_dialog_message">This update cannot be installed using the updater app.  Please read <xliff:g id="info_url">%1$s</xliff:g> for more information.</string>
+-    <string name="blocked_update_info_url" translatable="false">https://evolution-x.org/devices/<xliff:g id="device_name">%1$s</xliff:g></string>
++    <string name="blocked_update_info_url" translatable="false">https://sourceforge.net/projects/denson9874-s-user-builds/files/expressiveos/<xliff:g id="device_name">%1$s</xliff:g>/</string>
+ 
+     <string name="blocked_update_dialog_title_downgrade">Downgrade blocked</string>
+     <string name="blocked_update_dialog_message_downgrade">This update is older than the current system and cannot be installed.</string>
+-- 
+2.43.0
+
