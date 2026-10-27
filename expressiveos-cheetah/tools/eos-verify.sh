@@ -21,8 +21,9 @@
 #      (eos-target-files.sh);
 #   5. KernelSU Next (ksu-check.sh manager and images), and the stock init_boot kept for
 #      users who want no root (no kernelsu.ko, signed with the tree's key);
-#   6. ViPER4Android (v4a-check.sh out) and the boot animation (bootanim.conf's zip, no
-#      other styles);
+#   6. ViPER4Android (v4a-check.sh out), the boot animation (bootanim.conf's zip, no
+#      other styles) and the wallpaper (wallpapers.conf's default on ro.config.wallpaper,
+#      the theme from the wallpaper);
 #   7. branding: no app, framework string or crash report header names Evolution X
 #      (brand-check.py), apart from the few links it lists on purpose;
 #   8. firmware and the fastboot files the pack script reads.
@@ -219,7 +220,7 @@ mkdir -- "$T/sv"; cp -- "$stock" "$T/sv/init_boot.img"
 checked "$stock isn't signed with ExpressiveOS's key" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vbmeta "$stock" "$top"
 echo "OK: $stock has no KernelSU Next, verifies and is signed with the tree's key"
 
-echo "== ViPER4Android and boot animation"
+echo "== ViPER4Android, boot animation and wallpaper"
 checked "ViPER4Android" 'V4A_CHECK=OK' "$kit/viper4android/tools/v4a-check.sh" out "$top/$O" "$top/out/host/linux-x86"
 # shellcheck source=../bootanimation/bootanim.conf
 source "$kit/bootanimation/bootanim.conf"
@@ -228,6 +229,24 @@ ba=$O/product/media/bootanimation.zip
 extra=$(find "$O/product/media" -maxdepth 1 -name 'bootanimation_*.zip' -printf '%f ')
 [[ -z "$extra" ]] || fail "Evolution X's other boot animation styles shipped: $extra(TARGET_INCLUDE_BOOT_ANIMATIONS)"
 echo "OK: ExpressiveOS's boot animation, no other styles"
+# shellcheck source=../wallpapers/wallpapers.conf
+source "$kit/wallpapers/wallpapers.conf"
+wpd=$O$WALLPAPER_DEFAULT_PATH dvar="WALLPAPER_${WALLPAPER_DEFAULT#expressiveos_}"; dvar="${dvar^^}_SHA256"
+[[ -n "${!dvar:-}" && -f $wpd && "$(sha256sum -- "$wpd" | cut -d' ' -f1)" = "${!dvar}" ]] || fail "$wpd isn't wallpapers.conf's $WALLPAPER_DEFAULT"
+[[ "$(prop ro.config.wallpaper)" = "$WALLPAPER_DEFAULT_PATH" ]] \
+    || fail "ro.config.wallpaper is '$(prop ro.config.wallpaper)', not $WALLPAPER_DEFAULT_PATH (wallpapers/wallpapers.mk)"
+# 1.0 keeps Pixel's wallpapers in the picker, which reads one partner APK only (wallpapers/README.md)
+[[ ! -e $O/product/app/ExpressiveWallpapers ]] || fail "ExpressiveWallpapers shipped: 1.0's picker keeps PixelWallpapers2026 (wallpapers/wallpapers.mk)"
+[[ -x $H/aapt2 ]] || fail "no $H/aapt2 (m evolution builds it)"
+rros=("$O"/product/overlay/framework-res__*auto_generated_rro_product.apk)
+[[ ${#rros[@]} = 1 && -f ${rros[0]} ]] || fail "not one framework-res product auto-RRO in $O/product/overlay: ${rros[*]}"
+"$H/aapt2" dump resources "${rros[0]}" > "$T/rro.txt" 2>&1 || fail "aapt2 can't read ${rros[0]}"
+# The array's own lines: from its resource line to the next resource
+awk '/^ *resource 0x/ { on = /array\/theming_defaults/ } on' "$T/rro.txt" > "$T/td.txt"
+[[ -s $T/td.txt ]] || fail "${rros[0]##*/} has no theming_defaults (wallpapers/overlay)"
+{ grep -qF '*|TONAL_SPOT|home_wallpaper' "$T/td.txt" && ! grep -qiF '#0049c7' "$T/td.txt"; } \
+    || fail "framework-res's theming_defaults isn't *|TONAL_SPOT|home_wallpaper (wallpapers/overlay), so the theme won't follow the wallpaper: $(tr -s ' \n' ' ' < "$T/td.txt" | head -c 300)"
+echo "OK: $WALLPAPER_DEFAULT is the first-boot wallpaper and the theme follows the wallpaper"
 
 echo "== branding"
 checked "the build still shows Evolution X somewhere (patches/: Settings, Evolver, Updater...)" 'BRAND_CHECK=OK' \
