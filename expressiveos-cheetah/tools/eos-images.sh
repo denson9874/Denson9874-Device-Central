@@ -12,7 +12,8 @@
 #      the kit's commit; ksu-images.sh adds the kernel's);
 #   5. ksu/tools/ksu-images.sh: lunch, build_kernel, kernelsu.ko, the two make passes;
 #   6. eos-verify.sh: the finished build, offline.
-# Only a run that gets through all six writes out/eos/build.ok, which eos-pack.sh needs.
+# Only a run that gets through all six writes out/eos/build.ok and target-files.ok (the
+# sha256 of the OTA package and of the target-files zip kept with it), which eos-pack.sh needs.
 # Holds ~/.evolution-tree.lock (the Evolution X routines' lock) and ~/.expressiveos.lock
 # for the whole run, and first waits for any build already running. Everything also goes
 # to ~/expressiveos-build.log (the one before is kept as .1); the last line is
@@ -48,7 +49,7 @@ eos_top "${1:-}"
 clean_env
 cd "$top" || fail "can't cd to $top"
 PATH=$HOME/bin:$PATH
-rm -f -- out/eos/build.ok
+rm -f -- out/eos/build.ok out/eos/target-files.ok
 # patches/device_google_pantah/0010 sets it too; apply-bootanim.sh checks for it here
 export EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
 echo "== ExpressiveOS $EOS_VERSION $EOS_BUILD_TYPE for cheetah in $top, $(date -u '+%F %T') UTC"
@@ -120,7 +121,13 @@ fi
 step "verify (eos-verify.sh)" 'VERIFY=OK' "$kit/tools/eos-verify.sh" "$top"
 zip=$(sed -n 's/^VERIFIED //p' "$work/step.log" | tail -1)
 [[ -f $zip ]] || fail "eos-verify.sh named no package"
+tf=$(tf_zip)
+[[ -f $tf ]] || fail "no $tf (eos-verify.sh checked it)"
+# The target-files eos-verify.sh checked against the package, for eos-pack.sh (written
+# first: build.ok is what says the run finished)
+echo "$(sha256sum -- "$tf" | cut -d' ' -f1)  ${tf##*/}" > out/eos/target-files.ok
 echo "$(sha256sum -- "$zip" | cut -d' ' -f1)  ${zip##*/}" > out/eos/build.ok
 echo "OK: $(cat out/eos/build.ok)"
+echo "OK: target-files $(cat out/eos/target-files.ok) ($(stat -c %s -- "$tf") bytes)"
 done=1
 echo "BUILD_EXIT=0"

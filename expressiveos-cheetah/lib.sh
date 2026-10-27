@@ -140,6 +140,10 @@ var_of() {   # var_of <dumpvars output> <name>: one value from dump_vars' output
     sed -n "s/^$2='\(.*\)'\$/\1/p" <<<"$1"
 }
 
+tf_zip() {   # tf_zip: the target-files zip m evolution keeps (patches/vendor_lineage/0003), relative to the tree
+    printf '%s\n' "out/target/product/cheetah/obj/PACKAGING/target_files_intermediates/${EOS_LUNCH%%-*}-target_files.zip"
+}
+
 eos_lock() {   # eos_lock <script> [arg]...: run <script> holding ~/.expressiveos.lock and ~/.evolution-tree.lock (shared with the Evolution X routines), waiting up to 8 h for each
     local rc=0
     # Its own lock first: waiting for an ExpressiveOS run (eos-pack.sh) never holds up the routines
