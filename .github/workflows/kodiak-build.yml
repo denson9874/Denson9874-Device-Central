@@ -35,6 +35,11 @@
 # tree would redo the big framework steps, and how other products' commands for them
 # differ (tools/build_speed/build-explain.sh; query: tree, product, other products).
 #
+# routine-scripts is read-only too: how the server's copies of the routine scripts (~/*.sh,
+# ~/*.py, ~/evolution-cheetah, ~/evolution-husky) differ from this ref's, as diffs with
+# lines that may hold a secret hidden, plus what the build speed changes rely on (Evolution
+# X's build_kernel, ccache's settings, the shell startup files' ccache lines, the crontab).
+#
 # server-cleanup-list (read-only) and server-cleanup free disk for that tree:
 # expressiveos-cheetah/tools/server-cleanup.sh lists or removes the seven groups
 # of files it names (local copies of released and test builds, unpacked factory
@@ -97,6 +102,8 @@ on:
           ExpressiveOS cheetah tree needs. build-speed: read-only: CPU, memory,
           disks, ccache and past build timings. build-explain: read-only: why a
           product's next build redoes the framework steps (see query).
+          routine-scripts: read-only: how the server's routine scripts differ
+          from this ref's.
           server-cleanup-list: read-only: what
           server-cleanup.sh's groups hold now. server-cleanup: permanently remove
           the groups in query. expressiveos-status: read-only: the ExpressiveOS
@@ -130,6 +137,7 @@ on:
           - expressiveos-host
           - build-speed
           - build-explain
+          - routine-scripts
           - server-cleanup-list
           - server-cleanup
           - expressiveos-status
@@ -194,7 +202,7 @@ jobs:
           # expressiveos-keys (two minutes of openssl in that tree)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-setup|expressiveos-keys)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -206,7 +214,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|server-cleanup-list|server-cleanup|expressiveos-status)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|server-cleanup-list|server-cleanup|expressiveos-status)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -726,6 +734,24 @@ jobs:
       - name: Build speed check
         if: inputs.action == 'build-speed'
         run: bash tools/build_speed/build-speed.sh
+
+      # Read-only, so it runs beside a build too. This ref's copies are what an install would put there
+      - name: Check out the routine scripts
+        if: inputs.action == 'routine-scripts'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: |
+            tools
+            evolution-kodiak/tools
+            evolution-cheetah
+            evolution-husky
+            derpfest-husky/tools
+          fetch-depth: 1
+
+      - name: Routine scripts on the server
+        if: inputs.action == 'routine-scripts'
+        run: bash tools/build_speed/routine-scripts.sh "$GITHUB_WORKSPACE"
 
       # Not while a build runs (Preflight): ninja loads a product's whole graph
       - name: Check out the build-explain script
