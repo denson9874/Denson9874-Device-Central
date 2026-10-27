@@ -35,15 +35,18 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
   - at post-fs-data, `ksud install` when `/data/adb/ksud` is missing or an OTA changed the ROM's
     `libksud.so` (never just because `/data/adb/ksud` differs: that is a manager update the user
     took). On a new `/data` only (no `packages.xml` yet), `susfs autoload enable --kmi
-    android14-6.1`, and `susfs load` that one boot; from the next boot `ksud` loads it itself,
-    honouring the user's switch and KernelSU safe mode;
-  - at boot_completed, on a new `/data` only, `ksud module install` of the provider zip, retried on
-    the next boots if it fails, three times in all. **Zygisk is active from the second boot**, like
-    any KernelSU module.
+    android14-6.1`; `ksud`'s own post-fs-data loads susfs from the second boot on (the first had no
+    `ksud` yet to do it), honouring the user's switch and KernelSU safe mode;
+  - at boot_completed, on a new `/data` only, `ksud module install` of the provider zip, unless a
+    Zygisk is already there (one the user installed, a NeoZygisk they updated, or one turned off)
+    or the phone is in Android's safe mode. A NeoZygisk a failed or cut-off try of ours left
+    behind is installed again, unless safe mode or the user has turned it off or removed it since.
+    **susfs and Zygisk are both active from the second boot**, like any KernelSU module.
 
-  Each one-time step has a marker in `/data/adb/eos` and never runs again, so nothing the user turns
-  off or removes comes back. A `/data` that has booted before (an older build, a no-root user an
-  OTA re-rooted) gets `ksud` and nothing else. On a stock init_boot the `ksu` domain doesn't exist:
+  Each one-time step has a marker in `/data/adb/eos`, is tried on at most three boots if it fails,
+  and never runs again once done, so nothing the user turns off or removes comes back; what
+  happened is in `/data/adb/eos/log`. A `/data` that has booted before (an older build, a no-root
+  user an OTA re-rooted) gets `ksud` and nothing else. On a stock init_boot the `ksu` domain doesn't exist:
   both services fail to start (two lines in the log each boot) and nothing else happens.
 - **Pinned release** (`ksu.conf`): the version, the host `ksud` (`ksud-x86_64-unknown-linux-musl`)
   and the manager APK, each with its SHA-256, plus the manager's signing certificate. `fetch-ksu.sh`
@@ -134,17 +137,22 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
   nothing to remove first. Updates from other ROMs aren't supported.
 - Root: KernelSU Next with susfs ships in the ROM and its manager is preinstalled. No app gets root
   until you allow it in KernelSU Next. Root stays across updates.
-- susfs (root hiding) is on from the first boot; turn off SUSFS auto-load in KernelSU Next if you
-  don't want it. Zygisk (NeoZygisk) is installed on the first boot and works from the second: restart
-  once after setup. Zygisk modules such as LSPosed (Vector) work with it. Don't install Zygisk Next
-  (it replaces NeoZygisk, same module id) or ReZygisk (a second Zygisk) alongside it. NeoZygisk's
-  install log warns "KernelSU version too large"; that's expected. If you disable or remove
-  NeoZygisk, turn KernelSU Next's "Umount modules" back on.
-- If a module stops the phone booting: hold volume down while it boots (KernelSU safe mode, which
-  skips modules and susfs), then remove the module in the manager.
+- susfs (root hiding) and Zygisk (NeoZygisk) are switched on during the first boot and work from the
+  second: restart once after setup, before signing in to banking or payment apps. Turn off SUSFS
+  auto-load in KernelSU Next if you don't want it. Zygisk modules such as LSPosed (Vector) work with
+  NeoZygisk. Don't install Zygisk Next (it replaces NeoZygisk, same module id) or ReZygisk (a second
+  Zygisk) alongside it. NeoZygisk's install log warns "KernelSU version too large"; that's expected.
+  If you disable or remove NeoZygisk, turn KernelSU Next's "Umount modules" back on.
+- If a module stops the phone booting: press volume down three times or more, one press at a time,
+  between the Google logo and the boot animation (don't hold it at power-on: on a Pixel that opens
+  the bootloader). That's KernelSU safe mode, which skips susfs and
+  turns every module off for good, NeoZygisk included: remove the bad module in the manager, then
+  turn NeoZygisk (and any other module you want) back on and restart.
 - Flashing over a phone that already ran an older build (no data wipe) doesn't turn susfs on or
-  install NeoZygisk; turn them on in the manager, or run
-  `adb shell su -c 'rm -f /data/adb/eos/done; touch /data/adb/eos/pending'` and restart twice.
+  install NeoZygisk; turn them on in the manager, or allow Shell in KernelSU Next's Superuser list
+  (adb shell gets no root until then), run
+  `adb shell "su -c 'rm -f /data/adb/eos/done; touch /data/adb/eos/pending'"` (quoted once, so `su` runs both) and restart twice.
+  Turn Shell off again afterwards if you don't use root over adb.
 - Don't install Magisk afterwards: it and KernelSU Next can't both be installed.
 - KernelSU Next updates come with ExpressiveOS updates. Don't use the manager's "Install" to patch
   init_boot yourself: it puts back the stock module, which doesn't see the preinstalled manager.
@@ -164,8 +172,9 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
       release post, and NeoZygisk's (the text in `NOTICE-NeoZygisk`); mirror NeoZygisk's source (the
       tag with its LSPlt submodule, `~/android-dt/ksu/zygisk-<version>/src`) in the release folder
       while the ROM is offered: upstream doesn't commit Cargo.lock, so the tag alone may not rebuild it.
-- [ ] On a real cheetah, fresh install: boot 1 has susfs loaded (`ksud susfs version`) and NeoZygisk
-      staged, `/data/adb/eos/done` is there; boot 2 has NeoZygisk active (logcat: its hooks
+- [ ] On a real cheetah, fresh install: boot 1 has susfs auto-load on and NeoZygisk staged,
+      `/data/adb/eos/done` is there and `/data/adb/eos/log` says so; boot 2 has susfs loaded
+      (`ksud susfs version`) and NeoZygisk active (logcat: its hooks
       resolved, no avc denials for zygote against ksu); turning SUSFS off sticks; safe mode skips
       susfs; an OTA refreshes `/data/adb/ksud`; the stock init_boot boots clean. If the services'
       order misbehaves, the fallback is a `kernel-patches/0002` line running `ksu-firstboot.sh

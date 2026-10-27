@@ -11,11 +11,15 @@
 #      misc_info.txt names the tree's own release key (what an incremental is signed with);
 #   2. it holds an image (IMAGES/ or RADIO/) of every partition the package's payload writes;
 #   3. its init_boot carries out/'s KernelSU Next ramdisk (pass 2's);
-#   4. for incrementals: every image the fastboot zip flashes (out/'s, as fastboot-info.txt
-#      names them) is the target-files' copy byte for byte (patches/device_google_gs201/0006
-#      has target-files take the built images). If not, a WARNING names them: an incremental
-#      OTA from this build can't patch them on phones installed from the fastboot zip, and
-#      eos-pack.sh --release refuses the build. The fastboot zip itself is still fine.
+#   4. for incrementals: the images of the dynamic partitions (system, vendor, product...:
+#      misc_info.txt's dynamic_partition_list, what an incremental patches block by block)
+#      are the fastboot zip's (out/'s) byte for byte: patches/device_google_gs201/0006 has
+#      target-files take the built ones. If not, a WARNING names them: an incremental OTA
+#      from this build couldn't patch them on phones installed from the fastboot zip, and
+#      eos-pack.sh --release refuses the build (the fastboot zip itself is still fine).
+#      The other images it flashes (boot, init_boot, vendor_boot, dtbo, vbmeta...) are made
+#      again in target-files with other AVB salts, so a note lists them: an incremental
+#      writes those whole (ota_from_target_files --full_ota_partitions).
 set -euo pipefail
 done=0 T=''
 cleanup() {
@@ -65,7 +69,8 @@ sed '/^$/d' "$O/ab_partitions.txt" | sort -u > "$T/ab-out"
 cmp -s -- "$T/ab" "$T/ab-out" || fail "its ab_partitions.txt isn't the build's AB_OTA_PARTITIONS ($O/ab_partitions.txt)"
 unzip -p -- "$tf" META/misc_info.txt > "$T/misc" || fail "can't read its META/misc_info.txt"
 grep -qx 'ab_update=true' "$T/misc" || fail "its misc_info.txt isn't an A/B build's"
-# The key ota_from_target_files signs an incremental with when -k isn't given (the source's)
+# The key ota_from_target_files signs an OTA to this build with when -k isn't given (the
+# target's misc_info.txt, full or incremental; the incremental script passes -k anyway)
 grep -qx 'default_system_dev_certificate=vendor/evolution-priv/keys/testkey' "$T/misc" \
     || fail "its misc_info.txt doesn't name the tree's own release key (vendor/evolution-priv/keys/testkey)"
 echo "OK: ${tf##*/} ($(stat -c %s -- "$tf") bytes) is $ver's, built $(date -ud "@$ts" '+%F %T') UTC, with the build's A/B partitions and release key"
@@ -87,29 +92,49 @@ echo "OK: its init_boot carries out/'s KernelSU Next ramdisk"
 
 echo "== incremental base"
 # An incremental OTA reads its source blocks from the phone and update_engine refuses any
-# that isn't the target-files image's, so every image the fastboot zip flashes must be the
-# target-files' own. Parsed as eos-pack.sh does (the last word of each flash line).
+# that isn't the target-files image's. It can patch only the dynamic partitions that way:
+# the rest are rebuilt and re-signed in target-files (add_img_to_target_files, salts of
+# their own), so an incremental writes those whole. Flashed images parsed as eos-pack.sh
+# does (the last word of each flash line).
 [[ -f $O/fastboot-info.txt ]] || fail "no $O/fastboot-info.txt"
-n=0 differ=()
+dyn=$(sed -n 's/^dynamic_partition_list=//p' "$T/misc" | tr ' ' '\n' | sed '/^$/d' | sort -u)
+[[ -n "$dyn" ]] || fail "its misc_info.txt has no dynamic_partition_list"
+flashed=()
 while IFS= read -r line; do
     read -r cmd rest <<<"$line" || true
     [[ "${cmd:-}" = flash ]] || continue
     img=${rest##* }; [[ $img == *.img ]] || img=$img.img
     # No system_other in this build (eos-verify.sh checks the others are there)
-    [[ -f $O/$img ]] || continue
-    if has "IMAGES/$img"; then e=IMAGES/$img; elif has "RADIO/$img"; then e=RADIO/$img; else differ+=("${img%.img} (none in target-files)"); continue; fi
-    n=$((n + 1))
-    a=$(unzip -p -- "$tf" "$e" | sha256sum | cut -d' ' -f1) || fail "can't read $e in $tf"
-    [[ "$a" = "$(sha256sum -- "$O/$img" | cut -d' ' -f1)" ]] || differ+=("${img%.img}")
+    [[ -f $O/$img ]] && flashed+=("${img%.img}")
 done < "$O/fastboot-info.txt"
-(( n > 0 || ${#differ[@]} > 0 )) || fail "$O/fastboot-info.txt flashes no image"
+(( ${#flashed[@]} > 0 )) || fail "$O/fastboot-info.txt flashes no image"
+same() {   # same <partition>: its target-files image (IMAGES/ or RADIO/) is out/'s, byte for byte
+    local e a
+    if has "IMAGES/$1.img"; then e=IMAGES/$1.img; elif has "RADIO/$1.img"; then e=RADIO/$1.img; else return 1; fi
+    a=$(unzip -p -- "$tf" "$e" | sha256sum | cut -d' ' -f1) || fail "can't read $e in $tf"
+    [[ "$a" = "$(sha256sum -- "$O/$1.img" | cut -d' ' -f1)" ]]
+}
+differ=() whole=()
+for p in $dyn; do
+    printf '%s\n' "${flashed[@]}" | grep -qxF -- "$p" || fail "the fastboot zip doesn't flash the dynamic partition $p"
+    same "$p" || differ+=("$p")
+done
+for p in "${flashed[@]}"; do
+    grep -qxF -- "$p" <<<"$dyn" && continue
+    same "$p" || whole+=("$p")
+done
+list() { local d; d=$(printf '%s, ' "$@"); printf '%s' "${d%, }"; }
 if (( ${#differ[@]} == 0 )); then
     # eos-pack.sh --release looks for this line in eos-verify.sh's log
-    echo "OK: incremental base: the fastboot zip's $n images are the target-files' own, byte for byte"
+    # shellcheck disable=SC2086 # one partition name per word
+    echo "OK: incremental base: the fastboot zip's $(list $dyn) are the target-files' images, byte for byte"
 else
-    d=$(printf '%s, ' "${differ[@]}"); d=${d%, }
-    if (( ${#differ[@]} == 1 )); then d="$d isn't the target-files' image" it=it; else d="$d aren't the target-files' images" it=them; fi
+    if (( ${#differ[@]} == 1 )); then d="$(list "${differ[@]}") isn't the target-files' image" it=it; else d="$(list "${differ[@]}") aren't the target-files' images" it=them; fi
     echo "WARNING: incremental base: the fastboot zip's (out/'s) $d, so an incremental OTA from this build can't patch $it on phones installed from it (eos-pack.sh --release refuses the build)"
+fi
+if (( ${#whole[@]} > 0 )); then
+    (( ${#whole[@]} == 1 )) && it=it || it=them
+    echo "note: incremental base: target-files makes its own $(list "${whole[@]}") (other AVB salts): an incremental OTA from this build writes $it whole (--full_ota_partitions)"
 fi
 done=1
 echo "TF_CHECK=OK"

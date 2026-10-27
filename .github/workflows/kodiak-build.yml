@@ -917,6 +917,16 @@ jobs:
           echo "== keys: $(find "$top/vendor/evolution-priv/keys" -maxdepth 1 -name '*.pk8' 2>/dev/null | wc -l) .pk8 files in expressiveos/vendor/evolution-priv/keys"
           ls -l ~/expressiveos-keys-*.tar.gz 2>/dev/null || echo "no key backup archive on the server"
           echo "== build: $(cat "$top/out/eos/build.ok" 2>/dev/null || echo "no complete build (out/eos/build.ok)")"
+          # eos-verify.sh's whole log stays on the server: its warnings and notes, and the
+          # incremental base line eos-pack.sh --release looks for
+          v=$top/out/eos/verify.log
+          if [[ -f $v ]]; then
+            echo "== out/eos/verify.log, $(date -r "$v" '+%F %T'): warnings, notes, incremental base, verdict"
+            grep -aE '^(WARNING|note|OK: incremental base|FAIL|VERIFY=)' "$v" | cut -c1-300 | head -n 30 || true
+          fi
+          # Names only. The kit and the routines call ~/bin/rclone (eos-pack.sh --upload needs
+          # EOS_R2_REMOTE's remote), which this step's PATH doesn't have
+          if [[ -x ~/bin/rclone ]]; then echo "== ~/bin/rclone remotes: $(~/bin/rclone listremotes 2>/dev/null | tr '\n' ' ')"; else echo "== no ~/bin/rclone"; fi
           echo "== Evolution X routines (they share the tree lock): newest result per device"
           for f in ~/routine-logs/*-latest.out; do
             [[ -f $f ]] || continue
@@ -940,6 +950,9 @@ jobs:
             # (WARNING: <file>:<line>) would bury the kit's lines
             grep -aE '^(== |OK: |FAIL|WARNING|SETUP|FETCH_KSU|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|PACK=|VERIFY|SESSION_EXIT)|FAILED:|error:' "$log" \
               | grep -avE '^(\[ *[0-9]+% |WARNING: [^ ]+:[0-9])' | tail -n 25 | cut -c1-300 || true
+            # The kit's warnings from the whole log (apply.sh's come long before the end), each once
+            w=$(grep -aE '^WARNING' "$log" | grep -avE '^WARNING: [^ ]+:[0-9]' | sort | uniq -c | sort -rn | head -n 10 | cut -c1-300 || true)
+            [[ -z $w ]] || { echo "-- the kit's WARNING lines (times seen, line)"; echo "$w"; }
             echo "-- last lines"
             tail -c 200000 "$log" | tr '\r' '\n' | grep -av '^[[:space:]]*$' | tail -n 15 | cut -c1-300 || true
           done

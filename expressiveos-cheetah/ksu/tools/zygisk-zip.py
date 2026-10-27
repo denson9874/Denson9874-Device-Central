@@ -12,7 +12,9 @@ for fetch-ksu.sh, apply-ksu.sh and ksu-check.sh. Run it with python3 -I.
   lower case, everything but letters and digits a space, a pattern's words in a row).
   A match would stop the first-boot install: "medium" and "low" wait 5 s for a
   volume-down press nobody makes, "high" and "extreme" refuse.
-Prints what it checked and, last, ZYGISK_ZIP=OK or ZYGISK_ZIP=FAIL.
+Prints what it checked and, last, ZYGISK_ZIP=OK or ZYGISK_ZIP=FAIL. Exits 2 when <risk.json>
+isn't a catalog it can read (ksud then falls back to its built-in rules too), 1 on any other
+failure.
 """
 import hashlib
 import json
@@ -23,10 +25,10 @@ import zipfile
 MAX_SCAN = 8 * 1024 * 1024   # risk.rs MAX_SCAN_BYTES_PER_FILE
 
 
-def fail(msg):
+def fail(msg, code=1):
     print('FAIL: ' + msg)
     print('ZYGISK_ZIP=FAIL')
-    sys.exit(1)
+    sys.exit(code)
 
 
 def words(text):
@@ -74,7 +76,7 @@ def main():
             rules = [(r['severity'], r['reason'], [' %s ' % ' '.join(w) for w in (words(p) for p in r['patterns']) if w])
                      for r in catalog['rules']]
         except (OSError, ValueError, KeyError, TypeError) as e:
-            fail('%s: %s' % (sys.argv[4], e))
+            fail('%s: %s' % (sys.argv[4], e), 2)
         for i in files:
             with z.open(i) as f:
                 text = ' %s ' % ' '.join(words(f.read(MAX_SCAN).decode('utf-8', 'replace')))

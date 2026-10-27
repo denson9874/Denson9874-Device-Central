@@ -5,8 +5,8 @@
 #   2. eos-keys-check.sh tree and vars: ExpressiveOS's own keys are in
 #      vendor/evolution-priv/keys and the build will sign with them, not with test keys
 #      or Evolution X's;
-#   3. the kits: ksu/fetch-ksu.sh (checks what it downloaded before, fetches what's new in
-#      ksu.conf) and apply-ksu.sh, viper4android/apply-v4a.sh, bootanimation/apply-bootanim.sh,
+#   3. the kits: ksu/fetch-ksu.sh (checks what it downloaded before, fetches only what's new
+#      in ksu.conf, and KernelSU Next's current risk rules when GitHub answers) and apply-ksu.sh, viper4android/apply-v4a.sh, bootanimation/apply-bootanim.sh,
 #      wallpapers/apply-wallpapers.sh;
 #   4. the name and version the build will carry (dumpvars), and a record of its sources
 #      in out/eos/ (the tree's repo manifest -r, each patched project's upstream revision,

@@ -75,11 +75,16 @@ python3 -I "$here/tools/zygisk-zip.py" "$zip" "$(get zygisk_module_id)" "$(get z
 lsplt=$zdir/src/loader/src/external/lsplt
 [[ "$(git -C "$lsplt" rev-parse HEAD 2>/dev/null)" = "$(get zygisk_lsplt_commit)" && -s "$zdir/src/LICENSE" && -s "$lsplt/LICENSE" ]] \
     || fail "$lsplt isn't at ksu.conf's zygisk_lsplt_commit, or a LICENSE is missing (run fetch-ksu.sh)"
+# ksu-firstboot.sh tells a half install of its own NeoZygisk from a Zygisk the user installed
+# by this versionCode
+[[ "$(sed -n 's/^ZYGISK_CODE=\([0-9]*\).*/\1/p' "$here/tree/ksu-firstboot.sh")" = "$(get zygisk_version_code)" ]] \
+    || fail "tree/ksu-firstboot.sh's ZYGISK_CODE isn't ksu.conf's zygisk_version_code ($(get zygisk_version_code))"
+[[ "$(get zygisk_module_id)" = zygisksu ]] || fail "tree/ksu-firstboot.sh looks for NeoZygisk as zygisksu, ksu.conf says $(get zygisk_module_id)"
 cp -- "$zip" "$stage/zygisk-provider.zip"
 {
     printf '%s\n' \
         "NeoZygisk $zv (versionCode $(get zygisk_version_code)), by JingMatrix, GNU GPL v3: https://github.com/JingMatrix/NeoZygisk" \
-        "Shipped unmodified as /product/etc/eos/zygisk-provider.zip. Source for this exact build:" \
+        "Shipped unmodified as /product/etc/eos/zygisk-provider.zip, upstream's $zv release zip. Its source:" \
         "https://github.com/JingMatrix/NeoZygisk/tree/$(get zygisk_src_commit)" \
         "It includes LSPlt, GNU LGPL v3: https://github.com/JingMatrix/LSPlt/tree/$(get zygisk_lsplt_commit)" \
         "" "NeoZygisk's licence:" ""
