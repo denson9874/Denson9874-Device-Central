@@ -96,8 +96,8 @@ am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local co
             # A kit patch changed in place keeps its subject: the tree then has the older
             # version, until a repo sync of the project drops it and this applies the new one
             want=$(git patch-id --stable < "$patch" | cut -d' ' -f1) || want=
-            # (the diff options fixed, so git config can't change it: format-patch's defaults)
-            have=$( { git -C "$d" show --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ -M -U3 "$h" \
+            # (with format-patch's diff options, binary diffs included, so git config can't change it)
+            have=$( { git -C "$d" show --binary --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ -M -U3 "$h" \
                 | git patch-id --stable | cut -d' ' -f1; } 2>/dev/null) || have=
             [[ -z "$want" || -z "$have" || "$want" = "$have" ]] \
                 || echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change (an older version of the patch?): repo sync -d ${d#"$top"/}, then run apply.sh again to take the kit's"
