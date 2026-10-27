@@ -1,0 +1,29 @@
+# ExpressiveOS (cheetah): KernelSU Next's setup on a new phone, without opening the manager.
+# Installed to /product/etc/init by LOCAL_INIT_RC on the KernelSUNext module (Android.mk), so
+# it ships exactly when the manager does; ksu-firstboot.sh says what each stage does.
+#
+# seclabel u:r:ksu:s0: the domain our kernelsu.ko adds to the live policy at init's second
+# stage, the one its own init.rc lines run /data/adb/ksud in (kernel/selinux/rules.c:
+# ksu_type, ksu_permissive, ksu_allow(init, ksu)). On a stock init_boot (no kernelsu.ko)
+# that context doesn't exist: setexeccon fails in the forked child, which exits, and the
+# boot goes on (init's InitAborter reboots only for pid 1).
+
+service eos_ksu_pfd /system/bin/sh /product/etc/eos/ksu-firstboot.sh post-fs-data
+    user root
+    group root system
+    seclabel u:r:ksu:s0
+    oneshot
+    disabled
+
+service eos_ksu_bc /system/bin/sh /product/etc/eos/ksu-firstboot.sh boot-completed
+    user root
+    group root system
+    seclabel u:r:ksu:s0
+    oneshot
+    disabled
+
+on post-fs-data
+    start eos_ksu_pfd
+
+on property:sys.boot_completed=1
+    start eos_ksu_bc
