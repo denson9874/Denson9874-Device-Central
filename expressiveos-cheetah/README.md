@@ -10,8 +10,9 @@ ExpressiveOS is its own ROM, built on Evolution X (cnb) like any standard custom
   (`expressiveos/cheetah/`), all set in `eos.conf`;
 - a clean install only: updates from other ROMs, Evolution X included, never install on it;
 - KernelSU Next with susfs on from the first boot and NeoZygisk preinstalled
-  ([`ksu/`](ksu/README.md)), ViPER4Android RE ([`viper4android/`](viper4android/README.md)) and its
-  own boot animation ([`bootanimation/`](bootanimation/README.md)).
+  ([`ksu/`](ksu/README.md)), ViPER4Android RE ([`viper4android/`](viper4android/README.md)), its
+  own boot animation ([`bootanimation/`](bootanimation/README.md)) and its own wallpaper, Bloom, on a
+  clean install's first screen ([`wallpapers/`](wallpapers/README.md)).
 
 The Evolution X cheetah build (`evolution-cheetah/`, built in `~/evolution`) stays as it is, unrooted.
 Nothing here touches it: every script refuses `~/evolution` and `~/derpfest`, writes nothing through a
@@ -160,7 +161,7 @@ signed with the pinned OTA key, `delta_generator` refuses AOSP's test key for it
 recovery's update_engine_sideload carry the signature and downgrade checks), the payload (every
 partition plus the nine firmware images, its init_boot is out/'s KernelSU Next one, its boot, init_boot,
 vbmeta and vbmeta_system are ExpressiveOS's, patch levels), KernelSU Next and the stock init_boot,
-ViPER4Android, the boot animation, the branding (`tools/brand-check.py`: no app, framework string or
+ViPER4Android, the boot animation, the wallpaper, the branding (`tools/brand-check.py`: no app, framework string or
 tombstone header names Evolution X, apart from the few links it lists on purpose), the firmware and the
 fastboot files, and the target-files zip (`tools/eos-target-files.sh`: the package's, with out/'s KernelSU
 Next init_boot, and a WARNING if any image the fastboot zip flashes isn't byte for byte its copy there:
@@ -177,7 +178,8 @@ an incremental OTA from this build couldn't patch it on phones installed from th
 2. Back up the phone. Then a clean install: unlock the bootloader, flash the latest stock firmware,
    then `fastboot -w update <name>-fastboot.zip`.
 3. Test on the phone: it boots, the KernelSU Next manager shows "Working", ViPER4Android's driver loads
-   (`viper4android/tools/v4a-check.sh device`), the boot animation plays, the Updater shows
+   (`viper4android/tools/v4a-check.sh device`), the boot animation plays, the phone starts on Bloom
+   with blue system colours, the Updater shows
    ExpressiveOS 1.0 and no updates, and Play Integrity.
 4. Write `check/<name>-fastboot.zip.device-ok` with the line `sha256 <the zip's sha256>` (the pack
    prints it) and a note on what you tested.

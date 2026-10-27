@@ -3,8 +3,8 @@
 # present, the kit's tree patches (apply.sh), and the newest cached Google firmware in
 # vendor/google/cheetah unless the vendor repo already ships newer. The firmware cache,
 # ~/android-dt/firmware/cheetah, is the one evolution-cheetah/fetch-firmware.sh fills;
-# it's only read here. eos-images.sh runs this before the KernelSU Next, ViPER4Android
-# and boot animation kits.
+# it's only read here. eos-images.sh runs this before the KernelSU Next, ViPER4Android,
+# boot animation and wallpaper kits.
 #
 #   prepare.sh [top]      # default ~/expressiveos
 set -euo pipefail

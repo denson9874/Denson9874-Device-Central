@@ -6,7 +6,8 @@
 #      vendor/evolution-priv/keys and the build will sign with them, not with test keys
 #      or Evolution X's;
 #   3. the kits: ksu/fetch-ksu.sh (checks what it downloaded before, fetches what's new in
-#      ksu.conf) and apply-ksu.sh, viper4android/apply-v4a.sh, bootanimation/apply-bootanim.sh;
+#      ksu.conf) and apply-ksu.sh, viper4android/apply-v4a.sh, bootanimation/apply-bootanim.sh,
+#      wallpapers/apply-wallpapers.sh;
 #   4. the name and version the build will carry (dumpvars), and a record of its sources
 #      in out/eos/ (the tree's repo manifest -r, each patched project's upstream revision,
 #      the kit's commit; ksu-images.sh adds the kernel's);
@@ -72,6 +73,7 @@ step "KernelSU Next downloads" 'FETCH_KSU_OK.*' "$kit/ksu/fetch-ksu.sh"
 step "KernelSU Next" 'APPLY_KSU_OK.*' "$kit/ksu/apply-ksu.sh" "$top"
 step "ViPER4Android" 'V4A_APPLY=OK.*' "$kit/viper4android/apply-v4a.sh" "$top"
 step "boot animation" 'BOOTANIM_APPLY=OK.*' "$kit/bootanimation/apply-bootanim.sh" "$top"
+step "wallpapers" 'WALLPAPERS_APPLY=OK.*' "$kit/wallpapers/apply-wallpapers.sh" "$top"
 
 echo "== identity"
 vars=$(dump_vars LINEAGE_VERSION EVO_VERSION EVO_BUILD_TYPE TARGET_DEVICE TARGET_BUILD_VARIANT) || fail "dumpvars failed"
