@@ -24,9 +24,8 @@
 #      package, uploads it and publishes builds/<dev>.json in denson9874/evolution_ota
 #      for the Updater (last), with the build's pinned manifest as manifests/<dev>.xml.
 #      Only then is the published state recorded.
-#   6. Copies this run's zips, their .sha256 and the changelog to Google Drive,
-#      gdrive:EvolutionX/<dev> (evox-to-drive.sh, as derp-build.sh does for DerpFest),
-#      with or without --no-upload. A failed copy is reported but doesn't fail the routine.
+#   6. Deletes the device's zips (in ~/releases/<dev> and out/) that SourceForge has
+#      (release-cleanup.sh). Zips that aren't there stay, and are listed.
 #
 #   --dry-run       report what would happen; no sync, build or upload
 #   --force         build even if nothing changed
@@ -176,8 +175,6 @@ if [[ $dev =~ ^(kodiak|grizzly|cubs)$ ]] && [ -x ~/espada-fetch.sh ]; then
     ~/espada-fetch.sh "$dev" || echo "== espada fetch failed or unavailable, falling back to stock kernel"
 fi
 
-# Everything the pack script and p11-ota.sh write to $STATE from here on is this run's (step 6)
-started=$(mktemp); trap 'rm -f "$trees" "$started"' EXIT
 echo "== build ($BUILD, log $BLOG)"
 $BUILD > "$BLOG" 2>&1 9>&-
 if ! grep -q "BUILD_EXIT=0" "$BLOG"; then
@@ -234,11 +231,6 @@ if [ $UPLOAD = 1 ]; then
     echo "$cur" > "$STATE/LAST_STATE"; cp "$trees" "$STATE/LAST_TREES"; cp "$snap" "$STATE/LAST_MANIFEST.xml"
 fi
 rm -f "$snap"
-# 6. A copy on Google Drive
-if [ -x ~/evox-to-drive.sh ]; then
-    ~/evox-to-drive.sh "$dev" --newer "$started" 9>&- \
-        || echo "== the Google Drive copy failed; the build is unaffected (retry: ~/evox-to-drive.sh $dev)"
-fi
-# Keep the newest two builds' zips (fastboot and OTA) on the server (the uploads stay on SourceForge)
-ls -t "$STATE"/EvolutionX-*.zip 2>/dev/null | tail -n +5 | while read -r z; do rm -f "$z" "$z.sha256"; done
+# 6. The builds are hosted on SourceForge (the Updater's OTAs on the R2 mirror): delete this device's zips that SourceForge has
+~/release-cleanup.sh "$dev" 9>&- || echo "== cleanup kept zips it couldn't verify (above); retry: ~/release-cleanup.sh $dev"
 [ $UPLOAD = 1 ] && finish PUBLISHED || finish BUILT

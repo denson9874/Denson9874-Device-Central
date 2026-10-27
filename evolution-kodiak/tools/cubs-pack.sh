@@ -21,7 +21,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 # A second build on the same day gets -r2, -r3...: a released file name (and
 # its posted SHA-256) must never be overwritten.
 base=${NAME%-fastboot.zip}; r=2
-while [ -e "$DEST/$NAME" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
+while [ -e "$DEST/$NAME" ] || [ -e "$DEST/$NAME.sha256" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
 ZIP=$DEST/$NAME
 
 pgrep -x soong_ui >/dev/null && fail "a build is running"
@@ -99,9 +99,6 @@ echo "OK: unrooted, vbmeta flags 3 + boot patch level 2026-10-05, stock cubs ker
 ls -la $ZIP; cat $DEST/$NAME.sha256
 
 if [ "${1:-}" = "--upload" ]; then
-    echo "== upload to Google Drive: EvolutionX/cubs"
-    ~/upload-to-drive.sh EvolutionX cubs "$ZIP" "$DEST/$NAME.sha256" || true
-
     echo "== upload to SourceForge: $SF_DIR"
     printf -- "-mkdir /home/frs/project/denson9874-s-user-builds/cubs\n-mkdir $SF_DIR\nput $ZIP $SF_DIR/$NAME\nput $DEST/$NAME.sha256 $SF_DIR/$NAME.sha256\nls -l $SF_DIR\nbye\n" \
         | sftp -o BatchMode=yes -i ~/.ssh/sourceforge_ed25519 $SF_USER@frs.sourceforge.net

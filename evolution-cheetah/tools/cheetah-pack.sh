@@ -29,7 +29,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 # its posted SHA-256) must never be overwritten.
 if [ "$MODE" = "--upload" ]; then
     base=${NAME%-fastboot.zip}; r=2
-    while [ -e "$DEST/$NAME" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
+    while [ -e "$DEST/$NAME" ] || [ -e "$DEST/$NAME.sha256" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
 else
     rm -f "$DEST"/*-fastboot.zip "$DEST"/*-fastboot.zip.sha256
 fi
