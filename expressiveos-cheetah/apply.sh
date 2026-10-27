@@ -30,7 +30,7 @@ for dir in "$kit"/patches/*/; do
     project=$(basename "$dir")             # e.g. device_google_pantah
     patches=("$dir"*.patch)
     [[ -e "${patches[0]}" ]] || continue
-    am_patches "$top/${project//_//}" "$project" "${patches[@]}"
+    am_patches "$top/$(patch_project "$dir")" "$project" "${patches[@]}"
 done
 
 # Evolution X's own identity patches must not be in this tree (evolution-cheetah's

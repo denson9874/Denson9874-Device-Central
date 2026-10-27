@@ -90,14 +90,8 @@ echo "OK: cheetah, Pixel 7 Pro, user build"
 n=0
 for d in "$kit"/patches/* "$kit"/ksu/patches/* "$kit"/viper4android/patches/*; do
     [[ -d $d ]] || continue
-    p=${d##*/}
-    case $p in
-        device_google_*) p=device/google/${p#device_google_} ;;
-        vendor_google_*) p=vendor/google/${p#vendor_google_} ;;
-        vendor_lineage) p=vendor/lineage ;;
-        frameworks_*) p=frameworks/${p#frameworks_} ;;
-        *) fail "don't know which project $d patches" ;;
-    esac
+    p=$(patch_project "$d")
+    [[ -d $p ]] || fail "${d#"$kit"/} patches $p, which this tree doesn't have"
     git -C "$p" log --format=%s > "$T/log" || fail "can't read $p's log"
     for f in "$d"/*.patch; do
         s=$(subject_of "$f")
