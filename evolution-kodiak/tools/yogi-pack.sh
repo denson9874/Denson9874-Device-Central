@@ -3,6 +3,7 @@
 # `fastboot update` zip. Refuses to upload if any check fails.
 #
 #   yogi-pack.sh            # verify + pack
+#   yogi-pack.sh --stage    # verify + pack, then list what to upload (STAGED line)
 #   yogi-pack.sh --upload   # verify + pack + upload to SourceForge (yogi/17)
 set -euo pipefail
 
@@ -11,7 +12,7 @@ O=out/target/product/yogi
 H=out/host/linux-x86/bin
 IMG=vendor/google/yogi-images/images
 # The build's own name, e.g. EvolutionX-17.0-20261012-yogi-12.3-Unofficial
-NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)-fastboot.zip
+NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2 || true)-fastboot.zip
 DEST=~/releases/yogi; mkdir -p $DEST
 ZIP=$DEST/$NAME
 SF_USER=daryldenson0405
@@ -21,7 +22,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 # A second build on the same day gets -r2, -r3...: a released file name (and
 # its posted SHA-256) must never be overwritten.
 base=${NAME%-fastboot.zip}; r=2
-while [ -e "$DEST/$NAME" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
+while [ -e "$DEST/$NAME" ] || [ -e "$DEST/$NAME.sha256" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
 ZIP=$DEST/$NAME
 
 pgrep -x soong_ui >/dev/null && fail "a build is running"
@@ -102,10 +103,11 @@ grep -q "^board=yogi" $T/android-info.txt || fail "zip android-info.txt isn't fo
 echo "OK: unrooted, vbmeta flags 3 + boot patch level 2026-10-05, stock yogi kernel/dtbo/vendor/vendor_dlkm/system_dlkm/super_empty"
 ls -la $ZIP; cat $DEST/$NAME.sha256
 
+if [ "${1:-}" = "--stage" ]; then
+    # p11-routine.sh uploads these with p11-upload.sh once it has released the tree lock
+    echo "STAGED $ZIP $DEST/$NAME.sha256"
+fi
 if [ "${1:-}" = "--upload" ]; then
-    echo "== upload to Google Drive: EvolutionX/yogi"
-    ~/upload-to-drive.sh EvolutionX yogi "$ZIP" "$DEST/$NAME.sha256" || true
-
     echo "== upload to SourceForge: $SF_DIR"
     printf -- "-mkdir /home/frs/project/denson9874-s-user-builds/yogi\n-mkdir $SF_DIR\nput $ZIP $SF_DIR/$NAME\nput $DEST/$NAME.sha256 $SF_DIR/$NAME.sha256\nls -l $SF_DIR\nbye\n" \
         | sftp -o BatchMode=yes -i ~/.ssh/sourceforge_ed25519 $SF_USER@frs.sourceforge.net

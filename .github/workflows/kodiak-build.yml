@@ -6,9 +6,19 @@
 # pack the fastboot zip. Flashing stays manual, on the Mac.
 #
 # The cheetah-* actions do the same for the Pixel 7 Pro (evolution-cheetah/ in
-# tree_ref): set up its trees, fetch Google's firmware, build, verify, and install
-# the weekly-routine scripts. They take ~/.evolution-tree.lock, like the weekly
-# routines, and never upload anything (publishing is p11-routine.sh's job).
+# tree_ref): set up its trees, fetch Google's firmware, build and verify. They take
+# ~/.evolution-tree.lock, like the weekly routines, and never upload anything
+# (publishing is p11-routine.sh's job).
+#
+# routine-install installs tree_ref's weekly-routine scripts in ~ (p11-routine.sh and
+# what it runs: the OTA, upload, cleanup and release-check scripts, every device's pack
+# script, and cheetah's and husky's images scripts), keeping the previous copies in
+# ~/routine-backups/<time>, then dry-runs every device's routine. Only while the tree lock
+# is free and no routine is running or waiting. release-checks (read-only) runs tree_ref's
+# release-checks.sh on the builds in out/ (query: devices; default all six), so a new
+# check is seen to pass on the current builds before it's installed. ccache-direct-mode
+# turns on ccache's direct mode in the shared cache and adds USE_CCACHE and CCACHE_EXEC to
+# ~/.profile, without which Evolution X's envsetup.sh turns direct mode off again.
 #
 # bp-check and bp-repair deal with an Android.bp that doesn't parse: Soong reads
 # every Android.bp in the tree, so one bad file (a hand edit in a vendor tree, say)
@@ -25,6 +35,20 @@
 # (expressiveos-cheetah/) needs from the server before its first sync: free
 # disk and where it went, the host packages its scripts use, and whether its
 # folders exist yet. Names and sizes only, never file contents.
+#
+# build-speed is read-only too: what decides how long builds take on the server
+# (CPU, memory, disks, ccache's settings and hit rate, the kernel build's caches) and
+# how long past builds took and where the time went (soong_ui's build traces, ninja's
+# logs, the result lines in the build logs). Names, sizes and timings only, never
+# file contents beyond the build scripts' ccache and jobs lines. build-explain (read-only)
+# asks ninja, in a dry run that runs and writes nothing, why a product's next build in a
+# tree would redo the big framework steps, and how other products' commands for them
+# differ (tools/build_speed/build-explain.sh; query: tree, product, other products).
+#
+# routine-scripts is read-only too: how the server's copies of the routine scripts (~/*.sh,
+# ~/*.py, ~/evolution-cheetah, ~/evolution-husky) differ from this ref's, as diffs with
+# lines that may hold a secret hidden, plus what the build speed changes rely on (Evolution
+# X's build_kernel, ccache's settings, the shell startup files' ccache lines, the crontab).
 #
 # server-cleanup-list (read-only) and server-cleanup free disk for that tree:
 # expressiveos-cheetah/tools/server-cleanup.sh lists or removes the seven groups
@@ -77,15 +101,23 @@ on:
           repo sync of cheetah's projects, prepare.sh. cheetah-firmware: newest
           Google factory bootloader/radio. cheetah-kernel: build_kernel only.
           cheetah-build: full build. cheetah-verify: tree_ref's cheetah-pack.sh and
-          p11-ota.sh, without uploading. cheetah-install-routine: install tree_ref's
-          p11-routine.sh and p11-ota.sh (backups kept), then dry-run them.
+          p11-ota.sh, without uploading. routine-install: install tree_ref's routine
+          scripts in ~ (backups kept), then dry-run every device's routine.
+          release-checks: read-only: tree_ref's release-checks.sh on the builds in
+          out/ (query: devices). ccache-direct-mode: ccache direct mode on, and the
+          ~/.profile line that keeps it on.
           bp-check: read-only: Android.bp files under device/ and vendor/ (and any
           named in the last build logs) that don't parse, with context and git
           state. bp-repair: fix the one Android.bp named in query (see query).
           local-commits: read-only: commits on top of the manifest revision in the
           repo projects named in query (default: cheetah's four), as patches.
           expressiveos-host: read-only: disk, host packages and folders the
-          ExpressiveOS cheetah tree needs. server-cleanup-list: read-only: what
+          ExpressiveOS cheetah tree needs. build-speed: read-only: CPU, memory,
+          disks, ccache and past build timings. build-explain: read-only: why a
+          product's next build redoes the framework steps (see query).
+          routine-scripts: read-only: how the server's routine scripts differ
+          from this ref's (query: names of scripts in ~ to print whole).
+          server-cleanup-list: read-only: what
           server-cleanup.sh's groups hold now. server-cleanup: permanently remove
           the groups in query. expressiveos-status: read-only: the ExpressiveOS
           sessions, logs, keys and build. expressiveos-setup: install tree_ref's
@@ -111,11 +143,16 @@ on:
           - cheetah-kernel
           - cheetah-build
           - cheetah-verify
-          - cheetah-install-routine
+          - routine-install
+          - release-checks
+          - ccache-direct-mode
           - bp-check
           - bp-repair
           - local-commits
           - expressiveos-host
+          - build-speed
+          - build-explain
+          - routine-scripts
           - server-cleanup-list
           - server-cleanup
           - expressiveos-status
@@ -124,7 +161,7 @@ on:
           - expressiveos-build
           - expressiveos-pack
       tree_ref:
-        description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak (sync, round), evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, cheetah-install-routine) or expressiveos-cheetah (expressiveos-setup, -keys, -build, -pack) from
+        description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak (sync, round), evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, routine-install, release-checks) or expressiveos-cheetah (expressiveos-setup, -keys, -build, -pack) from
         type: string
         default: evolution/kodiak-port
       query:
@@ -141,7 +178,10 @@ on:
           cheetah's four projects). server-cleanup-list (optional) and
           server-cleanup (required): groups, e.g. 1,2,3,4,5,6,7.
           expressiveos-build (optional): kernel-only (build_kernel and kernelsu.ko,
-          no pack), kernel-sync (sync the kernel source again).
+          no pack), kernel-sync (sync the kernel source again). build-explain
+          (required): tree, product, then up to two products to compare, e.g.
+          'evolution lineage_yogi lineage_cubs'. release-checks (optional): devices,
+          e.g. 'kodiak cheetah' (default: all six).
         type: string
         default: ''
 
@@ -178,7 +218,7 @@ jobs:
           # expressiveos-keys (two minutes of openssl in that tree)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-setup|expressiveos-keys)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -190,7 +230,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|server-cleanup-list|server-cleanup|expressiveos-status)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -385,7 +425,7 @@ jobs:
           echo "== routine logs"; ls -t ~/routine-logs/cheetah-* 2>/dev/null | head -3 || true
 
       - name: Check out evolution-cheetah and the routine scripts
-        if: contains(fromJSON('["cheetah-setup","cheetah-verify","cheetah-install-routine"]'), inputs.action)
+        if: contains(fromJSON('["cheetah-setup","cheetah-verify"]'), inputs.action)
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tree_ref }}
@@ -403,7 +443,11 @@ jobs:
           sha="$(git -C "$GITHUB_WORKSPACE" rev-parse --short HEAD)"
           rsync -a --delete --exclude .git "$GITHUB_WORKSPACE/evolution-cheetah/" ~/evolution-cheetah/
           echo "$TREE_REF@$sha" > ~/evolution-cheetah/INSTALLED_FROM
-          install -m 755 ~/evolution-cheetah/tools/cheetah-images.sh ~/evolution-cheetah/tools/cheetah-pack.sh ~/
+          # The first setup only: after that, routine-install keeps ~/cheetah-*.sh in step with the
+          # other routine scripts (an older kit's cheetah-pack.sh can't stage a release)
+          for f in cheetah-images.sh cheetah-pack.sh; do
+            [[ -e ~/$f ]] || install -m 755 ~/evolution-cheetah/tools/$f ~/$f
+          done
           mkdir -p ~/evolution/.repo/local_manifests
           install -m 644 ~/evolution-cheetah/local_manifests/cheetah.xml ~/evolution/.repo/local_manifests/cheetah.xml
           cd ~/evolution
@@ -444,24 +488,86 @@ jobs:
           bash "$GITHUB_WORKSPACE/evolution-cheetah/tools/cheetah-pack.sh"
           bash "$GITHUB_WORKSPACE/evolution-kodiak/tools/p11-ota.sh" cheetah --preview
 
+      # ---- The weekly routines' scripts (evolution-kodiak/tools/p11-routine.sh) ----
+
+      - name: Check out the routine scripts to install or check
+        if: inputs.action == 'routine-install' || inputs.action == 'release-checks'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tree_ref }}
+          sparse-checkout: |
+            evolution-kodiak/tools
+            evolution-cheetah/tools
+            evolution-husky/tools
+          fetch-depth: 1
+
       - name: Install the routine scripts
-        if: inputs.action == 'cheetah-install-routine'
+        if: inputs.action == 'routine-install'
         run: |
           exec 9>~/.evolution-tree.lock
           flock -n 9 || { echo "::error::the tree lock is held (a routine or build is running)"; exit 1; }
-          src="$GITHUB_WORKSPACE/evolution-kodiak/tools"
-          for f in p11-routine.sh p11-ota.sh; do bash -n "$src/$f"; done
-          stamp=$(date +%Y%m%d-%H%M%S)
-          for f in p11-routine.sh p11-ota.sh; do
-            cp -p ~/$f ~/$f.bak-$stamp
-            install -m 755 "$src/$f" ~/$f
-            echo "installed ~/$f (previous: ~/$f.bak-$stamp)"
+          # A routine waiting for the tree (or uploading after it) is still reading its script
+          if pgrep -u "$(id -u)" -f 'p11-routine\.sh|release-chain' > /dev/null; then
+            pgrep -a -u "$(id -u)" -f 'p11-routine\.sh|release-chain' | cut -c1-200
+            echo "::error::a routine is running or waiting"; exit 1
+          fi
+          w=$GITHUB_WORKSPACE
+          files=(
+            evolution-kodiak/tools/{p11-routine,p11-ota,p11-upload,release-chain,release-cleanup,release-checks}.sh
+            evolution-kodiak/tools/{kodiak-release-pack,grizzly-pack,cubs-pack,yogi-pack}.sh
+            evolution-cheetah/tools/{cheetah-images,cheetah-pack}.sh
+            evolution-husky/tools/{husky-images,husky-release-pack}.sh
+          )
+          for f in "${files[@]}"; do bash -n "$w/$f"; done
+          bak=~/routine-backups/$(date +%Y%m%d-%H%M%S); mkdir -p "$bak"
+          echo "$TREE_REF@$(git -C "$w" rev-parse --short HEAD)" > "$bak/INSTALLED_FROM"
+          for f in "${files[@]}"; do
+            n=$(basename "$f")
+            if [[ -f ~/$n ]] && cmp -s ~/"$n" "$w/$f"; then echo "same       ~/$n"; continue; fi
+            note=" (new)"
+            if [[ -f ~/$n ]]; then cp -p ~/"$n" "$bak/$n"; note=" (previous: $bak/$n)"; fi
+            # A new file renamed over the old one, never rewritten in place
+            install -m 755 "$w/$f" ~/".$n.new" && mv -f ~/".$n.new" ~/"$n"
+            echo "installed  ~/$n$note"
           done
           exec 9>&-   # the dry runs take the lock themselves
-          for d in kodiak cheetah; do
+          for d in kodiak grizzly yogi cubs husky cheetah; do
             echo "== dry run: $d"
-            ~/p11-routine.sh $d --dry-run 2>&1 | tail -8
+            timeout 900 ~/p11-routine.sh $d --dry-run 2>&1 | tail -6 || true
           done
+
+      # Read-only, so it runs beside a build too (a device being built shows a half-written out/)
+      - name: Release checks on the builds in out/
+        if: inputs.action == 'release-checks'
+        run: |
+          read -r -a devs <<< "${QUERY:-kodiak grizzly cubs yogi cheetah husky}"
+          rc=0
+          for d in "${devs[@]}"; do
+            [[ "$d" =~ ^(kodiak|grizzly|cubs|yogi|cheetah|husky)$ ]] || { echo "::error::not a device: $d"; exit 1; }
+            o=~/evolution/out/target/product/$d
+            echo "======== $d: $(grep -h -m1 '^ro.evolution.build.version=' $o/system/build.prop $o/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2 || true) (out/ from $(date -r $o/system/build.prop '+%F %T' 2>/dev/null || echo "no build"))"
+            bash "$GITHUB_WORKSPACE/evolution-kodiak/tools/release-checks.sh" "$d" || rc=1
+          done
+          exit $rc
+
+      - name: ccache direct mode
+        if: inputs.action == 'ccache-direct-mode'
+        run: |
+          [[ -x /usr/bin/ccache ]] || { echo "::error::no /usr/bin/ccache"; exit 1; }
+          echo "== before"; ccache -p | grep -E ' (direct_mode|compression|max_size) '
+          ccache -o direct_mode=true
+          # Evolution X's envsetup.sh writes direct_mode=false into the shared ccache.conf when it's
+          # sourced without CCACHE_EXEC. The build scripts set it; a login shell now does too.
+          line='export USE_CCACHE=1 CCACHE_EXEC=/usr/bin/ccache'
+          if grep -qxF "$line" ~/.profile 2>/dev/null; then
+            echo "~/.profile already has: $line"
+          else
+            [[ ! -f ~/.profile ]] || cp -p ~/.profile ~/.profile.bak-$(date +%Y%m%d-%H%M%S)
+            printf '\n# Android builds: with CCACHE_EXEC set, envsetup.sh leaves ccache.conf (direct_mode=true) alone\n%s\n' "$line" >> ~/.profile
+            echo "added to ~/.profile: $line"
+          fi
+          echo "== after"; ccache -p | grep -E ' direct_mode '
+          ccache -s | grep -E 'Hits|Direct|Preprocessed|Misses' | head -6
 
       # ---- Android.bp syntax: one file that doesn't parse stops every build ----
 
@@ -697,6 +803,54 @@ jobs:
           echo "KernelSU Next fetched: $(cat ~/android-dt/ksu/CURRENT 2>/dev/null || echo none)"
           echo "cheetah firmware cached: $(cat ~/android-dt/firmware/cheetah/CURRENT 2>/dev/null || echo none)"
           echo "== tree lock"; if flock -n ~/.evolution-tree.lock true; then echo free; else echo "held (a routine or build is running)"; fi
+
+      # Read-only, so it runs beside a build too (its numbers then include that build's load)
+      - name: Check out the build-speed scripts
+        if: inputs.action == 'build-speed'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: tools/build_speed
+          fetch-depth: 1
+
+      - name: Build speed check
+        if: inputs.action == 'build-speed'
+        run: bash tools/build_speed/build-speed.sh
+
+      # Read-only, so it runs beside a build too. This ref's copies are what an install would put there
+      - name: Check out the routine scripts
+        if: inputs.action == 'routine-scripts'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: |
+            tools
+            evolution-kodiak/tools
+            evolution-cheetah
+            evolution-husky
+            derpfest-husky/tools
+          fetch-depth: 1
+
+      - name: Routine scripts on the server
+        if: inputs.action == 'routine-scripts'
+        run: |
+          read -r -a q <<< "$QUERY"
+          bash tools/build_speed/routine-scripts.sh "$GITHUB_WORKSPACE" "${q[@]}"
+
+      # Not while a build runs (Preflight): ninja loads a product's whole graph
+      - name: Check out the build-explain script
+        if: inputs.action == 'build-explain'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: tools/build_speed
+          fetch-depth: 1
+
+      - name: Build explain
+        if: inputs.action == 'build-explain'
+        run: |
+          read -r -a q <<< "$QUERY"
+          bash tools/build_speed/build-explain.sh "${q[@]}"
 
       # The script removes only while it holds the tree lock (no routine or build
       # starts meanwhile), and skips the emulator's build output while a build runs.
