@@ -12,6 +12,11 @@ struct module is 1,088 bytes. Run it with python3 -I.
   ko-info.py same-struct <ko> <dir>
       checks that <ko> is built for the struct module that every module under <dir> (the
       build's own, made with the kernel's config) shares; prints "<bytes> <modules>"
+  ko-info.py embedded <file> <module name> <kernel release prefix> <out.ko>
+      writes out the kernel module <file> carries inside it, DEFLATE-compressed, whose
+      .modinfo names <module name> and whose vermagic starts with <kernel release prefix>:
+      libksud.so's susfs guard module, which ksud loads by itself (susfs load or auto-load),
+      found the way rust-embed stores its assets; prints "<bytes> <vermagic>"
   ko-info.py config <kernel Image>
       prints the .config built into an uncompressed kernel image (CONFIG_IKCONFIG)
   ko-info.py config-diff <kernel Image> <.config>
@@ -38,27 +43,57 @@ IGNORED = {
 }
 
 
-def this_module(path):
-    with open(path, 'rb') as f:
-        d = f.read()
+def sections(d):
+    """{name: (offset, size)} of a little-endian ELF64 file's sections."""
     if d[:4] != b'\x7fELF' or d[4] != 2 or d[5] != 1:
         raise ValueError('not a little-endian ELF64 file')
     shoff, = struct.unpack_from('<Q', d, 0x28)
     shentsize, shnum, shstrndx = struct.unpack_from('<HHH', d, 0x3a)
     if not shoff or shentsize < 64 or shoff + shnum * shentsize > len(d) or shstrndx >= shnum:
         raise ValueError('bad section header table')
-
-    def section(i):   # (name offset, size)
-        name, _, _, _, _, size = struct.unpack_from('<IIQQQQ', d, shoff + i * shentsize)
-        return name, size
-
+    out = {}
     names = struct.unpack_from('<Q', d, shoff + shstrndx * shentsize + 24)[0]
     for i in range(shnum):
-        name, size = section(i)
+        name, _, _, _, offset, size = struct.unpack_from('<IIQQQQ', d, shoff + i * shentsize)
         start = names + name
-        if d[start:d.find(b'\0', start)] == b'.gnu.linkonce.this_module':
-            return size
-    raise ValueError('no .gnu.linkonce.this_module section (not a kernel module?)')
+        out[d[start:d.find(b'\0', start)].decode('ascii', 'replace')] = (offset, size)
+    return out
+
+
+def this_module(path):
+    with open(path, 'rb') as f:
+        d = f.read()
+    s = sections(d).get('.gnu.linkonce.this_module')
+    if s is None:
+        raise ValueError('no .gnu.linkonce.this_module section (not a kernel module?)')
+    return s[1]
+
+
+def modinfo(d):
+    offset, size = sections(d).get('.modinfo', (0, 0))
+    return dict(f.split(b'=', 1) for f in d[offset:offset + size].split(b'\0') if b'=' in f)
+
+
+def embedded(path, name, release):
+    """The kernel module stored DEFLATE-compressed (raw, as include-flate does) in a file."""
+    with open(path, 'rb') as f:
+        d = f.read()
+    found = []
+    for o in range(len(d)):
+        if d[o] & 6 not in (2, 4):   # a fixed or dynamic Huffman block starts the stream
+            continue
+        try:
+            if not zlib.decompressobj(-15).decompress(d[o:o + 512], 64).startswith(b'\x7fELF'):
+                continue
+            ko = zlib.decompressobj(-15).decompress(d[o:])
+            info = modinfo(ko)
+        except (zlib.error, ValueError, struct.error):
+            continue
+        if info.get(b'name') == name.encode() and info.get(b'vermagic', b'').startswith(release.encode()):
+            found.append((ko, info[b'vermagic'].decode('ascii', 'replace')))
+    if len(found) != 1:
+        raise ValueError('%s carries %d kernel modules named %s for %s*, want 1' % (path, len(found), name, release))
+    return found[0]
 
 
 def same_struct(ko, top):
@@ -114,6 +149,11 @@ def main():
                 print(this_module(ko), ko)
         elif len(args) == 3 and args[0] == 'same-struct':
             print('%d %d' % same_struct(args[1], args[2]))
+        elif len(args) == 5 and args[0] == 'embedded':
+            ko, vermagic = embedded(args[1], args[2], args[3])
+            with open(args[4], 'wb') as f:
+                f.write(ko)
+            print(len(ko), vermagic)
         elif len(args) == 2 and args[0] == 'config':
             sys.stdout.write(ikconfig(args[1]))
         elif len(args) == 3 and args[0] == 'config-diff':

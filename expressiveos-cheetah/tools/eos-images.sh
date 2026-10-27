@@ -5,7 +5,8 @@
 #   2. eos-keys-check.sh tree and vars: ExpressiveOS's own keys are in
 #      vendor/evolution-priv/keys and the build will sign with them, not with test keys
 #      or Evolution X's;
-#   3. the kits: ksu/apply-ksu.sh, viper4android/apply-v4a.sh, bootanimation/apply-bootanim.sh;
+#   3. the kits: ksu/fetch-ksu.sh (checks what it downloaded before, fetches what's new in
+#      ksu.conf) and apply-ksu.sh, viper4android/apply-v4a.sh, bootanimation/apply-bootanim.sh;
 #   4. the name and version the build will carry (dumpvars), and a record of its sources
 #      in out/eos/ (the tree's repo manifest -r, each patched project's upstream revision,
 #      the kit's commit; ksu-images.sh adds the kernel's);
@@ -66,6 +67,7 @@ trap 'rc=$?; rm -rf -- "$work"; [[ $done = 1 ]] || { echo "BUILD_EXIT=1"; exit $
 step "prepare.sh" 'PREPARE_OK.*' "$kit/prepare.sh" "$top"
 step "keys: tree" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" tree "$top"
 step "keys: build variables" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vars "$top"
+step "KernelSU Next downloads" 'FETCH_KSU_OK.*' "$kit/ksu/fetch-ksu.sh"
 step "KernelSU Next" 'APPLY_KSU_OK.*' "$kit/ksu/apply-ksu.sh" "$top"
 step "ViPER4Android" 'V4A_APPLY=OK.*' "$kit/viper4android/apply-v4a.sh" "$top"
 step "boot animation" 'BOOTANIM_APPLY=OK.*' "$kit/bootanimation/apply-bootanim.sh" "$top"
@@ -97,6 +99,7 @@ done
     # A copy the runner installed (rsync, no .git) names the commit it came from
     echo "kit: $(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")$([[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || echo " (with local changes)")"
     echo "KernelSU Next: $(sed -n 's/^version=//p' "$kit/ksu/ksu.conf") $(sed -n 's/^src_commit=//p' "$kit/ksu/ksu.conf")"
+    echo "NeoZygisk (product/etc/eos/zygisk-provider.zip): $(sed -n 's/^zygisk_version=//p' "$kit/ksu/ksu.conf") $(sed -n 's/^zygisk_src_commit=//p' "$kit/ksu/ksu.conf"), LSPlt $(sed -n 's/^zygisk_lsplt_commit=//p' "$kit/ksu/ksu.conf")"
     echo "Patched projects: upstream revision (repo's m/$EOS_MANIFEST_BRANCH), then HEAD with the kit's commits"
     printf '%s\n' "${projects[@]}" | sort -u
 } > out/eos/sources.txt
