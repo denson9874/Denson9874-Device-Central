@@ -40,12 +40,13 @@ zygisk_there() {   # a Zygisk is installed, or waits in modules_update, other th
     for m in /data/adb/modules/*/module.prop /data/adb/modules_update/*/module.prop; do
         [ -f "$m" ] || continue
         case "$(sed -n 's/^id=//p' "$m")" in zygisksu|rezygisk) ;; *) continue ;; esac
-        case "$m" in
-        /data/adb/modules_update/*)
-            # The NeoZygisk an earlier try of ours left there may be installed again
-            [ "$(sed -n 's/^name=//p' "$m")" = NeoZygisk ] \
-                && [ "$(sed -n 's/^versionCode=//p' "$m")" = "$ZYGISK_CODE" ] && continue ;;
-        esac
+        # After a try of ours failed, the NeoZygisk it left may be installed again: ksud moves
+        # a half-done modules_update/zygisksu into modules/ at the next post-fs-data, before
+        # this script runs
+        if [ "$(tries provider)" -ge 1 ] && [ "$(sed -n 's/^name=//p' "$m")" = NeoZygisk ] \
+            && [ "$(sed -n 's/^versionCode=//p' "$m")" = "$ZYGISK_CODE" ]; then
+            continue
+        fi
         return 0
     done
     return 1

@@ -9,7 +9,7 @@ ExpressiveOS is its own ROM, built on Evolution X (cnb) like any standard custom
   (`~/releases/expressiveos-cheetah`), SourceForge folder (`expressiveos/cheetah`) and R2 prefix
   (`expressiveos/cheetah/`), all set in `eos.conf`;
 - a clean install only: updates from other ROMs, Evolution X included, never install on it;
-- KernelSU Next with susfs on from the first boot and NeoZygisk preinstalled
+- KernelSU Next with susfs and NeoZygisk switched on at first boot (both active after one restart)
   ([`ksu/`](ksu/README.md)), ViPER4Android RE ([`viper4android/`](viper4android/README.md)), its
   own boot animation ([`bootanimation/`](bootanimation/README.md)) and its own wallpaper, Bloom, on a
   clean install's first screen ([`wallpapers/`](wallpapers/README.md)).
