@@ -3,6 +3,7 @@
 # it, and upload it to SourceForge. Refuses to upload if any check fails.
 #
 #   kodiak-release-pack.sh            # pack + verify only
+#   kodiak-release-pack.sh --stage    # pack + verify, then list what to upload (STAGED line)
 #   kodiak-release-pack.sh --upload   # pack + verify + upload
 set -euo pipefail
 
@@ -10,7 +11,7 @@ cd ~/evolution
 O=out/target/product/kodiak
 H=out/host/linux-x86/bin
 # The build's own name, e.g. EvolutionX-17.0-20261011-kodiak-12.3-Unofficial
-NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)-fastboot.zip
+NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2 || true)-fastboot.zip
 DEST=~/releases/kodiak; mkdir -p $DEST
 ZIP=$DEST/$NAME
 SF_USER=daryldenson0405
@@ -20,7 +21,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 # A second build on the same day gets -r2, -r3...: a released file name (and
 # its posted SHA-256) must never be overwritten.
 base=${NAME%-fastboot.zip}; r=2
-while [ -e "$DEST/$NAME" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
+while [ -e "$DEST/$NAME" ] || [ -e "$DEST/$NAME.sha256" ]; do NAME=$base-r$r-fastboot.zip; r=$((r + 1)); done
 ZIP=$DEST/$NAME
 
 pgrep -x soong_ui >/dev/null && fail "a build is running"
@@ -49,6 +50,10 @@ cmp -s $T/init_boot.img $O/init_boot.img || fail "init_boot differs from out/ (p
 echo "unrooted, vbmeta boot patch level 2026-10-05, init_boot = out/"
 ls -la $ZIP; cat $DEST/$NAME.sha256
 
+if [ "${1:-}" = "--stage" ]; then
+    # p11-routine.sh uploads these with p11-upload.sh once it has released the tree lock
+    echo "STAGED $ZIP $DEST/$NAME.sha256"
+fi
 if [ "${1:-}" = "--upload" ]; then
     echo "== upload to SourceForge: $SF_DIR"
     K=~/.ssh/sourceforge_ed25519

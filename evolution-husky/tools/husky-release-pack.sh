@@ -5,6 +5,7 @@
 #
 #   husky-release-pack.sh            # verify; the candidate goes to ~/releases/husky/check (replaced each time)
 #   husky-release-pack.sh --upload   # verify + upload the tested candidate
+#   husky-release-pack.sh --stage    # as --upload, but list what to upload (STAGED line) instead
 #
 # The on-device gate: after flashing and testing check/<zip>, write check/<zip>.device-ok
 # with a line "sha256 <sha256 of that zip>". An upload is refused unless out/'s zip has
@@ -13,6 +14,8 @@
 # second release on the same day gets -r2, -r3...
 set -euo pipefail
 MODE=${1:-}
+# --stage is a release (as --upload) whose upload p11-routine.sh runs later, with p11-upload.sh
+STAGE=0; if [ "$MODE" = "--stage" ]; then STAGE=1; MODE=--upload; fi
 
 cd ~/evolution
 O=out/target/product/husky
@@ -27,7 +30,7 @@ log=$(ls -t ~/husky-build.log ~/husky-build-*.out 2>/dev/null | head -1 || true)
 grep -qE "BUILD_EXIT=0|BUILD COMPLETED with exit code: 0" "$log" || fail "the build didn't succeed ($log)"
 
 # The zip of this build (ro.evolution.build.version), not just the newest one in out/
-ver=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)
+ver=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2 || true)
 ZIP=$O/$ver.zip
 [ -f "$ZIP" ] || fail "no $ZIP"
 NAME=$(basename "$ZIP")
@@ -73,14 +76,21 @@ grep -q "$SHA" "$M" || fail "$M doesn't name this build's sha256 $SHA: out/ isn'
 cat "$M"
 
 # Never overwrite a released name: a different zip under an existing name gets -r2, -r3...
+# release-cleanup.sh deletes uploaded zips but keeps their .sha256, so a name with either is taken.
 base=${NAME%.zip}; REL=$NAME; SUF=; r=2
-while [ -e "$DEST/$REL" ] && ! cmp -s "$ZIP" "$DEST/$REL"; do SUF=-r$r; REL=$base$SUF.zip; r=$((r + 1)); done
+while { [ -e "$DEST/$REL" ] || [ -e "$DEST/$REL.sha256" ]; } \
+    && ! { cmp -s "$ZIP" "$DEST/$REL" || grep -qs "^$SHA " "$DEST/$REL.sha256"; }; do SUF=-r$r; REL=$base$SUF.zip; r=$((r + 1)); done
 BOOT=boot-$DATE$SUF.img; VBOOT=vendor_boot-$DATE$SUF.img; RSUM=recovery-$DATE$SUF.sha256
 [ -e "$DEST/$REL" ] || cp "$ZIP" "$DEST/$REL"
 cp $O/boot.img "$DEST/$BOOT"; cp $O/vendor_boot.img "$DEST/$VBOOT"
 echo "== checksum"
 ( cd $DEST && sha256sum "$REL" > "$REL.sha256" && sha256sum $BOOT $VBOOT > $RSUM )   # names only, so users can run sha256sum -c
 cat "$DEST/$REL.sha256" "$DEST/$RSUM"
+if [ $STAGE = 1 ]; then
+    # p11-upload.sh marks the zip uploaded, as below
+    echo "STAGED $DEST/$REL $DEST/$REL.sha256 $DEST/$BOOT $DEST/$VBOOT $DEST/$RSUM"
+    exit 0
+fi
 
 echo "== upload to SourceForge: $SF_DIR"
 # -b: any failed put fails the upload (the leading '-' lets the mkdirs fail when the folders exist)

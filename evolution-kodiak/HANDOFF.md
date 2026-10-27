@@ -872,8 +872,22 @@ What `p11-routine.sh` does (copy in `tools/`):
 - **Records:** writes `LAST_STATE`, `LAST_TREES`, `LAST_MANIFEST.xml` and `CHANGES-<date>.txt` (upstream commits since
   the last published build) under `~/releases/<dev>/`, and keeps the two newest zips on the server.
 - **Logs:** `~/routine-logs/<dev>-<time>.log`, plus `<dev>-latest.out`. The last line is
-  `ROUTINE_RESULT=PUBLISHED|NOCHANGE|FAILED`.
-- **Options:** `--dry-run`, `--force`, `--no-upload`, `--mark-current` (record the current tree as published).
+  `ROUTINE_RESULT=PUBLISHED|NOCHANGE|FAILED` (also `BUILT` with `--no-upload`, `DRYRUN`, `MARKED`, and
+  `SUPERSEDED` when the Updater already has a newer build).
+- **Options:** `--dry-run`, `--force`, `--no-upload`, `--mark-current` (record the current tree as published),
+  `--publish-staged` (alone: publish the newest staged release).
+- **Since 2026-10-27 (build speed, PR #28):** the routine stages a release under the tree lock (pack
+  script `--stage`, `p11-ota.sh --stage`) in `~/releases/<dev>/staged-<time>`, releases the lock, then
+  uploads (`p11-upload.sh`) and publishes (`p11-ota.sh --publish`, Updater JSON last), so the next device
+  builds during the uploads. A per-device publish lock (`~/.evolution-publish-<dev>.lock`) keeps one
+  routine per device. Routines waiting together take the tree in the order that rebuilds least (same
+  HiLight side as `~/.evolution-last-build` first, then kodiak, grizzly, yogi, cubs, husky, cheetah), so
+  the Sunday tasks' start times don't matter. A failed publish stays staged: `p11-routine.sh <dev>
+  --publish-staged` retries it (so does a run of the same tree, without building again), and a staged
+  build older than the Updater's is dropped (`SUPERSEDED`), never published. A JSON emptied by hand
+  (`{"response": []}`) counts as no build. If the Updater's JSON can't be read (GitHub down,
+  `~/evolution_ota` won't pull), the release stays staged and the run fails rather than rebuilding. `release-chain.sh [devices] [-- options]` runs several routines at once. Install
+  with the runner's `routine-install`; `routine-scripts` shows locks, queue and staged releases.
 
 Not automated:
 
