@@ -12,7 +12,7 @@ O=out/target/product/cubs
 H=out/host/linux-x86/bin
 IMG=vendor/google/cubs-images/images
 # The build's own name, e.g. EvolutionX-17.0-20261012-cubs-12.3-Unofficial
-NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)-fastboot.zip
+NAME=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2 || true)-fastboot.zip
 DEST=~/releases/cubs; mkdir -p $DEST
 ZIP=$DEST/$NAME
 SF_USER=daryldenson0405

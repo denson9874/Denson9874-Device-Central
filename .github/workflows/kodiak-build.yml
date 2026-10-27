@@ -443,7 +443,11 @@ jobs:
           sha="$(git -C "$GITHUB_WORKSPACE" rev-parse --short HEAD)"
           rsync -a --delete --exclude .git "$GITHUB_WORKSPACE/evolution-cheetah/" ~/evolution-cheetah/
           echo "$TREE_REF@$sha" > ~/evolution-cheetah/INSTALLED_FROM
-          install -m 755 ~/evolution-cheetah/tools/cheetah-images.sh ~/evolution-cheetah/tools/cheetah-pack.sh ~/
+          # The first setup only: after that, routine-install keeps ~/cheetah-*.sh in step with the
+          # other routine scripts (an older kit's cheetah-pack.sh can't stage a release)
+          for f in cheetah-images.sh cheetah-pack.sh; do
+            [[ -e ~/$f ]] || install -m 755 ~/evolution-cheetah/tools/$f ~/$f
+          done
           mkdir -p ~/evolution/.repo/local_manifests
           install -m 644 ~/evolution-cheetah/local_manifests/cheetah.xml ~/evolution/.repo/local_manifests/cheetah.xml
           cd ~/evolution
@@ -541,7 +545,7 @@ jobs:
           for d in "${devs[@]}"; do
             [[ "$d" =~ ^(kodiak|grizzly|cubs|yogi|cheetah|husky)$ ]] || { echo "::error::not a device: $d"; exit 1; }
             o=~/evolution/out/target/product/$d
-            echo "======== $d: $(grep -h -m1 '^ro.evolution.build.version=' $o/system/build.prop 2>/dev/null | cut -d= -f2 || true) (out/ from $(date -r $o/system/build.prop '+%F %T' 2>/dev/null || echo "no build"))"
+            echo "======== $d: $(grep -h -m1 '^ro.evolution.build.version=' $o/system/build.prop $o/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2 || true) (out/ from $(date -r $o/system/build.prop '+%F %T' 2>/dev/null || echo "no build"))"
             bash "$GITHUB_WORKSPACE/evolution-kodiak/tools/release-checks.sh" "$d" || rc=1
           done
           exit $rc

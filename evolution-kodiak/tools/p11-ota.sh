@@ -7,7 +7,7 @@
 # goes out last, so it never points at a file that isn't downloadable yet.
 #
 #   p11-ota.sh <dev> [--upload | --preview | --stage <dir>] [--changes <file>] [--manifest <file>]
-#   p11-ota.sh <dev> --publish <dir>
+#   p11-ota.sh <dev> --publish <dir> | --check-newer <dir>
 #   (<dev>: kodiak, grizzly, cubs, yogi, cheetah or husky)
 #
 # --preview prints the JSON and changelog an upload would publish, without uploading.
@@ -16,7 +16,11 @@
 # manifest into <dir>. --publish <dir> then uploads and publishes exactly that, reading
 # nothing in out/ or the tree, after checking the copy is still the file that was verified.
 # p11-routine.sh stages under the tree lock and publishes after releasing it, so the next
-# device builds during the uploads; --upload does both at once.
+# device builds during the uploads; --upload does both at once. --check-newer <dir> only says
+# whether the staged build is newer than the one the Updater has (exit 0) or not (exit 3).
+# The Updater never goes back: a publish whose build is older than the published one (by
+# timestamp, another file name) stops with OTA_SUPERSEDED and exit 3. Publishing the build that is
+# already published again is fine, so a publish whose push failed (or was cut off) can be rerun.
 # --manifest: the build's `repo manifest -r` snapshot. It's published with the JSON as
 # manifests/<dev>.xml (private projects left out), so every release can be rebuilt from the
 # exact revisions it came from; the evolution_ota history keeps one per release.
@@ -26,26 +30,27 @@
 # partition the device tree lists (ROM plus firmware.txt; for cheetah and husky, the build's own
 # AB_OTA_PARTITIONS list); its vbmeta has the same boot and
 # system patch levels as the build's vbmeta.img.
-# Prints OTA_VERIFIED, OTA_STAGED <dir> after --stage, and OTA_PUBLISHED <json url> after a
-# successful --upload or --publish.
+# Prints OTA_VERIFIED, OTA_STAGED <dir> after --stage, OTA_NEWER after --check-newer, and
+# OTA_PUBLISHED <json url> after a successful --upload or --publish.
 set -euo pipefail
 
 dev=${1:-}; [ $# -gt 0 ] && shift
-UPLOAD=0; PREVIEW=0; STAGE=; PUBLISH=; CHANGES=; MANIFEST=
+UPLOAD=0; PREVIEW=0; STAGE=; PUBLISH=; CHECK=; CHANGES=; MANIFEST=
 while [ $# -gt 0 ]; do
     case $1 in
         --upload) UPLOAD=1 ;;
         --preview) PREVIEW=1 ;;
         --stage) STAGE=${2:?--stage needs a folder}; shift ;;
         --publish) PUBLISH=${2:?--publish needs a staged folder}; shift ;;
+        --check-newer) CHECK=${2:?--check-newer needs a staged folder}; shift ;;
         --changes) CHANGES=${2:-}; shift ;;
         --manifest) MANIFEST=${2:-}; shift ;;
         *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
     shift
 done
-[ $(( UPLOAD + PREVIEW + (${#STAGE} > 0) + (${#PUBLISH} > 0) )) -le 1 ] \
-    || { echo "use only one of --upload, --preview, --stage and --publish" >&2; exit 2; }
+[ $(( UPLOAD + PREVIEW + (${#STAGE} > 0) + (${#PUBLISH} > 0) + (${#CHECK} > 0) )) -le 1 ] \
+    || { echo "use only one of --upload, --preview, --stage, --publish and --check-newer" >&2; exit 2; }
 case $dev in
     kodiak)  MODEL="Pixel 11 Pro XL";   FORUM=https://xdaforums.com/t/4804712/; TAG= ;;
     grizzly) MODEL="Pixel 11 Pro";      FORUM=https://xdaforums.com/t/4804712/; TAG= ;;
@@ -55,7 +60,7 @@ case $dev in
     cheetah) MODEL="Pixel 7 Pro";       FORUM=https://xdaforums.com/t/4806248/; TAG= ;;
     # LineageOS's trees and TheMuppets' blobs (evolution-husky/)
     husky)   MODEL="Pixel 8 Pro";       FORUM=https://xdaforums.com/t/4805239/; TAG= ;;
-    *) echo "usage: p11-ota.sh <kodiak|grizzly|cubs|yogi|cheetah|husky> [--upload | --preview | --stage <dir> | --publish <dir>] [--changes <file>] [--manifest <file>]" >&2; exit 2 ;;
+    *) echo "usage: p11-ota.sh <kodiak|grizzly|cubs|yogi|cheetah|husky> [--upload | --preview | --stage <dir> | --publish <dir> | --check-newer <dir>] [--changes <file>] [--manifest <file>]" >&2; exit 2 ;;
 esac
 
 TOP=~/evolution; O=$TOP/out/target/product/$dev; H=$TOP/out/host/linux-x86/bin
@@ -70,6 +75,43 @@ R2=r2:denson9874-ota/$dev/17; MIRROR=https://ota-mirror.daryldenson-apps.workers
 REPO=~/evolution_ota; RAW=https://raw.githubusercontent.com/denson9874/evolution_ota/cnb
 fail() { echo "FAIL: $*"; exit 1; }
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+export GIT_AUTHOR_NAME="Daryl Denson" GIT_AUTHOR_EMAIL="9751141+denson9874@users.noreply.github.com"
+export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME" GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+
+# ~/evolution_ota, one device at a time (publishes of different devices can overlap): the lock, then
+# origin/cnb with any commit an earlier publish couldn't push replayed on top (and files a publish
+# that was cut off left changed set aside and back). ota_lock [<seconds to wait for the lock>]
+ota_lock() {
+    exec 7>~/.evolution-ota.lock
+    flock -w "${1:-3600}" 7 || fail "waited ${1:-3600} s for another device's publish in $REPO"
+    git -C "$REPO" pull -q --rebase --autostash origin cnb \
+        || { git -C "$REPO" rebase --abort 2>/dev/null || true; fail "couldn't bring $REPO up to date with origin/cnb (see above)"; }
+}
+ota_unlock() { flock -u 7; exec 7>&-; }
+# Under ota_lock: exit 3 (OTA_SUPERSEDED) when the Updater already has a newer build than the
+# staged JSON $1. The same build (file name) again is fine, and so is a JSON with no build in it
+# (no file, or an empty response list).
+newer_or_stop() {
+    local rc=0
+    [ -f "$REPO/builds/$dev.json" ] || return 0
+    python3 -I - "$REPO/builds/$dev.json" "$1" <<'EOF' || rc=$?
+import json, sys
+c = json.load(open(sys.argv[1])).get('response') or []
+if not c:
+    sys.exit(0)
+c = c[0]
+s = json.load(open(sys.argv[2]))['response'][0]
+if c['filename'] != s['filename'] and int(c['timestamp']) >= int(s['timestamp']):
+    print(f"the Updater already has {c['filename']} (timestamp {c['timestamp']}), "
+          f"newer than the staged {s['filename']} ({s['timestamp']}): the Updater never goes back")
+    sys.exit(3)
+EOF
+    [ $rc = 0 ] && return 0
+    ota_unlock
+    [ $rc = 3 ] || fail "couldn't compare $1 with $REPO/builds/$dev.json"
+    echo "OTA_SUPERSEDED $(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["response"][0]["filename"])' "$REPO/builds/$dev.json")"
+    exit 3
+}
 
 # 5 and 6 of an upload, from a folder --stage wrote: SourceForge, the mirror, then the Updater JSON.
 # Reads only ~/releases/<dev>, the staged folder and ~/evolution_ota, so a build can run meanwhile.
@@ -83,6 +125,8 @@ publish() {
     [ -f "$DEST/$NAME" ] || fail "no $DEST/$NAME: the staged package is gone"
     [ "$(stat -c %s "$DEST/$NAME")" = "$P_SIZE" ] && [ "$(sha256sum < "$DEST/$NAME" | cut -d' ' -f1)" = "$P_SHA256" ] \
         || fail "$DEST/$NAME isn't the package that was verified and staged"
+    # Nothing goes up for a build older than the Updater's
+    ota_lock; newer_or_stop "$S/builds/$dev.json"; ota_unlock
 
     # 5. Upload next to the fastboot zip, and to the mirror. A package already uploaded with the same
     # content (marked <name>.uploaded; husky: the pack script's upload is the OTA zip itself) isn't
@@ -101,26 +145,28 @@ publish() {
     ~/bin/rclone copyto --s3-no-check-bucket "$DEST/$NAME" "$R2/$NAME" > $T/rclone.log 2>&1 \
         || { tail -5 $T/rclone.log; fail "R2 upload failed (rclone remote r2: missing? see tools/ota_mirror/README.md)"; }
     local len
-    len=$(curl -sIL --max-time 60 "$URL" | tr -d '\r' | awk 'tolower($1)=="content-length:" {l=$2} END {print l}')
+    len=$(curl -sIL --max-time 60 "$URL" | tr -d '\r' | awk 'tolower($1)=="content-length:" {l=$2} END {print l}' || true)
     [ "$len" = "$P_SIZE" ] || fail "the OTA mirror doesn't serve $URL (got length '$len', want $P_SIZE)"
 
-    # 6. The Updater JSON and changelog (last). Publishes of different devices can run at the same
-    # time now: one at a time in the ~/evolution_ota checkout.
-    exec 7>~/.evolution-ota.lock
-    flock -w 3600 7 || fail "waited an hour for another device's publish in $REPO"
-    git -C "$REPO" pull -q --ff-only
+    # 6. The Updater JSON and changelog (last). A rerun after a push that failed or was cut off finds
+    # them committed already (or on origin): it pushes what's left, or has nothing to do.
+    ota_lock
+    newer_or_stop "$S/builds/$dev.json"
     mkdir -p "$REPO/builds" "$REPO/changelogs"
     cp "$S/builds/$dev.json" "$REPO/builds/$dev.json"; cp "$S/changelogs/$dev.txt" "$REPO/changelogs/$dev.txt"
     local add=("builds/$dev.json" "changelogs/$dev.txt")
     if [ -f "$S/manifests/$dev.xml" ]; then
         mkdir -p "$REPO/manifests"; cp "$S/manifests/$dev.xml" "$REPO/manifests/$dev.xml"; add+=("manifests/$dev.xml")
     fi
-    export GIT_AUTHOR_NAME="Daryl Denson" GIT_AUTHOR_EMAIL="9751141+denson9874@users.noreply.github.com"
-    export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME" GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
     git -C "$REPO" add "${add[@]}"
-    git -C "$REPO" commit -q -m "$dev: $NAME" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
-    git -C "$REPO" push -q origin cnb || fail "pushing the JSON failed"
-    flock -u 7; exec 7>&-
+    git -C "$REPO" diff --cached --quiet \
+        || git -C "$REPO" commit -q -m "$dev: $NAME" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+    if [ -n "$(git -C "$REPO" rev-list origin/cnb..HEAD)" ]; then
+        git -C "$REPO" push -q origin cnb || fail "pushing the JSON failed (rerun the publish to retry)"
+    fi
+    git -C "$REPO" show "origin/cnb:builds/$dev.json" | cmp -s - "$S/builds/$dev.json" \
+        || fail "origin/cnb's builds/$dev.json isn't the staged one after the push"
+    ota_unlock
     echo "$P_DEVCOMMIT" > "$DEST/LAST_DEVICE_COMMIT"
     # The mirror keeps this build and the one before it, for downloads still running (SourceForge keeps every build)
     ~/bin/rclone lsf --files-only --format tp "$R2" | sort | awk -F';' -v keep="$NAME" '$2 != keep {print $2}' | head -n -1 \
@@ -131,9 +177,15 @@ if [ -n "$PUBLISH" ]; then
     publish "$PUBLISH"
     exit 0
 fi
+if [ -n "$CHECK" ]; then
+    [ -f "$CHECK/builds/$dev.json" ] || fail "nothing staged in $CHECK (no builds/$dev.json)"
+    ota_lock 300; newer_or_stop "$CHECK/builds/$dev.json"; ota_unlock
+    echo "OTA_NEWER"
+    exit 0
+fi
 
 # 1. The package of this build
-ver=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)
+ver=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2 || true)
 [[ $ver == EvolutionX-*-$dev-* ]] || fail "can't read ro.evolution.build.version from $O"
 OTA=$O/$ver.zip
 [ -f "$OTA" ] || fail "no OTA package $OTA (the build has to run m evolution)"

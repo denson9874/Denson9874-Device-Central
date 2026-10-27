@@ -30,7 +30,7 @@ log=$(ls -t ~/husky-build.log ~/husky-build-*.out 2>/dev/null | head -1 || true)
 grep -qE "BUILD_EXIT=0|BUILD COMPLETED with exit code: 0" "$log" || fail "the build didn't succeed ($log)"
 
 # The zip of this build (ro.evolution.build.version), not just the newest one in out/
-ver=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2)
+ver=$(grep -h -m1 "^ro.evolution.build.version=" $O/system/build.prop $O/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2 || true)
 ZIP=$O/$ver.zip
 [ -f "$ZIP" ] || fail "no $ZIP"
 NAME=$(basename "$ZIP")

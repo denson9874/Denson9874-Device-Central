@@ -4,7 +4,8 @@
 # SourceForge folder (the folder's RSS feed) lists a file with the same MD5 and size, so a failed or
 # partial upload keeps it. Covers the staged copies in ~/releases/<dev> and the OTA zips the build leaves
 # in out/. The .sha256 and .uploaded files stay: the pack scripts and p11-ota.sh read them, so a released
-# name is never reused.
+# name is never reused. A file a staged release still has to publish (p11-routine.sh's
+# ~/releases/<dev>/staged-*: its files list, and the OTA package its ota/publish.env names) stays too.
 # p11-routine.sh runs it for its device at the end; derp-ota.sh for derpfest-husky after a publish.
 #
 #   release-cleanup.sh [<kodiak|grizzly|cubs|yogi|cheetah|husky|derpfest-husky> ...] [--dry-run]
@@ -37,6 +38,11 @@ for dev in "${devs[@]}"; do
     fi
     mapfile -t zips < <(find "${dirs[@]}" -maxdepth 1 -type f -name "$rom-*.zip" 2>/dev/null | sort)
     [ ${#zips[@]} = 0 ] && continue
+    staged=$(for s in ~/releases/$dev/staged-*; do
+        [ -d "$s" ] || continue
+        tr ' ' '\n' < "$s/files" 2>/dev/null
+        sed -n "s|^P_NAME=|$HOME/releases/$dev/|p" "$s/ota/publish.env" 2>/dev/null
+    done)
     echo "== $dev: ${#zips[@]} zips; host: SourceForge $sf"
     # "<md5> <size>" of every file in the SourceForge folder
     curl -sf --max-time 120 "$SF?path=/$sf&limit=100" | grep -o 'filesize="[0-9]*"><media:hash algo="md5">[0-9a-f]*' \
@@ -46,6 +52,9 @@ for dev in "${devs[@]}"; do
         kept=$((kept + ${#zips[@]})); result=FAILED; continue
     fi
     for z in "${zips[@]}"; do
+        if grep -qxF "$z" <<<"$staged"; then
+            echo "   keep    $z (staged, not published yet)"; kept=$((kept + 1)); continue
+        fi
         size=$(stat -c %s "$z")
         if ! grep -qxF "$(md5sum < "$z" | cut -d' ' -f1) $size" $T/sf; then
             echo "   keep    $z (not on SourceForge)"; kept=$((kept + 1)); continue
