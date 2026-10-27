@@ -40,7 +40,7 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
   - at boot_completed, on a new `/data` only, `ksud module install` of the provider zip, unless a
     Zygisk is already there (one the user installed, a NeoZygisk they updated, or one turned off)
     or the phone is in Android's safe mode. A NeoZygisk a failed or cut-off try of ours left
-    behind is installed again, unless safe mode or the user has turned it off since.
+    behind is installed again, unless safe mode or the user has turned it off or removed it since.
     **susfs and Zygisk are both active from the second boot**, like any KernelSU module.
 
   Each one-time step has a marker in `/data/adb/eos`, is tried on at most three boots if it fails,

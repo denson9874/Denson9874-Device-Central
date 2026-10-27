@@ -15,9 +15,10 @@
 # tried on at most three boots, and is never repeated once done, so nothing the user turns
 # off or removes later comes back; pending goes only when both steps are done or out of
 # tries. The provider is never installed over a Zygisk already there (the user's own, a
-# NeoZygisk they updated, or one turned off), nor in safe mode. A /data that has booted
-# Android before (an older build, or a no-root user an OTA rooted) gets ksud and nothing
-# else. What happened is in /data/adb/eos/log.
+# NeoZygisk they updated, or one turned off), nor in safe mode, nor again once the user
+# removed what a try of ours left. A /data that has booted Android before (an older build,
+# or a no-root user an OTA rooted) gets ksud and nothing else. What happened is in
+# /data/adb/eos/log.
 set -u
 umask 022                    # init starts services with umask 077; ksud's own su shell uses 022
 KSUD=/product/app/KernelSUNext/lib/arm64/libksud.so
@@ -45,8 +46,8 @@ zygisk_there() {   # a Zygisk is installed, or waits in modules_update, other th
         # provider.trying: a try of ours failed or was cut off after it began writing the
         # module, so that NeoZygisk is ours to finish (ksud moves a half-done
         # modules_update/zygisksu into modules/ at the next post-fs-data, before this runs).
-        # Not once it's turned off: safe mode and the manager's switch leave a disable file,
-        # which an install would remove
+        # Not once it's turned off (safe mode and the manager's switch leave a disable file,
+        # which an install would remove) or removed (boot-completed below)
         if [ -e "$S/provider.trying" ] && [ ! -e "/data/adb/modules/$id/disable" ] \
             && [ "$(sed -n 's/^name=//p' "$m")" = NeoZygisk ] \
             && [ "$(sed -n 's/^versionCode=//p' "$m")" = "$ZYGISK_CODE" ]; then
@@ -78,8 +79,14 @@ post-fs-data)
 boot-completed)
     [ -e "$S/pending" ] || exit 0
     if ! over provider; then
+        # What an unfinished try of ours left shows in the manager once ksud has moved it into
+        # modules/; if it's gone after that, the user removed it
+        if [ -e "$S/provider.trying" ] && [ -f /data/adb/modules/zygisksu/module.prop ]; then : > "$S/provider.seen"; fi
+        if [ -e "$S/provider.trying" ] && [ -e "$S/provider.seen" ] \
+            && [ ! -e /data/adb/modules/zygisksu ] && [ ! -e /data/adb/modules_update/zygisksu ]; then
+            : > "$S/provider.done"; log provider "the NeoZygisk an earlier try left was removed: not installed again"
         # Safe mode turned every module off (ksud checks the same properties): a later boot tries
-        if [ "$(getprop ro.sys.safemode)" = 1 ] || [ "$(getprop persist.sys.safemode)" = 1 ]; then
+        elif [ "$(getprop ro.sys.safemode)" = 1 ] || [ "$(getprop persist.sys.safemode)" = 1 ]; then
             log provider "safe mode: not tried on this boot"
         elif zygisk_there; then
             : > "$S/provider.done"; log provider "a Zygisk is already there (installed, waiting or turned off): NeoZygisk not installed"
@@ -90,14 +97,14 @@ boot-completed)
             : > "$S/provider.trying"
             if "$KSUD" module install "$ZIP"; then : > "$S/provider.done"; log provider "NeoZygisk installed (active from the next boot)"
             else
-                [ -e /data/adb/modules_update/zygisksu ] || [ -e /data/adb/modules/zygisksu ] || rm -f "$S/provider.trying"
+                [ -e /data/adb/modules_update/zygisksu ] || [ -e /data/adb/modules/zygisksu ] || rm -f "$S/provider.trying" "$S/provider.seen"
                 log provider "install failed (try $(tries provider) of 3)"
             fi
         fi
     fi
     if over susfs && over provider; then
         : > "$S/done"
-        rm -f "$S/pending" "$S/provider.trying"
+        rm -f "$S/pending" "$S/provider.trying" "$S/provider.seen"
     fi
     ;;
 esac
