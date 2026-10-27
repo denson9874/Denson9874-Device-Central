@@ -1,0 +1,52 @@
+From 5ac87f775f3a5f2d5f4c9b192af059fc75c5c94e Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:51:44 +0000
+Subject: [PATCH] LineageSettingsProvider: name ExpressiveOS in translated app
+ names
+
+The Belarusian, Russian and Ukrainian app names still called it the
+Evolution X settings storage.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ packages/LineageSettingsProvider/res/values-be/strings.xml | 2 +-
+ packages/LineageSettingsProvider/res/values-ru/strings.xml | 2 +-
+ packages/LineageSettingsProvider/res/values-uk/strings.xml | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/packages/LineageSettingsProvider/res/values-be/strings.xml b/packages/LineageSettingsProvider/res/values-be/strings.xml
+index 4e209d5c..16dd49c8 100644
+--- a/packages/LineageSettingsProvider/res/values-be/strings.xml
++++ b/packages/LineageSettingsProvider/res/values-be/strings.xml
+@@ -4,5 +4,5 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources>
+-    <string name="app_name">Сховішча налад Evolution X</string>
++    <string name="app_name">Сховішча налад ExpressiveOS</string>
+ </resources>
+diff --git a/packages/LineageSettingsProvider/res/values-ru/strings.xml b/packages/LineageSettingsProvider/res/values-ru/strings.xml
+index f5fbbdc5..dd1fce7f 100644
+--- a/packages/LineageSettingsProvider/res/values-ru/strings.xml
++++ b/packages/LineageSettingsProvider/res/values-ru/strings.xml
+@@ -4,5 +4,5 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources>
+-    <string name="app_name">Хранилище настроек Evolution X</string>
++    <string name="app_name">Хранилище настроек ExpressiveOS</string>
+ </resources>
+diff --git a/packages/LineageSettingsProvider/res/values-uk/strings.xml b/packages/LineageSettingsProvider/res/values-uk/strings.xml
+index d87c76d5..e433e970 100644
+--- a/packages/LineageSettingsProvider/res/values-uk/strings.xml
++++ b/packages/LineageSettingsProvider/res/values-uk/strings.xml
+@@ -4,5 +4,5 @@
+      SPDX-License-Identifier: Apache-2.0
+ -->
+ <resources>
+-    <string name="app_name">Сховище налаштувань Evolution X</string>
++    <string name="app_name">Сховище налаштувань ExpressiveOS</string>
+ </resources>
+-- 
+2.43.0
+

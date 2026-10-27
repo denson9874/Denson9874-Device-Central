@@ -43,6 +43,7 @@ Tree patches (`apply.sh`, as local commits; `repo sync` drops them and the next 
 | `frameworks_base` 0011-0020 | evolution-kodiak's background-power fixes (2026-10-26), copied: SystemUI animations that kept running with the screen off or on AOD, the colored status bar icons setting, AxSpoofManager's fetches, Extreme Charging's 50% limit |
 | `vendor_lineage` 0001 | ExpressiveOS 1.0 names, and the build's own date, so both make passes name one zip |
 | `vendor_lineage` 0002 | evolution-kodiak's, copied: games get stock's 60 fps default again |
+| `frameworks_base` 0021-0024, `packages_apps_Settings`, `packages_apps_Evolver`, `packages_apps_Updater`, `lineage-sdk`, `packages_apps_LineageParts`, `packages_apps_EvoEgg`, `packages_apps_Sandbox`, `vendor_pixel-style`, `system_core`, `bootable_recovery` | ExpressiveOS's branding (Daryl, 2026-10-27: "ExpressiveOS only, no mention"): every screen, icon, link and the crash report header say ExpressiveOS, the Evolver is "Expressive Studio", the crash dialog copies the log instead of uploading it to Evolution X's paste site, recovery shows ExpressiveOS's mark. Made at the server's revisions of 2026-10-26; the images come from [`branding/`](branding/README.md) |
 | `ksu/patches`, `viper4android/patches` | Their kits' own (see their READMEs) |
 
 Never `evolution-cheetah/apply.sh` or its pantah 0001/0002: they point the Updater at Evolution X's feed.
@@ -145,7 +146,9 @@ They're the record of what the build was made from, for the GPL source offer.
 also hold LineageOS's release certificate, which Evolution X adds there, and nothing else), the payload (every
 partition plus the nine firmware images, its init_boot is out/'s KernelSU Next one, its boot, init_boot,
 vbmeta and vbmeta_system are ExpressiveOS's, patch levels), KernelSU Next and the stock init_boot,
-ViPER4Android, the boot animation, the firmware and the fastboot files.
+ViPER4Android, the boot animation, the branding (`tools/brand-check.py`: no app, framework string or
+tombstone header names Evolution X, apart from the few links it lists on purpose), the firmware and the
+fastboot files.
 
 ## Test and release
 
@@ -186,5 +189,5 @@ and never removes a folder holding a `.device-ok` record. Release zips don't nee
   ExpressiveOS phones.
 - Freezing the tree: 318 projects follow branch heads. After the first good build, rebuild from its
   `out/eos/manifest.xml` until moving on is a decision.
-- Decisions still open: patch-level properties in cheetah's vbmeta, ExpressiveLauncher as the default
-  home app, the Updater's other evolution-x.org links, purging the old keystore from this repo's history.
+- Decisions still open: patch-level properties in cheetah's vbmeta, purging the old keystore from this
+  repo's history.

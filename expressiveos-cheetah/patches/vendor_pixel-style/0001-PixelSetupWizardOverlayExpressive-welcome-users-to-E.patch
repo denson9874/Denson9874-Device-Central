@@ -1,0 +1,35 @@
+From b6f1ddb27131ab9bb8b255066b9e6ec001fae37c Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:51:00 +0000
+Subject: [PATCH] PixelSetupWizardOverlayExpressive: welcome users to
+ ExpressiveOS
+
+ExpressiveOS is its own ROM: the setup wizard's welcome message, title,
+deferred setup title and device name still said Evolution X.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ .../res/values/strings.xml                                | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/rro_overlays/PixelSetupWizardOverlayExpressive/res/values/strings.xml b/rro_overlays/PixelSetupWizardOverlayExpressive/res/values/strings.xml
+index 14877f7..9378639 100644
+--- a/rro_overlays/PixelSetupWizardOverlayExpressive/res/values/strings.xml
++++ b/rro_overlays/PixelSetupWizardOverlayExpressive/res/values/strings.xml
+@@ -1,9 +1,9 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+-    <string name="bc_welcome_message">Welcome to Evolution X</string>
+-    <string name="deferred_setup_wizard_title">Finish setting up Evolution X</string>
+-    <string name="device_name">Evolution X</string>
+-    <string name="setup_wizard_title">Evolution X Setup</string>
++    <string name="bc_welcome_message">Welcome to ExpressiveOS</string>
++    <string name="deferred_setup_wizard_title">Finish setting up ExpressiveOS</string>
++    <string name="device_name">ExpressiveOS</string>
++    <string name="setup_wizard_title">ExpressiveOS Setup</string>
+     <string name="demo_device_admin_component_name">com.google.android.retaildemo/.DemoDeviceAdminReceiver</string>
+     <string name="demo_device_admin_download_location">https://g.co/pixel/retaildemo</string>
+     <string name="demo_device_admin_signature_checksum">ZUfHPe4VDBA5gL_f_lXMmgEdeF3WlKX5mv2CBbyvH4A</string>
+-- 
+2.43.0
+

@@ -1,0 +1,2376 @@
+From 719c7b71c175c8ad52beed1d582c531f780476f2 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:36:13 +0000
+Subject: [PATCH] Evolver: make the About page ExpressiveOS's
+
+ExpressiveOS is its own ROM: the About page described Evolution X,
+linked its website, GitHub, Discord and X, listed its founders and team,
+fetched its maintainers from Evolution X's OTA repo and read the
+changelog from there. Describe ExpressiveOS, link its Telegram group and
+GitHub, show its maintainer and read the changelog from ExpressiveOS's
+OTA repo. Drop the translations whose text changed or went away.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ res/drawable/ic_about.xml                     |  10 +-
+ res/drawable/ic_about_discord.xml             |  22 -
+ res/drawable/ic_about_discord_expressive.xml  |  10 -
+ .../{ic_about_x.xml => ic_about_telegram.xml} |   4 +-
+ ...e.xml => ic_about_telegram_expressive.xml} |   4 +-
+ res/drawable/ic_discord.xml                   |  10 -
+ res/drawable/ic_donate.xml                    |  15 -
+ res/drawable/ic_forum.xml                     |  15 -
+ res/drawable/ic_github_2.xml                  |  15 -
+ res/drawable/ic_telegram.xml                  |  10 +
+ res/drawable/ic_x.xml                         |  10 -
+ res/values-ar/evolution_strings.xml           |  19 +-
+ res/values-de-rDE/evolution_strings.xml       |   7 +-
+ res/values-es-rES/evolution_strings.xml       |   8 +-
+ res/values-fr-rFR/evolution_strings.xml       |   6 +-
+ res/values-hu-rHU/evolution_strings.xml       |  19 +-
+ res/values-in-rID/evolution_strings.xml       |  19 +-
+ res/values-it-rIT/evolution_strings.xml       |  21 +-
+ res/values-ja-rJP/evolution_strings.xml       |  19 +-
+ res/values-ko-rKR/evolution_strings.xml       |  18 +-
+ res/values-ku-rTR/evolution_strings.xml       |  18 +-
+ res/values-pl-rPL/evolution_strings.xml       |  19 +-
+ res/values-pt-rBR/evolution_strings.xml       |  21 +-
+ res/values-ru-rRU/evolution_strings.xml       |   8 +-
+ res/values-sk-rSK/evolution_strings.xml       |   6 +-
+ res/values-sv-rSE/evolution_strings.xml       |  19 +-
+ res/values-tr-rTR/evolution_strings.xml       |  19 +-
+ res/values-uk-rUA/evolution_strings.xml       |  19 +-
+ res/values-vi-rVN/evolution_strings.xml       |  18 +-
+ res/values-zh-rCN/evolution_strings.xml       |  19 +-
+ res/values-zh-rTW/evolution_strings.xml       |  21 +-
+ res/values/evolution_strings.xml              |  44 +-
+ res/xml/evolution_settings_about.xml          | 109 +---
+ .../settings/fragments/about/About.kt         | 605 +-----------------
+ .../fragments/about/ChangelogFragment.java    |  20 +-
+ .../about/CurrentMaintainersSheet.kt          | 453 -------------
+ 36 files changed, 75 insertions(+), 1604 deletions(-)
+ delete mode 100644 res/drawable/ic_about_discord.xml
+ delete mode 100644 res/drawable/ic_about_discord_expressive.xml
+ rename res/drawable/{ic_about_x.xml => ic_about_telegram.xml} (85%)
+ rename res/drawable/{ic_about_x_expressive.xml => ic_about_telegram_expressive.xml} (73%)
+ delete mode 100644 res/drawable/ic_discord.xml
+ delete mode 100644 res/drawable/ic_donate.xml
+ delete mode 100644 res/drawable/ic_forum.xml
+ delete mode 100644 res/drawable/ic_github_2.xml
+ create mode 100644 res/drawable/ic_telegram.xml
+ delete mode 100644 res/drawable/ic_x.xml
+ delete mode 100644 src/org/evolution/settings/fragments/about/CurrentMaintainersSheet.kt
+
+diff --git a/res/drawable/ic_about.xml b/res/drawable/ic_about.xml
+index 1f6d909..ec10dad 100644
+--- a/res/drawable/ic_about.xml
++++ b/res/drawable/ic_about.xml
+@@ -6,8 +6,14 @@
+     android:tint="?android:attr/colorControlNormal">
+     <path
+         android:fillColor="#FFFFFFFF"
+-        android:pathData="M15,24c-0.2,0 -0.5,-0.1 -0.6,-0.2L4.1,14.7c-0.3,-0.2 -0.4,-0.6 -0.3,-1l0.9,-3.4c0.1,-0.4 0.5,-0.7 0.9,-0.7h10.1c0.3,0 0.6,0.1 0.7,0.4l2.8,3.4c0.2,0.3 0.3,0.7 0.1,1c-0.2,0.3 -0.5,0.5 -0.9,0.5h-5.8l3.8,3.4c0.3,0.2 0.4,0.6 0.3,0.9l-0.9,4c-0.1,0.3 -0.3,0.6 -0.6,0.7C15.2,24 15.1,24 15,24zM5.8,13.7l8.6,7.6l0.4,-1.9l-5.3,-4.7c-0.3,-0.3 -0.4,-0.7 -0.3,-1.1c0.1,-0.4 0.5,-0.6 0.9,-0.6h6.4l-1.2,-1.5H6.4L5.8,13.7z" />
++        android:pathData="M14.85,14.03C14.55,13.93 14.39,13.7 14.39,13.35C14.39,13.15 14.39,13.16 14.68,12.61C14.77,12.43 14.78,12.4 14.79,12.16C14.8,11.87 14.75,11.74 14.52,11.41C14.32,11.11 14.32,11.11 14.3,9.84C14.28,9.03 14.27,8.64 14.24,8.45C14.08,7.43 13.81,6.57 13.3,5.5C12.99,4.84 12.97,4.66 13.17,4.23C13.42,3.69 14.07,3.18 14.75,2.98C16.56,2.46 18.67,3.39 20.15,5.36C21.29,6.87 21.67,8.48 21.2,9.81C20.81,10.9 19.99,11.72 18.25,12.73C17.16,13.36 15.64,14.01 15.12,14.07C15.02,14.08 14.95,14.07 14.85,14.03Z" />
+     <path
+         android:fillColor="#FFFFFFFF"
+-        android:pathData="M17.6,7.4H8.9c-0.2,0 -0.5,-0.1 -0.7,-0.3L4.6,3.7C4.3,3.4 4.2,3 4.3,2.6C4.5,2.2 4.8,2 5.2,2h13.3c0.3,0 0.6,0.1 0.8,0.4c0.2,0.2 0.2,0.5 0.2,0.8l-0.9,3.4C18.4,7.1 18,7.4 17.6,7.4zM9.3,5.4h7.6l0.4,-1.5H7.6L9.3,5.4z" />
++        android:pathData="M15.48,21.14C14.13,20.97 13.13,20.4 12.19,19.29C11.92,18.96 11.81,18.78 11.75,18.57L11.71,18.4L11.8,18C11.92,17.51 12.03,16.9 12.12,16.28C12.24,15.33 12.31,15.14 12.6,14.82C12.86,14.53 13.15,14.44 13.43,14.56C13.49,14.59 13.65,14.72 13.79,14.84C14.13,15.16 14.28,15.23 14.64,15.24C15.4,15.26 17.12,14.6 18.87,13.6C19.45,13.26 19.61,13.21 19.82,13.25C20.77,13.47 21.57,14.88 21.43,16.13C21.26,17.76 20.21,19.29 18.58,20.32C17.63,20.92 16.35,21.26 15.48,21.14Z" />
++    <path
++        android:fillColor="#FFFFFFFF"
++        android:pathData="M7.85,21.08C6.29,20.9 4.72,19.86 3.56,18.24C2.85,17.25 2.47,16.08 2.55,15.14C2.68,13.61 3.49,12.52 5.19,11.62C6.1,11.14 8.61,10.14 9.15,10.05C9.72,9.95 10.14,10.47 9.9,10.97C9.84,11.08 9.77,11.16 9.58,11.32C9.12,11.71 9,12.07 9.19,12.48C9.28,12.68 9.38,12.78 9.79,13.09C10.5,13.63 10.98,14.2 11.12,14.65C11.19,14.86 11.19,15.13 11.12,15.6C11.1,15.79 11.06,16.06 11.04,16.2C10.97,16.88 10.82,17.55 10.66,17.96L10.54,18.25L10.54,18.64C10.54,18.85 10.55,19.13 10.55,19.26C10.56,19.71 10.41,20.07 10.06,20.41C9.53,20.94 8.75,21.18 7.85,21.08Z" />
++    <path
++        android:fillColor="#FFFFFFFF"
++        android:pathData="M4.36,10.43C3.53,10.23 2.85,9.52 2.63,8.61C2,6.07 5.31,2.75 8.35,2.87C9.84,2.93 11.11,3.75 11.93,5.18C12.52,6.19 13,7.44 13.11,8.24C13.17,8.62 13.04,8.89 12.76,9.03C12.62,9.1 12.6,9.1 12.16,9.1C11.75,9.11 11.68,9.11 11.51,9.17C11.22,9.26 11.09,9.25 10.67,9.11C10.12,8.93 9.5,8.89 8.92,9C8.5,9.08 7.13,9.59 5.63,10.23C4.95,10.51 4.79,10.54 4.36,10.43Z" />
+ </vector>
+diff --git a/res/drawable/ic_about_discord.xml b/res/drawable/ic_about_discord.xml
+deleted file mode 100644
+index c7e8fed..0000000
+--- a/res/drawable/ic_about_discord.xml
++++ /dev/null
+@@ -1,22 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     Copyright (C) 2019-2025 The Evolution X Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-
+-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+-
+-    <item>
+-        <com.android.settingslib.widget.AdaptiveIconShapeDrawable
+-            android:width="@dimen/dashboard_tile_image_size"
+-            android:height="@dimen/dashboard_tile_image_size"
+-            android:color="@color/homepage_purple_bg" />
+-    </item>
+-
+-    <item
+-        android:width="@dimen/dashboard_tile_foreground_image_size"
+-        android:height="@dimen/dashboard_tile_foreground_image_size"
+-        android:start="@dimen/dashboard_tile_foreground_image_inset"
+-        android:top="@dimen/dashboard_tile_foreground_image_inset"
+-        android:drawable="@drawable/ic_about_discord_expressive" />
+-</layer-list>
+diff --git a/res/drawable/ic_about_discord_expressive.xml b/res/drawable/ic_about_discord_expressive.xml
+deleted file mode 100644
+index 6ebc181..0000000
+--- a/res/drawable/ic_about_discord_expressive.xml
++++ /dev/null
+@@ -1,10 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     Copyright (C) 2019-2025 The Evolution X Project
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-
+-<com.android.settings.widget.TintDrawable
+-    xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:drawable="@drawable/ic_discord"
+-    android:tint="@color/homepage_purple_fg" />
+diff --git a/res/drawable/ic_about_x.xml b/res/drawable/ic_about_telegram.xml
+similarity index 85%
+rename from res/drawable/ic_about_x.xml
+rename to res/drawable/ic_about_telegram.xml
+index f1673da..8066ca9 100644
+--- a/res/drawable/ic_about_x.xml
++++ b/res/drawable/ic_about_telegram.xml
+@@ -10,7 +10,7 @@
+         <com.android.settingslib.widget.AdaptiveIconShapeDrawable
+             android:width="@dimen/dashboard_tile_image_size"
+             android:height="@dimen/dashboard_tile_image_size"
+-            android:color="@color/homepage_grey_bg" />
++            android:color="@color/homepage_blue_bg" />
+     </item>
+ 
+     <item
+@@ -18,5 +18,5 @@
+         android:height="@dimen/dashboard_tile_foreground_image_size"
+         android:start="@dimen/dashboard_tile_foreground_image_inset"
+         android:top="@dimen/dashboard_tile_foreground_image_inset"
+-        android:drawable="@drawable/ic_about_x_expressive" />
++        android:drawable="@drawable/ic_about_telegram_expressive" />
+ </layer-list>
+diff --git a/res/drawable/ic_about_x_expressive.xml b/res/drawable/ic_about_telegram_expressive.xml
+similarity index 73%
+rename from res/drawable/ic_about_x_expressive.xml
+rename to res/drawable/ic_about_telegram_expressive.xml
+index e1ee5f6..21c2b2a 100644
+--- a/res/drawable/ic_about_x_expressive.xml
++++ b/res/drawable/ic_about_telegram_expressive.xml
+@@ -6,5 +6,5 @@
+ 
+ <com.android.settings.widget.TintDrawable
+     xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:drawable="@drawable/ic_x"
+-    android:tint="@color/homepage_grey_fg" />
++    android:drawable="@drawable/ic_telegram"
++    android:tint="@color/homepage_blue_fg" />
+diff --git a/res/drawable/ic_discord.xml b/res/drawable/ic_discord.xml
+deleted file mode 100644
+index e660cf2..0000000
+--- a/res/drawable/ic_discord.xml
++++ /dev/null
+@@ -1,10 +0,0 @@
+-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:width="24dp"
+-    android:height="24dp"
+-    android:viewportWidth="24"
+-    android:viewportHeight="24"
+-    android:tint="?android:attr/colorControlNormal">
+-  <path
+-      android:pathData="M19.6239,5.39C18.2217,4.7467 16.7181,4.2726 15.1459,4.0011C15.1173,3.9959 15.0887,4.009 15.0739,4.0352C14.8805,4.3791 14.6663,4.8278 14.5163,5.1805C12.8254,4.9274 11.1431,4.9274 9.4868,5.1805C9.3368,4.82 9.1148,4.3791 8.9205,4.0352C8.9058,4.0099 8.8772,3.9968 8.8485,4.0011C7.2772,4.2718 5.7736,4.7458 4.3705,5.39C4.3584,5.3953 4.348,5.404 4.3411,5.4154C1.4889,9.6764 0.7076,13.8326 1.0909,17.9374C1.0927,17.9574 1.1039,17.9766 1.1195,17.9889C3.0013,19.3708 4.8241,20.2097 6.613,20.7658C6.6416,20.7745 6.672,20.764 6.6902,20.7405C7.1134,20.1626 7.4906,19.5532 7.814,18.9125C7.8331,18.8749 7.8149,18.8304 7.7759,18.8156C7.1775,18.5886 6.6078,18.3119 6.0598,17.9976C6.0164,17.9723 6.0129,17.9103 6.0528,17.8806C6.1681,17.7942 6.2835,17.7043 6.3936,17.6135C6.4135,17.5969 6.4413,17.5934 6.4647,17.6039C10.0652,19.2477 13.9631,19.2477 17.521,17.6039C17.5445,17.5925 17.5722,17.596 17.593,17.6126C17.7032,17.7034 17.8185,17.7942 17.9347,17.8806C17.9746,17.9103 17.972,17.9723 17.9286,17.9976C17.3806,18.318 16.8108,18.5886 16.2116,18.8147C16.1726,18.8295 16.1553,18.8749 16.1744,18.9125C16.5047,19.5523 16.882,20.1617 17.2973,20.7396C17.3147,20.764 17.3459,20.7745 17.3745,20.7658C19.1721,20.2097 20.9949,19.3708 22.8766,17.9889C22.8931,17.9766 22.9035,17.9583 22.9053,17.9382C23.364,13.1927 22.1369,9.0705 19.6525,5.4162C19.6465,5.404 19.6361,5.3953 19.6239,5.39ZM8.3517,15.438C7.2677,15.438 6.3745,14.4428 6.3745,13.2207C6.3745,11.9985 7.2504,11.0033 8.3517,11.0033C9.4616,11.0033 10.3462,12.0072 10.3288,13.2207C10.3288,14.4428 9.453,15.438 8.3517,15.438ZM15.6619,15.438C14.5779,15.438 13.6847,14.4428 13.6847,13.2207C13.6847,11.9985 14.5606,11.0033 15.6619,11.0033C16.7718,11.0033 17.6563,12.0072 17.639,13.2207C17.639,14.4428 16.7718,15.438 15.6619,15.438Z"
+-      android:fillColor="#FFFFFFFF"/>
+-</vector>
+diff --git a/res/drawable/ic_donate.xml b/res/drawable/ic_donate.xml
+deleted file mode 100644
+index d768975..0000000
+--- a/res/drawable/ic_donate.xml
++++ /dev/null
+@@ -1,15 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: Evolution X
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:width="24dp"
+-    android:height="24dp"
+-    android:viewportWidth="24"
+-    android:viewportHeight="24"
+-    android:tint="?attr/colorControlNormal">
+-    <path
+-        android:fillColor="@android:color/white"
+-        android:pathData="M8.32,21.97C8.21,21.92 8.08,21.76 8.06,21.65C8.03,21.5 8,21.76 8.66,17.56C9.26,13.76 9.25,13.82 9.33,13.71C9.46,13.54 9.44,13.54 10.94,13.53C12.26,13.5 12.54,13.5 13.13,13.41C16.38,12.96 18.39,11.05 19.09,7.75C19.13,7.53 19.17,7.34 19.18,7.34C19.18,7.33 19.25,7.38 19.33,7.44C20.36,8.22 20.71,9.66 20.32,11.58C19.86,13.87 18.64,15.39 16.74,16.04C15.93,16.32 15.25,16.43 14.05,16.46C13.25,16.5 13.23,16.5 13,16.65C12.83,16.82 12.84,16.79 12.45,19.2C12.18,20.9 12.08,21.45 12.04,21.55C11.97,21.71 11.83,21.85 11.67,21.93L11.56,22H10C8.71,22 8.38,22 8.32,21.97V21.97M3.82,19.74C3.63,19.64 3.5,19.47 3.5,19.27C3.5,19 6.11,2.68 6.18,2.5C6.27,2.32 6.5,2.13 6.68,2.06L6.83,2H10.36C14.27,2 14.12,2 15,2.2C17.62,2.75 18.82,4.5 18.37,7.13C17.87,10.06 16.39,11.8 13.87,12.43C13,12.64 12.39,12.7 10.73,12.7C9.42,12.7 9.32,12.71 9.06,12.85C8.8,13 8.59,13.27 8.5,13.6C8.46,13.67 8.23,15.07 7.97,16.7C7.71,18.33 7.5,19.69 7.5,19.72L7.47,19.78H5.69C4.11,19.78 3.89,19.78 3.82,19.74V19.74Z" />
+-</vector>
+diff --git a/res/drawable/ic_forum.xml b/res/drawable/ic_forum.xml
+deleted file mode 100644
+index 463a0e4..0000000
+--- a/res/drawable/ic_forum.xml
++++ /dev/null
+@@ -1,15 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: Evolution X
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:width="24dp"
+-    android:height="24dp"
+-    android:viewportWidth="24"
+-    android:viewportHeight="24"
+-    android:tint="?attr/colorControlNormal">
+-    <path
+-        android:fillColor="@android:color/white"
+-        android:pathData="M17,12V3A1,1 0 0,0 16,2H3A1,1 0 0,0 2,3V17L6,13H16A1,1 0 0,0 17,12M21,6H19V15H6V17A1,1 0 0,0 7,18H18L22,22V7A1,1 0 0,0 21,6Z" />
+-</vector>
+diff --git a/res/drawable/ic_github_2.xml b/res/drawable/ic_github_2.xml
+deleted file mode 100644
+index 6f16dbb..0000000
+--- a/res/drawable/ic_github_2.xml
++++ /dev/null
+@@ -1,15 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     SPDX-FileCopyrightText: Evolution X
+-     SPDX-License-Identifier: Apache-2.0
+--->
+-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:width="24dp"
+-    android:height="24dp"
+-    android:viewportWidth="24"
+-    android:viewportHeight="24"
+-    android:tint="?attr/colorControlNormal">
+-    <path
+-        android:fillColor="@android:color/white"
+-        android:pathData="M12,2A10,10 0 0,0 2,12C2,16.42 4.87,20.17 8.84,21.5C9.34,21.58 9.5,21.27 9.5,21C9.5,20.77 9.5,20.14 9.5,19.31C6.73,19.91 6.14,17.97 6.14,17.97C5.68,16.81 5.03,16.5 5.03,16.5C4.12,15.88 5.1,15.9 5.1,15.9C6.1,15.97 6.63,16.93 6.63,16.93C7.5,18.45 8.97,18 9.54,17.76C9.63,17.11 9.89,16.67 10.17,16.42C7.95,16.17 5.62,15.31 5.62,11.5C5.62,10.39 6,9.5 6.65,8.79C6.55,8.54 6.2,7.5 6.75,6.15C6.75,6.15 7.59,5.88 9.5,7.17C10.29,6.95 11.15,6.84 12,6.84C12.85,6.84 13.71,6.95 14.5,7.17C16.41,5.88 17.25,6.15 17.25,6.15C17.8,7.5 17.45,8.54 17.35,8.79C18,9.5 18.38,10.39 18.38,11.5C18.38,15.32 16.04,16.16 13.81,16.41C14.17,16.72 14.5,17.33 14.5,18.26C14.5,19.6 14.5,20.68 14.5,21C14.5,21.27 14.66,21.59 15.17,21.5C19.14,20.16 22,16.42 22,12A10,10 0 0,0 12,2Z" />
+-</vector>
+diff --git a/res/drawable/ic_telegram.xml b/res/drawable/ic_telegram.xml
+new file mode 100644
+index 0000000..f485b30
+--- /dev/null
++++ b/res/drawable/ic_telegram.xml
+@@ -0,0 +1,10 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24"
++    android:tint="?android:attr/colorControlNormal">
++  <path
++      android:pathData="M11.944,0A12,12 0 0,0 0,12A12,12 0 0,0 12,24A12,12 0 0,0 24,12A12,12 0 0,0 12,0A12,12 0 0,0 11.944,0ZM16.906,7.224C17.006,7.222 17.227,7.247 17.371,7.364A0.506,0.506 0 0,1 17.542,7.689C17.558,7.782 17.578,7.995 17.562,8.161C17.382,10.059 16.6,14.663 16.202,16.788C16.034,17.688 15.703,17.989 15.382,18.018C14.686,18.083 14.157,17.558 13.482,17.116C12.426,16.423 11.829,15.992 10.804,15.316C9.619,14.536 10.387,14.106 11.062,13.406C11.239,13.222 14.309,10.429 14.369,10.176C14.376,10.144 14.383,10.026 14.313,9.964S14.139,9.923 14.064,9.94C13.958,9.964 12.271,11.08 9.003,13.285C8.523,13.615 8.09,13.775 7.701,13.765C7.273,13.757 6.449,13.524 5.836,13.325C5.084,13.08 4.487,12.951 4.539,12.536C4.566,12.32 4.864,12.099 5.432,11.873C8.93,10.349 11.262,9.344 12.43,8.859C15.762,7.473 16.455,7.232 16.906,7.224Z"
++      android:fillColor="#FFFFFFFF"/>
++</vector>
+diff --git a/res/drawable/ic_x.xml b/res/drawable/ic_x.xml
+deleted file mode 100644
+index 701faea..0000000
+--- a/res/drawable/ic_x.xml
++++ /dev/null
+@@ -1,10 +0,0 @@
+-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:width="24dp"
+-    android:height="24dp"
+-    android:viewportWidth="24"
+-    android:viewportHeight="24"
+-    android:tint="?android:attr/colorControlNormal">
+-    <path
+-        android:pathData="M14.2833 10.1605 L23.218 0 H21.101 L13.3427 8.8236 L7.1466 0 H0 L9.3677 13.3234 L0 24.0002 H2.1173 L10.3098 14.6677 L16.8534 24.0002 H24 L14.2827 10.1605 H14.2833 Z M11.3825 13.4516 L10.4339 12.1173 L2.8802 1.5583 H6.1323 L12.2277 10.0882 L13.1763 11.4226 L21.1269 22.5204 H17.8747 L11.3825 13.4521 V13.4516 Z"
+-        android:fillColor="#FFFFFFFF"/>
+-</vector>
+diff --git a/res/values-ar/evolution_strings.xml b/res/values-ar/evolution_strings.xml
+index 22e06da..a92bf9b 100644
+--- a/res/values-ar/evolution_strings.xml
++++ b/res/values-ar/evolution_strings.xml
+@@ -13,7 +13,7 @@
+     <string name="power_menu_summary">الإجراءات وشاشة القفل</string>
+     <string name="miscellaneous_title">متفرقات</string>
+     <string name="miscellaneous_summary">انتحال الخصائص وخيارات المطوّر</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">حول الروم</string>
+     <string name="gestures_category_title">الإيماءات</string>
+     <string name="themes_monet_colors_category">Monet والألوان</string>
+@@ -1105,26 +1105,9 @@
+     <string name="toast_invalid_font_file">ملف الخط غير صالح</string>
+     <string name="custom_system_theme_title">السمات</string>
+     <string name="custom_system_theme_summary">تخصيص مظهر النظام باستخدام السمات وحزم الأيقونات</string>
+-    <string name="about_info">Evolution X روم Android مخصص يهدف إلى محاكاة تجربة Google Pixel مع إضافة خيارات تخصيص واسعة. وهو مبني على مشروع LineageOS.</string>
+-    <string name="about_website_title">الموقع الإلكتروني</string>
+-    <string name="about_website_summary">قم بزيارة موقعنا للاطلاع على التحديثات</string>
+-    <string name="about_x_summary">تابع أحدث أخبارنا على X</string>
+-    <string name="about_discord_summary">تحدث معنا على Discord</string>
+     <string name="about_github_summary">تصفح شيفرتنا على GitHub</string>
+-    <string name="about_founders_title">المؤسسون</string>
+-    <string name="about_team_members_title">أعضاء الفريق</string>
+-    <string name="about_remembering_title">في الذاكرة</string>
+-    <string name="about_current_maintainers_title">المشرفون الحاليون</string>
+-    <string name="about_current_maintainers_loading_summary">جارٍ جلب المشرفين الحاليين من OTA</string>
+-    <string name="about_current_maintainers_empty_title">لم يتم العثور على مشرفين نشطين</string>
+-    <string name="about_current_maintainers_tap_to_view">اضغط لعرض المشرفين النشطين</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d من المشرفين النشطين</string>
+-    <string name="about_current_maintainers_search_hint">البحث عن مشرفين أو أجهزة…</string>
+-    <string name="about_current_maintainers_no_results">لا يوجد مشرفون يطابقون بحثك</string>
+-    <string name="maintainer_link_forum">المنتدى</string>
+     <string name="changelog_title">سجل التغييرات</string>
+     <string name="changelog_summary">عرض التغييرات في الروم</string>
+-    <string name="changelog_error_no_official">لا يتوفر سجل تغييرات رسمي لهذا الجهاز أو الإصدار. تفضل بزيارة %1$s لمزيد من المعلومات.</string>
+     <string name="accent_color">لون التمييز</string>
+     <string name="notification_color">لون الإشعار</string>
+     <string name="wallpaper_color">لون الخلفية</string>
+diff --git a/res/values-de-rDE/evolution_strings.xml b/res/values-de-rDE/evolution_strings.xml
+index 77fa66d..4520a82 100644
+--- a/res/values-de-rDE/evolution_strings.xml
++++ b/res/values-de-rDE/evolution_strings.xml
+@@ -19,7 +19,7 @@
+     <string name="miscellaneous_title">Sonstiges</string>
+     <string name="miscellaneous_summary">Entwickler Einstellungen, Spoofing</string>
+     <string name="about_title">Über</string>
+-    <string name="about_summary">Über Evolution X</string>
++    <string name="about_summary">Über ExpressiveOS</string>
+     <!-- Themes -->
+     <string name="themes_monet_title">Monet Einstellungen</string>
+     <string name="themes_monet_summary">Integrierten Android Theme Engine anpassen</string>
+@@ -293,11 +293,6 @@
+     <string name="spoofing_snap_title">Snapchat</string>
+     <string name="spoofing_snap_summary">in Snapchat als Pixel XL Gerät ausgeben, um mögliche Chat-Probleme zu beheben</string>
+     <!-- About -->
+-    <string name="about_info">Evolution X setzt sich, um die Benutzer das Pixel Gefühl und viele zusätzliche Funktionen für die Anwendung anzubieten</string>
+-    <string name="about_website_title">Webseite</string>
+-    <string name="about_website_summary">Tippe hier, um unsere fantastische Website zu besuchen!</string>
+-    <string name="about_x_summary">zu unseren Beiträgen</string>
+-    <string name="about_discord_summary">Tippe hier, um unsere fantastische Discord Community zu besuchen</string>
+     <string name="about_github_summary">Tippe hier, um unseren GitHub zu öffnen!</string>
+     <!-- Color Picker -->
+     <string name="accent_color">Akzentfarbe (Standard)</string>
+diff --git a/res/values-es-rES/evolution_strings.xml b/res/values-es-rES/evolution_strings.xml
+index caa6e2e..c7b1b13 100644
+--- a/res/values-es-rES/evolution_strings.xml
++++ b/res/values-es-rES/evolution_strings.xml
+@@ -18,7 +18,7 @@
+     <string name="power_menu_summary">Acciones, pantalla de bloqueo</string>
+     <string name="miscellaneous_title">Varios</string>
+     <string name="miscellaneous_summary">Opciones de desarrollador, spoofing</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">Acerca de nuestra ROM</string>
+     <!-- Themes -->
+     <string name="themes_monet_title">Ajustes de Monet</string>
+@@ -344,13 +344,7 @@
+     <!-- Miscellaneous/Spoofing/Play Integrity fix JSON update -->
+     <!-- Miscellaneous/Spoofing/Keybox Data -->
+     <!-- About -->
+-    <string name="about_info">Evolution X es una ROM de Android personalizada cuyo objetivo es replicar la experiencia de Google Pixel, con personalización añadida. Basado en el proyecto LineageOS.</string>
+-    <string name="about_website_title">Sitio web</string>
+-    <string name="about_website_summary">Visite nuestro sitio para novedades</string>
+-    <string name="about_x_summary">Conoce nuestras últimas noticias en X</string>
+-    <string name="about_discord_summary">Chatea con nosotros en Discord</string>
+     <string name="about_github_summary">Explora nuestro código en GitHub</string>
+-    <string name="about_founders_title">Fundadores</string>
+     <!-- Color Picker -->
+     <string name="accent_color">Color de acento (por defecto)</string>
+     <string name="notification_color">Color de notificación</string>
+diff --git a/res/values-fr-rFR/evolution_strings.xml b/res/values-fr-rFR/evolution_strings.xml
+index 49010a4..922e9a6 100644
+--- a/res/values-fr-rFR/evolution_strings.xml
++++ b/res/values-fr-rFR/evolution_strings.xml
+@@ -19,7 +19,7 @@
+     <string name="miscellaneous_title">Divers</string>
+     <string name="miscellaneous_summary">Options pour les développeurs, usurpation</string>
+     <string name="about_title">À propos</string>
+-    <string name="about_summary">À propos d’Evolution X</string>
++    <string name="about_summary">À propos d’ExpressiveOS</string>
+     <!-- Themes -->
+     <string name="themes_monet_title">Paramètres de Monet</string>
+     <string name="themes_monet_summary">Personnaliser le moteur de thème intégré à Android</string>
+@@ -286,10 +286,6 @@
+     <string name="spoofing_snap_summary">Spoof Snapchat en tant que Pixel XL pour résoudre les éventuels problèmes de chat</string>
+     <!-- Navigation Bar -->
+     <!-- About -->
+-    <string name="about_info">Evolution X vise à offrir aux utilisateurs une sensation de pixel à première vue, avec des fonctionnalités supplémentaires à votre disposition</string>
+-    <string name="about_website_title">Site web</string>
+-    <string name="about_website_summary">N\'hésitez pas à consulter notre site web</string>
+-    <string name="about_discord_summary">Visitez notre chat communautaire</string>
+     <string name="about_github_summary">Allez voir notre GitHub</string>
+     <!-- Color Picker -->
+     <string name="accent_color">Couleur d\'accentuation (par défaut)</string>
+diff --git a/res/values-hu-rHU/evolution_strings.xml b/res/values-hu-rHU/evolution_strings.xml
+index 9564066..45f69b1 100644
+--- a/res/values-hu-rHU/evolution_strings.xml
++++ b/res/values-hu-rHU/evolution_strings.xml
+@@ -18,7 +18,7 @@
+     <string name="power_menu_summary">Műveletek, záróképernyő</string>
+     <string name="miscellaneous_title">Különlegességek</string>
+     <string name="miscellaneous_summary">Álcázás, hamisítás, fejlesztői lehetőségek</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">A ROM-unkról</string>
+     <string name="gestures_category_title">Mozdulatvezérlés</string>
+     <!-- Reorganized categories -->
+@@ -1198,27 +1198,10 @@ Beállítás:
+     <string name="custom_system_theme_title">Témák</string>
+     <string name="custom_system_theme_summary">Varázsolja egyénivé a rendszer megjelenését témákkal és ikoncsomagokkal</string>
+     <!-- About -->
+-    <string name="about_info">Az Evolution X egy egyéni Android ROM, amely további testreszabási lehetőségekkel a Google Pixel élményét kívánja megvalósítani. A LineageOS projekten alapul.</string>
+-    <string name="about_website_title">Honlap</string>
+-    <string name="about_website_summary">Látogassa meg weboldalunkat frissítésekért</string>
+-    <string name="about_x_summary">Olvassa el a legfrissebb infókat az X-en</string>
+-    <string name="about_discord_summary">Kommunikáljon velünk a Discordon</string>
+     <string name="about_github_summary">Nézze át a kódjainkat a GitHubon</string>
+-    <string name="about_founders_title">Alapítók</string>
+-    <string name="about_team_members_title">Csapattagok</string>
+-    <string name="about_remembering_title">Emlékezés</string>
+-    <string name="about_current_maintainers_title">Jelenlegi felelősök</string>
+-    <string name="about_current_maintainers_loading_summary">Az aktuális felelősök lekérése az OTA-ból</string>
+-    <string name="about_current_maintainers_empty_title">Nem található aktív fejlesztő</string>
+-    <string name="about_current_maintainers_tap_to_view">Kattintson az aktív fejlesztők megtekintéséhez</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d aktív készülékfelelős</string>
+-    <string name="about_current_maintainers_search_hint">Fejlesztők vagy készülékek keresése…</string>
+-    <string name="about_current_maintainers_no_results">Nincs a keresésnek megfelelő fejlesztő</string>
+-    <string name="maintainer_link_forum">Fórum</string>
+     <!-- Changelog -->
+     <string name="changelog_title">Változáslista</string>
+     <string name="changelog_summary">A ROM változásainak megtekintése</string>
+-    <string name="changelog_error_no_official">Nincs hivatalos változáslista ehhez a készülékhez vagy kiadáshoz. További infóért látogasson el ide: %1$s</string>
+     <!-- Color picker -->
+     <string name="color_picker_reset">Alapértelmezés visszaállítása</string>
+     <string name="accent_color">Kiemelőszín</string>
+diff --git a/res/values-in-rID/evolution_strings.xml b/res/values-in-rID/evolution_strings.xml
+index 6636dea..4956771 100644
+--- a/res/values-in-rID/evolution_strings.xml
++++ b/res/values-in-rID/evolution_strings.xml
+@@ -18,7 +18,7 @@
+     <string name="power_menu_summary">Tindakan, layar kunci</string>
+     <string name="miscellaneous_title">Lain-lain</string>
+     <string name="miscellaneous_summary">Pusat pemalsuan (spoofing), opsi pengembang</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">Tentang ROM kami</string>
+     <string name="gestures_category_title">Gestur</string>
+     <!-- Reorganized categories -->
+@@ -1205,27 +1205,10 @@
+     <string name="custom_system_theme_title">Tema</string>
+     <string name="custom_system_theme_summary">Sesuaikan tampilan sistem dengan tema dan paket ikon</string>
+     <!-- About -->
+-    <string name="about_info">Evolution X adalah ROM Android kustom yang bertujuan untuk meniru pengalaman Google Pixel, dengan tambahan kustomisasi. Berbasis pada Proyek LineageOS.</string>
+-    <string name="about_website_title">Situs web</string>
+-    <string name="about_website_summary">Kunjungi situs kami untuk pembaruan</string>
+-    <string name="about_x_summary">Simak berita terbaru kami di X</string>
+-    <string name="about_discord_summary">Mengobrol dengan kami di Discord</string>
+     <string name="about_github_summary">Telusuri kode kami di GitHub</string>
+-    <string name="about_founders_title">Pendiri</string>
+-    <string name="about_team_members_title">Anggota Tim</string>
+-    <string name="about_remembering_title">Mengingat</string>
+-    <string name="about_current_maintainers_title">Pengelola saat ini</string>
+-    <string name="about_current_maintainers_loading_summary">Mengambil pengelola terkini dari OTA</string>
+-    <string name="about_current_maintainers_empty_title">Tidak ditemukan pengelola aktif</string>
+-    <string name="about_current_maintainers_tap_to_view">Ketuk untuk melihat pengelola aktif</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d pengelola aktif</string>
+-    <string name="about_current_maintainers_search_hint">Cari pengelola atau perangkat…</string>
+-    <string name="about_current_maintainers_no_results">Tidak ada pengelola yang sesuai dengan pencarian Anda</string>
+-    <string name="maintainer_link_forum">Forum</string>
+     <!-- Changelog -->
+     <string name="changelog_title">Catatan perubahan</string>
+     <string name="changelog_summary">Lihat perubahan pada ROM</string>
+-    <string name="changelog_error_no_official">Tidak tersedia catatan perubahan resmi untuk perangkat atau build ini. Kunjungi %1$s untuk informasi lebih lanjut.</string>
+     <!-- Color picker -->
+     <string name="color_picker_reset">Atur ulang ke default</string>
+     <string name="color_picker_apply">Terapkan</string>
+diff --git a/res/values-it-rIT/evolution_strings.xml b/res/values-it-rIT/evolution_strings.xml
+index a6505dd..ef0e264 100644
+--- a/res/values-it-rIT/evolution_strings.xml
++++ b/res/values-it-rIT/evolution_strings.xml
+@@ -18,8 +18,8 @@
+     <string name="power_menu_summary">Azioni, schermata di blocco</string>
+     <string name="miscellaneous_title">Varie</string>
+     <string name="miscellaneous_summary">Opzioni sviluppatore, falsificazione</string>
+-    <string name="about_title">Evolution X</string>
+-    <string name="about_summary">Informazioni su Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
++    <string name="about_summary">Informazioni su ExpressiveOS</string>
+     <string name="gestures_category_title">Gesti</string>
+     <!-- Reorganized categories -->
+     <string name="themes_monet_colors_category">Monet &amp; Colori</string>
+@@ -1140,27 +1140,10 @@
+     <string name="custom_system_theme_title">Temi</string>
+     <string name="custom_system_theme_summary">Personalizza l\'aspetto del sistema con temi e pacchetti di icone</string>
+     <!-- About -->
+-    <string name="about_info">Evolution X mira a offrire un\'esperienza simile a quella dei Pixel, con funzionalità aggiuntive a tua disposizione</string>
+-    <string name="about_website_title">Sito web</string>
+-    <string name="about_website_summary">Visita il nostro sito web per gli aggiornamenti</string>
+-    <string name="about_x_summary">Scopri le nostre ultime notizie su X</string>
+-    <string name="about_discord_summary">Visita la chat della nostra community</string>
+     <string name="about_github_summary">Visita il nostro GitHub</string>
+-    <string name="about_founders_title">Fondatori</string>
+-    <string name="about_team_members_title">Membri del team</string>
+-    <string name="about_remembering_title">In memoria di</string>
+-    <string name="about_current_maintainers_title">Manutentori attuali</string>
+-    <string name="about_current_maintainers_loading_summary">Recupero dei manutentori attuali dall\'OTA in corso</string>
+-    <string name="about_current_maintainers_empty_title">Nessun manutentore attivo trovato</string>
+-    <string name="about_current_maintainers_tap_to_view">Tocca per visualizzare i manutentori attivi</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d manutentori attivi</string>
+-    <string name="about_current_maintainers_search_hint">Cerca manutentori o dispositivi…</string>
+-    <string name="about_current_maintainers_no_results">Nessun manutentore corrisponde alla ricerca</string>
+-    <string name="maintainer_link_forum">Forum</string>
+     <!-- Changelog -->
+     <string name="changelog_title">Registro delle modifiche</string>
+     <string name="changelog_summary">Visualizza le modifiche nella ROM</string>
+-    <string name="changelog_error_no_official">Nessun registro delle modifiche ufficiale è disponibile per questo dispositivo o build. Visita %1$s per maggiori informazioni.</string>
+     <!-- Color picker -->
+     <string name="accent_color">Colore primario (predefinito)</string>
+     <string name="notification_color">Colore notifiche</string>
+diff --git a/res/values-ja-rJP/evolution_strings.xml b/res/values-ja-rJP/evolution_strings.xml
+index 5b016ad..a7cc9f2 100644
+--- a/res/values-ja-rJP/evolution_strings.xml
++++ b/res/values-ja-rJP/evolution_strings.xml
+@@ -18,7 +18,7 @@
+     <string name="power_menu_summary">ロック画面のアクション</string>
+     <string name="miscellaneous_title">その他</string>
+     <string name="miscellaneous_summary">偽装ハブ、開発者向けオプション</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">この ROM について</string>
+     <string name="gestures_category_title">ジェスチャー</string>
+     <!-- Reorganized categories -->
+@@ -1204,27 +1204,10 @@
+     <string name="custom_system_theme_title">テーマ</string>
+     <string name="custom_system_theme_summary">テーマやアイコンパックでシステムの見た目をカスタマイズする</string>
+     <!-- About -->
+-    <string name="about_info">EvolutionXは、Google Pixel の体験を再現しつつカスタマイズ機能を追加することを目指したカスタムROMです。LineageOSプロジェクトに基づいています。</string>
+-    <string name="about_website_title">ウェブサイト</string>
+-    <string name="about_website_summary">アップデートについてはサイトをご覧ください</string>
+-    <string name="about_x_summary">X で最新ニュースをチェック！</string>
+-    <string name="about_discord_summary">Discord でチャット</string>
+     <string name="about_github_summary">GitHub でコードを見る</string>
+-    <string name="about_founders_title">創設者</string>
+-    <string name="about_team_members_title">チームメンバー</string>
+-    <string name="about_remembering_title">記憶</string>
+-    <string name="about_current_maintainers_title">現在のメンテナー</string>
+-    <string name="about_current_maintainers_loading_summary">OTAから現在のメンテナーを取得しています</string>
+-    <string name="about_current_maintainers_empty_title">有効なメンテナーが見つかりません</string>
+-    <string name="about_current_maintainers_tap_to_view">タップしてアクティブなメンテナーを表示</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d 人のアクティブなメンテナー</string>
+-    <string name="about_current_maintainers_search_hint">メンテナーまたはデバイスを検索…</string>
+-    <string name="about_current_maintainers_no_results">検索に一致するメンテナーはいません</string>
+-    <string name="maintainer_link_forum">フォーラム</string>
+     <!-- Changelog -->
+     <string name="changelog_title">更新履歴</string>
+     <string name="changelog_summary">ROMの変更点を表示</string>
+-    <string name="changelog_error_no_official">このデバイスでは公式の更新履歴は利用できません。詳細は %1$s をご覧ください。</string>
+     <!-- Color picker -->
+     <string name="color_picker_reset">デフォルトに戻す</string>
+     <string name="color_picker_apply">適用</string>
+diff --git a/res/values-ko-rKR/evolution_strings.xml b/res/values-ko-rKR/evolution_strings.xml
+index 1201569..23d261c 100644
+--- a/res/values-ko-rKR/evolution_strings.xml
++++ b/res/values-ko-rKR/evolution_strings.xml
+@@ -18,7 +18,7 @@
+     <string name="power_menu_summary">동작, 잠금 화면</string>
+     <string name="miscellaneous_title">기타 설정</string>
+     <string name="miscellaneous_summary">스푸핑, 개발자 옵션</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">저희 ROM에 대하여</string>
+     <string name="gestures_category_title">제스처</string>
+     <!-- Reorganized categories -->
+@@ -999,23 +999,7 @@
+     <string name="custom_system_theme_title">테마</string>
+     <string name="custom_system_theme_summary">테마와 아이콘 팩을 사용하여 시스템 외관을 맞춤 설정하세요</string>
+     <!-- About -->
+-    <string name="about_info">Evolution X는 Google Pixel의 사용자 경험을 재현하면서 추가적인 맞춤 설정 기능을 제공하는 커스텀 Android ROM입니다. LineageOS 프로젝트를 기반으로 합니다.</string>
+-    <string name="about_website_title">웹사이트</string>
+-    <string name="about_website_summary">최신 정보를 보려면 저희 사이트를 방문하세요.</string>
+-    <string name="about_x_summary">X에서 저희의 최신 소식을 확인하세요</string>
+-    <string name="about_discord_summary">디스코드 채널 가기</string>
+     <string name="about_github_summary">GitHub에서 저희 코드를 살펴보세요.</string>
+-    <string name="about_founders_title">창립자</string>
+-    <string name="about_team_members_title">팀 멤버</string>
+-    <string name="about_remembering_title">기억하다</string>
+-    <string name="about_current_maintainers_title">about_current_maintainers_title</string>
+-    <string name="about_current_maintainers_loading_summary">OTA에서 현재 관리자를 가져오는 중</string>
+-    <string name="about_current_maintainers_empty_title">활동 중인 유지 관리자가 없습니다.</string>
+-    <string name="about_current_maintainers_tap_to_view">탭하여 활성 유지 관리자를 확인하세요.</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d 활성 유지 관리자</string>
+-    <string name="about_current_maintainers_search_hint">검색 관리자 또는 장치…</string>
+-    <string name="about_current_maintainers_no_results">검색 조건에 맞는 관리자가 없습니다.</string>
+-    <string name="maintainer_link_forum">포럼</string>
+     <!-- Changelog -->
+     <string name="changelog_title">변경 내역</string>
+     <string name="changelog_summary">ROM 소스의 변경 사항을 확인하세요</string>
+diff --git a/res/values-ku-rTR/evolution_strings.xml b/res/values-ku-rTR/evolution_strings.xml
+index 7b60648..45fe214 100644
+--- a/res/values-ku-rTR/evolution_strings.xml
++++ b/res/values-ku-rTR/evolution_strings.xml
+@@ -18,7 +18,7 @@
+     <string name="power_menu_summary">تایبەتمەندکردنی بژاردەکانی دوگمەی وزە</string>
+     <string name="miscellaneous_title">هەمەجۆر</string>
+     <string name="miscellaneous_summary">یاری، نیشاندەری FPS، وێنەی ڕوونما</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">زانیاری دەربارەی تیمی پەرەپێدەر</string>
+     <string name="gestures_category_title">ئاماژەکان</string>
+     <!-- Reorganized categories -->
+@@ -961,23 +961,7 @@
+     <string name="custom_system_theme_title">تێماکان</string>
+     <string name="custom_system_theme_summary">تایبەتکردنی شێوەی سیستەم بە ڕووکار و پاکێجی وێنۆچکەکان</string>
+     <!-- About -->
+-    <string name="about_info">Evolution X ڕۆمێکی تایبەتی ئەندرۆیدە کە ئامانجی ئەوەیە ئەزموونی Google Pixel دووبارە بکاتەوە لەگەڵ زیادکردنی تایبەتمەندی. لەسەر بنەمای پڕۆژەی LineageOS دروست کراوە.</string>
+-    <string name="about_website_title">ماڵپەڕ</string>
+-    <string name="about_website_summary">بۆ نوێکارییەکان سەردانی ماڵپەڕەکەمان بکە</string>
+-    <string name="about_x_summary">دوایین هەواڵەکانمان لە X (تویتەری پێشوو) ببینە</string>
+-    <string name="about_discord_summary">لە Discord لەگەڵمان چات بکە</string>
+     <string name="about_github_summary">بینینی کۆدەکەمان لە GitHub</string>
+-    <string name="about_founders_title">دامەزرێنەران</string>
+-    <string name="about_team_members_title">ئەندامانی تیم</string>
+-    <string name="about_remembering_title">یادەوەرییەکان</string>
+-    <string name="about_current_maintainers_title">سەرپەرشتیارانی ئێستا</string>
+-    <string name="about_current_maintainers_loading_summary">وەرگرتنی ناوی سەرپەرشتیارانی ئێستا لە OTAـوە</string>
+-    <string name="about_current_maintainers_empty_title">هیچ سەرپەرشتیارێکی چالاک نەدۆزرایەوە</string>
+-    <string name="about_current_maintainers_tap_to_view">دایبگرە بۆ بینینی سەرپەرشتیارە چالاکەکان</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d سەرپەرشتیاری چالاک</string>
+-    <string name="about_current_maintainers_search_hint">گەڕان بۆ سەرپەرشتیاران یان ئامێرەکان…</string>
+-    <string name="about_current_maintainers_no_results">هیچ سەرپەرشتیارێک لەگەڵ گەڕانەکەت ناگونجێت</string>
+-    <string name="maintainer_link_forum">کۆڕبەند</string>
+     <!-- Changelog -->
+     <string name="changelog_title">گۆڕانکارییەکان</string>
+     <string name="changelog_summary">بینینی گۆڕانکارییەکان لە سەرچاوەی ROMـدا</string>
+diff --git a/res/values-pl-rPL/evolution_strings.xml b/res/values-pl-rPL/evolution_strings.xml
+index 0dd86cd..d7d6109 100644
+--- a/res/values-pl-rPL/evolution_strings.xml
++++ b/res/values-pl-rPL/evolution_strings.xml
+@@ -18,7 +18,7 @@
+     <string name="power_menu_summary">Akcje, ekran blokady</string>
+     <string name="miscellaneous_title">Różne</string>
+     <string name="miscellaneous_summary">Centrum fałszowania, opcje programisty</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">O naszym ROM-ie</string>
+     <string name="gestures_category_title">Gesty</string>
+     <!-- Reorganized categories -->
+@@ -1204,27 +1204,10 @@
+     <string name="custom_system_theme_title">Motywy</string>
+     <string name="custom_system_theme_summary">Dostosuj wygląd systemu z motywami i paczkami ikon</string>
+     <!-- About -->
+-    <string name="about_info">Evolution X to niestandardowy ROM Android, który ma odzwierciedlać wrażenia z Google Pixel z dodatkowymi możliwościami personalizacji. Oparty na projekcie LineageOS.</string>
+-    <string name="about_website_title">Strona internetowa</string>
+-    <string name="about_website_summary">Odwiedź naszą stronę, aby być na bieżąco z aktualizacjami</string>
+-    <string name="about_x_summary">Dowiedz się więcej na X</string>
+-    <string name="about_discord_summary">Porozmawiaj z nami na Discordzie</string>
+     <string name="about_github_summary">Przeglądaj nasz kod na GitHubie</string>
+-    <string name="about_founders_title">Założyciele</string>
+-    <string name="about_team_members_title">Członkowie zespołu</string>
+-    <string name="about_remembering_title">Upamiętnienie</string>
+-    <string name="about_current_maintainers_title">Obecni opiekunowie</string>
+-    <string name="about_current_maintainers_loading_summary">Pobieranie bieżących opiekunów z OTA</string>
+-    <string name="about_current_maintainers_empty_title">Nie znaleziono aktywnych opiekunów</string>
+-    <string name="about_current_maintainers_tap_to_view">Naciśnij, aby wyświetlić aktywnych opiekunów</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d aktywnych opiekunów</string>
+-    <string name="about_current_maintainers_search_hint">Wyszukaj opiekunów lub urządzenia…</string>
+-    <string name="about_current_maintainers_no_results">Brak opiekunów odpowiadających twojemu wyszukiwaniu</string>
+-    <string name="maintainer_link_forum">Forum</string>
+     <!-- Changelog -->
+     <string name="changelog_title">Dziennik zmian</string>
+     <string name="changelog_summary">Wyświetl zmiany w źródle ROM</string>
+-    <string name="changelog_error_no_official">Brak oficjalnego rejestru zmian dla tego urządzenia lub kompilacji. Więcej informacji znajdziesz na stronie %1$s.</string>
+     <!-- Color picker -->
+     <string name="color_picker_reset">Przywróć ustawienia domyślne</string>
+     <string name="color_picker_apply">Zastosuj</string>
+diff --git a/res/values-pt-rBR/evolution_strings.xml b/res/values-pt-rBR/evolution_strings.xml
+index cd1bd3e..c316b5a 100644
+--- a/res/values-pt-rBR/evolution_strings.xml
++++ b/res/values-pt-rBR/evolution_strings.xml
+@@ -18,8 +18,8 @@
+     <string name="power_menu_summary">Ações, tela de bloqueio</string>
+     <string name="miscellaneous_title">Diversos</string>
+     <string name="miscellaneous_summary">Central de falsificação, opções de desenvolvedor</string>
+-    <string name="about_title">Evolution X</string>
+-    <string name="about_summary">Sobre Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
++    <string name="about_summary">Sobre ExpressiveOS</string>
+     <string name="gestures_category_title">Gestos</string>
+     <!-- Reorganized categories -->
+     <string name="themes_monet_colors_category">Monet e as cores</string>
+@@ -1205,27 +1205,10 @@
+     <string name="custom_system_theme_title">Temas</string>
+     <string name="custom_system_theme_summary">Personalize a aparência do sistema com temas e pacotes de ícones</string>
+     <!-- About -->
+-    <string name="about_info">Evolution X é um Android ROM personalizado que visa replicar a experiência do Google Pixel com personalização adicional. Baseado no Projeto LineageOS.</string>
+-    <string name="about_website_title">Site</string>
+-    <string name="about_website_summary">Visite nosso site para atualizações</string>
+-    <string name="about_x_summary">Veja nossas últimas notícias sobre X</string>
+-    <string name="about_discord_summary">Converse conosco no Discord</string>
+     <string name="about_github_summary">Navegue pelo nosso código no GitHub</string>
+-    <string name="about_founders_title">Fundadores</string>
+-    <string name="about_team_members_title">Membros da equipe</string>
+-    <string name="about_remembering_title">Memorizando</string>
+-    <string name="about_current_maintainers_title">Mantenedores atuais</string>
+-    <string name="about_current_maintainers_loading_summary">Buscando mantenedores atuais via OTA</string>
+-    <string name="about_current_maintainers_empty_title">Nenhum mantenedor ativo encontrado</string>
+-    <string name="about_current_maintainers_tap_to_view">Toque para ver os mantenedores ativos</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d mantenedores ativos</string>
+-    <string name="about_current_maintainers_search_hint">Pesquisar mantenedores ou dispositivos…</string>
+-    <string name="about_current_maintainers_no_results">Nenhum mantenedor corresponde à sua pesquisa</string>
+-    <string name="maintainer_link_forum">Fórum</string>
+     <!-- Changelog -->
+     <string name="changelog_title">Registro de alterações</string>
+     <string name="changelog_summary">Ver alterações na ROM</string>
+-    <string name="changelog_error_no_official">Nenhum registro de mudanças está disponível para este dispositivo ou compilação. Visite %1$s para obter mais informações.</string>
+     <!-- Color picker -->
+     <string name="color_picker_reset">Redefinir para padrão</string>
+     <string name="color_picker_apply">Aplicar</string>
+diff --git a/res/values-ru-rRU/evolution_strings.xml b/res/values-ru-rRU/evolution_strings.xml
+index 098b8b1..d73e806 100644
+--- a/res/values-ru-rRU/evolution_strings.xml
++++ b/res/values-ru-rRU/evolution_strings.xml
+@@ -18,7 +18,7 @@
+     <string name="power_menu_summary">Действия, экран блокировки</string>
+     <string name="miscellaneous_title">Прочее</string>
+     <string name="miscellaneous_summary">Опции разработчика, подмена устройства</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">О нашей прошивке</string>
+     <!-- Themes -->
+     <string name="themes_monet_title">Настройки Monet</string>
+@@ -345,13 +345,7 @@
+     <!-- Miscellaneous/Spoofing/Play Integrity fix JSON update -->
+     <!-- Miscellaneous/Spoofing/Keybox Data -->
+     <!-- About -->
+-    <string name="about_info">Evolution X — это измененная прошивка Android ROM, призванная воссоздать функционал Google Pixel с расширенными возможностями настройки. Основана на проекте LineageOS.</string>
+-    <string name="about_website_title">Сайт</string>
+-    <string name="about_website_summary">Следите за обновлениями на нашем сайте</string>
+-    <string name="about_x_summary">Ловите наши свежие посты в X</string>
+-    <string name="about_discord_summary">Общайтесь с нами в Discord</string>
+     <string name="about_github_summary">Изучайте наш код на GitHub</string>
+-    <string name="about_founders_title">Основатели проекта</string>
+     <!-- Color Picker -->
+     <string name="accent_color">Акцентный цвет (по умолчанию)</string>
+     <string name="notification_color">Цвет уведомлений</string>
+diff --git a/res/values-sk-rSK/evolution_strings.xml b/res/values-sk-rSK/evolution_strings.xml
+index 9746bf8..a44e628 100644
+--- a/res/values-sk-rSK/evolution_strings.xml
++++ b/res/values-sk-rSK/evolution_strings.xml
+@@ -19,7 +19,7 @@
+     <string name="miscellaneous_title">Rôzne</string>
+     <string name="miscellaneous_summary">Možnosti pre vývojárov, falšovanie</string>
+     <string name="about_title">O</string>
+-    <string name="about_summary">O Evolution X</string>
++    <string name="about_summary">O ExpressiveOS</string>
+     <!-- Themes -->
+     <string name="themes_monet_title">Nastavenia Monet</string>
+     <string name="themes_monet_summary">Prispôsobiť vstavaný prostriedok motívu systému Android</string>
+@@ -241,10 +241,6 @@
+     <string name="spoofing_app_specific_category">Pre konkrétnu aplikáciu</string>
+     <!-- Navigation Bar -->
+     <!-- About -->
+-    <string name="about_info">Cieľom Evolution X je poskytnúť používateľom, na prvý pohľad, pocit podobný Pixelom, pričom máte k dispozícii ďalšie funkcie</string>
+-    <string name="about_website_title">Webová stránka</string>
+-    <string name="about_website_summary">Neváhajte a navštívte našu webovú stránku</string>
+-    <string name="about_discord_summary">Navštívte náš komunitný chat</string>
+     <string name="about_github_summary">Pozrite si náš blog</string>
+     <!-- Color Picker -->
+     <string name="accent_color">Farba zvýraznenia (základné)</string>
+diff --git a/res/values-sv-rSE/evolution_strings.xml b/res/values-sv-rSE/evolution_strings.xml
+index 179f8bb..eefd862 100644
+--- a/res/values-sv-rSE/evolution_strings.xml
++++ b/res/values-sv-rSE/evolution_strings.xml
+@@ -18,7 +18,7 @@
+     <string name="power_menu_summary">Åtgärder, låsskärm</string>
+     <string name="miscellaneous_title">Övrigt</string>
+     <string name="miscellaneous_summary">Enhetsmaskering, utvecklaralternativ</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">Om vår ROM</string>
+     <string name="gestures_category_title">Gester</string>
+     <!-- Reorganized categories -->
+@@ -1179,27 +1179,10 @@
+     <string name="custom_system_theme_title">Teman</string>
+     <string name="custom_system_theme_summary">Anpassa systemutseende med teman och ikonpaket</string>
+     <!-- About -->
+-    <string name="about_info">Evolution X är en anpassad Android-ROM som efterliknar Google Pixel-upplevelsen och samtidigt ger fler anpassningsmöjligheter. Den bygger på LineageOS-projektet.</string>
+-    <string name="about_website_title">Hemsida</string>
+-    <string name="about_website_summary">Besök vår webbplats för uppdateringar</string>
+-    <string name="about_x_summary">Läs våra senaste nyheter på X</string>
+-    <string name="about_discord_summary">Chatta med oss på Discord</string>
+     <string name="about_github_summary">Bläddra i vår kod på GitHub</string>
+-    <string name="about_founders_title">Grundare</string>
+-    <string name="about_team_members_title">Teammedlemmar</string>
+-    <string name="about_remembering_title">Till minne av</string>
+-    <string name="about_current_maintainers_title">Aktuella underhållare</string>
+-    <string name="about_current_maintainers_loading_summary">Hämtar aktuella underhållare från OTA</string>
+-    <string name="about_current_maintainers_empty_title">Inga aktiva underhållare hittades</string>
+-    <string name="about_current_maintainers_tap_to_view">Tryck för att visa aktiva underhållare</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d aktiva underhållare</string>
+-    <string name="about_current_maintainers_search_hint">Sök efter underhållare eller enheter…</string>
+-    <string name="about_current_maintainers_no_results">Inga underhållare matchar din sökning</string>
+-    <string name="maintainer_link_forum">Forum</string>
+     <!-- Changelog -->
+     <string name="changelog_title">Ändringslogg</string>
+     <string name="changelog_summary">Visa ändringar i ROM</string>
+-    <string name="changelog_error_no_official">Det finns ingen officiell ändringslogg för den här enheten eller versionen. Besök %1$s för mer information.</string>
+     <!-- Color picker -->
+     <string name="accent_color">Accentfärg</string>
+     <string name="notification_color">Aviseringsfärg</string>
+diff --git a/res/values-tr-rTR/evolution_strings.xml b/res/values-tr-rTR/evolution_strings.xml
+index a5cac26..cab2b65 100644
+--- a/res/values-tr-rTR/evolution_strings.xml
++++ b/res/values-tr-rTR/evolution_strings.xml
+@@ -18,7 +18,7 @@
+     <string name="power_menu_summary">Eylemler, kilit ekranı</string>
+     <string name="miscellaneous_title">Çeşitli</string>
+     <string name="miscellaneous_summary">Kimlik yanıltma, geliştirici seçenekleri</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">ROM Hakkında</string>
+     <string name="gestures_category_title">Hareketler</string>
+     <!-- Reorganized categories -->
+@@ -1173,27 +1173,10 @@
+     <string name="custom_system_theme_title">Temalar</string>
+     <string name="custom_system_theme_summary">Sistem görünümünü temalar ve simge paketleriyle kişiselleştir</string>
+     <!-- About -->
+-    <string name="about_info">Evolution X, Google Pixel deneyimini ek özelleştirme ile çoğaltmayı amaçlayan özel bir Android ROM\'dur. LineageOS Projesine dayanmaktadır.</string>
+-    <string name="about_website_title">İnternet sitesi</string>
+-    <string name="about_website_summary">Güncellemeler için sitemizi ziyaret edin</string>
+-    <string name="about_x_summary">En son haberlerimizi X\'te yakalayın</string>
+-    <string name="about_discord_summary">Discord\'da bizimle sohbet edin</string>
+     <string name="about_github_summary">GitHub\'daki kodumuza göz atın</string>
+-    <string name="about_founders_title">Kurucular</string>
+-    <string name="about_team_members_title">Ekip üyeleri</string>
+-    <string name="about_remembering_title">Hatırlanıyor</string>
+-    <string name="about_current_maintainers_title">Mevcut geliştiriciler</string>
+-    <string name="about_current_maintainers_loading_summary">Güncel geliştiriciler OTA\'dan çekiliyor</string>
+-    <string name="about_current_maintainers_empty_title">Aktif geliştirici bulunamadı</string>
+-    <string name="about_current_maintainers_tap_to_view">Aktif geliştiricileri görmek için dokunun</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d aktif geliştirici</string>
+-    <string name="about_current_maintainers_search_hint">Geliştiricileri veya cihazları arayın…</string>
+-    <string name="about_current_maintainers_no_results">Aramanızla eşleşen geliştirici bulunamadı</string>
+-    <string name="maintainer_link_forum">Forum</string>
+     <!-- Changelog -->
+     <string name="changelog_title">Değişiklikler</string>
+     <string name="changelog_summary">ROM kaynak kodundaki değişiklikleri görüntüle</string>
+-    <string name="changelog_error_no_official">Bu cihaz veya sürüm için resmi bir değişiklik günlüğü mevcut değil. Daha fazla bilgi için %1$s adresini ziyaret edin.</string>
+     <!-- Color picker -->
+     <string name="accent_color">Vurgu rengi (Varsayılan)</string>
+     <string name="notification_color">Bildirim rengi</string>
+diff --git a/res/values-uk-rUA/evolution_strings.xml b/res/values-uk-rUA/evolution_strings.xml
+index 64304d8..79258e7 100644
+--- a/res/values-uk-rUA/evolution_strings.xml
++++ b/res/values-uk-rUA/evolution_strings.xml
+@@ -18,7 +18,7 @@
+     <string name="power_menu_summary">Дії, екран блокування</string>
+     <string name="miscellaneous_title">Різне</string>
+     <string name="miscellaneous_summary">Spoofing hub, параметри розробника</string>
+-    <string name="about_title">Еволюція X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">Про прошивку</string>
+     <string name="gestures_category_title">Жести</string>
+     <!-- Reorganized categories -->
+@@ -1208,27 +1208,10 @@
+     <string name="custom_system_theme_title">Теми</string>
+     <string name="custom_system_theme_summary">Налаштування зовнішнього вигляду системи за допомогою тем та пакетів значків</string>
+     <!-- About -->
+-    <string name="about_info">Evolution X — це кастомізована прошивка для Android, метою якої є відтворення роботи з Google Pixel з додатковими можливостями налаштування. Заснована на проекті LineageOS.</string>
+-    <string name="about_website_title">Сайт</string>
+-    <string name="about_website_summary">Відвідати наш сайт для оновлень</string>
+-    <string name="about_x_summary">Злови наші останні новини на X</string>
+-    <string name="about_discord_summary">Спілкуватися з нами у Discord</string>
+     <string name="about_github_summary">Переглянути наш код на GitHub</string>
+-    <string name="about_founders_title">Засновники</string>
+-    <string name="about_team_members_title">Учасники команди</string>
+-    <string name="about_remembering_title">Згадуючи</string>
+-    <string name="about_current_maintainers_title">Поточні супроводжуючі</string>
+-    <string name="about_current_maintainers_loading_summary">Отримання поточних розробників з OTA</string>
+-    <string name="about_current_maintainers_empty_title">Активних супроводжуючих не знайдено</string>
+-    <string name="about_current_maintainers_tap_to_view">Торкніться, щоб переглянути активних супроводжувальних осіб</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d Активні супроводжувальні</string>
+-    <string name="about_current_maintainers_search_hint">Пошук супроводжувальних або пристроїв…</string>
+-    <string name="about_current_maintainers_no_results">Жоден супроводжувальний не відповідає вашому пошуку</string>
+-    <string name="maintainer_link_forum">Форум</string>
+     <!-- Changelog -->
+     <string name="changelog_title">Список змін</string>
+     <string name="changelog_summary">Переглянути зміни в джерелі прошивки</string>
+-    <string name="changelog_error_no_official">Немає офіційного списку змін для цього пристрою чи збірки. Відвідайте %1$s для отримання додаткової інформації.</string>
+     <!-- Color picker -->
+     <string name="color_picker_reset">Скинути до стандартних</string>
+     <string name="color_picker_apply">Застосувати</string>
+diff --git a/res/values-vi-rVN/evolution_strings.xml b/res/values-vi-rVN/evolution_strings.xml
+index c3c44f1..dc4f2b2 100644
+--- a/res/values-vi-rVN/evolution_strings.xml
++++ b/res/values-vi-rVN/evolution_strings.xml
+@@ -18,7 +18,7 @@
+     <string name="power_menu_summary">Hành động, màn hình khóa</string>
+     <string name="miscellaneous_title">Cài đặt khác</string>
+     <string name="miscellaneous_summary">Giả mạo, tùy chọn nhà phát triển</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">Về ROM của chúng tôi</string>
+     <string name="gestures_category_title">Cử chỉ</string>
+     <!-- Themes -->
+@@ -397,23 +397,7 @@
+     <string name="tensor_targets_count">%1$d ứng dụng đích</string>
+     <string name="tensor_targets_empty_description">Ứng dụng được chọn sẽ báo cáo các tính năng phần cứng Tensor để mở khóa AI và các chức năng độc quyền của Pixel</string>
+     <!-- About -->
+-    <string name="about_info">Evolution X là một bản ROM Android tùy chỉnh nhằm mục đích tái tạo trải nghiệm Google Pixel, với tùy chỉnh được thêm vào. Dựa trên Dự án LineageOS.</string>
+-    <string name="about_website_title">Trang web</string>
+-    <string name="about_website_summary">Ghé thăm trang web của chúng tôi</string>
+-    <string name="about_x_summary">Hãy theo dõi tin tức mới nhất của chúng tôi trên X</string>
+-    <string name="about_discord_summary">Tham gia cộng đồng trò chuyện</string>
+     <string name="about_github_summary">Xem GitHub của chúng tôi</string>
+-    <string name="about_founders_title">Người sáng lập</string>
+-    <string name="about_team_members_title">Thành viên Đội ngũ</string>
+-    <string name="about_remembering_title">Remembering</string>
+-    <string name="about_current_maintainers_title">Người bảo trì hiện tại</string>
+-    <string name="about_current_maintainers_loading_summary">Đang tải thông tin người bảo trì hiện tại từ OTA</string>
+-    <string name="about_current_maintainers_empty_title">Không tìm thấy người bảo trì nào đang hoạt động</string>
+-    <string name="about_current_maintainers_tap_to_view">Nhấn vào đây để xem những người bảo trì đang hoạt động</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d người bảo trì hoạt động</string>
+-    <string name="about_current_maintainers_search_hint">Tìm kiếm người bảo trì hoặc thiết bị…</string>
+-    <string name="about_current_maintainers_no_results">Không có người bảo trì nào phù hợp với tìm kiếm của bạn</string>
+-    <string name="maintainer_link_forum">Diễn đàn</string>
+     <!-- Color Picker -->
+     <string name="accent_color">Accent color</string>
+     <string name="notification_color">Màu thông báo</string>
+diff --git a/res/values-zh-rCN/evolution_strings.xml b/res/values-zh-rCN/evolution_strings.xml
+index ec36723..aa5ab52 100644
+--- a/res/values-zh-rCN/evolution_strings.xml
++++ b/res/values-zh-rCN/evolution_strings.xml
+@@ -18,7 +18,7 @@
+     <string name="power_menu_summary">电源键操作、锁屏设置</string>
+     <string name="miscellaneous_title">杂项</string>
+     <string name="miscellaneous_summary">开发者选项、伪装设置</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">关于 ROM</string>
+     <string name="gestures_category_title">手势</string>
+     <!-- Reorganized categories -->
+@@ -1182,27 +1182,10 @@
+     <string name="custom_system_theme_title">主题</string>
+     <string name="custom_system_theme_summary">使用主题和图标包自定义系统外观</string>
+     <!-- About -->
+-    <string name="about_info">Evolution X 是一款致力于复刻 Google Pixel 体验的定制化 Android 项目，拥有诸多自定义项目。本项目基于 LineageOS 项目。</string>
+-    <string name="about_website_title">网站</string>
+-    <string name="about_website_summary">访问我们的网站以获取更新</string>
+-    <string name="about_x_summary">在 X（Twitter）上获取我们的最新动态</string>
+-    <string name="about_discord_summary">在 Discord 上与我们交流</string>
+     <string name="about_github_summary">在 GitHub 上浏览我们的代码</string>
+-    <string name="about_founders_title">创始人</string>
+-    <string name="about_team_members_title">团队成员</string>
+-    <string name="about_remembering_title">记住中</string>
+-    <string name="about_current_maintainers_title">当前维护者</string>
+-    <string name="about_current_maintainers_loading_summary">正在从 OTA 获取当前维护者信息</string>
+-    <string name="about_current_maintainers_empty_title">未找到活跃的维护者</string>
+-    <string name="about_current_maintainers_tap_to_view">点击查看活动维护者</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d 位活跃的维护者</string>
+-    <string name="about_current_maintainers_search_hint">搜索维护者或设备……</string>
+-    <string name="about_current_maintainers_no_results">没有符合搜索条件的维护者</string>
+-    <string name="maintainer_link_forum">论坛</string>
+     <!-- Changelog -->
+     <string name="changelog_title">更改日志</string>
+     <string name="changelog_summary">查看ROM源码变更</string>
+-    <string name="changelog_error_no_official">此设备或此构建没有官方更新日志。请访问 %1$s 获取更多信息。</string>
+     <!-- Color picker -->
+     <string name="accent_color">首选颜色 (默认)</string>
+     <string name="notification_color">通知颜色</string>
+diff --git a/res/values-zh-rTW/evolution_strings.xml b/res/values-zh-rTW/evolution_strings.xml
+index 707af5b..01654c1 100644
+--- a/res/values-zh-rTW/evolution_strings.xml
++++ b/res/values-zh-rTW/evolution_strings.xml
+@@ -18,8 +18,8 @@
+     <string name="power_menu_summary">操作、鎖定螢幕</string>
+     <string name="miscellaneous_title">其他</string>
+     <string name="miscellaneous_summary">開發者和系統偽裝選項</string>
+-    <string name="about_title">Evolution X</string>
+-    <string name="about_summary">關於 Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
++    <string name="about_summary">關於 ExpressiveOS</string>
+     <string name="gestures_category_title">手勢</string>
+     <!-- Reorganized categories -->
+     <string name="themes_monet_colors_category">莫内 &amp; 顔色</string>
+@@ -1182,27 +1182,10 @@
+     <string name="custom_system_theme_title">主題</string>
+     <string name="custom_system_theme_summary">使用主題與圖示包自訂系統外觀</string>
+     <!-- About -->
+-    <string name="about_info">Evolution X 是一款致力於復刻 Google Pixel 體驗的客製化 Android 項目，擁有許多自訂項目。本項目基於 LineageOS 項目。</string>
+-    <string name="about_website_title">網站</string>
+-    <string name="about_website_summary">訪問我們的網站以獲取更新</string>
+-    <string name="about_x_summary">在X上取得我們的最新動態</string>
+-    <string name="about_discord_summary">在 Discord 上與我們聊天</string>
+     <string name="about_github_summary">在 GitHub 上瀏覽我們的程式碼</string>
+-    <string name="about_founders_title">創辦人</string>
+-    <string name="about_team_members_title">團隊成員</string>
+-    <string name="about_remembering_title">追思</string>
+-    <string name="about_current_maintainers_title">現任維護者</string>
+-    <string name="about_current_maintainers_loading_summary">正在從 OTA 擷取現任維護者</string>
+-    <string name="about_current_maintainers_empty_title">找不到現任維護者</string>
+-    <string name="about_current_maintainers_tap_to_view">輕觸查看現任維護者</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d 位現任維護者</string>
+-    <string name="about_current_maintainers_search_hint">搜尋維護者或裝置…</string>
+-    <string name="about_current_maintainers_no_results">沒有符合搜尋條件的維護者</string>
+-    <string name="maintainer_link_forum">討論區</string>
+     <!-- Changelog -->
+     <string name="changelog_title">更新日誌</string>
+     <string name="changelog_summary">查看 ROM 的變更內容</string>
+-    <string name="changelog_error_no_official">這個裝置或版本沒有官方更新日誌。請前往 %1$s 查看更多資訊。</string>
+     <!-- Color picker -->
+     <string name="accent_color">強調色（預設）</string>
+     <string name="notification_color">通知顏色</string>
+diff --git a/res/values/evolution_strings.xml b/res/values/evolution_strings.xml
+index 3bf0f13..aec9a87 100644
+--- a/res/values/evolution_strings.xml
++++ b/res/values/evolution_strings.xml
+@@ -22,7 +22,7 @@
+     <string name="power_menu_summary">Actions, lock screen</string>
+     <string name="miscellaneous_title">Miscellaneous</string>
+     <string name="miscellaneous_summary">Spoofing hub, developer options</string>
+-    <string name="about_title">Evolution X</string>
++    <string name="about_title">ExpressiveOS</string>
+     <string name="about_summary">About our ROM</string>
+     <string name="gestures_category_title">Gestures</string>
+ 
+@@ -1277,47 +1277,19 @@
+     <string name="custom_system_theme_summary">Customize system appearance with themes and icon packs</string>
+ 
+     <!-- About -->
+-    <string name="about_info">Evolution X is a custom Android ROM that aims to replicate the Google Pixel experience with added customization. Based on the LineageOS Project.</string>
+-    <string name="about_website_title">Website</string>
+-    <string name="about_website_summary">Visit our site for updates</string>
+-    <string name="about_x_title" translatable="false">X</string>
+-    <string name="about_x_summary">Catch our latest news on X</string>
+-    <string name="about_discord_title" translatable="false">Discord</string>
+-    <string name="about_discord_summary">Chat with us on Discord</string>
++    <string name="about_info">ExpressiveOS is a custom Android ROM that brings the Pixel experience with extra customization. Based on the LineageOS Project.</string>
++    <string name="about_telegram_title" translatable="false">Telegram</string>
++    <string name="about_telegram_summary">Chat with us on Telegram</string>
+     <string name="about_github_title" translatable="false">GitHub</string>
+     <string name="about_github_summary">Browse our code on GitHub</string>
+-    <string name="about_founders_title">Founders</string>
+-    <string name="about_team_members_title">Team members</string>
+-    <string name="about_remembering_title">Remembering</string>
+-    <string name="about_founder_1_title" translatable="false">Joey</string>
+-    <string name="about_founder_1_summary" translatable="false">Founder / Lead Developer</string>
+-    <string name="about_founder_2_title" translatable="false">Anierin Bliss</string>
+-    <string name="about_founder_2_summary" translatable="false">Co-founder / Co-developer</string>
+-    <string name="about_founder_3_title" translatable="false">Akito Mizukito</string>
+-    <string name="about_founder_3_summary" translatable="false">Co-founder / Project Manager</string>
+-    <string name="about_member_1_title" translatable="false">TechPanelGM</string>
+-    <string name="about_member_1_summary" translatable="false">Project Manager / Maintainer</string>
+-    <string name="about_member_2_title" translatable="false">Aidan Warner</string>
+-    <string name="about_member_2_summary" translatable="false">Infrastructure Manager</string>
+-    <string name="about_member_3_title" translatable="false">Onelots</string>
+-    <string name="about_member_3_summary" translatable="false">Maintainer relations / Maintainer</string>
+-    <string name="about_member_4_title" translatable="false">Manidweep</string>
+-    <string name="about_member_4_summary" translatable="false">Maintainer relations / Maintainer</string>
+-    <string name="about_member_5_title" translatable="false">Apelete Seketeli</string>
+-    <string name="about_member_5_summary" translatable="false">Maintainer (2025–2026)</string>
+-    <string name="about_current_maintainers_title">Current maintainers</string>
+-    <string name="about_current_maintainers_loading_summary">Fetching current maintainers from OTA</string>
+-    <string name="about_current_maintainers_empty_title">No active maintainers found</string>
+-    <string name="about_current_maintainers_tap_to_view">Tap to view active maintainers</string>
+-    <string name="about_current_maintainers_sheet_subtitle">%1$d active maintainers</string>
+-    <string name="about_current_maintainers_search_hint">Search maintainers or devices…</string>
+-    <string name="about_current_maintainers_no_results">No maintainers match your search</string>
+-    <string name="maintainer_link_forum">Forum</string>
++    <string name="about_maintainer_title">Maintainer</string>
++    <string name="about_maintainer_name" translatable="false">Daryl Denson</string>
++    <string name="about_maintainer_summary" translatable="false">denson9874</string>
+ 
+     <!-- Changelog -->
+     <string name="changelog_title">Changelog</string>
+     <string name="changelog_summary">View changes in the ROM</string>
+-    <string name="changelog_error_no_official">No official changelog is available for this device or build. Visit %1$s for more information.</string>
++    <string name="changelog_error_no_official">No changelog is available for this device or build. Visit %1$s for more information.</string>
+ 
+     <!-- Color picker -->
+     <string name="color_picker_hex" translatable="false">HEX</string>
+diff --git a/res/xml/evolution_settings_about.xml b/res/xml/evolution_settings_about.xml
+index b1d9e4d..a954074 100644
+--- a/res/xml/evolution_settings_about.xml
++++ b/res/xml/evolution_settings_about.xml
+@@ -8,7 +8,7 @@
+     xmlns:settings="http://schemas.android.com/apk/res/com.android.settings"
+     android:title="@string/about_title">
+ 
+-    <!-- Evolution X logo -->
++    <!-- ExpressiveOS logo -->
+     <com.android.settingslib.widget.LayoutPreference
+         android:key="evolution_logo"
+         android:layout="@layout/evolution_logo"
+@@ -32,15 +32,15 @@
+                  android:targetClass="org.evolution.settings.fragments.about.ChangelogActivity"/>
+         </Preference>
+ 
+-        <!-- Website -->
++        <!-- Telegram -->
+         <Preference
+-            android:key="about_website"
+-            android:title="@string/about_website_title"
+-            android:summary="@string/about_website_summary"
+-            android:icon="@drawable/ic_evolver_about">
++            android:key="about_telegram"
++            android:title="@string/about_telegram_title"
++            android:summary="@string/about_telegram_summary"
++            android:icon="@drawable/ic_about_telegram">
+             <intent
+                 android:action="android.intent.action.VIEW"
+-                android:data="https://evolution-x.org" />
++                android:data="https://t.me/ExpressiveGroup" />
+         </Preference>
+ 
+         <!-- Github -->
+@@ -51,99 +51,22 @@
+             android:icon="@drawable/ic_about_github">
+             <intent
+                 android:action="android.intent.action.VIEW"
+-                android:data="https://github.com/Evolution-X" />
++                android:data="https://github.com/denson9874" />
+         </Preference>
++    </com.android.settingslib.widget.UntitledPreferenceCategory>
+ 
+-        <!-- Discord -->
+-        <Preference
+-            android:key="about_discord"
+-            android:title="@string/about_discord_title"
+-            android:summary="@string/about_discord_summary"
+-            android:icon="@drawable/ic_about_discord">
+-            <intent
+-                android:action="android.intent.action.VIEW"
+-                android:data="https://discord.gg/3qbSZHx" />
+-        </Preference>
++    <PreferenceCategory
++        android:key="maintainers"
++        android:title="@string/about_maintainer_title">
+ 
+-        <!-- X -->
+         <Preference
+-            android:key="about_x"
+-            android:title="@string/about_x_title"
+-            android:summary="@string/about_x_summary"
+-            android:icon="@drawable/ic_about_x">
++            android:key="about_maintainer"
++            android:title="@string/about_maintainer_name"
++            android:summary="@string/about_maintainer_summary">
+             <intent
+                 android:action="android.intent.action.VIEW"
+-                android:data="https://x.com/EvolutionXROM" />
++                android:data="https://github.com/denson9874" />
+         </Preference>
+-    </com.android.settingslib.widget.UntitledPreferenceCategory>
+-
+-    <PreferenceCategory
+-        android:key="founders"
+-        android:title="@string/about_founders_title">
+-
+-        <!-- Founder 1 -->
+-        <Preference
+-            android:key="about_founder_1"
+-            android:title="@string/about_founder_1_title"
+-            android:summary="@string/about_founder_1_summary" />
+-
+-        <!-- Founder 2 -->
+-        <!--<Preference
+-            android:key="about_founder_2"
+-            android:title="@string/about_founder_2_title"
+-            android:summary="@string/about_founder_2_summary" />-->
+-
+-        <!-- Founder 3 -->
+-        <Preference
+-            android:key="about_founder_3"
+-            android:title="@string/about_founder_3_title"
+-            android:summary="@string/about_founder_3_summary" />
+-    </PreferenceCategory>
+-
+-    <PreferenceCategory
+-        android:key="team_members"
+-        android:title="@string/about_team_members_title">
+-
+-        <Preference
+-            android:key="about_member_1"
+-            android:title="@string/about_member_1_title"
+-            android:summary="@string/about_member_1_summary" />
+-
+-        <Preference
+-            android:key="about_member_2"
+-            android:title="@string/about_member_2_title"
+-            android:summary="@string/about_member_2_summary" />
+-
+-        <Preference
+-            android:key="about_member_3"
+-            android:title="@string/about_member_3_title"
+-            android:summary="@string/about_member_3_summary" />
+-
+-        <!--<Preference
+-            android:key="about_member_4"
+-            android:title="@string/about_member_4_title"
+-            android:summary="@string/about_member_4_summary" />-->
+-    </PreferenceCategory>
+-
+-    <PreferenceCategory
+-        android:key="current_maintainers_category"
+-        android:title="@string/about_current_maintainers_title">
+-
+-        <Preference
+-            android:key="current_maintainers"
+-            android:title="@string/about_current_maintainers_title"
+-            android:summary="@string/about_current_maintainers_tap_to_view"
+-            android:persistent="false" />
+-    </PreferenceCategory>
+-
+-    <PreferenceCategory
+-        android:key="remembering"
+-        android:title="@string/about_remembering_title">
+-
+-        <Preference
+-            android:key="about_member_5"
+-            android:title="@string/about_member_5_title"
+-            android:summary="@string/about_member_5_summary" />
+     </PreferenceCategory>
+ 
+ </PreferenceScreen>
+diff --git a/src/org/evolution/settings/fragments/about/About.kt b/src/org/evolution/settings/fragments/about/About.kt
+index f818399..a288980 100644
+--- a/src/org/evolution/settings/fragments/about/About.kt
++++ b/src/org/evolution/settings/fragments/about/About.kt
+@@ -5,88 +5,27 @@
+ 
+ package org.evolution.settings.fragments.about
+ 
+-import android.content.Intent
+-import android.content.SharedPreferences
+-import android.net.Uri
+ import android.os.Bundle
+-import android.os.Handler
+-import android.os.Looper
+-import android.util.Log
+ import android.view.View
+ import androidx.preference.Preference
+ 
+ import com.android.internal.logging.nano.MetricsProto.MetricsEvent
+ import com.android.settings.R
+ import com.android.settings.SettingsPreferenceFragment
+-import com.android.settings.deviceinfo.DeviceNameUtils
+ import com.android.settings.deviceinfo.firmwareversion.EvolutionLogoAnimator
+ import com.android.settings.search.BaseSearchIndexProvider
+ import com.android.settingslib.search.SearchIndexable
+ import com.android.settingslib.widget.LayoutPreference
+ 
+-import org.evolution.settings.preferences.PickerOption
+-import org.evolution.settings.preferences.showPickerDialog
+-import org.evolution.settings.utils.HttpCachePrefs
+-import org.evolution.settings.utils.NetworkUtils
+-import org.evolution.settings.utils.UrlUtils
+-
+-import org.json.JSONArray
+-import org.json.JSONObject
+-
+-import java.util.Calendar
+-import java.util.Collections
+-import java.util.LinkedHashMap
+-import java.util.LinkedHashSet
+-import java.util.Locale
+-import java.util.concurrent.Executors
+-
+ @SearchIndexable
+ class About : SettingsPreferenceFragment(), Preference.OnPreferenceChangeListener {
+ 
+     companion object {
+-        private const val TAG = "About"
+-
+-        private const val KEY_CURRENT_MAINTAINERS = "current_maintainers"
+-
+-        private const val OTA_TREE_API_TEMPLATE =
+-            "https://api.github.com/repos/Evolution-X/OTA/git/trees/%s?recursive=1"
+-        private const val OTA_RAW_BASE_TEMPLATE =
+-            "https://raw.githubusercontent.com/Evolution-X/OTA/%s/"
+-
+-        // Branch lookup order for OTA maintainer resolution. CNB (Android 17) is
+-        // tried first; bka (Android 16) and vic (Android 15) are legacy fallbacks
+-        // for maintainers who don't yet have a published CNB entry. A maintainer
+-        // who already has a CNB entry is never shadowed by a bka/vic entry for the
+-        // same key, even if that lower-priority entry covers different devices.
+-        private val OTA_BRANCHES = listOf("cnb", "bka", "vic")
+-
+-        // A maintainer is listed only if at least one of their devices has an
+-        // OTA build whose "timestamp" falls inside this many months.
+-        private const val ACTIVE_BUILD_WINDOW_MONTHS = 3
+-
+-        private const val PREFS_NAME = "about_ota_maintainers_cache"
+-        private const val PREF_ENTRIES_JSON = "entries_json"
+-        private const val PREF_LAST_UPDATED = "last_updated"
+-        private const val PREF_PAYPAL_JSON = "paypal_json"
+-        private const val CACHE_KEY_TREE_PREFIX = "ota_tree_"
+-
+         @JvmField
+         val SEARCH_INDEX_DATA_PROVIDER =
+             BaseSearchIndexProvider(R.xml.evolution_settings_about)
+     }
+ 
+-    private val mExecutor = Executors.newSingleThreadExecutor()
+-    private val mMainHandler = Handler(Looper.getMainLooper())
+-
+-    private lateinit var mAvatarLoader: GithubAvatarLoader
+-    private lateinit var mPrefs: SharedPreferences
+-    private lateinit var mTreeCaches: Map<String, HttpCachePrefs>
+-
+-    @Volatile private var mDestroyed = false
+-
+-    private var mCachedMaintainerList: List<MaintainerInfo> = emptyList()
+-    private var mCachedUpdatedAt: Long = 0L
+-
+     // -------------------------------------------------------------------------
+     // Lifecycle
+     // -------------------------------------------------------------------------
+@@ -99,552 +38,12 @@ class About : SettingsPreferenceFragment(), Preference.OnPreferenceChangeListene
+             ?.findViewById<View>(R.id.evolution_logo_container)
+             ?.let { EvolutionLogoAnimator.bind(it) }
+ 
+-        mPrefs = requireContext().getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+-        mTreeCaches = OTA_BRANCHES.associateWith { branch ->
+-            HttpCachePrefs(mPrefs, CACHE_KEY_TREE_PREFIX + branch)
++        findPreference<Preference>("about_maintainer")?.let {
++            GithubAvatarLoader.getInstance().load(requireContext(), it, "denson9874")
+         }
+-        mAvatarLoader = GithubAvatarLoader.getInstance()
+-
+-        val avatarMap = linkedMapOf(
+-            "about_founder_1" to "joeyhuab",
+-            "about_founder_3" to "RealAkito",
+-            "about_member_1"  to "TechPanelGM",
+-            "about_member_2"  to "AidanWarner97",
+-            "about_member_3"  to "Onelots",
+-            "about_member_5"  to "apelete",
+-        )
+-        for ((key, username) in avatarMap) {
+-            findPreference<Preference>(key)?.let {
+-                mAvatarLoader.load(requireContext(), it, username)
+-            }
+-        }
+-
+-        setupTeamMemberPreferences(readCachedGithubToPaypal())
+-
+-        findPreference<Preference>(KEY_CURRENT_MAINTAINERS)?.setOnPreferenceClickListener {
+-            openMaintainersSheet()
+-            true
+-        }
+-
+-        loadCurrentMaintainers()
+-    }
+-
+-    override fun onDestroy() {
+-        mDestroyed = true
+-        if (!mExecutor.isShutdown) mExecutor.shutdown()
+-        super.onDestroy()
+     }
+ 
+     override fun onPreferenceChange(preference: Preference, newValue: Any?) = false
+ 
+     override fun getMetricsCategory() = MetricsEvent.EVOLVER
+-
+-    // -------------------------------------------------------------------------
+-    // Sheet
+-    // -------------------------------------------------------------------------
+-
+-    private fun openMaintainersSheet() {
+-        if (!isUiSafe()) return
+-        val sheet = CurrentMaintainersSheet().apply {
+-            entries   = toUiEntries(mCachedMaintainerList)
+-            isLoading = mCachedMaintainerList.isEmpty()
+-        }
+-        sheet.show(parentFragmentManager, CurrentMaintainersSheet.TAG)
+-        mTreeCaches.values.forEach { it.invalidate() }
+-        loadCurrentMaintainers(notifySheet = true)
+-    }
+-
+-    // -------------------------------------------------------------------------
+-    // Maintainer loading
+-    // -------------------------------------------------------------------------
+-
+-    private fun loadCurrentMaintainers(notifySheet: Boolean = false) {
+-        val cached = readCachedMaintainers()
+-        val cachedUpdatedAt = mPrefs.getLong(PREF_LAST_UPDATED, 0L)
+-        if (cached.isNotEmpty()) {
+-            mCachedMaintainerList = cached
+-            mCachedUpdatedAt = cachedUpdatedAt
+-            setupTeamMemberPreferences(readCachedGithubToPaypal())
+-        }
+-
+-        val hasCache = cached.isNotEmpty()
+-        val anyStale = mTreeCaches.values.any { it.isStale }
+-        if (hasCache && !anyStale && !notifySheet) return
+-
+-        mExecutor.execute {
+-            // No usable cache (first run, old cache format, or every cached entry
+-            // aged out of the active window): drop the conditional headers so a
+-            // 304 can't leave us with an empty list.
+-            if (!hasCache) mTreeCaches.values.forEach { it.invalidate() }
+-            val result = fetchMaintainersFromOtaWithConditionalTree()
+-            if (result == null) {
+-                mTreeCaches.values.forEach { it.touchLastCheck() }
+-                return@execute
+-            }
+-            if (result.notModified) {
+-                mTreeCaches.values.forEach { it.touchLastCheck() }
+-                if (notifySheet) {
+-                    mMainHandler.post { refreshOpenSheet(mCachedMaintainerList) }
+-                }
+-                return@execute
+-            }
+-
+-            val updatedAt = System.currentTimeMillis()
+-            writeMaintainersCache(result.maintainers, result.githubToPaypal, updatedAt)
+-            for ((branch, etag) in result.branchEtags) {
+-                val lastModified = result.branchLastModified[branch] ?: ""
+-                mTreeCaches[branch]?.write(etag, lastModified)
+-            }
+-
+-            val finalMaintainers = result.maintainers
+-            val finalGithubToPaypal = result.githubToPaypal
+-
+-            mMainHandler.post {
+-                if (!isUiSafe()) return@post
+-                mCachedMaintainerList = finalMaintainers
+-                mCachedUpdatedAt = updatedAt
+-                setupTeamMemberPreferences(finalGithubToPaypal)
+-                if (notifySheet) refreshOpenSheet(finalMaintainers)
+-            }
+-        }
+-    }
+-
+-    private fun refreshOpenSheet(maintainers: List<MaintainerInfo>) {
+-        if (!isUiSafe()) return
+-        val sheet = parentFragmentManager
+-            .findFragmentByTag(CurrentMaintainersSheet.TAG) as? CurrentMaintainersSheet
+-        sheet?.refresh(toUiEntries(maintainers))
+-    }
+-
+-    // -------------------------------------------------------------------------
+-    // Team member preferences
+-    // -------------------------------------------------------------------------
+-
+-    private fun setupTeamMemberPreferences(githubToPaypal: Map<String, String>) {
+-        val hardcodedDonate = mapOf(
+-            "joeyhuab"      to "https://linktr.ee/joeyhuab",
+-            "anierinbliss"  to "https://www.paypal.me/AnierinB",
+-            "realakito"     to "https://t.me/RealAkito",
+-            "aidanwarner97" to "https://linktr.ee/aidanlw",
+-            "apelete"       to "https://www.linkedin.com/posts/apelete_evolutionx-activity-7429791532091797504-ND3i",
+-        )
+-
+-        val teamGithubMap = linkedMapOf(
+-            "about_founder_1" to "joeyhuab",
+-            "about_founder_3" to "RealAkito",
+-            "about_member_1"  to "TechPanelGM",
+-            "about_member_2"  to "AidanWarner97",
+-            "about_member_3"  to "Onelots",
+-            "about_member_5"  to "apelete",
+-        )
+-
+-        for ((prefKey, github) in teamGithubMap) {
+-            val pref = findPreference<Preference>(prefKey) ?: continue
+-            val key = github.lowercase(Locale.ROOT)
+-
+-            val donateUrl = githubToPaypal[key] ?: hardcodedDonate[key]
+-            val githubUrl = UrlUtils.buildGithubUrl(github)
+-            val hasGithub = githubUrl != null
+-            val hasDonate = UrlUtils.isValidHttpUrl(donateUrl)
+-            val finalDonate = if (hasDonate) donateUrl else null
+-
+-            pref.isSelectable = hasGithub || hasDonate
+-            if (!hasGithub && !hasDonate) continue
+-
+-            if (hasGithub && hasDonate) {
+-                val name = pref.title?.toString() ?: github
+-                pref.setOnPreferenceClickListener {
+-                    showMaintainerLinkDialog(name, githubUrl!!, finalDonate!!)
+-                    true
+-                }
+-            } else {
+-                val only = if (hasGithub) githubUrl!! else finalDonate!!
+-                pref.setOnPreferenceClickListener { openUrl(only); true }
+-            }
+-        }
+-    }
+-
+-    // -------------------------------------------------------------------------
+-    // Dialogs / URL helpers
+-    // -------------------------------------------------------------------------
+-
+-    private fun showMaintainerLinkDialog(name: String, githubUrl: String, donateUrl: String) {
+-        if (!isUiSafe()) return
+-        val options = listOf(
+-            PickerOption(getString(R.string.maintainer_link_github)),
+-            PickerOption(getString(R.string.maintainer_link_donate)),
+-        )
+-        requireContext().showPickerDialog(name, options, selectedIndex = -1) { which ->
+-            openUrl(if (which == 0) githubUrl else donateUrl)
+-            true
+-        }
+-    }
+-
+-    private fun openUrl(url: String) {
+-        try {
+-            startActivity(
+-                Intent(Intent.ACTION_VIEW, Uri.parse(url))
+-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+-            )
+-        } catch (e: Exception) {
+-            Log.w(TAG, "Unable to open URL: $url", e)
+-        }
+-    }
+-
+-    // -------------------------------------------------------------------------
+-    // OTA fetch
+-    // -------------------------------------------------------------------------
+-
+-    /**
+-     * Resolves the full current-maintainers list by walking OTA_BRANCHES in
+-     * priority order (cnb, then bka, then vic). Each branch's device tree is
+-     * fetched and aggregated independently, then merged: a maintainer key
+-     * (maintainer + github, case-insensitive) already satisfied by a
+-     * higher-priority branch is skipped entirely in lower-priority branches,
+-     * even if that lower-priority branch would have contributed different
+-     * devices for the same maintainer. Maintainers with no cnb entry at all
+-     * still fall through to bka/vic normally.
+-     */
+-    private fun fetchMaintainersFromOtaWithConditionalTree(): FetchResult? {
+-        val branchEtags = LinkedHashMap<String, String>()
+-        val branchLastModified = LinkedHashMap<String, String>()
+-        val mergedMaintainers = LinkedHashMap<String, AggregatedMaintainer>()
+-        val githubToPaypal = LinkedHashMap<String, String>()
+-        var anyBranchSucceeded = false
+-        var allBranchesNotModified = true
+-        val cutoffSec = activeCutoffSeconds()
+-
+-        for (branch in OTA_BRANCHES) {
+-            val branchCache = mTreeCaches.getValue(branch)
+-            val branchResult = fetchBranchTree(branch, branchCache, cutoffSec) ?: continue
+-
+-            anyBranchSucceeded = true
+-            branchEtags[branch] = branchResult.treeEtag
+-            branchLastModified[branch] = branchResult.treeLastModified
+-
+-            if (branchResult.notModified) continue
+-            allBranchesNotModified = false
+-
+-            for ((key, aggregated) in branchResult.aggregate) {
+-                if (mergedMaintainers.containsKey(key)) continue
+-                mergedMaintainers[key] = aggregated
+-                if (aggregated.github.isNotEmpty() && UrlUtils.isValidHttpUrl(aggregated.paypal)) {
+-                    githubToPaypal[aggregated.github.lowercase(Locale.ROOT)] = aggregated.paypal
+-                }
+-            }
+-        }
+-
+-        if (!anyBranchSucceeded) return null
+-        if (allBranchesNotModified) return FetchResult.notModified()
+-
+-        val result = mutableListOf<MaintainerInfo>()
+-        for (m in mergedMaintainers.values) {
+-            val sortedEntries = m.deviceEntries.sortedWith(
+-                compareBy(String.CASE_INSENSITIVE_ORDER) { it.label }
+-            )
+-            val summary   = sortedEntries.joinToString(", ") { it.label }
+-            val donateUrl = if (UrlUtils.isValidHttpUrl(m.paypal)) m.paypal else null
+-            val clickUrl  = donateUrl ?: UrlUtils.buildGithubUrl(m.github)
+-            val forumUrls = sortedEntries
+-                .filter { it.forumUrl != null }
+-                .map { it.label to it.forumUrl!! }
+-            result.add(MaintainerInfo(m.maintainer, summary, m.github, donateUrl, clickUrl, forumUrls, m.newestBuildTs))
+-        }
+-        result.sortWith(Comparator.comparing { it.maintainer.lowercase(Locale.ROOT) })
+-
+-        return FetchResult(result, githubToPaypal, branchEtags, branchLastModified)
+-    }
+-
+-    /**
+-     * Fetches and aggregates the maintainer tree for a single branch. Returns
+-     * null only on hard failure (network/parse error, non-2xx); a branch with
+-     * an empty or all-unmaintained tree still returns a (possibly empty)
+-     * successful result so its ETag is recorded and it isn't retried every load.
+-     */
+-    private fun fetchBranchTree(
+-        branch: String,
+-        branchCache: HttpCachePrefs,
+-        cutoffSec: Long,
+-    ): BranchFetchResult? {
+-        return try {
+-            val treeApi = String.format(OTA_TREE_API_TEMPLATE, branch)
+-            val rawBase = String.format(OTA_RAW_BASE_TEMPLATE, branch)
+-
+-            val r = NetworkUtils.fetchWithStatus(
+-                treeApi,
+-                branchCache.buildHeaders("application/vnd.github+json")
+-            )
+-
+-            if (r.isNotModified) {
+-                return BranchFetchResult(emptyMap(), r.etag, r.lastModified, notModified = true)
+-            }
+-            if (!r.isOk || r.bytes == null) {
+-                Log.w(TAG, "Tree API failed for $branch: HTTP ${r.statusCode}")
+-                return null
+-            }
+-
+-            val treeJson = r.bodyAsString()
+-            if (treeJson.isNullOrEmpty()) {
+-                Log.w(TAG, "Empty OTA tree response for $branch")
+-                return null
+-            }
+-
+-            val root = JSONObject(treeJson)
+-            val tree = root.optJSONArray("tree")
+-            if (tree == null || tree.length() == 0) {
+-                return BranchFetchResult(emptyMap(), r.etag, r.lastModified)
+-            }
+-
+-            val aggregate = LinkedHashMap<String, AggregatedMaintainer>()
+-
+-            for (i in 0 until tree.length()) {
+-                val node = tree.optJSONObject(i) ?: continue
+-                val type = UrlUtils.trimToEmpty(node.optString("type", ""))
+-                val path = UrlUtils.trimToEmpty(node.optString("path", ""))
+-                if (type != "blob") continue
+-                if (!path.startsWith("builds/") || !path.endsWith(".json")) continue
+-
+-                val rawUrl = rawBase + path
+-                try {
+-                    val deviceJson = NetworkUtils.fetchString(rawUrl, null)
+-                    if (deviceJson.isNullOrEmpty()) continue
+-
+-                    val deviceRoot = JSONObject(deviceJson)
+-                    val response = deviceRoot.optJSONArray("response") ?: continue
+-                    if (response.length() == 0) continue
+-
+-                    val entry = response.optJSONObject(0) ?: continue
+-                    if (!entry.optBoolean("currently_maintained", false)) continue
+-
+-                    val maintainer = UrlUtils.trimToEmpty(entry.optString("maintainer", ""))
+-                    val oem        = UrlUtils.trimToEmpty(entry.optString("oem", ""))
+-                    val device     = UrlUtils.trimToEmpty(entry.optString("device", ""))
+-                    val github     = UrlUtils.trimToEmpty(entry.optString("github", ""))
+-                    val paypal     = UrlUtils.trimToEmpty(entry.optString("paypal", ""))
+-                    val forum      = UrlUtils.trimToEmpty(entry.optString("forum", ""))
+-
+-                    if (maintainer.isEmpty() || device.isEmpty()) continue
+-
+-                    val deviceLabel = formatDeviceLabel(oem, device)
+-                    val key = normalizeKey(maintainer, github)
+-                    var bucket = aggregate[key]
+-                    if (bucket == null) {
+-                        bucket = AggregatedMaintainer(maintainer, github, paypal)
+-                        aggregate[key] = bucket
+-                    } else {
+-                        if (bucket.paypal.isEmpty() && UrlUtils.isValidHttpUrl(paypal)) {
+-                            bucket.paypal = paypal
+-                        }
+-                    }
+-                    val forumLink = if (UrlUtils.isValidHttpUrl(forum)) forum else null
+-                    bucket.deviceEntries.add(DeviceEntry(deviceLabel, forumLink))
+-                    val buildTs = entry.optLong("timestamp", 0L)
+-                    if (buildTs > bucket.newestBuildTs) bucket.newestBuildTs = buildTs
+-
+-                } catch (e: Exception) {
+-                    Log.d(TAG, "Failed parsing OTA JSON: $branch/$path", e)
+-                }
+-            }
+-
+-            // Drop maintainers with no build inside the active window. Doing this
+-            // per branch (before the cross-branch merge) means a maintainer whose
+-            // cnb builds are all stale can still be picked up from bka/vic.
+-            aggregate.entries.removeAll { it.value.newestBuildTs < cutoffSec }
+-
+-            BranchFetchResult(aggregate, r.etag, r.lastModified)
+-
+-        } catch (e: Exception) {
+-            Log.e(TAG, "Failed loading OTA maintainers for $branch", e)
+-            null
+-        }
+-    }
+-
+-    // -------------------------------------------------------------------------
+-    // Cache read / write
+-    // -------------------------------------------------------------------------
+-
+-    private fun readCachedMaintainers(): List<MaintainerInfo> {
+-        val json = UrlUtils.trimToEmpty(mPrefs.getString(PREF_ENTRIES_JSON, ""))
+-        if (json.isEmpty()) return emptyList()
+-        val cutoffSec = activeCutoffSeconds()
+-        return try {
+-            val arr = JSONArray(json)
+-            val list = mutableListOf<MaintainerInfo>()
+-            for (i in 0 until arr.length()) {
+-                val obj = arr.optJSONObject(i) ?: continue
+-                val maintainer = UrlUtils.trimToEmpty(obj.optString("maintainer", ""))
+-                val summary    = UrlUtils.trimToEmpty(obj.optString("summary", ""))
+-                val github     = UrlUtils.trimToEmpty(obj.optString("github", ""))
+-                val clickUrl   = UrlUtils.trimToEmpty(obj.optString("click_url", ""))
+-                if (maintainer.isEmpty()) continue
+-                if (summary.isEmpty() && clickUrl.isEmpty()) continue
+-                // Re-apply the window on read: the tree ETag may not change for a
+-                // long time, so an entry cached earlier can age out on its own.
+-                val newestBuildTs = obj.optLong("newest_build_ts", 0L)
+-                if (newestBuildTs < cutoffSec) continue
+-                val cachedDonate = if (clickUrl.contains("github.com")) null else clickUrl.ifEmpty { null }
+-                val forumsArr = obj.optJSONArray("forum_urls")
+-                val cachedForumUrls = mutableListOf<Pair<String, String>>()
+-                if (forumsArr != null) {
+-                    for (j in 0 until forumsArr.length()) {
+-                        val fo    = forumsArr.optJSONObject(j) ?: continue
+-                        val label = UrlUtils.trimToEmpty(fo.optString("label", ""))
+-                        val url   = UrlUtils.trimToEmpty(fo.optString("url",   ""))
+-                        if (label.isNotEmpty() && UrlUtils.isValidHttpUrl(url)) {
+-                            cachedForumUrls.add(label to url)
+-                        }
+-                    }
+-                }
+-                list.add(MaintainerInfo(maintainer, summary, github, cachedDonate, clickUrl, cachedForumUrls, newestBuildTs))
+-            }
+-            list
+-        } catch (e: Exception) {
+-            Log.w(TAG, "Failed to parse maintainer cache", e)
+-            emptyList()
+-        }
+-    }
+-
+-    private fun writeMaintainersCache(
+-        list: List<MaintainerInfo>,
+-        githubToPaypal: Map<String, String>,
+-        updatedAt: Long,
+-    ) {
+-        val arr = JSONArray()
+-        for (info in list) {
+-            val obj = JSONObject()
+-            try {
+-                obj.put("maintainer", info.maintainer)
+-                obj.put("summary",    info.summary)
+-                obj.put("github",     info.github)
+-                obj.put("click_url",  info.clickUrl ?: "")
+-                obj.put("newest_build_ts", info.newestBuildTs)
+-                val forumsArr = JSONArray()
+-                for ((label, url) in info.forumUrls) {
+-                    val fo = JSONObject()
+-                    fo.put("label", label)
+-                    fo.put("url",   url)
+-                    forumsArr.put(fo)
+-                }
+-                obj.put("forum_urls", forumsArr)
+-            } catch (_: Exception) {}
+-            arr.put(obj)
+-        }
+-
+-        val paypalObj = JSONObject()
+-        for ((k, v) in githubToPaypal) {
+-            try { paypalObj.put(k, v) } catch (_: Exception) {}
+-        }
+-
+-        mPrefs.edit()
+-            .putString(PREF_ENTRIES_JSON, arr.toString())
+-            .putString(PREF_PAYPAL_JSON,  paypalObj.toString())
+-            .putLong(PREF_LAST_UPDATED,   updatedAt)
+-            .apply()
+-    }
+-
+-    private fun readCachedGithubToPaypal(): Map<String, String> {
+-        val json = UrlUtils.trimToEmpty(mPrefs.getString(PREF_PAYPAL_JSON, ""))
+-        if (json.isEmpty()) return emptyMap()
+-        return try {
+-            val obj = JSONObject(json)
+-            val map = LinkedHashMap<String, String>()
+-            val it = obj.keys()
+-            while (it.hasNext()) {
+-                val key = it.next()
+-                map[key] = obj.getString(key)
+-            }
+-            map
+-        } catch (e: Exception) {
+-            emptyMap()
+-        }
+-    }
+-
+-    // -------------------------------------------------------------------------
+-    // Helpers
+-    // -------------------------------------------------------------------------
+-
+-    private fun toUiEntries(list: List<MaintainerInfo>): List<MaintainerUiEntry> =
+-        list.map { info ->
+-            MaintainerUiEntry(
+-                maintainer = info.maintainer,
+-                devices    = info.summary,
+-                github     = info.github ?: "",
+-                donateUrl  = info.donateUrl,
+-                forumUrls  = info.forumUrls,
+-            )
+-        }
+-
+-    private fun isUiSafe() = !mDestroyed && isAdded && context != null
+-
+-    /** Unix seconds (same unit as the OTA "timestamp" field) of the active-window start. */
+-    private fun activeCutoffSeconds(): Long =
+-        Calendar.getInstance().apply { add(Calendar.MONTH, -ACTIVE_BUILD_WINDOW_MONTHS) }
+-            .timeInMillis / 1000L
+-
+-    private fun formatDeviceLabel(oem: String, device: String): String {
+-        val clean = UrlUtils.trimToEmpty(device)
+-        if (clean.isEmpty()) return ""
+-        return DeviceNameUtils.prefixIfNeeded(oem, device)
+-    }
+-
+-    private fun normalizeKey(maintainer: String, github: String) =
+-        "${UrlUtils.trimToEmpty(maintainer).lowercase(Locale.ROOT)}|${UrlUtils.trimToEmpty(github).lowercase(Locale.ROOT)}"
+-
+-    // -------------------------------------------------------------------------
+-    // Data classes
+-    // -------------------------------------------------------------------------
+-
+-    private data class DeviceEntry(
+-        val label: String,
+-        val forumUrl: String?,
+-    )
+-
+-    private data class AggregatedMaintainer(
+-        val maintainer: String,
+-        val github: String,
+-        var paypal: String,
+-        val deviceEntries: LinkedHashSet<DeviceEntry> = LinkedHashSet(),
+-    ) {
+-        /** Newest OTA "timestamp" (unix seconds) across this maintainer's devices. */
+-        var newestBuildTs: Long = 0L
+-
+-        init {
+-            paypal = if (UrlUtils.isValidHttpUrl(paypal)) paypal else ""
+-        }
+-    }
+-
+-    private data class MaintainerInfo(
+-        val maintainer: String,
+-        val summary: String,
+-        val github: String,
+-        val donateUrl: String?,
+-        val clickUrl: String?,
+-        val forumUrls: List<Pair<String, String>>,
+-        val newestBuildTs: Long,
+-    )
+-
+-    private data class BranchFetchResult(
+-        val aggregate: Map<String, AggregatedMaintainer>,
+-        val treeEtag: String,
+-        val treeLastModified: String,
+-        val notModified: Boolean = false,
+-    )
+-
+-    private data class FetchResult(
+-        val maintainers: List<MaintainerInfo>,
+-        val githubToPaypal: Map<String, String>,
+-        val branchEtags: Map<String, String>,
+-        val branchLastModified: Map<String, String>,
+-        val notModified: Boolean = false,
+-    ) {
+-        companion object {
+-            fun notModified() = FetchResult(
+-                maintainers        = emptyList(),
+-                githubToPaypal     = emptyMap(),
+-                branchEtags        = emptyMap(),
+-                branchLastModified = emptyMap(),
+-                notModified        = true,
+-            )
+-        }
+-    }
+ }
+diff --git a/src/org/evolution/settings/fragments/about/ChangelogFragment.java b/src/org/evolution/settings/fragments/about/ChangelogFragment.java
+index 2f05596..1a48007 100644
+--- a/src/org/evolution/settings/fragments/about/ChangelogFragment.java
++++ b/src/org/evolution/settings/fragments/about/ChangelogFragment.java
+@@ -37,13 +37,9 @@ public class ChangelogFragment extends SettingsPreferenceFragment {
+     private TextView textView;
+     private volatile boolean mViewDestroyed;
+ 
+-    // Branch lookup order for changelog resolution. CNB (Android 17) is tried
+-    // first, bka (Android 16) is the legacy fallback, and vic (Android 15) is
+-    // last. udc (Android 14) is no longer supported and has been dropped.
+-    private static final String[] BRANCH_PRIORITY = {"cnb", "bka", "vic"};
+     private static final String CHANGELOG_URL_TEMPLATE =
+-            "https://raw.githubusercontent.com/Evolution-X/OTA/%s/changelogs/%s.txt";
+-    private static final String EVOLUTION_X_ORG_URL = "https://github.com/Evolution-X";
++            "https://raw.githubusercontent.com/denson9874/expressiveos_ota/main/changelogs/%s.txt";
++    private static final String OTA_REPO_URL = "https://github.com/denson9874/expressiveos_ota";
+ 
+     private int getThemeColor(Context context, int attr) {
+         TypedValue typedValue = new TypedValue();
+@@ -77,19 +73,11 @@ public class ChangelogFragment extends SettingsPreferenceFragment {
+         final TextView targetView = textView;
+ 
+         new Thread(() -> {
+-            String data = null;
+-
+-            for (String branch : BRANCH_PRIORITY) {
+-                final String url = String.format(CHANGELOG_URL_TEMPLATE, branch, device);
+-                data = fetchChangelog(url);
+-                if (data != null) {
+-                    break;
+-                }
+-            }
++            String data = fetchChangelog(String.format(CHANGELOG_URL_TEMPLATE, device));
+ 
+             if (data == null) {
+                 final String fallbackText = context.getString(
+-                        R.string.changelog_error_no_official, EVOLUTION_X_ORG_URL);
++                        R.string.changelog_error_no_official, OTA_REPO_URL);
+                 targetView.post(() -> {
+                     if (!mViewDestroyed && textView == targetView) {
+                         targetView.setText(fallbackText);
+diff --git a/src/org/evolution/settings/fragments/about/CurrentMaintainersSheet.kt b/src/org/evolution/settings/fragments/about/CurrentMaintainersSheet.kt
+deleted file mode 100644
+index db601c1..0000000
+--- a/src/org/evolution/settings/fragments/about/CurrentMaintainersSheet.kt
++++ /dev/null
+@@ -1,453 +0,0 @@
+-/*
+- * SPDX-FileCopyrightText: Evolution X
+- * SPDX-License-Identifier: Apache-2.0
+- */
+-
+-package org.evolution.settings.fragments.about
+-
+-import org.evolution.settings.fragments.miscellaneous.expressiveButtonShapes
+-import android.content.Intent
+-import android.net.Uri
+-import android.os.Bundle
+-import android.util.Log
+-import android.view.LayoutInflater
+-import android.view.View
+-import android.view.ViewGroup
+-import android.widget.ImageView
+-import androidx.compose.foundation.gestures.Orientation
+-import androidx.compose.foundation.lazy.rememberLazyListState
+-import androidx.fragment.app.DialogFragment
+-import androidx.compose.animation.AnimatedVisibility
+-import androidx.compose.animation.animateContentSize
+-import androidx.compose.animation.expandVertically
+-import androidx.compose.animation.fadeIn
+-import androidx.compose.animation.fadeOut
+-import androidx.compose.animation.shrinkVertically
+-import androidx.compose.foundation.background
+-import androidx.compose.foundation.layout.Arrangement
+-import androidx.compose.foundation.layout.Box
+-import androidx.compose.foundation.layout.Column
+-import androidx.compose.foundation.layout.FlowRow
+-import androidx.compose.foundation.layout.Row
+-import androidx.compose.foundation.layout.Spacer
+-import androidx.compose.foundation.layout.fillMaxWidth
+-import androidx.compose.foundation.layout.height
+-import androidx.compose.foundation.layout.imePadding
+-import androidx.compose.foundation.layout.padding
+-import androidx.compose.foundation.layout.size
+-import androidx.compose.foundation.layout.width
+-import androidx.compose.foundation.lazy.LazyColumn
+-import androidx.compose.foundation.lazy.itemsIndexed
+-import androidx.compose.foundation.shape.CircleShape
+-import androidx.compose.material3.ExperimentalMaterial3Api
+-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+-import androidx.compose.material3.ButtonDefaults
+-import androidx.compose.material3.FilledTonalButton
+-import androidx.compose.material3.Icon
+-import androidx.compose.material3.ListItemDefaults
+-import androidx.compose.material3.SegmentedListItem
+-import androidx.compose.material3.ContainedLoadingIndicator
+-import androidx.compose.material3.MaterialTheme
+-import androidx.compose.material3.ModalBottomSheet
+-import androidx.compose.material3.Text
+-import androidx.compose.material3.rememberModalBottomSheetState
+-import androidx.compose.runtime.Composable
+-import androidx.compose.runtime.getValue
+-import androidx.compose.runtime.mutableStateListOf
+-import androidx.compose.runtime.mutableStateOf
+-import androidx.compose.runtime.remember
+-import androidx.compose.runtime.setValue
+-import androidx.compose.ui.Alignment
+-import androidx.compose.ui.Modifier
+-import androidx.compose.ui.draw.clip
+-import androidx.compose.ui.platform.ComposeView
+-import androidx.compose.ui.platform.LocalContext
+-import androidx.compose.ui.platform.ViewCompositionStrategy
+-import androidx.compose.ui.res.painterResource
+-import androidx.compose.ui.res.stringResource
+-import androidx.compose.ui.text.style.TextOverflow
+-import androidx.compose.ui.unit.dp
+-import androidx.compose.ui.viewinterop.AndroidView
+-import com.android.settings.R
+-import com.android.settings.widget.scrollbar
+-import com.android.settingslib.spa.framework.theme.SettingsSpace
+-import org.evolution.settings.fragments.miscellaneous.AppPickerSearchField
+-import org.evolution.settings.fragments.miscellaneous.insetFocusRing
+-import org.evolution.settings.fragments.miscellaneous.expressiveRowShapes
+-import com.android.settingslib.spa.framework.theme.SettingsTheme
+-
+-// ---------------------------------------------------------------------------
+-// Lightweight data class passed from About.kt → Compose layer
+-// ---------------------------------------------------------------------------
+-
+-data class MaintainerUiEntry(
+-    val maintainer: String,
+-    val devices: String,
+-    val github: String,
+-    val donateUrl: String?,
+-    val forumUrls: List<Pair<String, String>>,
+-)
+-
+-// ---------------------------------------------------------------------------
+-// BottomSheetDialogFragment
+-// ---------------------------------------------------------------------------
+-
+-/**
+- * Hosts the Compose [ModalBottomSheet] in a transparent, frameless dialog. The Compose sheet draws
+- * the only sheet, scrim and drag handle; this fragment only supplies the window and lifecycle.
+- */
+-class CurrentMaintainersSheet : DialogFragment() {
+-
+-    companion object {
+-        const val TAG = "CurrentMaintainersSheet"
+-    }
+-
+-    private val _entries = mutableStateListOf<MaintainerUiEntry>()
+-    private val _isLoading = mutableStateOf(true)
+-
+-    var entries: List<MaintainerUiEntry>
+-        get() = _entries
+-        set(value) { _entries.clear(); _entries.addAll(value) }
+-
+-    var isLoading: Boolean
+-        get() = _isLoading.value
+-        set(value) { _isLoading.value = value }
+-
+-    fun refresh(newEntries: List<MaintainerUiEntry>) {
+-        _entries.clear()
+-        _entries.addAll(newEntries)
+-        _isLoading.value = false
+-    }
+-
+-    override fun onCreate(savedInstanceState: Bundle?) {
+-        super.onCreate(savedInstanceState)
+-        setStyle(STYLE_NO_FRAME, android.R.style.Theme_Translucent_NoTitleBar)
+-    }
+-
+-    override fun onCreateView(
+-        inflater: LayoutInflater,
+-        container: ViewGroup?,
+-        savedInstanceState: Bundle?,
+-    ): View = ComposeView(requireContext()).apply {
+-        setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+-        setContent {
+-            SettingsTheme {
+-                SheetContent(
+-                    entries   = _entries,
+-                    isLoading = _isLoading.value,
+-                    onDismiss = { dismissAllowingStateLoss() },
+-                )
+-            }
+-        }
+-    }
+-}
+-
+-// ---------------------------------------------------------------------------
+-// Avatar composable — backed by GithubAvatarLoader, no Coil needed
+-// ---------------------------------------------------------------------------
+-
+-@Composable
+-private fun GithubAvatarImage(
+-    username: String,
+-    modifier: Modifier = Modifier,
+-) {
+-    val context = LocalContext.current
+-    AndroidView(
+-        factory = { ctx ->
+-            ImageView(ctx).apply {
+-                scaleType = ImageView.ScaleType.FIT_CENTER
+-            }
+-        },
+-        update = { imageView ->
+-            if (username.isNotBlank()) {
+-                GithubAvatarLoader.getInstance().loadIntoImageView(context, imageView, username)
+-            }
+-        },
+-        modifier = modifier,
+-    )
+-}
+-
+-// ---------------------------------------------------------------------------
+-// Sheet Compose content
+-// ---------------------------------------------------------------------------
+-
+-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+-@Composable
+-private fun SheetContent(
+-    entries: List<MaintainerUiEntry>,
+-    isLoading: Boolean,
+-    onDismiss: () -> Unit,
+-) {
+-    val context = LocalContext.current
+-    var searchQuery by remember { mutableStateOf("") }
+-
+-    val filtered = remember(searchQuery, entries) {
+-        val q = searchQuery.trim().lowercase()
+-        if (q.isEmpty()) entries
+-        else entries.filter { e ->
+-            e.maintainer.lowercase().contains(q) ||
+-                e.devices.lowercase().contains(q)
+-        }
+-    }
+-
+-    fun openUrl(url: String) {
+-        try {
+-            context.startActivity(
+-                Intent(Intent.ACTION_VIEW, Uri.parse(url))
+-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+-            )
+-        } catch (e: Exception) {
+-            Log.w("CurrentMaintainersSheet", "Cannot open url: $url", e)
+-        }
+-    }
+-
+-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+-
+-    ModalBottomSheet(
+-        onDismissRequest = onDismiss,
+-        // alpha23 no longer pads the sheet for the keyboard itself; alpha16 still does and
+-        // consumes the inset, so this is a no-op until we link alpha23.
+-        modifier = Modifier.imePadding(),
+-        sheetState = sheetState,
+-    ) {
+-        Column(
+-            modifier = Modifier
+-                .fillMaxWidth()
+-                .padding(horizontal = 16.dp),
+-        ) {
+-            Text(
+-                text = stringResource(R.string.about_current_maintainers_title),
+-                style = MaterialTheme.typography.headlineSmallEmphasized,
+-            )
+-
+-            Spacer(modifier = Modifier.height(4.dp))
+-
+-            Text(
+-                text = if (isLoading)
+-                    stringResource(R.string.about_current_maintainers_loading_summary)
+-                else
+-                    stringResource(R.string.about_current_maintainers_sheet_subtitle, entries.size),
+-                style = MaterialTheme.typography.bodyMedium,
+-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+-            )
+-
+-            Spacer(modifier = Modifier.height(16.dp))
+-
+-            AppPickerSearchField(
+-                query = searchQuery,
+-                onQueryChange = { searchQuery = it },
+-                placeholder = stringResource(R.string.about_current_maintainers_search_hint),
+-            )
+-
+-            Spacer(modifier = Modifier.height(12.dp))
+-
+-            when {
+-                isLoading -> {
+-                    Box(
+-                        modifier = Modifier
+-                            .fillMaxWidth()
+-                            .height(300.dp),
+-                        contentAlignment = Alignment.Center,
+-                    ) {
+-                        ContainedLoadingIndicator()
+-                    }
+-                }
+-
+-                filtered.isEmpty() -> {
+-                    Box(
+-                        modifier = Modifier
+-                            .fillMaxWidth()
+-                            .height(200.dp),
+-                        contentAlignment = Alignment.Center,
+-                    ) {
+-                        Text(
+-                            text = if (searchQuery.isNotEmpty())
+-                                stringResource(R.string.about_current_maintainers_no_results)
+-                            else
+-                                stringResource(R.string.about_current_maintainers_empty_title),
+-                            style = MaterialTheme.typography.bodyLarge,
+-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+-                        )
+-                    }
+-                }
+-
+-                else -> {
+-                    val listState = rememberLazyListState()
+-                    LazyColumn(
+-                        state = listState,
+-                        modifier = Modifier
+-                            .fillMaxWidth()
+-                            .height(480.dp)
+-                            .scrollbar(listState.scrollIndicatorState, Orientation.Vertical),
+-                        verticalArrangement = Arrangement.spacedBy(SettingsSpace.extraSmall1),
+-                    ) {
+-                        itemsIndexed(
+-                            filtered,
+-                            key = { _, it -> it.maintainer + "|" + it.github },
+-                        ) { index, entry ->
+-                            MaintainerRow(
+-                                entry = entry,
+-                                index = index,
+-                                count = filtered.size,
+-                                onOpenUrl = ::openUrl,
+-                            )
+-                        }
+-                        item { Spacer(modifier = Modifier.height(24.dp)) }
+-                    }
+-                }
+-            }
+-        }
+-    }
+-}
+-
+-// ---------------------------------------------------------------------------
+-// Per-maintainer row
+-// ---------------------------------------------------------------------------
+-
+-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+-@Composable
+-private fun MaintainerRow(
+-    entry: MaintainerUiEntry,
+-    index: Int,
+-    count: Int,
+-    onOpenUrl: (String) -> Unit,
+-) {
+-    var expanded by remember { mutableStateOf(false) }
+-
+-    val githubUrl  = if (entry.github.isNotBlank()) "https://github.com/${entry.github}" else null
+-    val hasAnyLink = githubUrl != null || entry.donateUrl != null || entry.forumUrls.isNotEmpty()
+-    val scheme = MaterialTheme.colorScheme
+-
+-    SegmentedListItem(
+-        onClick = { if (hasAnyLink) expanded = !expanded },
+-        shapes = expressiveRowShapes(index = index, count = count),
+-        modifier = Modifier
+-            .fillMaxWidth()
+-            .insetFocusRing(expressiveRowShapes(index = index, count = count).shape)
+-            .animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()),
+-        colors = ListItemDefaults.colors(
+-            containerColor = if (expanded) scheme.primaryContainer else scheme.surfaceBright,
+-            contentColor = if (expanded) scheme.onPrimaryContainer else scheme.onSurface,
+-            supportingContentColor =
+-                if (expanded) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+-        ),
+-        verticalAlignment = Alignment.CenterVertically,
+-        leadingContent = {
+-            Box(
+-                modifier = Modifier
+-                    .size(44.dp)
+-                    .clip(CircleShape)
+-                    .background(scheme.surfaceVariant),
+-                contentAlignment = Alignment.Center,
+-            ) {
+-                if (entry.github.isNotBlank()) {
+-                    GithubAvatarImage(
+-                        username = entry.github,
+-                        modifier = Modifier
+-                            .size(44.dp)
+-                            .clip(CircleShape),
+-                    )
+-                } else {
+-                    Text(
+-                        text = entry.maintainer.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+-                        style = MaterialTheme.typography.titleMediumEmphasized,
+-                        color = scheme.onSurfaceVariant,
+-                    )
+-                }
+-            }
+-        },
+-        supportingContent = {
+-            Column {
+-                if (entry.devices.isNotBlank()) {
+-                    Text(
+-                        text = entry.devices,
+-                        style = MaterialTheme.typography.bodySmall,
+-                        maxLines = if (expanded) Int.MAX_VALUE else 2,
+-                        overflow = TextOverflow.Ellipsis,
+-                    )
+-                }
+-                AnimatedVisibility(
+-                    visible = expanded,
+-                    enter = fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()) +
+-                            expandVertically(MaterialTheme.motionScheme.defaultSpatialSpec()),
+-                    exit  = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) +
+-                            shrinkVertically(MaterialTheme.motionScheme.fastSpatialSpec()),
+-                ) {
+-                    FlowRow(
+-                        modifier = Modifier
+-                            .fillMaxWidth()
+-                            .padding(top = 10.dp),
+-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+-                        verticalArrangement   = Arrangement.spacedBy(8.dp),
+-                    ) {
+-                        if (githubUrl != null) {
+-                            LinkButton(
+-                                label   = stringResource(R.string.maintainer_link_github),
+-                                iconRes = R.drawable.ic_github_2,
+-                                onClick = { onOpenUrl(githubUrl) },
+-                            )
+-                        }
+-                        if (entry.donateUrl != null) {
+-                            LinkButton(
+-                                label   = stringResource(R.string.maintainer_link_donate),
+-                                iconRes = R.drawable.ic_donate,
+-                                onClick = { onOpenUrl(entry.donateUrl) },
+-                            )
+-                        }
+-                        if (entry.forumUrls.size == 1) {
+-                            LinkButton(
+-                                label   = stringResource(R.string.maintainer_link_forum),
+-                                iconRes = R.drawable.ic_forum,
+-                                onClick = { onOpenUrl(entry.forumUrls[0].second) },
+-                            )
+-                        } else if (entry.forumUrls.size > 1) {
+-                            entry.forumUrls.forEach { (deviceLabel, url) ->
+-                                LinkButton(
+-                                    label   = deviceLabel,
+-                                    iconRes = R.drawable.ic_forum,
+-                                    onClick = { onOpenUrl(url) },
+-                                )
+-                            }
+-                        }
+-                    }
+-                }
+-            }
+-        },
+-        content = {
+-            Text(
+-                text = entry.maintainer,
+-                style = MaterialTheme.typography.bodyLargeEmphasized,
+-                maxLines = 1,
+-                overflow = TextOverflow.Ellipsis,
+-            )
+-        },
+-    )
+-}
+-
+-// ---------------------------------------------------------------------------
+-// Tonal button for GitHub / Donate / Forum
+-// ---------------------------------------------------------------------------
+-
+-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+-@Composable
+-private fun LinkButton(
+-    label: String,
+-    iconRes: Int,
+-    onClick: () -> Unit,
+-) {
+-    val height = ButtonDefaults.MinHeight
+-    FilledTonalButton(
+-        onClick = onClick,
+-        modifier = Modifier.insetFocusRing(CircleShape, ringHeight = height),
+-        shapes = expressiveButtonShapes(),
+-        contentPadding = ButtonDefaults.contentPaddingFor(height, hasStartIcon = true),
+-    ) {
+-        Icon(
+-            painter = painterResource(iconRes),
+-            contentDescription = null,
+-            modifier = Modifier.size(ButtonDefaults.iconSizeFor(height)),
+-        )
+-        Spacer(modifier = Modifier.width(ButtonDefaults.iconSpacingFor(height)))
+-        Text(text = label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+-    }
+-}
+-- 
+2.43.0
+
