@@ -14,9 +14,10 @@
 # Only ksud writes ksud's state. Each one-time step has its own marker in /data/adb/eos, is
 # tried on at most three boots, and is never repeated once done, so nothing the user turns
 # off or removes later comes back; pending goes only when both steps are done or out of
-# tries. The provider is never installed over a Zygisk already there (the user's own, or a
-# NeoZygisk they updated). A /data that has booted Android before (an older build, or a
-# no-root user an OTA rooted) gets ksud and nothing else. What happened is in /data/adb/eos/log.
+# tries. The provider is never installed over a Zygisk already there (the user's own, a
+# NeoZygisk they updated, or one turned off), nor in safe mode. A /data that has booted
+# Android before (an older build, or a no-root user an OTA rooted) gets ksud and nothing
+# else. What happened is in /data/adb/eos/log.
 set -u
 umask 022                    # init starts services with umask 077; ksud's own su shell uses 022
 KSUD=/product/app/KernelSUNext/lib/arm64/libksud.so
@@ -36,14 +37,18 @@ try() {   # try <step>: count one more try of it; false once it has had three
     echo $((t + 1)) > "$S/$1.tries"
 }
 over() { [ -e "$S/$1.done" ] || [ "$(tries "$1")" -ge 3 ]; }
-zygisk_there() {   # a Zygisk is installed, or waits in modules_update, other than our own earlier try
+zygisk_there() {   # a Zygisk is installed, or waits in modules_update, other than what an unfinished try of ours left
     for m in /data/adb/modules/*/module.prop /data/adb/modules_update/*/module.prop; do
         [ -f "$m" ] || continue
-        case "$(sed -n 's/^id=//p' "$m")" in zygisksu|rezygisk) ;; *) continue ;; esac
-        # After a try of ours failed, the NeoZygisk it left may be installed again: ksud moves
-        # a half-done modules_update/zygisksu into modules/ at the next post-fs-data, before
-        # this script runs
-        if [ "$(tries provider)" -ge 1 ] && [ "$(sed -n 's/^name=//p' "$m")" = NeoZygisk ] \
+        id=$(sed -n 's/^id=//p' "$m")
+        case "$id" in zygisksu|rezygisk) ;; *) continue ;; esac
+        # provider.trying: a try of ours failed or was cut off after it began writing the
+        # module, so that NeoZygisk is ours to finish (ksud moves a half-done
+        # modules_update/zygisksu into modules/ at the next post-fs-data, before this runs).
+        # Not once it's turned off: safe mode and the manager's switch leave a disable file,
+        # which an install would remove
+        if [ -e "$S/provider.trying" ] && [ ! -e "/data/adb/modules/$id/disable" ] \
+            && [ "$(sed -n 's/^name=//p' "$m")" = NeoZygisk ] \
             && [ "$(sed -n 's/^versionCode=//p' "$m")" = "$ZYGISK_CODE" ]; then
             continue
         fi
@@ -73,18 +78,26 @@ post-fs-data)
 boot-completed)
     [ -e "$S/pending" ] || exit 0
     if ! over provider; then
-        if zygisk_there; then
-            : > "$S/provider.done"; log provider "a Zygisk is already installed: NeoZygisk not installed"
+        # Safe mode turned every module off (ksud checks the same properties): a later boot tries
+        if [ "$(getprop ro.sys.safemode)" = 1 ] || [ "$(getprop persist.sys.safemode)" = 1 ]; then
+            log provider "safe mode: not tried on this boot"
+        elif zygisk_there; then
+            : > "$S/provider.done"; log provider "a Zygisk is already there (installed, waiting or turned off): NeoZygisk not installed"
         elif [ ! -f "$ZIP" ]; then
             : > "$S/provider.done"; log provider "no $ZIP"
         elif try provider; then
+            # Stays while what this try leaves is the only NeoZygisk there (see zygisk_there)
+            : > "$S/provider.trying"
             if "$KSUD" module install "$ZIP"; then : > "$S/provider.done"; log provider "NeoZygisk installed (active from the next boot)"
-            else log provider "install failed (try $(tries provider) of 3)"; fi
+            else
+                [ -e /data/adb/modules_update/zygisksu ] || [ -e /data/adb/modules/zygisksu ] || rm -f "$S/provider.trying"
+                log provider "install failed (try $(tries provider) of 3)"
+            fi
         fi
     fi
     if over susfs && over provider; then
         : > "$S/done"
-        rm -f "$S/pending"
+        rm -f "$S/pending" "$S/provider.trying"
     fi
     ;;
 esac
