@@ -2,10 +2,11 @@
 # The make part of an ExpressiveOS cheetah build with KernelSU Next. tools/eos-images.sh
 # runs it after prepare.sh, the key checks and the kits; run alone, it builds what the
 # tree already has. lunch, build_kernel, our kernelsu.ko (ksu-module.sh), then two passes:
-# pass 1 builds everything with the stock init_boot, cheetah-ksu.sh patches that
-# init_boot, and pass 2 rebuilds with CHEETAH_KSU_INIT_BOOT
-# (patches/device_google_pantah/0102), so only init_boot, vbmeta, target-files and the
-# signed OTA are redone. Pass 2 must ship the patched init_boot (ksu-check.sh images).
+# pass 1 builds only the images cheetah-ksu.sh reads (boot, init_boot and
+# vendor_kernel_boot, whose ramdisk holds the first-stage modules) with the stock
+# init_boot, cheetah-ksu.sh patches that init_boot, and pass 2 builds everything with
+# CHEETAH_KSU_INIT_BOOT (patches/device_google_pantah/0102). Pass 2 must ship the
+# patched init_boot (ksu-check.sh images).
 # The last line is MAKE_EXIT=0 or MAKE_EXIT=1.
 #
 #   ksu-images.sh [top]                  # default ~/expressiveos; lunch target EOS_LUNCH (eos.conf)
@@ -71,9 +72,10 @@ pkgs
 rm -f -- out/ksu/init_boot-ksu.img out/ksu/init_boot-stock.img
 unset CHEETAH_KSU_INIT_BOOT
 echo "== make pass 1 (stock init_boot), BUILD_DATETIME $BUILD_DATETIME"
-m -j"$(nproc)" evolution || fail "make pass 1 failed"
-# Pass 1's package carries the stock init_boot: it must never be taken for the release
-pkgs
+# Only what cheetah-ksu.sh reads, not all of evolution: CHEETAH_KSU_INIT_BOOT changes the
+# board config, so pass 2 runs Soong and Kati again and packages everything anyway. A full
+# pass 1 only added a second packaging run and an OTA zip (about 5 minutes) to throw away.
+m -j"$(nproc)" bootimage initbootimage vendorkernelbootimage || fail "make pass 1 failed"
 "$here/tools/cheetah-ksu.sh" "$top" || fail "cheetah-ksu.sh failed"
 export CHEETAH_KSU_INIT_BOOT=out/ksu/init_boot-ksu.img
 echo "== make pass 2 (KernelSU Next init_boot)"
