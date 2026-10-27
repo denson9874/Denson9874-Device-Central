@@ -152,9 +152,6 @@ ue=$O/system/bin/update_engine
 [[ -f $ue ]] || fail "no $ue"
 ! grep -aqF 'Payload signature verification skipped' "$ue" || fail "$ue still skips payload signatures (patches/system_update_engine 0001)"
 grep -aqF ' signatures is correct. Expected hash before padding:' "$ue" || fail "$ue has no payload signature check (patches/system_update_engine 0001)"
-# Only for README's on-phone check of 0001 (a user build doesn't install it): a copy left
-# in out/ by m update_engine_client would ship in system.img
-[[ ! -e $O/system/bin/update_engine_client ]] || echo "WARNING: $O/system/bin/update_engine_client is in system.img: if m update_engine_client left it there (README, \"Not done yet\"), delete it and build again"
 ue_checks="payload signatures"
 if compgen -G "$kit/patches/system_update_engine/0002-*.patch" > /dev/null; then
     grep -aqF ro.ota.allow_downgrade "$ue" || fail "$ue installs older builds (patches/system_update_engine 0002)"

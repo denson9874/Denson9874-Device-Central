@@ -221,10 +221,11 @@ too. An older release's can go once its `.uploaded` marker is there.
   `update_engine_client --verify` must refuse an Evolution X cheetah OTA's metadata
   (`kDownloadMetadataSignatureMismatch`) and take ExpressiveOS's ("Payload is applicable"). It writes
   no partition; root comes from KernelSU Next. A user build doesn't install `update_engine_client`, so
-  build it in the same tree (`m update_engine_client`), copy
-  `out/target/product/cheetah/system/bin/update_engine_client` out and delete it there, so the next
-  system.img doesn't ship it (`eos-verify.sh` warns about a build that has it). Run each OTA's metadata in
-  turn (the remote command is quoted once, so `su` covers all of it):
+  build it in the same tree (`m update_engine_client`) and copy
+  `out/target/product/cheetah/system/bin/update_engine_client` out. Then delete it there, to keep out/'s
+  system folder as the build made it (no rebuild: system.img packs only the build's own file list, so it
+  never held it). Run each OTA's metadata in turn (the remote command is quoted once, so `su` covers all
+  of it):
 
   ```bash
   python3 -I -c 'import sys,struct,zipfile; f=zipfile.ZipFile(sys.argv[1]).open("payload.bin"); h=f.read(24); _,_,m,s=struct.unpack(">4sQQI",h); open(sys.argv[2],"wb").write(h+f.read(m+s))' <ota.zip> meta.bin

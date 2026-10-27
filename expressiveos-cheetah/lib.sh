@@ -79,18 +79,28 @@ subject_of() {   # subject_of <patch>: its Subject:, folded lines joined, [PATCH
 }
 
 am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local commit (git am --3way), unless its subject is in the log
-    local d=$1 label=$2 patch subject before log
+    local d=$1 label=$2 patch subject before log h want have
     shift 2
     project_ok "$d"
     git -C "$d" var GIT_COMMITTER_IDENT >/dev/null || fail "git has no user.name/user.email here; git am needs one"
-    # One git log per project: frameworks/base has over a million commits
+    # One git log per project: frameworks/base has over a million commits. Each line is the
+    # commit's hash, a tab and its subject
     log=$(mktemp "${TMPDIR:-/tmp}/eos-log.XXXXXX")
-    git -C "$d" log --format=%s > "$log" || { rm -f -- "$log"; fail "can't read ${d#"$top"/}'s log"; }
+    git -C "$d" log --format='%H%x09%s' > "$log" || { rm -f -- "$log"; fail "can't read ${d#"$top"/}'s log"; }
     for patch in "$@"; do
         subject=$(subject_of "$patch")
         [[ -n "$subject" ]] || { rm -f -- "$log"; fail "no Subject: in $patch"; }
-        if grep -xF -- "$subject" "$log" >/dev/null; then
+        h=$(S=$subject awk '{ if (substr($0, 42) == ENVIRON["S"]) { print substr($0, 1, 40); exit } }' "$log")
+        if [[ -n "$h" ]]; then
             echo "already applied: $label: $subject"
+            # A kit patch changed in place keeps its subject: the tree then has the older
+            # version, until a repo sync of the project drops it and this applies the new one
+            want=$(git patch-id --stable < "$patch" | cut -d' ' -f1) || want=
+            # (the diff options fixed, so git config can't change it: format-patch's defaults)
+            have=$( { git -C "$d" show --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ -M -U3 "$h" \
+                | git patch-id --stable | cut -d' ' -f1; } 2>/dev/null) || have=
+            [[ -z "$want" || -z "$have" || "$want" = "$have" ]] \
+                || echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change (an older version of the patch?): repo sync -d ${d#"$top"/}, then run apply.sh again to take the kit's"
             continue
         fi
         before=$(git -C "$d" rev-parse HEAD)
@@ -102,7 +112,7 @@ am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local co
                 rm -f -- "$log"
                 fail "$label: git am made no commit for ${patch##*/}: the project already has that change under another subject (did Evolution X take it?). Check, then drop the patch from the kit"
             }
-            printf '%s\n' "$subject" >> "$log"
+            printf '%s\t%s\n' "$(git -C "$d" rev-parse HEAD)" "$subject" >> "$log"
             echo "applied: $label: $subject"
         else
             rm -f -- "$log"
