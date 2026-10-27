@@ -6,6 +6,9 @@
 # against ksu.conf and by tools/zygisk-zip.py (never run), and its source at
 # zygisk_src_commit with the LSPlt submodule, for the licences and the GPL source offer.
 # Run it after changing ksu.conf; apply-ksu.sh and the tools/ scripts use the result.
+# eos-images.sh runs it before every build: what's already here and matches ksu.conf is only
+# checked, so a build needs GitHub only for something new in ksu.conf, and for KernelSU
+# Next's current risk rules (a note, not a failure, when GitHub doesn't answer).
 #
 #   fetch-ksu.sh
 set -euo pipefail
@@ -50,7 +53,8 @@ src_url=$(get src_url); src_commit=$(get src_commit)
 [[ "$src_url" == https://github.com/KernelSU-Next/KernelSU-Next.git && "$src_commit" =~ ^[0-9a-f]{40}$ ]] \
     || { echo "ksu.conf: src_url must be KernelSU-Next's repo and src_commit a full commit hash" >&2; exit 1; }
 [[ -d "$dir/src/.git" ]] || git clone -q --filter=blob:none "$src_url" "$dir/src"
-git -C "$dir/src" fetch -q --tags origin
+# Fetched only while the tag isn't here: a tag upstream moves later can't fail a build
+git -C "$dir/src" rev-parse -q --verify "refs/tags/$version^{commit}" > /dev/null || git -C "$dir/src" fetch -q --tags origin
 tag=$(git -C "$dir/src" rev-parse "refs/tags/$version^{commit}")
 [[ "$tag" == "$src_commit" ]] || { echo "FAIL: tag $version is $tag, ksu.conf wants $src_commit" >&2; exit 1; }
 git -C "$dir/src" reset -q --hard
@@ -85,18 +89,28 @@ echo "OK: zygisk $zv ($have)"
 # a network fetches when it installs (a match stops the first-boot install)
 python3 -I "$here/tools/zygisk-zip.py" "$zip" "$zid" "$zcode" "$dir/src/risk/risk.json" \
     || { echo "FAIL: $zip doesn't pass tools/zygisk-zip.py" >&2; exit 1; }
-if curl -fsSL --retry 3 -o "$zdir/risk-remote.json" https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/risk/risk/risk.json; then
-    python3 -I "$here/tools/zygisk-zip.py" "$zip" "$zid" "$zcode" "$zdir/risk-remote.json" | tail -2 | head -1
-    python3 -I "$here/tools/zygisk-zip.py" "$zip" "$zid" "$zcode" "$zdir/risk-remote.json" > /dev/null \
-        || { echo "FAIL: KernelSU Next's current risk rules flag $zip: a phone online at first boot won't install it" >&2; exit 1; }
+if curl -fsSL --retry 3 -o "$zdir/risk-remote.json.part" https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/risk/risk/risk.json; then
+    rc=0
+    python3 -I "$here/tools/zygisk-zip.py" "$zip" "$zid" "$zcode" "$zdir/risk-remote.json.part" > "$zdir/risk-remote.log" || rc=$?
+    case $rc in
+    0)  mv -- "$zdir/risk-remote.json.part" "$zdir/risk-remote.json"
+        grep '^OK: no KernelSU' "$zdir/risk-remote.log" || true ;;
+    2)  # ksud on the phone throws away a catalog it can't parse too
+        echo "note: KernelSU Next's current risk rules aren't a catalog ($(sed -n 's/^FAIL: //p' "$zdir/risk-remote.log" | head -1)); checked the built-in ones only" ;;
+    *)  grep '^FAIL' "$zdir/risk-remote.log" >&2 || true
+        echo "FAIL: KernelSU Next's current risk rules flag $zip: a phone online at first boot won't install it" >&2
+        exit 1 ;;
+    esac
+    rm -f -- "$zdir/risk-remote.json.part"
 else
+    rm -f -- "$zdir/risk-remote.json.part"
     echo "note: couldn't fetch KernelSU Next's current risk rules; checked the built-in ones only"
 fi
 zsrc_url=$(get zygisk_src_url); zsrc=$(get zygisk_src_commit); zlsplt=$(get zygisk_lsplt_commit)
 [[ "$zsrc_url" == https://github.com/JingMatrix/NeoZygisk.git && "$zsrc" =~ ^[0-9a-f]{40}$ && "$zlsplt" =~ ^[0-9a-f]{40}$ ]] \
     || { echo "ksu.conf: zygisk_src_url must be NeoZygisk's repo, zygisk_src_commit and zygisk_lsplt_commit full commit hashes" >&2; exit 1; }
 [[ -d "$zdir/src/.git" ]] || git clone -q --filter=blob:none "$zsrc_url" "$zdir/src"
-git -C "$zdir/src" fetch -q --tags origin
+git -C "$zdir/src" rev-parse -q --verify "refs/tags/$zv^{commit}" > /dev/null || git -C "$zdir/src" fetch -q --tags origin
 tag=$(git -C "$zdir/src" rev-parse "refs/tags/$zv^{commit}")
 [[ "$tag" == "$zsrc" ]] || { echo "FAIL: NeoZygisk's tag $zv is $tag, ksu.conf wants $zsrc" >&2; exit 1; }
 git -C "$zdir/src" reset -q --hard
