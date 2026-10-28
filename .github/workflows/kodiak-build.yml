@@ -67,6 +67,12 @@
 # ones, plus a backup archive on the server (mode 600) for copying off it by scp; its
 # log shows counts, sizes and public fingerprints, never key material.
 #
+# expressiveos-pins (read-only) prints the exact upstream commit every project of the
+# ExpressiveOS tree was synced to (repo's m/<manifest branch>, not HEAD: HEAD carries the
+# kit's local commits), as a repo manifest, plus the kernel tree's manifest and which Git
+# LFS files the tree holds. Those commits are what ExpressiveOS's own sources start from;
+# commit SHAs and file names only, never file contents.
+#
 # Never add an upload-artifact step: build output contains Google's
 # proprietary images, which must not leave the server. Logs only. `inspect`
 # prints policy excerpts, manifests and library lists, never file contents
@@ -123,6 +129,8 @@ on:
           sessions, logs, keys and build. expressiveos-setup: install tree_ref's
           expressiveos-cheetah, then setup.sh and ksu/fetch-ksu.sh in tmux.
           expressiveos-keys: make ExpressiveOS's keys (once) and a backup archive.
+          expressiveos-pins: read-only: the upstream commit of every project in the
+          ExpressiveOS tree, as a manifest, plus its kernel tree and LFS files.
           expressiveos-build: install the kit, then eos-images.sh and eos-pack.sh in
           tmux. expressiveos-pack: install the kit, then eos-pack.sh in tmux.
         type: choice
@@ -156,6 +164,7 @@ on:
           - server-cleanup-list
           - server-cleanup
           - expressiveos-status
+          - expressiveos-pins
           - expressiveos-setup
           - expressiveos-keys
           - expressiveos-build
@@ -218,7 +227,7 @@ jobs:
           # expressiveos-keys (two minutes of openssl in that tree)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins|expressiveos-setup|expressiveos-keys)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -230,7 +239,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -955,6 +964,74 @@ jobs:
             [[ -z $w ]] || { echo "-- the kit's WARNING lines (times seen, line)"; echo "$w"; }
             echo "-- last lines"
             tail -c 200000 "$log" | tr '\r' '\n' | grep -av '^[[:space:]]*$' | tail -n 15 | cut -c1-300 || true
+          done
+
+      - name: ExpressiveOS pins (read-only)
+        if: inputs.action == 'expressiveos-pins'
+        run: |
+          top=~/expressiveos
+          [[ -d $top/.repo ]] || { echo "::error::no ExpressiveOS tree in ~/expressiveos"; exit 1; }
+          export PATH=~/bin:$PATH
+          cd "$top"
+          branch=$(git -C .repo/manifests config --get branch.default.merge || true)
+          branch=${branch#refs/heads/}
+          [[ -n $branch ]] || { echo "::error::can't tell the tree's manifest branch"; exit 1; }
+          echo "== tree: manifest $(git -C .repo/manifests config --get remote.origin.url) branch $branch at $(git -C .repo/manifests rev-parse --short HEAD), last sync $(date -r .repo/.repo_fetchtimes.json '+%F %T %Z' 2>/dev/null || echo '?')"
+          work=$(mktemp -d)
+          trap 'rm -rf "$work"' EXIT
+          repo manifest -r -o "$work/head.xml" >/dev/null
+          # m/<branch> is the revision repo synced each project to; HEAD also has the kit's commits
+          repo list -p > "$work/paths"
+          : > "$work/revs"
+          while IFS= read -r p; do
+            m=$(git -C "$p" rev-parse --verify -q "refs/remotes/m/$branch^{commit}" || echo missing)
+            h=$(git -C "$p" rev-parse --verify -q 'HEAD^{commit}' || echo missing)
+            n=0; [[ $m = missing || $h = missing || $m = "$h" ]] || n=$(git -C "$p" rev-list --count "$m..$h" 2>/dev/null || echo '?')
+            echo "$p $m $h $n" >> "$work/revs"
+          done < "$work/paths"
+          echo "projects: $(wc -l < "$work/revs"), missing m/$branch: $(grep -c ' missing ' "$work/revs" || true)"
+          echo "== projects whose HEAD isn't the synced commit (path, synced, HEAD, local commits on top)"
+          awk '$2 != $3' "$work/revs"
+          python3 - "$work/head.xml" "$work/revs" "$work/pins.xml" <<'EOF'
+          import sys, xml.etree.ElementTree as ET
+          head, revs, out = sys.argv[1:]
+          m = {}
+          for line in open(revs):
+              p, syn, _h, _n = line.split()
+              m[p] = syn
+          tree = ET.parse(head)
+          bad = []
+          for e in tree.getroot().iter('project'):
+              p = e.get('path') or e.get('name')
+              syn = m.get(p, 'missing')
+              if syn == 'missing':
+                  bad.append(p)
+              else:
+                  e.set('revision', syn)
+          tree.write(out, encoding='UTF-8', xml_declaration=True)
+          print('pins written: %d projects, %d without a synced commit: %s' % (len(m), len(bad), ' '.join(bad)))
+          EOF
+          echo "== pins.xml sha256 $(sha256sum < "$work/pins.xml" | cut -d' ' -f1)"
+          echo "----- BEGIN pins.xml -----"
+          cat "$work/pins.xml"; echo
+          echo "----- END pins.xml -----"
+          k=$top/out-kernel/google/gs-6.1
+          if [[ -d $k/.repo ]]; then
+            echo "== kernel tree: $(git -C "$k/.repo/manifests" config --get remote.origin.url) $(git -C "$k/.repo/manifests" config --get branch.default.merge)"
+            (cd "$k" && repo manifest -r -o "$work/kernel.xml" >/dev/null && repo status 2>/dev/null | head -20 || true)
+            echo "----- BEGIN kernel.xml -----"
+            cat "$work/kernel.xml"; echo
+            echo "----- END kernel.xml -----"
+          else
+            echo "== no kernel tree in out-kernel/google/gs-6.1"
+          fi
+          # Git LFS: which big files the tree holds (* = downloaded, - = pointer only)
+          for p in vendor/google/cheetah vendor/gms; do
+            [[ -d $p ]] || continue
+            echo "== LFS in $p ($(git -C "$p" config --get lfs.url || git -C "$p" config -f .lfsconfig --get lfs.url 2>/dev/null || echo 'no lfs.url'))"
+            git -C "$p" lfs ls-files -l 2>/dev/null | awk '{print $2}' | sort | uniq -c || true
+            git -C "$p" lfs ls-files -s 2>/dev/null | head -20 || true
+            echo "objects in .git/lfs: $(find "$(git -C "$p" rev-parse --git-common-dir)/lfs/objects" -type f 2>/dev/null | wc -l), $(du -sh "$(git -C "$p" rev-parse --git-common-dir)/lfs" 2>/dev/null | cut -f1)"
           done
 
       - name: Check out expressiveos-cheetah
