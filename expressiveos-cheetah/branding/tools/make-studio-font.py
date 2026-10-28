@@ -5,10 +5,10 @@ usage: make-studio-font.py FONT.ttf OUT.ttf
 
 FONT.ttf is the variable Google Sans Flex (googlesansflex_variable.ttf, see README.md). OUT.ttf is
 a static font: bold (wght 700, the one weight Studio sets it in) with its rounded terminals
-(ROND 100), text optical size (opsz 18), normal width and grade, upright, and only Latin, the
-punctuation Studio's strings use and the euro and trademark signs. Static, so no text engine has
-to apply variation settings to get the weight. It goes to the Evolver's
-res/font/google_sans_flex_rounded_bold.ttf.
+(ROND 100), text optical size (opsz 18), normal width and grade, upright, and only Latin (with
+Vietnamese and the combining accents), the punctuation Studio's strings use and the euro and
+trademark signs. Static, so no text engine has to apply variation settings to get the weight. It
+goes to the Evolver's res/font/google_sans_flex_rounded_bold.ttf.
 
 Needs fonttools. Google Sans Flex is under the SIL Open Font License 1.1, with no Reserved Font
 Name; its copyright and licence stay in the cut font's name table, and the licence's text goes with
@@ -22,7 +22,9 @@ from fontTools.varLib import instancer
 
 UNICODES = (
     list(range(0x20, 0x7F))          # ASCII
-    + list(range(0xA0, 0x180))       # Latin-1 Supplement, Latin Extended-A
+    + list(range(0xA0, 0x250))       # Latin-1 Supplement, Latin Extended-A and -B
+    + list(range(0x300, 0x370))      # Combining Diacritical Marks
+    + list(range(0x1E00, 0x1F00))    # Latin Extended Additional (Vietnamese)
     + [0x2013, 0x2014, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2026, 0x20AC, 0x2122]
 )
 FEATURES = ["kern", "liga", "calt", "tnum", "pnum", "lnum", "ccmp", "locl", "mark", "mkmk"]
@@ -35,7 +37,7 @@ def main():
     ap.add_argument("out")
     a = ap.parse_args()
 
-    # Subset first: instancing the whole font fails (KeyError 'l.logo', fontTools 4.x)
+    # Subset, then instance: the order README.md's sha256 was made with
     # The source's timestamp, not today's, so the same font always gives the same file
     f = TTFont(a.font, lazy=False, recalcTimestamp=False)
     opts = subset.Options()
