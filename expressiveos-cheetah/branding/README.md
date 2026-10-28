@@ -69,3 +69,20 @@ brandenv/bin/python tools/make-brand.py logo.png googlesansflex_variable.ttf out
 The same inputs give the same text files; PNGs can differ by a few pixels with other cairo or Pillow
 versions. To change the artwork, regenerate, copy the outputs into the clones of the projects at the
 server's revisions, commit there and export the patches again (`git format-patch -N --binary`).
+
+## Expressive Studio's font
+
+Expressive Studio's home and lock screen header (`packages_apps_Evolver` 0005, 0006) set their titles and
+clock in Google Sans Flex with its rounded terminals. `tools/make-studio-font.py` cuts it from the same
+variable font as above: ROND 100, opsz 18, normal width and grade, upright, weights 400 to 800 still
+variable, Latin only.
+
+```bash
+brandenv/bin/python tools/make-studio-font.py googlesansflex_variable.ttf google_sans_flex_rounded.ttf
+```
+
+It gives the Evolver's `res/font/google_sans_flex_rounded.ttf` byte for byte (128,848 bytes, sha256
+`9bf5c2f31634ab31368c1324dbd499fdddea830f55dd0df5ba3bb43217759214`, with fontTools 4.68). Google Sans Flex
+is under the SIL Open Font License 1.1, with no Reserved Font Name: the cut font keeps its copyright and
+licence in its name table, and 0005 adds the licence's text as the Evolver's
+`licenses/GoogleSansFlex-OFL.txt`.

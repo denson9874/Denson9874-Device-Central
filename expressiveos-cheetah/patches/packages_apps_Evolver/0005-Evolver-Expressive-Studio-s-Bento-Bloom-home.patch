@@ -1,0 +1,2496 @@
+From bd07e875448830b416f7f7e0a94436ed61dfeb01 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Wed, 28 Oct 2026 08:50:48 +0000
+Subject: [PATCH] Evolver: Expressive Studio's Bento Bloom home
+
+Draw Expressive Studio's home in ExpressiveOS's Bloom colours, as the
+bento layout picked for it: the lock screen as it is now (its wallpaper
+and clock face) beside the themes and wallpaper tiles, then the colours
+and fonts tiles, the clock styles and what's new cards, and a grid of
+the other sections, each on its petal's colour.
+
+The tiles open the pages the screen's rows open, through the rows
+themselves, so launches, titles and metrics stay as they were. The rows
+stay in the screen, hidden, for search.
+
+The display face is Google Sans Flex with rounded terminals, cut down to
+Latin (OFL 1.1, licenses/GoogleSansFlex-OFL.txt).
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ licenses/GoogleSansFlex-OFL.txt               |  95 +++
+ res/drawable/studio_bloom_mark.xml            |  24 +
+ res/font/google_sans_flex_rounded.ttf         | Bin 0 -> 128848 bytes
+ res/layout/studio_compose.xml                 |  11 +
+ res/values/studio_strings.xml                 |  19 +
+ res/xml/evolution_settings.xml                |  39 +-
+ .../evolution/settings/EvolutionSettings.java |  10 +
+ src/org/evolution/settings/studio/Bloom.kt    | 146 +++++
+ .../settings/studio/LockScreenPreview.kt      | 278 +++++++++
+ .../settings/studio/StudioActions.kt          |  90 +++
+ .../evolution/settings/studio/StudioHome.kt   | 545 ++++++++++++++++++
+ 11 files changed, 1256 insertions(+), 1 deletion(-)
+ create mode 100644 licenses/GoogleSansFlex-OFL.txt
+ create mode 100644 res/drawable/studio_bloom_mark.xml
+ create mode 100644 res/font/google_sans_flex_rounded.ttf
+ create mode 100644 res/layout/studio_compose.xml
+ create mode 100644 res/values/studio_strings.xml
+ create mode 100644 src/org/evolution/settings/studio/Bloom.kt
+ create mode 100644 src/org/evolution/settings/studio/LockScreenPreview.kt
+ create mode 100644 src/org/evolution/settings/studio/StudioActions.kt
+ create mode 100644 src/org/evolution/settings/studio/StudioHome.kt
+
+diff --git a/licenses/GoogleSansFlex-OFL.txt b/licenses/GoogleSansFlex-OFL.txt
+new file mode 100644
+index 0000000..cbacf72
+--- /dev/null
++++ b/licenses/GoogleSansFlex-OFL.txt
+@@ -0,0 +1,95 @@
++Copyright 2015 Google LLC. All Rights Reserved.
++
++Copyright 2022 The Google Sans Flex Project Authors (github.com/googlefonts/googlesans-flex)
++
++This Font Software is licensed under the SIL Open Font License, Version 1.1.
++This license is copied below, and is also available with a FAQ at:
++https://openfontlicense.org
++
++
++-----------------------------------------------------------
++SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
++-----------------------------------------------------------
++
++PREAMBLE
++The goals of the Open Font License (OFL) are to stimulate worldwide
++development of collaborative font projects, to support the font creation
++efforts of academic and linguistic communities, and to provide a free and
++open framework in which fonts may be shared and improved in partnership
++with others.
++
++The OFL allows the licensed fonts to be used, studied, modified and
++redistributed freely as long as they are not sold by themselves. The
++fonts, including any derivative works, can be bundled, embedded, 
++redistributed and/or sold with any software provided that any reserved
++names are not used by derivative works. The fonts and derivatives,
++however, cannot be released under any other type of license. The
++requirement for fonts to remain under this license does not apply
++to any document created using the fonts or their derivatives.
++
++DEFINITIONS
++"Font Software" refers to the set of files released by the Copyright
++Holder(s) under this license and clearly marked as such. This may
++include source files, build scripts and documentation.
++
++"Reserved Font Name" refers to any names specified as such after the
++copyright statement(s).
++
++"Original Version" refers to the collection of Font Software components as
++distributed by the Copyright Holder(s).
++
++"Modified Version" refers to any derivative made by adding to, deleting,
++or substituting -- in part or in whole -- any of the components of the
++Original Version, by changing formats or by porting the Font Software to a
++new environment.
++
++"Author" refers to any designer, engineer, programmer, technical
++writer or other person who contributed to the Font Software.
++
++PERMISSION & CONDITIONS
++Permission is hereby granted, free of charge, to any person obtaining
++a copy of the Font Software, to use, study, copy, merge, embed, modify,
++redistribute, and sell modified and unmodified copies of the Font
++Software, subject to the following conditions:
++
++1) Neither the Font Software nor any of its individual components,
++in Original or Modified Versions, may be sold by itself.
++
++2) Original or Modified Versions of the Font Software may be bundled,
++redistributed and/or sold with any software, provided that each copy
++contains the above copyright notice and this license. These can be
++included either as stand-alone text files, human-readable headers or
++in the appropriate machine-readable metadata fields within text or
++binary files as long as those fields can be easily viewed by the user.
++
++3) No Modified Version of the Font Software may use the Reserved Font
++Name(s) unless explicit written permission is granted by the corresponding
++Copyright Holder. This restriction only applies to the primary font name as
++presented to the users.
++
++4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
++Software shall not be used to promote, endorse or advertise any
++Modified Version, except to acknowledge the contribution(s) of the
++Copyright Holder(s) and the Author(s) or with their explicit written
++permission.
++
++5) The Font Software, modified or unmodified, in part or in whole,
++must be distributed entirely under this license, and must not be
++distributed under any other license. The requirement for fonts to
++remain under this license does not apply to any document created
++using the Font Software.
++
++TERMINATION
++This license becomes null and void if any of the above conditions are
++not met.
++
++DISCLAIMER
++THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
++MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
++OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
++COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
++INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
++DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
++FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
++OTHER DEALINGS IN THE FONT SOFTWARE.
+diff --git a/res/drawable/studio_bloom_mark.xml b/res/drawable/studio_bloom_mark.xml
+new file mode 100644
+index 0000000..6d8339e
+--- /dev/null
++++ b/res/drawable/studio_bloom_mark.xml
+@@ -0,0 +1,24 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: ExpressiveOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- ExpressiveOS's Bloom mark in its petals' colours (ic_about's shape, untinted) -->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24">
++    <path
++        android:fillColor="#FF417BFC"
++        android:pathData="M14.85,14.03C14.55,13.93 14.39,13.7 14.39,13.35C14.39,13.15 14.39,13.16 14.68,12.61C14.77,12.43 14.78,12.4 14.79,12.16C14.8,11.87 14.75,11.74 14.52,11.41C14.32,11.11 14.32,11.11 14.3,9.84C14.28,9.03 14.27,8.64 14.24,8.45C14.08,7.43 13.81,6.57 13.3,5.5C12.99,4.84 12.97,4.66 13.17,4.23C13.42,3.69 14.07,3.18 14.75,2.98C16.56,2.46 18.67,3.39 20.15,5.36C21.29,6.87 21.67,8.48 21.2,9.81C20.81,10.9 19.99,11.72 18.25,12.73C17.16,13.36 15.64,14.01 15.12,14.07C15.02,14.08 14.95,14.07 14.85,14.03Z" />
++    <path
++        android:fillColor="#FF4AD29D"
++        android:pathData="M15.48,21.14C14.13,20.97 13.13,20.4 12.19,19.29C11.92,18.96 11.81,18.78 11.75,18.57L11.71,18.4L11.8,18C11.92,17.51 12.03,16.9 12.12,16.28C12.24,15.33 12.31,15.14 12.6,14.82C12.86,14.53 13.15,14.44 13.43,14.56C13.49,14.59 13.65,14.72 13.79,14.84C14.13,15.16 14.28,15.23 14.64,15.24C15.4,15.26 17.12,14.6 18.87,13.6C19.45,13.26 19.61,13.21 19.82,13.25C20.77,13.47 21.57,14.88 21.43,16.13C21.26,17.76 20.21,19.29 18.58,20.32C17.63,20.92 16.35,21.26 15.48,21.14Z" />
++    <path
++        android:fillColor="#FFFD7771"
++        android:pathData="M7.85,21.08C6.29,20.9 4.72,19.86 3.56,18.24C2.85,17.25 2.47,16.08 2.55,15.14C2.68,13.61 3.49,12.52 5.19,11.62C6.1,11.14 8.61,10.14 9.15,10.05C9.72,9.95 10.14,10.47 9.9,10.97C9.84,11.08 9.77,11.16 9.58,11.32C9.12,11.71 9,12.07 9.19,12.48C9.28,12.68 9.38,12.78 9.79,13.09C10.5,13.63 10.98,14.2 11.12,14.65C11.19,14.86 11.19,15.13 11.12,15.6C11.1,15.79 11.06,16.06 11.04,16.2C10.97,16.88 10.82,17.55 10.66,17.96L10.54,18.25L10.54,18.64C10.54,18.85 10.55,19.13 10.55,19.26C10.56,19.71 10.41,20.07 10.06,20.41C9.53,20.94 8.75,21.18 7.85,21.08Z" />
++    <path
++        android:fillColor="#FFAE69FC"
++        android:pathData="M4.36,10.43C3.53,10.23 2.85,9.52 2.63,8.61C2,6.07 5.31,2.75 8.35,2.87C9.84,2.93 11.11,3.75 11.93,5.18C12.52,6.19 13,7.44 13.11,8.24C13.17,8.62 13.04,8.89 12.76,9.03C12.62,9.1 12.6,9.1 12.16,9.1C11.75,9.11 11.68,9.11 11.51,9.17C11.22,9.26 11.09,9.25 10.67,9.11C10.12,8.93 9.5,8.89 8.92,9C8.5,9.08 7.13,9.59 5.63,10.23C4.95,10.51 4.79,10.54 4.36,10.43Z" />
++</vector>
+diff --git a/res/font/google_sans_flex_rounded.ttf b/res/font/google_sans_flex_rounded.ttf
+new file mode 100644
+index 0000000000000000000000000000000000000000..9687bbec28ba8977a2f772d1cc4a7ddb0ad9f3e1
+GIT binary patch
+literal 128848
+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
+GfcihWw*H;~
+
+literal 0
+HcmV?d00001
+
+diff --git a/res/layout/studio_compose.xml b/res/layout/studio_compose.xml
+new file mode 100644
+index 0000000..0c3ec7c
+--- /dev/null
++++ b/res/layout/studio_compose.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: ExpressiveOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Expressive Studio's Compose headers (org.evolution.settings.studio) -->
++<androidx.compose.ui.platform.ComposeView
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    android:id="@+id/studio_compose"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content" />
+diff --git a/res/values/studio_strings.xml b/res/values/studio_strings.xml
+new file mode 100644
+index 0000000..13f926a
+--- /dev/null
++++ b/res/values/studio_strings.xml
+@@ -0,0 +1,19 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: ExpressiveOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
++    <!-- Expressive Studio's home (org.evolution.settings.studio) -->
++    <string name="studio_wallpaper_summary">Home and lock screen</string>
++    <string name="studio_colors_title">Colors</string>
++    <string name="studio_colors_summary">Your Monet palette</string>
++    <string name="studio_fonts_title">Fonts</string>
++    <string name="studio_fonts_summary">System font and emoji style</string>
++    <string name="studio_fonts_specimen_name" translatable="false">ExpressiveOS</string>
++    <string name="studio_fonts_specimen_letters" translatable="false">Aa Bb Cc</string>
++    <string name="studio_fonts_specimen_digits" translatable="false">0123456789</string>
++    <!-- Summary of the clock styles card: %1$s is the clock face's name, e.g. "Default Clock" -->
++    <string name="studio_clock_using">Using <xliff:g id="clock_name" example="Default Clock">%1$s</xliff:g></string>
++    <string name="studio_whats_new_title">What\'s new in ExpressiveOS</string>
++</resources>
+diff --git a/res/xml/evolution_settings.xml b/res/xml/evolution_settings.xml
+index b34f618..6384bc7 100644
+--- a/res/xml/evolution_settings.xml
++++ b/res/xml/evolution_settings.xml
+@@ -8,8 +8,17 @@
+     xmlns:settings="http://schemas.android.com/apk/res/com.android.settings"
+     android:title="@string/evolver_dashboard_title">
+ 
++    <!-- ExpressiveOS: the home's tiles (org.evolution.settings.studio.StudioHome) -->
++    <com.android.settingslib.widget.LayoutPreference
++        android:key="studio_home"
++        android:layout="@layout/studio_compose"
++        android:selectable="false"
++        settings:searchable="false" />
++
++    <!-- The rows the home's tiles open: kept for search, the tiles show them -->
+     <com.android.settingslib.widget.UntitledPreferenceCategory
+-        android:key="top_level_evolver_category">
++        android:key="top_level_evolver_category"
++        settings:isPreferenceVisible="false">
+ 
+         <!-- About -->
+         <Preference
+@@ -74,5 +83,33 @@
+             android:summary="@string/miscellaneous_summary"
+             android:icon="@drawable/ic_evolver_miscellaneous"
+             android:fragment="org.evolution.settings.fragments.miscellaneous.Miscellaneous"/>
++
++        <!-- Pages the home opens directly -->
++        <Preference
++            android:key="studio_colors"
++            android:title="@string/themes_monet_title"
++            android:fragment="org.evolution.settings.fragments.themes.ColorsSettingsFragment"
++            settings:searchable="false" />
++
++        <Preference
++            android:key="studio_wallpaper_styles"
++            android:title="@string/wallpaper_styles_title"
++            android:fragment="org.evolution.settings.fragments.themes.Wallpaper"
++            settings:searchable="false" />
++
++        <Preference
++            android:key="studio_clock_styles"
++            android:title="@string/ls_clock_title"
++            android:fragment="org.evolution.settings.fragments.lockscreen.ClockStyles"
++            settings:searchable="false" />
++
++        <Preference
++            android:key="studio_changelog"
++            android:title="@string/changelog_title"
++            settings:searchable="false">
++            <intent android:action="android.intent.action.MAIN"
++                 android:targetPackage="com.android.settings"
++                 android:targetClass="org.evolution.settings.fragments.about.ChangelogActivity"/>
++        </Preference>
+     </com.android.settingslib.widget.UntitledPreferenceCategory>
+ </PreferenceScreen>
+diff --git a/src/org/evolution/settings/EvolutionSettings.java b/src/org/evolution/settings/EvolutionSettings.java
+index 3f5e346..378d747 100644
+--- a/src/org/evolution/settings/EvolutionSettings.java
++++ b/src/org/evolution/settings/EvolutionSettings.java
+@@ -5,12 +5,16 @@
+ 
+ package org.evolution.settings;
+ 
++import android.os.Bundle;
++
+ import com.android.internal.logging.nano.MetricsProto.MetricsEvent;
+ import com.android.settings.R;
+ import com.android.settings.dashboard.DashboardFragment;
+ import com.android.settings.search.BaseSearchIndexProvider;
+ import com.android.settingslib.search.SearchIndexable;
+ 
++import org.evolution.settings.studio.StudioHome;
++
+ @SearchIndexable
+ public class EvolutionSettings extends DashboardFragment {
+ 
+@@ -21,6 +25,12 @@ public class EvolutionSettings extends DashboardFragment {
+         return R.xml.evolution_settings;
+     }
+ 
++    @Override
++    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
++        super.onCreatePreferences(savedInstanceState, rootKey);
++        StudioHome.bind(this, findPreference(StudioHome.KEY));
++    }
++
+     @Override
+     public int getMetricsCategory() {
+         return MetricsEvent.EVOLVER;
+diff --git a/src/org/evolution/settings/studio/Bloom.kt b/src/org/evolution/settings/studio/Bloom.kt
+new file mode 100644
+index 0000000..12b0620
+--- /dev/null
++++ b/src/org/evolution/settings/studio/Bloom.kt
+@@ -0,0 +1,146 @@
++/*
++ * SPDX-FileCopyrightText: ExpressiveOS
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package org.evolution.settings.studio
++
++import androidx.compose.foundation.BorderStroke
++import androidx.compose.foundation.isSystemInDarkTheme
++import androidx.compose.foundation.layout.Box
++import androidx.compose.foundation.layout.BoxScope
++import androidx.compose.foundation.layout.size
++import androidx.compose.foundation.shape.RoundedCornerShape
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.Surface
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.ReadOnlyComposable
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.graphics.Brush
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.text.font.Font
++import androidx.compose.ui.text.font.FontFamily
++import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.unit.Dp
++import androidx.compose.ui.unit.dp
++import com.android.settings.R
++
++/**
++ * The four petals of ExpressiveOS's Bloom mark, the colours Expressive Studio is drawn in.
++ * [light], [mid] and [deep] are the petal's own colours. [ink] (text and icons) and [tile]
++ * (the squircle behind an icon) follow the theme: light ink on a deep tile in dark mode, deep ink
++ * on a pale tile in light mode, each pair at 4.8:1 contrast or more.
++ */
++enum class Petal(
++    val light: Color,
++    val mid: Color,
++    val deep: Color,
++    private val darkInk: Color,
++    private val darkTile: Color,
++    private val lightInk: Color,
++    private val lightTile: Color,
++) {
++    /** Look and feel: themes, colours, fonts, wallpapers. */
++    Violet(
++        Color(0xFFF3B1FC), Color(0xFFAE69FC), Color(0xFF6B2BBB),
++        Color(0xFFC9A6FD), Color(0xFF2A1D47), Color(0xFF6B2BBB), Color(0xFFEDDCFF),
++    ),
++
++    /** System UI: status bar, quick settings, notifications. */
++    Blue(
++        Color(0xFF76BCFB), Color(0xFF417BFC), Color(0xFF1842D1),
++        Color(0xFF8FB2FD), Color(0xFF142553), Color(0xFF1842D1), Color(0xFFDBE4FF),
++    ),
++
++    /** Lock screen, clocks and the power menu. */
++    Coral(
++        Color(0xFFFDCF8E), Color(0xFFFD7771), Color(0xFFD33952),
++        Color(0xFFFFA39D), Color(0xFF3D1A24), Color(0xFFB42A45), Color(0xFFFFDAD7),
++    ),
++
++    /** The device itself: miscellaneous, about, what's new. */
++    Green(
++        Color(0xFFACEFB3), Color(0xFF4AD29D), Color(0xFF18A07C),
++        Color(0xFF7FE0B7), Color(0xFF10322A), Color(0xFF0A6B53), Color(0xFFC4F1DA),
++    );
++
++    val ink: Color
++        @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) darkInk else lightInk
++
++    val tile: Color
++        @Composable @ReadOnlyComposable get() = if (isSystemInDarkTheme()) darkTile else lightTile
++
++    /** Ink for text on the dark scrim over a wallpaper, in either theme. */
++    val onScrim: Color
++        get() = darkInk
++
++    companion object {
++        /** The mark's petals clockwise from the top right, as the logo draws them. */
++        val mark = listOf(Blue, Green, Coral, Violet)
++
++        /** The deep navy the mark sits on. */
++        val ground = Color(0xFF141329)
++
++        /** The mark's mids in a sweep, for rings and highlights. */
++        val sweep: Brush
++            get() = Brush.linearGradient(listOf(Violet.mid, Blue.mid, Green.mid, Coral.mid))
++    }
++}
++
++/** Google Sans Flex with its rounded terminals (ROND 100), ExpressiveOS's display face. */
++val BloomRounded = FontFamily(
++    Font(R.font.google_sans_flex_rounded, FontWeight.Normal),
++    Font(R.font.google_sans_flex_rounded, FontWeight.Medium),
++    Font(R.font.google_sans_flex_rounded, FontWeight.SemiBold),
++    Font(R.font.google_sans_flex_rounded, FontWeight.Bold),
++)
++
++/** Corner radii of Studio's cards: Material 3 Expressive's large and extra-large shapes. */
++object BloomShapes {
++    val tile = RoundedCornerShape(28.dp)
++    val gridTile = RoundedCornerShape(24.dp)
++    val chip = RoundedCornerShape(16.dp)
++    val thumb = RoundedCornerShape(12.dp)
++}
++
++/**
++ * A Studio card: the surface Settings' rows use, outlined instead of shadowed. Tapping it runs
++ * [onClick]; its text is read out as one button.
++ */
++@Composable
++fun BloomCard(
++    onClick: () -> Unit,
++    modifier: Modifier = Modifier,
++    shape: RoundedCornerShape = BloomShapes.tile,
++    color: Color = MaterialTheme.colorScheme.surfaceBright,
++    content: @Composable BoxScope.() -> Unit,
++) {
++    Surface(
++        onClick = onClick,
++        modifier = modifier,
++        shape = shape,
++        color = color,
++        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
++    ) {
++        Box(content = content)
++    }
++}
++
++/** An icon on its petal's squircle, as on the home screen's section tiles. */
++@Composable
++fun PetalChip(
++    petal: Petal,
++    modifier: Modifier = Modifier,
++    size: Dp = 48.dp,
++    content: @Composable BoxScope.() -> Unit,
++) {
++    Surface(
++        modifier = modifier.size(size),
++        shape = BloomShapes.chip,
++        color = petal.tile,
++        contentColor = petal.ink,
++    ) {
++        Box(contentAlignment = Alignment.Center, content = content)
++    }
++}
+diff --git a/src/org/evolution/settings/studio/LockScreenPreview.kt b/src/org/evolution/settings/studio/LockScreenPreview.kt
+new file mode 100644
+index 0000000..2a79fc1
+--- /dev/null
++++ b/src/org/evolution/settings/studio/LockScreenPreview.kt
+@@ -0,0 +1,278 @@
++/*
++ * SPDX-FileCopyrightText: ExpressiveOS
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package org.evolution.settings.studio
++
++import android.app.WallpaperManager
++import android.content.Context
++import android.os.UserHandle
++import android.provider.Settings
++import android.text.format.DateFormat
++import android.view.LayoutInflater
++import android.view.View
++import android.widget.FrameLayout
++import androidx.annotation.LayoutRes
++import androidx.compose.foundation.Image
++import androidx.compose.foundation.background
++import androidx.compose.foundation.layout.Box
++import androidx.compose.foundation.layout.BoxScope
++import androidx.compose.foundation.layout.BoxWithConstraints
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.padding
++import androidx.compose.foundation.layout.size
++import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.rounded.Lock
++import androidx.compose.material3.Icon
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.LaunchedEffect
++import androidx.compose.runtime.State
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.key
++import androidx.compose.runtime.mutableIntStateOf
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.produceState
++import androidx.compose.runtime.remember
++import androidx.compose.runtime.setValue
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.draw.clip
++import androidx.compose.ui.graphics.Brush
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.graphics.ImageBitmap
++import androidx.compose.ui.graphics.Shape
++import androidx.compose.ui.graphics.asImageBitmap
++import androidx.compose.ui.layout.ContentScale
++import androidx.compose.ui.platform.LocalContext
++import androidx.compose.ui.platform.LocalDensity
++import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.text.style.TextAlign
++import androidx.compose.ui.unit.Dp
++import androidx.compose.ui.unit.dp
++import androidx.compose.ui.unit.em
++import androidx.compose.ui.viewinterop.AndroidView
++import androidx.core.graphics.drawable.toBitmap
++import androidx.lifecycle.Lifecycle
++import androidx.lifecycle.compose.LifecycleEventEffect
++import java.util.Locale
++import kotlin.math.min
++import kotlin.math.roundToInt
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.delay
++import kotlinx.coroutines.withContext
++import org.evolution.settings.fragments.lockscreen.ClockUtils
++
++/**
++ * A count that goes up each time the screen resumes, so what Studio shows of the lock screen is read
++ * again after a picker (the clock faces, the wallpaper picker) returns to it.
++ */
++@Composable
++fun rememberResumeCount(): Int {
++    var count by remember { mutableIntStateOf(0) }
++    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { count++ }
++    return count
++}
++
++/** The lock screen's clock face: an index into [ClockUtils.CLOCK_LAYOUTS], 0 for the default. */
++@Composable
++fun rememberClockStyle(resumeCount: Int): Int {
++    val context = LocalContext.current
++    return remember(resumeCount) {
++        Settings.Secure.getIntForUser(
++            context.contentResolver,
++            Settings.Secure.LOCK_SCREEN_CUSTOM_CLOCK_STYLE,
++            0,
++            UserHandle.USER_CURRENT
++        )
++    }
++}
++
++/** The name the clock picker gives [style]. */
++fun clockName(style: Int): String {
++    val names = ClockUtils.getClockNames()
++    return names.getOrNull(style) ?: names[0]
++}
++
++/**
++ * The [which] wallpaper (WallpaperManager.FLAG_LOCK or FLAG_SYSTEM), [widthPx] wide, decoded off
++ * the main thread. The lock screen falls back to the home screen's when it has none of its own.
++ * Null until it's read, or when it can't be.
++ */
++@Composable
++fun rememberWallpaper(which: Int, widthPx: Int, resumeCount: Int): ImageBitmap? {
++    val context = LocalContext.current
++    var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
++    LaunchedEffect(which, widthPx, resumeCount) {
++        if (widthPx <= 0) return@LaunchedEffect
++        withContext(Dispatchers.IO) { loadWallpaper(context, which, widthPx) }
++            ?.let { bitmap = it }
++    }
++    return bitmap
++}
++
++private fun loadWallpaper(context: Context, which: Int, widthPx: Int): ImageBitmap? = runCatching {
++    val wm = WallpaperManager.getInstance(context)
++    val drawable = (if (which == WallpaperManager.FLAG_LOCK) {
++        wm.getDrawable(WallpaperManager.FLAG_LOCK)
++    } else null) ?: wm.getDrawable(WallpaperManager.FLAG_SYSTEM) ?: return null
++    val w = drawable.intrinsicWidth
++    val h = drawable.intrinsicHeight
++    val height = if (w > 0 && h > 0) (widthPx.toLong() * h / w).toInt() else widthPx * 2
++    drawable.toBitmap(widthPx, height.coerceAtLeast(1)).asImageBitmap()
++}.getOrNull()
++
++/** The time now, updated on each new minute. */
++@Composable
++fun rememberMinute(): State<Long> = produceState(System.currentTimeMillis()) {
++    while (true) {
++        value = System.currentTimeMillis()
++        delay(60_000L - value % 60_000L)
++    }
++}
++
++/**
++ * A small copy of the lock screen: its wallpaper and the clock face picked for it, the way the
++ * clock picker previews faces, and the lock at its foot unless [showLockIcon] is false. [overlay]
++ * draws over it, e.g. a label.
++ */
++@Composable
++fun LockScreenPreview(
++    modifier: Modifier = Modifier,
++    shape: Shape = BloomShapes.tile,
++    showLockIcon: Boolean = true,
++    overlay: @Composable BoxScope.() -> Unit = {},
++) {
++    val resumes = rememberResumeCount()
++    val style = rememberClockStyle(resumes)
++    BoxWithConstraints(modifier.clip(shape).background(Petal.ground)) {
++        val widthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
++        rememberWallpaper(WallpaperManager.FLAG_LOCK, widthPx, resumes)?.let {
++            Image(
++                bitmap = it,
++                contentDescription = null,
++                modifier = Modifier.matchParentSize(),
++                contentScale = ContentScale.Crop,
++                alignment = Alignment.TopCenter,
++            )
++        }
++        // Keeps a white clock readable on a light wallpaper, as the lock screen's own scrim does
++        Box(
++            Modifier
++                .matchParentSize()
++                .background(
++                    Brush.verticalGradient(
++                        0f to Color.Black.copy(alpha = 0.32f),
++                        0.5f to Color.Transparent,
++                    )
++                )
++        )
++        ClockFace(
++            style = style,
++            width = maxWidth,
++            modifier = Modifier
++                .fillMaxWidth()
++                .padding(top = maxWidth * 0.12f),
++        )
++        if (showLockIcon) {
++            Icon(
++                imageVector = Icons.Rounded.Lock,
++                contentDescription = null,
++                tint = Color.White,
++                modifier = Modifier
++                    .align(Alignment.BottomCenter)
++                    .padding(bottom = 14.dp)
++                    .size(18.dp),
++            )
++        }
++        overlay()
++    }
++}
++
++/** The face for [style], drawn [width] wide as if on the phone's full-width lock screen. */
++@Composable
++private fun ClockFace(style: Int, width: Dp, modifier: Modifier) {
++    val layout = ClockUtils.CLOCK_LAYOUTS.getOrNull(style)
++    if (style == 0 || layout == null) {
++        DefaultClock(width, modifier)
++        return
++    }
++    key(layout) {
++        AndroidView(factory = { ScaledClockFrame(it, layout) }, modifier = modifier)
++    }
++}
++
++/** Android's own large clock: the hours over the minutes, then the date. */
++@Composable
++private fun DefaultClock(width: Dp, modifier: Modifier) {
++    val context = LocalContext.current
++    val now by rememberMinute()
++    val time = DateFormat.format(
++        if (DateFormat.is24HourFormat(context)) "HH\nmm" else "hh\nmm", now
++    ).toString()
++    val date = DateFormat.format(
++        DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEMMMd"), now
++    ).toString()
++    val density = LocalDensity.current
++    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
++        Text(
++            text = time,
++            color = Color.White,
++            fontFamily = BloomRounded,
++            fontWeight = FontWeight.Bold,
++            fontSize = with(density) { (width * 0.36f).toSp() },
++            lineHeight = 0.92.em,
++            textAlign = TextAlign.Center,
++        )
++        Text(
++            text = date,
++            color = Color.White,
++            fontWeight = FontWeight.SemiBold,
++            fontSize = with(density) { (width * 0.07f).toSp() },
++            modifier = Modifier.padding(top = width * 0.03f),
++        )
++    }
++}
++
++/**
++ * Lays a clock face out at the screen's width and scales it down to fit, so its text keeps the
++ * proportions it has on the lock screen.
++ */
++private class ScaledClockFrame(context: Context, @LayoutRes layout: Int) : FrameLayout(context) {
++
++    private val screenWidth = context.resources.displayMetrics.let {
++        min(it.widthPixels, it.heightPixels)
++    }
++    private val face: View = LayoutInflater.from(context).inflate(layout, this, false)
++
++    init {
++        isClickable = false
++        isFocusable = false
++        descendantFocusability = FOCUS_BLOCK_DESCENDANTS
++        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
++        addView(face, LayoutParams(screenWidth, LayoutParams.WRAP_CONTENT))
++    }
++
++    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
++        val width = MeasureSpec.getSize(widthMeasureSpec)
++        face.measure(
++            MeasureSpec.makeMeasureSpec(screenWidth, MeasureSpec.EXACTLY),
++            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
++        )
++        val scale = if (screenWidth > 0) width.toFloat() / screenWidth else 1f
++        face.pivotX = 0f
++        face.pivotY = 0f
++        face.scaleX = scale
++        face.scaleY = scale
++        setMeasuredDimension(
++            width,
++            resolveSize((face.measuredHeight * scale).roundToInt(), heightMeasureSpec)
++        )
++    }
++
++    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
++        face.layout(0, 0, face.measuredWidth, face.measuredHeight)
++    }
++}
+diff --git a/src/org/evolution/settings/studio/StudioActions.kt b/src/org/evolution/settings/studio/StudioActions.kt
+new file mode 100644
+index 0000000..7ee0b2c
+--- /dev/null
++++ b/src/org/evolution/settings/studio/StudioActions.kt
+@@ -0,0 +1,90 @@
++/*
++ * SPDX-FileCopyrightText: ExpressiveOS
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package org.evolution.settings.studio
++
++import android.os.UserHandle
++import android.provider.Settings
++import androidx.preference.Preference
++import androidx.preference.PreferenceFragmentCompat
++import com.android.internal.logging.nano.MetricsProto.MetricsEvent
++import com.android.settings.R
++import com.android.settings.core.SubSettingLauncher
++import com.android.settings.display.WallpaperPreferenceController
++import org.evolution.settings.fragments.lockscreen.ClockPickerFragment
++import org.evolution.settings.preferences.showConfirmDialog
++
++/** What Expressive Studio's tiles and buttons open, from the screen [fragment] shows them on. */
++class StudioActions(private val fragment: PreferenceFragmentCompat) {
++
++    private val wallpaper by lazy {
++        WallpaperPreferenceController(fragment.requireContext(), KEY_WALLPAPER)
++    }
++
++    /** Whether the phone has a wallpaper picker for [openWallpaperPicker] to open. */
++    val hasWallpaperPicker: Boolean
++        get() = wallpaper.isAvailable
++
++    /** "Wallpaper" or "Wallpaper & style", as Settings' Display page names the picker. */
++    val wallpaperTitle: String
++        get() = wallpaper.title
++
++    /**
++     * Opens the page behind [fragment]'s row [key] the way tapping that row does: its fragment,
++     * or else its intent.
++     */
++    fun open(key: String) {
++        if (!fragment.isAdded) return
++        val row = fragment.findPreference<Preference>(key) ?: return
++        if (!fragment.onPreferenceTreeClick(row)) {
++            row.intent?.let { fragment.startActivity(it) }
++        }
++    }
++
++    /** The system's wallpaper picker, opened as Settings' Display page opens it. */
++    fun openWallpaperPicker() {
++        val context = fragment.context ?: return
++        wallpaper.handlePreferenceTreeClick(Preference(context).apply { key = KEY_WALLPAPER })
++    }
++
++    /**
++     * The lock screen's clock face picker. The first time, it shows the advice the clock styles
++     * page shows before it (switch off Smartspace, weather and the large clock).
++     */
++    fun openClockPicker() {
++        val activity = fragment.activity ?: return
++        val launch = {
++            SubSettingLauncher(activity)
++                .setDestination(ClockPickerFragment::class.java.name)
++                .setTitleRes(R.string.lockscreen_custom_clock_style_title)
++                .setSourceMetricsCategory(MetricsEvent.EVOLVER)
++                .launch()
++        }
++        val resolver = activity.contentResolver
++        if (Settings.System.getInt(resolver, KEY_DISCLAIMER_DISMISSED, 0) != 0) {
++            launch()
++            return
++        }
++        showConfirmDialog(
++            context = activity,
++            title = activity.getString(R.string.clock_styles_disclaimer_title),
++            message = activity.getString(R.string.clock_styles_disclaimer_message),
++            confirmText = activity.getString(android.R.string.ok),
++            cancelable = false,
++            onConfirm = {
++                Settings.System.putIntForUser(
++                    resolver, KEY_DISCLAIMER_DISMISSED, 1, UserHandle.USER_CURRENT
++                )
++                launch()
++            },
++        )
++    }
++
++    private companion object {
++        const val KEY_WALLPAPER = "studio_wallpaper"
++        // ClockStyles' flag: the advice is shown once, from either page
++        const val KEY_DISCLAIMER_DISMISSED = "custom_clock_disclaimer_dismissed"
++    }
++}
+diff --git a/src/org/evolution/settings/studio/StudioHome.kt b/src/org/evolution/settings/studio/StudioHome.kt
+new file mode 100644
+index 0000000..4e31e76
+--- /dev/null
++++ b/src/org/evolution/settings/studio/StudioHome.kt
+@@ -0,0 +1,545 @@
++/*
++ * SPDX-FileCopyrightText: ExpressiveOS
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package org.evolution.settings.studio
++
++import android.app.WallpaperManager
++import android.text.format.DateFormat
++import androidx.annotation.DrawableRes
++import androidx.annotation.StringRes
++import androidx.compose.foundation.Image
++import androidx.compose.foundation.background
++import androidx.compose.foundation.border
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Box
++import androidx.compose.foundation.layout.BoxWithConstraints
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.IntrinsicSize
++import androidx.compose.foundation.layout.Row
++import androidx.compose.foundation.layout.Spacer
++import androidx.compose.foundation.layout.fillMaxHeight
++import androidx.compose.foundation.layout.fillMaxSize
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.height
++import androidx.compose.foundation.layout.heightIn
++import androidx.compose.foundation.layout.offset
++import androidx.compose.foundation.layout.padding
++import androidx.compose.foundation.layout.size
++import androidx.compose.foundation.layout.width
++import androidx.compose.foundation.shape.CircleShape
++import androidx.compose.foundation.shape.RoundedCornerShape
++import androidx.compose.material3.Icon
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.Surface
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.remember
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.draw.clip
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.layout.ContentScale
++import androidx.compose.ui.platform.ComposeView
++import androidx.compose.ui.platform.LocalContext
++import androidx.compose.ui.platform.LocalDensity
++import androidx.compose.ui.res.painterResource
++import androidx.compose.ui.res.stringResource
++import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.text.style.TextAlign
++import androidx.compose.ui.text.style.TextOverflow
++import androidx.compose.ui.unit.Dp
++import androidx.compose.ui.unit.dp
++import androidx.compose.ui.unit.em
++import androidx.compose.ui.unit.sp
++import androidx.preference.PreferenceFragmentCompat
++import com.android.settings.R
++import com.android.settingslib.widget.LayoutPreference
++import org.evolution.settings.fragments.miscellaneous.ExpressiveTheme
++
++/**
++ * Expressive Studio's home, the Bento Bloom layout: a live lock screen beside the look-and-feel
++ * tiles, the clock and what's-new cards, then a grid of the other sections. Each tile opens the
++ * page of one of the screen's rows, which the home replaces on screen but keeps for search.
++ */
++object StudioHome {
++
++    const val KEY = "studio_home"
++
++    /** Draws the home into [preference], a LayoutPreference of R.layout.studio_compose. */
++    @JvmStatic
++    fun bind(fragment: PreferenceFragmentCompat, preference: LayoutPreference?) {
++        val view = preference?.findViewById<ComposeView>(R.id.studio_compose) ?: return
++        val actions = StudioActions(fragment)
++        view.setContent {
++            ExpressiveTheme {
++                HomeScreen(actions)
++            }
++        }
++    }
++}
++
++// The screen's rows the tiles open (res/xml/evolution_settings.xml)
++private const val KEY_LOCK_SCREEN = "lock_screen"
++private const val KEY_THEMES = "themes"
++private const val KEY_COLORS = "studio_colors"
++private const val KEY_WALLPAPER_STYLES = "studio_wallpaper_styles"
++private const val KEY_CLOCK_STYLES = "studio_clock_styles"
++private const val KEY_CHANGELOG = "studio_changelog"
++
++private class Section(
++    val key: String,
++    @StringRes val title: Int,
++    @DrawableRes val icon: Int,
++    val petal: Petal,
++    val tinted: Boolean = true,
++)
++
++private val sections = listOf(
++    Section("status_bar", R.string.status_bar_title, R.drawable.ic_status_bar, Petal.Blue),
++    Section("quick_settings", R.string.quick_settings_title, R.drawable.ic_quick_settings, Petal.Blue),
++    Section("notifications", R.string.notifications_title, R.drawable.ic_notifications, Petal.Blue),
++    Section("power_menu", R.string.power_menu_title, R.drawable.ic_power_menu, Petal.Coral),
++    Section("miscellaneous", R.string.miscellaneous_title, R.drawable.ic_miscellaneous, Petal.Green),
++    Section("about", R.string.about_title, R.drawable.studio_bloom_mark, Petal.Green, tinted = false),
++)
++
++private val gap = 12.dp
++
++@Composable
++private fun HomeScreen(actions: StudioActions) {
++    // The bento's fixed heights grow with the font size, up to half again
++    val grow = LocalDensity.current.fontScale.coerceIn(1f, 1.5f)
++    val hasPicker = remember { actions.hasWallpaperPicker }
++    Column(
++        modifier = Modifier
++            .fillMaxWidth()
++            .padding(top = 4.dp, bottom = 16.dp),
++        verticalArrangement = Arrangement.spacedBy(gap),
++    ) {
++        Row(
++            modifier = Modifier
++                .fillMaxWidth()
++                .height(300.dp * grow),
++            horizontalArrangement = Arrangement.spacedBy(gap),
++        ) {
++            LockTile(
++                onClick = { actions.open(KEY_LOCK_SCREEN) },
++                modifier = Modifier
++                    .weight(1f)
++                    .fillMaxHeight(),
++            )
++            Column(
++                modifier = Modifier
++                    .weight(1f)
++                    .fillMaxHeight(),
++                verticalArrangement = Arrangement.spacedBy(gap),
++            ) {
++                val tile = Modifier
++                    .weight(1f)
++                    .fillMaxWidth()
++                ThemesTile(onClick = { actions.open(KEY_THEMES) }, modifier = tile)
++                if (hasPicker) {
++                    WallpaperTile(
++                        title = remember { actions.wallpaperTitle },
++                        onClick = { actions.openWallpaperPicker() },
++                        modifier = tile,
++                    )
++                } else {
++                    WallpaperTile(
++                        title = stringResource(R.string.wallpaper_styles_title),
++                        onClick = { actions.open(KEY_WALLPAPER_STYLES) },
++                        modifier = tile,
++                    )
++                }
++            }
++        }
++        Row(
++            modifier = Modifier
++                .fillMaxWidth()
++                .height(148.dp * grow),
++            horizontalArrangement = Arrangement.spacedBy(gap),
++        ) {
++            val tile = Modifier
++                .weight(1f)
++                .fillMaxHeight()
++            ColorsTile(onClick = { actions.open(KEY_COLORS) }, modifier = tile)
++            FontsTile(onClick = { actions.open(KEY_THEMES) }, modifier = tile)
++        }
++        ClockStylesCard(onClick = { actions.open(KEY_CLOCK_STYLES) })
++        WhatsNewCard(onClick = { actions.open(KEY_CHANGELOG) })
++        sections.chunked(3).forEach { row ->
++            Row(
++                modifier = Modifier
++                    .fillMaxWidth()
++                    .height(IntrinsicSize.Min),
++                horizontalArrangement = Arrangement.spacedBy(gap),
++            ) {
++                row.forEach { section ->
++                    SectionTile(
++                        section = section,
++                        onClick = { actions.open(section.key) },
++                        modifier = Modifier
++                            .weight(1f)
++                            .fillMaxHeight(),
++                    )
++                }
++            }
++        }
++    }
++}
++
++/** A tile's name and what it holds, at the foot of the tile. */
++@Composable
++private fun TileText(title: String, summary: String, petal: Petal) {
++    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
++        Text(
++            text = title,
++            color = petal.ink,
++            fontFamily = BloomRounded,
++            fontWeight = FontWeight.Bold,
++            fontSize = 16.sp,
++            lineHeight = 1.25.em,
++            maxLines = 1,
++            overflow = TextOverflow.Ellipsis,
++        )
++        Text(
++            text = summary,
++            color = MaterialTheme.colorScheme.onSurfaceVariant,
++            style = MaterialTheme.typography.bodySmall,
++            maxLines = 2,
++            overflow = TextOverflow.Ellipsis,
++        )
++    }
++}
++
++/** The content of a bento tile: a picture at the top, its text at the foot. */
++@Composable
++private fun TileBody(picture: @Composable () -> Unit, text: @Composable () -> Unit) {
++    Column(
++        modifier = Modifier
++            .fillMaxSize()
++            .padding(start = 16.dp, top = 14.dp, end = 14.dp, bottom = 14.dp),
++        verticalArrangement = Arrangement.SpaceBetween,
++    ) {
++        picture()
++        text()
++    }
++}
++
++@Composable
++private fun LockTile(onClick: () -> Unit, modifier: Modifier) {
++    BloomCard(onClick = onClick, modifier = modifier, color = Petal.ground) {
++        LockScreenPreview(modifier = Modifier.fillMaxSize(), showLockIcon = false) {
++            Surface(
++                modifier = Modifier
++                    .align(Alignment.BottomStart)
++                    .padding(12.dp),
++                shape = CircleShape,
++                color = Color(0x9E07070D),
++            ) {
++                Text(
++                    text = stringResource(R.string.lock_screen_title),
++                    color = Petal.Coral.onScrim,
++                    fontFamily = BloomRounded,
++                    fontWeight = FontWeight.Bold,
++                    fontSize = 13.sp,
++                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
++                )
++            }
++        }
++    }
++}
++
++/** Overlapping dots, each ringed in [ring] so they read as separate. */
++@Composable
++private fun Dots(colors: List<Color>, size: Dp, step: Dp, ring: Color) {
++    Box(Modifier.size(width = size + step * (colors.size - 1), height = size)) {
++        colors.forEachIndexed { i, color ->
++            Box(
++                Modifier
++                    .offset(x = step * i)
++                    .size(size)
++                    .border(2.dp, ring, CircleShape)
++                    .padding(2.dp)
++                    .clip(CircleShape)
++                    .background(color)
++            )
++        }
++    }
++}
++
++@Composable
++private fun ThemesTile(onClick: () -> Unit, modifier: Modifier) {
++    BloomCard(onClick = onClick, modifier = modifier) {
++        TileBody(
++            picture = {
++                Dots(
++                    colors = Petal.entries.map { it.mid },
++                    size = 40.dp,
++                    step = 28.dp,
++                    ring = MaterialTheme.colorScheme.surfaceBright,
++                )
++            },
++            text = {
++                TileText(
++                    title = stringResource(R.string.themes_title),
++                    summary = stringResource(R.string.themes_summary),
++                    petal = Petal.Violet,
++                )
++            },
++        )
++    }
++}
++
++@Composable
++private fun WallpaperTile(title: String, onClick: () -> Unit, modifier: Modifier) {
++    BloomCard(onClick = onClick, modifier = modifier) {
++        TileBody(
++            picture = {
++                BoxWithConstraints(
++                    Modifier
++                        .fillMaxWidth()
++                        .height(56.dp)
++                        .border(2.dp, Petal.sweep, BloomShapes.thumb)
++                        .padding(3.dp)
++                        .clip(RoundedCornerShape(9.dp))
++                        .background(Petal.ground)
++                ) {
++                    val widthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
++                    val resumes = rememberResumeCount()
++                    rememberWallpaper(WallpaperManager.FLAG_SYSTEM, widthPx, resumes)?.let {
++                        Image(
++                            bitmap = it,
++                            contentDescription = null,
++                            modifier = Modifier.fillMaxSize(),
++                            contentScale = ContentScale.Crop,
++                        )
++                    }
++                }
++            },
++            text = {
++                TileText(
++                    title = title,
++                    summary = stringResource(R.string.studio_wallpaper_summary),
++                    petal = Petal.Violet,
++                )
++            },
++        )
++    }
++}
++
++@Composable
++private fun ColorsTile(onClick: () -> Unit, modifier: Modifier) {
++    val scheme = MaterialTheme.colorScheme
++    val palettes = listOf(
++        listOf(scheme.primary, scheme.primaryContainer, scheme.onPrimaryContainer),
++        listOf(scheme.secondary, scheme.secondaryContainer, scheme.onSecondaryContainer),
++        listOf(scheme.tertiary, scheme.tertiaryContainer, scheme.onTertiaryContainer),
++        listOf(scheme.surfaceContainerHighest, scheme.outline, scheme.onSurface),
++    )
++    BloomCard(onClick = onClick, modifier = modifier) {
++        TileBody(
++            picture = {
++                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
++                    palettes.chunked(2).forEach { pair ->
++                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
++                            pair.forEach {
++                                Dots(it, size = 26.dp, step = 18.dp, ring = scheme.surfaceBright)
++                            }
++                        }
++                    }
++                }
++            },
++            text = {
++                TileText(
++                    title = stringResource(R.string.studio_colors_title),
++                    summary = stringResource(R.string.studio_colors_summary),
++                    petal = Petal.Violet,
++                )
++            },
++        )
++    }
++}
++
++@Composable
++private fun FontsTile(onClick: () -> Unit, modifier: Modifier) {
++    // In the theme's own type, which follows the font picked in Themes
++    val type = MaterialTheme.typography
++    BloomCard(onClick = onClick, modifier = modifier) {
++        TileBody(
++            picture = {
++                Column {
++                    Text(
++                        text = stringResource(R.string.studio_fonts_specimen_name),
++                        style = type.titleMedium,
++                        fontWeight = FontWeight.Bold,
++                        maxLines = 1,
++                    )
++                    Text(
++                        text = stringResource(R.string.studio_fonts_specimen_letters),
++                        style = type.titleMedium,
++                        color = Petal.Violet.ink,
++                        maxLines = 1,
++                    )
++                    Text(
++                        text = stringResource(R.string.studio_fonts_specimen_digits),
++                        style = type.bodyMedium,
++                        color = MaterialTheme.colorScheme.onSurfaceVariant,
++                        maxLines = 1,
++                    )
++                }
++            },
++            text = {
++                TileText(
++                    title = stringResource(R.string.studio_fonts_title),
++                    summary = stringResource(R.string.studio_fonts_summary),
++                    petal = Petal.Violet,
++                )
++            },
++        )
++    }
++}
++
++/** A full-width card: its text, then [trailing]. */
++@Composable
++private fun WideCard(
++    title: String,
++    summary: String,
++    petal: Petal,
++    onClick: () -> Unit,
++    trailing: @Composable () -> Unit,
++) {
++    BloomCard(
++        onClick = onClick,
++        modifier = Modifier
++            .fillMaxWidth()
++            .heightIn(min = 96.dp),
++    ) {
++        Row(
++            modifier = Modifier.padding(start = 20.dp, top = 12.dp, end = 16.dp, bottom = 12.dp),
++            verticalAlignment = Alignment.CenterVertically,
++        ) {
++            Column(
++                modifier = Modifier.weight(1f),
++                verticalArrangement = Arrangement.spacedBy(4.dp),
++            ) {
++                Text(
++                    text = title,
++                    color = petal.ink,
++                    fontFamily = BloomRounded,
++                    fontWeight = FontWeight.Bold,
++                    fontSize = 16.sp,
++                    lineHeight = 1.25.em,
++                )
++                Text(
++                    text = summary,
++                    color = MaterialTheme.colorScheme.onSurfaceVariant,
++                    style = MaterialTheme.typography.bodyMedium,
++                )
++            }
++            Spacer(Modifier.width(16.dp))
++            trailing()
++        }
++    }
++}
++
++@Composable
++private fun ClockStylesCard(onClick: () -> Unit) {
++    val resumes = rememberResumeCount()
++    val style = rememberClockStyle(resumes)
++    WideCard(
++        title = stringResource(R.string.ls_clock_title),
++        summary = stringResource(R.string.studio_clock_using, clockName(style)),
++        petal = Petal.Coral,
++        onClick = onClick,
++    ) {
++        BoxWithConstraints(
++            modifier = Modifier
++                .size(width = 60.dp, height = 72.dp)
++                .clip(RoundedCornerShape(18.dp))
++                .background(Petal.ground),
++            contentAlignment = Alignment.Center,
++        ) {
++            val widthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
++            rememberWallpaper(WallpaperManager.FLAG_LOCK, widthPx, resumes)?.let {
++                Image(
++                    bitmap = it,
++                    contentDescription = null,
++                    modifier = Modifier.fillMaxSize(),
++                    contentScale = ContentScale.Crop,
++                    alignment = Alignment.TopCenter,
++                )
++            }
++            val context = LocalContext.current
++            val now by rememberMinute()
++            Text(
++                text = DateFormat.format(
++                    if (DateFormat.is24HourFormat(context)) "HH\nmm" else "hh\nmm", now
++                ).toString(),
++                color = Petal.Coral.light,
++                fontFamily = BloomRounded,
++                fontWeight = FontWeight.Bold,
++                fontSize = 22.sp,
++                lineHeight = 0.92.em,
++                textAlign = TextAlign.Center,
++            )
++        }
++    }
++}
++
++@Composable
++private fun WhatsNewCard(onClick: () -> Unit) {
++    WideCard(
++        title = stringResource(R.string.studio_whats_new_title),
++        summary = stringResource(R.string.changelog_summary),
++        petal = Petal.Green,
++        onClick = onClick,
++    ) {
++        PetalChip(Petal.Green, size = 52.dp) {
++            Icon(
++                painter = painterResource(R.drawable.ic_changelog),
++                contentDescription = null,
++                modifier = Modifier.size(26.dp),
++            )
++        }
++    }
++}
++
++@Composable
++private fun SectionTile(section: Section, onClick: () -> Unit, modifier: Modifier) {
++    BloomCard(
++        onClick = onClick,
++        modifier = modifier.heightIn(min = 108.dp),
++        shape = BloomShapes.gridTile,
++    ) {
++        Column(
++            modifier = Modifier
++                .fillMaxSize()
++                .padding(horizontal = 6.dp, vertical = 12.dp),
++            horizontalAlignment = Alignment.CenterHorizontally,
++            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
++        ) {
++            PetalChip(section.petal) {
++                Icon(
++                    painter = painterResource(section.icon),
++                    contentDescription = null,
++                    modifier = Modifier.size(24.dp),
++                    tint = if (section.tinted) section.petal.ink else Color.Unspecified,
++                )
++            }
++            Text(
++                text = stringResource(section.title),
++                color = section.petal.ink,
++                fontWeight = FontWeight.SemiBold,
++                fontSize = 13.sp,
++                lineHeight = 1.25.em,
++                textAlign = TextAlign.Center,
++                maxLines = 2,
++                overflow = TextOverflow.Ellipsis,
++            )
++        }
++    }
++}
+-- 
+2.43.0
+
