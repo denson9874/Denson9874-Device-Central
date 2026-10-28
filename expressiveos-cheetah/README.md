@@ -27,6 +27,7 @@ holding the lock the Evolution X routines take (`~/.evolution-tree.lock`). The o
 | `eos.conf` | Names, feed, release folders and key pins every script reads |
 | `setup.sh` | Sets up `~/expressiveos` (Evolution X's manifest, full history, Git LFS, `local_manifests/cheetah.xml`) or syncs it, always to the pinned commits (`pins/`, below) |
 | `pins/` | The exact sources ExpressiveOS builds: `manifest.xml` for the tree, `kernel.xml` for the kernel source |
+| `sources/org-fork.sh` | Copies the pinned Evolution X repos into the ExpressiveOS GitHub organization (below) |
 | `prepare.sh`, `apply.sh`, `patches/` | Git LFS files, the kit's tree patches (below), the newest cached firmware (`update-firmware.sh`) |
 | `tools/eos-keys-check.sh` | The key guard: ExpressiveOS's own keys, never Evolution X's, DerpFest's or the AOSP test keys |
 | `tools/eos-images.sh` | The build, start to finish |
@@ -171,6 +172,16 @@ commits are on no Evolution X branch any more; until ExpressiveOS's own repos ho
 tree is where they live, so don't delete `~/expressiveos/.repo`.
 
 Newer sources come only with new pins, and only when Daryl asks.
+
+ExpressiveOS is moving to its own copies of these sources (Daryl, 2026-10-28: fully independent of
+Evolution X; it merges LineageOS and Google's security fixes itself). `sources/org-fork.sh` makes
+them in the [ExpressiveOS](https://github.com/ExpressiveOS) organization, from a machine where `gh`
+is logged in as an owner (Daryl's Mac): a fork of each of the 74 Evolution X repos the pins name,
+with tag `eos-1.0-base` and default branch `expressiveos` at its pinned commit, and `blobs`, which
+holds the Git LFS files of `vendor_gms` and `vendor_google_cheetah` (Evolution X keeps them on
+gitea.com and a personal gitlab.com account). It can run again any time and redoes nothing. The
+kit's patches then become commits on `expressiveos`, and the tree moves to ExpressiveOS's own
+manifest.
 
 A complete run leaves in `out/eos/`: `build.ok` (the OTA package's sha256, which `eos-pack.sh` needs),
 `target-files.ok` (the sha256 of the target-files zip it was made from, which `m evolution` leaves in
