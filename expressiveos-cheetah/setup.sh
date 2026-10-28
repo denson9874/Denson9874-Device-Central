@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
-# Set up the ExpressiveOS cheetah tree, or put it back on its pinned sources: Evolution
-# X's cnb manifest with full git history and Git LFS, synced only to the commits
-# pins/manifest.xml pins (as .repo/manifests/expressiveos-pins.xml, so a repo sync by hand
-# lands on them too), plus this kit's local manifest (local_manifests/cheetah.xml:
-# cheetah's device trees and blobs, pinned the same way), then repo sync. Evolution X's
-# newer commits never come in this way: they need new pins.
+# Set up the ExpressiveOS cheetah tree, or sync it again: ExpressiveOS's own manifest
+# (EOS_MANIFEST_URL, branch EOS_MANIFEST_BRANCH: every project at a commit, never a branch
+# head, cheetah's device trees and blobs included) with full git history and Git LFS, then
+# repo sync. Only a new commit of that manifest brings newer sources. The manifest is fetched
+# and checked first (as GitHub has it, no local manifest, every project at a commit), and the
+# projects sync to that commit of it only, so a bad manifest changes no source.
+# A tree still on Evolution X's manifest and the 1.0 pins (EOS_OLD_MANIFEST_URL, the kit's
+# expressiveos-pins.xml and local_manifests/cheetah.xml) moves to ExpressiveOS's manifest
+# here: same paths, the forks' commits instead of Evolution X's, so the sync fetches only the
+# kit's commits. A project whose repo is now another (BtHelper) is checked out again.
 # The tree is its own: nothing in it may be a symlink, hardlink or git alternate into
 # ~/evolution or ~/derpfest, so nothing this kit does can reach their builds.
-# A sync drops the kit's local commits; eos-images.sh puts them back (prepare.sh).
+# A sync drops local commits; eos-images.sh puts the kit's own back (prepare.sh).
 #
 #   setup.sh [top]          # default ~/expressiveos
 #
@@ -54,37 +58,72 @@ for p in .repo .repo/manifests .repo/projects .repo/project-objects .repo/local_
 # Not under a build someone started by hand in this tree: the sync would change its sources
 b=$(tree_build); [[ -z "$b" ]] || fail "a build is running in $top: $b"
 m="$top/.repo/manifests"
+lm="$top/.repo/local_manifests"
 url=$(git -C "$m" config --get remote.origin.url || true)
-[[ "${url%.git}" = "$EOS_MANIFEST_URL" ]] || fail "$top's manifest is ${url:-unknown}, not $EOS_MANIFEST_URL"
-# Full history: git am --3way can then merge a kit patch around a later Evolution X
-# change to the same file; in a shallow tree that patch just fails (~50 GB saved)
+# Full history: git am --3way can then merge a kit patch around a later change to the same
+# file, and a merge of LineageOS's changes needs it too; in a shallow tree they just fail
 depth=$(git -C "$m" config --get repo.depth || true)
-[[ -z "$depth" ]] || fail "$top was initialized with --depth=$depth; the kit's patches need full history to apply across Evolution X's changes. Set up a fresh folder, or unshallow it: git -C $m config --unset repo.depth, then git -C $top/frameworks/base fetch --unshallow"
+[[ -z "$depth" ]] || fail "$top was initialized with --depth=$depth; the kit needs full history. Set up a fresh folder, or unshallow it: git -C $m config --unset repo.depth, then git -C $top/frameworks/base fetch --unshallow"
 [[ "$(git -C "$m" config --get --bool repo.git-lfs || true)" = true ]] \
     || fail "$top wasn't initialized with --git-lfs (radio images would be 130-byte pointers): run (cd $top && repo init --git-lfs), then setup.sh again"
 
-lm="$top/.repo/local_manifests"
-mkdir -p -- "$lm"
+if [[ "${url%.git}" = "$EOS_OLD_MANIFEST_URL" ]]; then
+    # The 1.0 tree: Evolution X's manifest with the kit's pins and local manifest
+    echo "== moving $top from $url to ExpressiveOS's manifest $EOS_MANIFEST_URL ($EOS_MANIFEST_BRANCH)"
+    for p in "$lm/cheetah.xml" "$lm/cheetah.xml.eos-1.0"; do in_top "$p"; done
+    # Its projects are in ExpressiveOS's manifest: as a local manifest too, repo would refuse
+    # them twice. Kept beside it (not *.xml, so repo reads it no more)
+    if [[ -e "$lm/cheetah.xml" ]]; then
+        mv -f -- "$lm/cheetah.xml" "$lm/cheetah.xml.eos-1.0" || fail "can't move $lm/cheetah.xml aside"
+    fi
+elif [[ "${url%.git}" != "$EOS_MANIFEST_URL" ]]; then
+    fail "$top's manifest is ${url:-unknown}, not $EOS_MANIFEST_URL"
+fi
 for f in "$lm"/*.xml; do
-    [[ -e "$f" && "${f##*/}" != cheetah.xml ]] && echo "WARNING: $f is another local manifest; check it belongs in the ExpressiveOS tree"
+    [[ ! -e "$f" ]] || fail "$f is a local manifest: ExpressiveOS's tree is its manifest alone (cheetah's projects are in it); move it out of .repo/local_manifests"
 done
-if cmp -s -- "$kit/local_manifests/cheetah.xml" "$lm/cheetah.xml"; then
-    echo "unchanged: .repo/local_manifests/cheetah.xml"
-else
-    { cp -- "$kit/local_manifests/cheetah.xml" "$lm/.cheetah.xml.tmp" && mv -f -- "$lm/.cheetah.xml.tmp" "$lm/cheetah.xml"; } \
-        || fail "can't install $lm/cheetah.xml"
-    echo "installed: .repo/local_manifests/cheetah.xml"
+# ExpressiveOS's manifest as GitHub has it now, on default.xml and its branch, whatever the tree
+# was on (the 1.0 tree, one set up by hand, a commit made here: repo init drops it). Nothing
+# syncs before it's checked below, and then only to it (--no-manifest-update). No terminal on
+# stdin: repo init then asks nothing
+(cd "$top" && repo init -u "$EOS_MANIFEST_URL" -b "$EOS_MANIFEST_BRANCH" -m default.xml </dev/null) \
+    || fail "repo init -u $EOS_MANIFEST_URL -b $EOS_MANIFEST_BRANCH -m default.xml failed (above); no project was synced, run setup.sh again"
+# The 1.0 tree's pins (the old kit's pins_install put them there), unused once repo init is done
+in_top "$m/expressiveos-pins.xml"
+rm -f -- "$m/expressiveos-pins.xml" "$m/.expressiveos-pins.xml.tmp"
+mf=$(tree_manifest) || exit 1
+# Every project at a commit before anything syncs: a branch head would check out whatever that
+# branch has today, and an <include> brings in a manifest of branch heads (Evolution X's)
+mrev=$(git -C "$m" rev-parse --short HEAD)
+! grep -q '<include' "$mf" || fail "$EOS_MANIFEST_URL ($EOS_MANIFEST_BRANCH, $mrev) includes another manifest, so not every project is at a commit; nothing was synced"
+off=$(pins_list "$mf" | awk '$2 !~ /^[0-9a-f]{40}$/ { print $1 }') || fail "can't read $mf"
+[[ -z "$off" ]] || fail "$EOS_MANIFEST_URL ($EOS_MANIFEST_BRANCH, $mrev) has projects that aren't at a commit, nothing was synced: $(tr "\n" " " <<<"$off" | cut -c1-300)"
+
+# repo keeps a project's git objects under its repo's name: a path with another repo behind it
+# now (BtHelper: TheParasiteProject's, then ExpressiveOS's) is checked out again only when
+# repo is told to (--force-sync), and nothing else in the sync goes on until it is
+moved=$(python3 -I - "$top" "$mf" <<'EOF'
+import os, sys, xml.etree.ElementTree as ET
+top, f = sys.argv[1:]
+out = []
+for p in ET.parse(f).getroot().iter("project"):
+    path = p.get("path") or p.get("name")
+    have = os.path.join(top, ".repo", "projects", path + ".git", "objects")
+    want = os.path.join(top, ".repo", "project-objects", p.get("name") + ".git", "objects")
+    if os.path.lexists(have) and os.path.realpath(have) != os.path.realpath(want):
+        out.append(path)
+print(" ".join(out))
+EOF
+) || fail "can't read $mf"
+if [[ -n "$moved" ]]; then
+    echo "== checking out again what's another repo now: $moved"
+    # shellcheck disable=SC2086   # paths, no spaces
+    (cd "$top" && repo sync -c --force-sync --no-tags --no-clone-bundle --no-manifest-update $moved) || fail "repo sync --force-sync $moved failed (above); run setup.sh again"
 fi
 
-# The pins. A pinned commit the tree already has needs no fetch: on the build server, whose
-# tree has them all, this sync downloads nothing but Evolution X's manifest repo
-[[ -f "$kit/pins/manifest.xml" ]] || fail "no $kit/pins/manifest.xml"
-pins_install "$top" "$kit/pins/manifest.xml"
-
 echo "== repo sync (-j${EOS_SYNC_JOBS:-4}; the first one downloads a few hundred GB)"
-(cd "$top" && repo sync -c -j"${EOS_SYNC_JOBS:-4}" --no-tags --no-clone-bundle --optimized-fetch) || fail "repo sync failed (its errors are above); run setup.sh again to resume"
-pins_check "$top" "$EOS_MANIFEST_BRANCH" "$kit/pins/manifest.xml" "$kit/local_manifests/cheetah.xml" \
-    || fail "the tree isn't on its pinned commits after the sync (above)"
+(cd "$top" && repo sync -c -j"${EOS_SYNC_JOBS:-4}" --no-tags --no-clone-bundle --optimized-fetch --no-manifest-update) || fail "repo sync failed (its errors are above); run setup.sh again to resume"
+pins_check "$top" "$EOS_MANIFEST_BRANCH" "$mf" || fail "the tree isn't on its manifest's commits after the sync (above)"
 
 # Nothing borrowed from another tree: git alternates (repo --reference) or a hardlinked copy
 while IFS= read -r -d '' a; do
@@ -102,4 +141,4 @@ for f in build/make/core/Makefile vendor/lineage/config/common.mk device/google/
     [[ "$(stat -c %h -- "$top/$f")" = 1 ]] || fail "$f has other hard links: is $top a hardlinked copy of another tree? Set it up again from scratch"
 done
 done=1
-echo "SETUP_OK $top, pinned sources ($(df -h --output=avail -- "$top" | tail -1 | tr -d ' ') free)"
+echo "SETUP_OK $top, ExpressiveOS's manifest at $(git -C "$m" rev-parse --short HEAD) ($(df -h --output=avail -- "$top" | tail -1 | tr -d ' ') free)"

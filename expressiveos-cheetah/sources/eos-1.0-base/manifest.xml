@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<!-- ExpressiveOS's pinned sources (setup.sh syncs to these, never to a branch head): the
-     exact commit of every project in Evolution X's cnb manifest that the build server's tree
-     was synced to on 2026-10-26 12:53 CET, the sources of the 1.0 builds of 2026-10-26 and
-     2026-10-27. Read off that tree by the runner's read-only expressiveos-pins action
-     (run 40670948991, 2026-10-28), less local_manifests/cheetah.xml's four projects, which
-     pin themselves there. Evolution X rewrites its branches, so some of these commits are on
-     no Evolution X branch any more; the server's tree has them all. -->
+<!-- The sources of ExpressiveOS 1.0 (the builds of 2026-10-26 and 2026-10-27), where
+     ExpressiveOS's own sources start: the exact commit of every project in Evolution X's cnb
+     manifest that the build server's tree was synced to on 2026-10-26 12:53 CET, read off that
+     tree by the runner's read-only expressiveos-pins action (run 40670948991, 2026-10-28), less
+     cheetah.xml's four projects. org-fork.sh forked the Evolution X repos here at these commits
+     (tag eos-1.0-base), and own-manifest.py made ExpressiveOS's manifest from them. A record
+     only: the tree builds ExpressiveOS's manifest (eos.conf), not this. -->
 <manifest>
   <remote name="aosp" fetch="https://android.googlesource.com" review="android-review.googlesource.com" revision="refs/tags/android-17.0.0_r1" />
   <remote name="evo" fetch="https://github.com/Evolution-X" revision="refs/heads/cnb" />
