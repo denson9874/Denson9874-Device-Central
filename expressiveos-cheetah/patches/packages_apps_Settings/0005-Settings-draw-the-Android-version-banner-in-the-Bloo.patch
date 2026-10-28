@@ -1,0 +1,186 @@
+From 4375a3175ce705794d076ef926c3090b35276cbc Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 22:54:21 +0000
+Subject: [PATCH] Settings: draw the Android version banner in the Bloom
+ colours
+
+Daryl, 2026-10-27: the neon ExpressiveOS wordmark takes the Bloom
+mark's colours. GlowView swept a pink, violet and cyan gradient with a
+cyan and pink fringe across the wordmark. Sweep the mark's four petals
+instead, in the boot animation wordmark's order (violet, blue, green,
+coral), with a blue and violet fringe: the petals' mid tones (light
+tones for the fringe) when the theme's text is light (a dark surface),
+their deep tones when it is dark. The glow, shine and sparkles keep
+their timing and sizes.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ res/values/evolution_logo_paths.xml           |  2 +-
+ .../deviceinfo/firmwareversion/GlowView.java  | 67 ++++++++++++-------
+ 2 files changed, 43 insertions(+), 26 deletions(-)
+
+diff --git a/res/values/evolution_logo_paths.xml b/res/values/evolution_logo_paths.xml
+index b16955e..d7c3900 100644
+--- a/res/values/evolution_logo_paths.xml
++++ b/res/values/evolution_logo_paths.xml
+@@ -5,7 +5,7 @@
+ -->
+ <resources>
+     <!-- Outline path data of the ExpressiveOS wordmark. Same geometry as
+-         ic_evolution_logo_outline, used by GlowView to draw the holographic logo. -->
++         ic_evolution_logo_outline, used by GlowView to draw the wordmark in the Bloom colours. -->
+     <string-array name="evolution_logo_paths" translatable="false">
+         <item>M219.74 147.99Q215.73 147.99 212.87 145.13Q210 142.26 210 138.26L210 85.26Q210 81.27 212.87 78.41Q215.73 75.55 219.74 75.55L252.23 75.55Q255.45 75.55 257.74 77.83Q260.03 80.12 260.03 83.27Q260.03 86.43 257.74 88.71Q255.45 91 252.23 91L227.49 91L227.49 104.9L250.28 104.9Q253.12 104.9 255.15 106.91Q257.18 108.92 257.18 111.72Q257.18 114.53 255.15 116.54Q253.12 118.55 250.28 118.55L227.49 118.55L227.49 132.68L252.68 132.68Q255.88 132.68 258.15 134.94Q260.43 137.21 260.43 140.34Q260.43 143.47 258.15 145.73Q255.88 147.99 252.68 147.99Z</item>
+         <item>M310.69 148.86Q308.98 148.86 307.45 148.03Q305.92 147.19 304.38 145.62L292.19 131.57L279.75 146.15Q278.49 147.44 277.15 148.14Q275.81 148.85 274.23 148.85Q269.27 148.85 267.48 144.52Q265.69 140.19 269.4 136.45L282.02 121.63L270.07 107.43Q266.37 103.63 268.32 99.08Q270.28 94.52 275.42 94.52Q277.56 94.52 279.22 95.65Q280.88 96.78 282.25 98.18L293.19 110.9L304.33 97.89Q305.62 96.58 307.23 95.55Q308.84 94.53 310.78 94.53Q315.6 94.53 317.24 98.84Q318.88 103.16 315.12 106.96L303.25 120.87L315.8 135.73Q319.69 139.7 317.76 144.28Q315.82 148.86 310.69 148.86Z</item>
+diff --git a/src/com/android/settings/deviceinfo/firmwareversion/GlowView.java b/src/com/android/settings/deviceinfo/firmwareversion/GlowView.java
+index 882f169..d000092 100644
+--- a/src/com/android/settings/deviceinfo/firmwareversion/GlowView.java
++++ b/src/com/android/settings/deviceinfo/firmwareversion/GlowView.java
+@@ -10,6 +10,7 @@ import android.content.Context;
+ import android.content.res.TypedArray;
+ import android.graphics.BlurMaskFilter;
+ import android.graphics.Canvas;
++import android.graphics.Color;
+ import android.graphics.LinearGradient;
+ import android.graphics.Matrix;
+ import android.graphics.Paint;
+@@ -26,9 +27,11 @@ import androidx.core.graphics.PathParser;
+ import com.android.settings.R;
+ 
+ /**
+- * Draws the ExpressiveOS wordmark with a K-pop holographic treatment: a pink,
+- * violet and cyan gradient sweeping across the outline, a soft neon glow with
+- * a chromatic fringe, a periodic shine streak and a few twinkling sparkles.
++ * Draws the ExpressiveOS wordmark in the Bloom mark's colours: its four petals
++ * (violet, blue, green, coral) as a gradient sweeping across the outline, a soft
++ * glow with a blue and violet fringe, a periodic shine streak and a few
++ * twinkling sparkles. Dark surfaces get the petals' mid tones (light tones for
++ * the fringe), light ones their deep tones.
+  *
+  * All geometry is expressed in the 1080x240 viewport of
+  * ic_evolution_logo_outline and scaled to fit the view (centerInside).
+@@ -37,9 +40,20 @@ public class GlowView extends View {
+     private static final float VIEWPORT_W = 1080f;
+     private static final float VIEWPORT_H = 240f;
+ 
+-    private static final int PINK   = 0xFFFF2E9A;
+-    private static final int VIOLET = 0xFF8B5CF6;
+-    private static final int CYAN   = 0xFF22D3EE;
++    // The petals in the boot animation wordmark's order, the first repeated so
++    // the sweep loops: mid tones for dark surfaces, deep tones for light ones.
++    private static final int[] BLOOM_ON_DARK = {
++        0xFFAE69FC, 0xFF417BFC, 0xFF4AD29D, 0xFFFD7771, 0xFFAE69FC };
++    private static final int[] BLOOM_ON_LIGHT = {
++        0xFF6B2BBB, 0xFF1842D1, 0xFF18A07C, 0xFFD33952, 0xFF6B2BBB };
++    private static final float[] BLOOM_STOPS = { 0f, 0.25f, 0.5f, 0.75f, 1f };
++
++    // Fringe: the blue petal left, the violet petal right (light tones on dark
++    // surfaces, deep tones on light ones)
++    private static final int FRINGE_LEFT_ON_DARK   = 0xFF76BCFB;
++    private static final int FRINGE_RIGHT_ON_DARK  = 0xFFF3B1FC;
++    private static final int FRINGE_LEFT_ON_LIGHT  = 0xFF1842D1;
++    private static final int FRINGE_RIGHT_ON_LIGHT = 0xFF6B2BBB;
+ 
+     // Gradient vector (viewport units). One sweep moves it by its own length,
+     // so the repeating gradient loops seamlessly.
+@@ -85,8 +99,8 @@ public class GlowView extends View {
+     private final Matrix mShaderMatrix = new Matrix();
+ 
+     private final Paint mGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+-    private final Paint mCyanPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+-    private final Paint mPinkPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final Paint mLeftFringePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final Paint mRightFringePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+     private final Paint mFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+     private final Paint mStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+     private final Paint mShineFill = new Paint(Paint.ANTI_ALIAS_FLAG);
+@@ -99,6 +113,7 @@ public class GlowView extends View {
+             new int[]{ 0x00FFFFFF, 0xFFFFFFFF, 0x00FFFFFF }, null,
+             Shader.TileMode.CLAMP);
+     private LinearGradient mHolo;
++    private int[] mHoloColors;
+ 
+     private float mScale;
+     private float mOx;
+@@ -123,6 +138,9 @@ public class GlowView extends View {
+ 
+     private void init(Context ctx) {
+         final int ink = resolveInk(ctx);
++        // Light ink means a dark surface
++        final boolean onDark = Color.luminance(ink) > 0.5f;
++        mHoloColors = onDark ? BLOOM_ON_DARK : BLOOM_ON_LIGHT;
+ 
+         for (String data : ctx.getResources().getStringArray(R.array.evolution_logo_paths)) {
+             mLogoUnits.addPath(PathParser.createPathFromPathData(data));
+@@ -139,15 +157,15 @@ public class GlowView extends View {
+         mGlowPaint.setStrokeJoin(Paint.Join.ROUND);
+         mGlowPaint.setAlpha(GLOW_ALPHA);
+ 
+-        mCyanPaint.setStyle(Paint.Style.STROKE);
+-        mCyanPaint.setStrokeJoin(Paint.Join.ROUND);
+-        mCyanPaint.setColor(CYAN);
+-        mCyanPaint.setAlpha(FRINGE_ALPHA);
++        mLeftFringePaint.setStyle(Paint.Style.STROKE);
++        mLeftFringePaint.setStrokeJoin(Paint.Join.ROUND);
++        mLeftFringePaint.setColor(onDark ? FRINGE_LEFT_ON_DARK : FRINGE_LEFT_ON_LIGHT);
++        mLeftFringePaint.setAlpha(FRINGE_ALPHA);
+ 
+-        mPinkPaint.setStyle(Paint.Style.STROKE);
+-        mPinkPaint.setStrokeJoin(Paint.Join.ROUND);
+-        mPinkPaint.setColor(PINK);
+-        mPinkPaint.setAlpha(FRINGE_ALPHA);
++        mRightFringePaint.setStyle(Paint.Style.STROKE);
++        mRightFringePaint.setStrokeJoin(Paint.Join.ROUND);
++        mRightFringePaint.setColor(onDark ? FRINGE_RIGHT_ON_DARK : FRINGE_RIGHT_ON_LIGHT);
++        mRightFringePaint.setAlpha(FRINGE_ALPHA);
+ 
+         mFillPaint.setStyle(Paint.Style.FILL);
+         mFillPaint.setAlpha(FILL_ALPHA);
+@@ -206,18 +224,17 @@ public class GlowView extends View {
+ 
+         mGlowPaint.setStrokeWidth(GLOW_STROKE * mScale);
+         mGlowPaint.setMaskFilter(glowBlur);
+-        mCyanPaint.setStrokeWidth(FRINGE_STROKE * mScale);
+-        mCyanPaint.setMaskFilter(fringeBlur);
+-        mPinkPaint.setStrokeWidth(FRINGE_STROKE * mScale);
+-        mPinkPaint.setMaskFilter(fringeBlur);
++        mLeftFringePaint.setStrokeWidth(FRINGE_STROKE * mScale);
++        mLeftFringePaint.setMaskFilter(fringeBlur);
++        mRightFringePaint.setStrokeWidth(FRINGE_STROKE * mScale);
++        mRightFringePaint.setMaskFilter(fringeBlur);
+         mStrokePaint.setStrokeWidth(MAIN_STROKE * mScale);
+         mShineStroke.setStrokeWidth(MAIN_STROKE * mScale);
+ 
+         mHolo = new LinearGradient(
+                 mOx + GRAD_X1 * mScale, mOy + GRAD_Y1 * mScale,
+                 mOx + GRAD_X2 * mScale, mOy + GRAD_Y2 * mScale,
+-                new int[]{ PINK, VIOLET, CYAN, PINK },
+-                new float[]{ 0f, 0.33f, 0.66f, 1f },
++                mHoloColors, BLOOM_STOPS,
+                 Shader.TileMode.REPEAT);
+     }
+ 
+@@ -237,17 +254,17 @@ public class GlowView extends View {
+         mFillPaint.setShader(mHolo);
+         mStrokePaint.setShader(mHolo);
+ 
+-        // Neon glow, then the cyan/pink chromatic fringe
++        // Soft glow, then the blue/violet fringe
+         canvas.drawPath(mLogo, mGlowPaint);
+ 
+         canvas.save();
+         canvas.translate(-FRINGE_SHIFT * mScale, 0f);
+-        canvas.drawPath(mLogo, mCyanPaint);
++        canvas.drawPath(mLogo, mLeftFringePaint);
+         canvas.restore();
+ 
+         canvas.save();
+         canvas.translate(FRINGE_SHIFT * mScale, 0f);
+-        canvas.drawPath(mLogo, mPinkPaint);
++        canvas.drawPath(mLogo, mRightFringePaint);
+         canvas.restore();
+ 
+         // Glassy fill and gradient outline
+-- 
+2.43.0
+
