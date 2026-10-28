@@ -624,7 +624,8 @@ class Resolution:
     def __init__(self, path, data):
         self.path = path
         where = f"resolutions/{path}.patch"
-        if b"\x1b" in data:
+        # (A diff's own lines start with a space, +, -, @ or a header word; a coloured one's with ESC)
+        if re.search(rb"(?m)^\x1b", data):
             raise Fail(f"{where}: has terminal colour codes in it (made by a git diff with colour on?): make it with update.py resolution")
         i = 0 if data.startswith(b"diff --git ") else data.find(b"\ndiff --git ")
         head, self.patch = (data, b"") if i < 0 else (data[:i], data[i:].lstrip(b"\n"))
