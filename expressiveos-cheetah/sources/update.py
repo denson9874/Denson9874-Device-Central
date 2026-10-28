@@ -26,7 +26,8 @@
 # factory images (cheetah's firmware and vendor blobs) aren't checked here.
 #
 # Ends with UPDATE_CHECK=OK, or UPDATE_CHECK=INCOMPLETE and what couldn't be checked.
-import argparse, concurrent.futures, datetime, os, re, subprocess, sys, threading, urllib.parse
+import argparse, base64, concurrent.futures, datetime, os, re, subprocess, sys, threading
+import urllib.error, urllib.parse, urllib.request
 import xml.etree.ElementTree as ET
 
 here = os.path.dirname(os.path.abspath(__file__))
@@ -567,6 +568,72 @@ def check(a):
     with open(rep, "w") as f:
         f.write("\n".join(lines) + "\n")
 
+# ---- the push token -----------------------------------------------------------------
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+def receive_pack(url, token):
+    # GitHub's answer to a git push's first request (the refs it would update) for <url>:
+    # 200 only for a login that may push there, 401 without one, 403 for one that may not.
+    # Nothing is sent or changed
+    req = urllib.request.Request(url + ".git/info/refs?service=git-receive-pack",
+                                 headers={"User-Agent": "git/expressiveos-update"})
+    if token is not None:
+        # Unredirected: never sent on to another address
+        req.add_unredirected_header("Authorization", "Basic " + base64.b64encode(
+            f"x-access-token:{token}".encode()).decode())
+    try:
+        with urllib.request.build_opener(NoRedirect).open(req, timeout=60) as r:
+            return r.status, r.headers.get("Content-Type", "")
+    except urllib.error.HTTPError as e:
+        return e.code, ""
+    except (urllib.error.URLError, OSError) as e:
+        return None, str(e)
+
+def token_check(a):
+    # Can EOS_PUSH_TOKEN push to every repo of ExpressiveOS's (its manifest's repos and the
+    # manifest's own)? Asks GitHub as a push would, and stops there: nothing is pushed
+    eos = conf(os.path.join(kit, "eos.conf"))
+    token = os.environ.get("EOS_PUSH_TOKEN", "")
+    print("== The push token (EOS_PUSH_TOKEN, the runner's EXPRESSIVEOS_PUSH_TOKEN secret): may it push to "
+          "ExpressiveOS's repos? Asked as a git push asks, nothing pushed")
+    if not token:
+        fail("EOS_PUSH_TOKEN is empty: the Actions secret EXPRESSIVEOS_PUSH_TOKEN isn't set in this repo")
+    if token != token.strip() or any(c.isspace() for c in token):
+        fail("the token has spaces or line breaks in it: save the secret again with the token alone")
+    kind = ("a fine-grained token" if token.startswith("github_pat_") else
+            "a classic token (it reaches every repo you can push to: a fine-grained one for ExpressiveOS is safer)"
+            if token.startswith("ghp_") else "not a GitHub personal access token as far as its form shows")
+    print(f"token: {kind}, {len(token)} characters")
+    gd = fetch_manifest(a.work, "eos.git", eos["EOS_MANIFEST_URL"], eos["EOS_MANIFEST_BRANCH"])
+    rev = git("rev-parse", f"refs/heads/{eos['EOS_MANIFEST_BRANCH']}", gd=gd).stdout.strip()
+    ours, _, _ = flatten(reader(gd, rev), eos["EOS_MANIFEST_URL"])
+    urls = sorted({eos["EOS_MANIFEST_URL"].rstrip("/")} | {p.url for p in ours.values() if p.remote == "expressiveos"})
+    print(f"{len(urls)} repos: {eos['EOS_MANIFEST_URL']} and the projects its {eos['EOS_MANIFEST_BRANCH']} branch "
+          f"({rev[:12]}) takes from ExpressiveOS")
+    # Without a login GitHub must refuse, or a 200 below wouldn't mean the token may push
+    code, _ = receive_pack(urls[0], None)
+    if code != 401:
+        fail(f"{urls[0]} answered {code} to a push request without a login (401 expected), so its answer can't tell what the token may do")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+        answers = dict(zip(urls, ex.map(lambda u: receive_pack(u, token), urls)))
+    meaning = {401: "token refused (wrong, expired or revoked)",
+               403: "no push access (the token's repository access or Contents permission, or the organization hasn't approved it)",
+               404: "not found (or not visible to the token)"}
+    bad = 0
+    for u in urls:
+        code, ctype = answers[u]
+        if code == 200 and ctype == "application/x-git-receive-pack-advertisement":
+            continue
+        bad += 1
+        print(f"{u}: {meaning.get(code, f'answered {code} {ctype}'.strip())}")
+    print(f"-- {len(urls) - bad} of {len(urls)} repos would take a push")
+    print(f"TOKEN_CHECK={'OK' if not bad else 'FAIL'}")
+    if bad:
+        sys.exit(1)
+
 def git_du(path):
     try:
         return subprocess.run(["du", "-sh", path], capture_output=True, text=True).stdout.split()[0]
@@ -581,9 +648,11 @@ def main():
     c.add_argument("--manifest", required=True)
     c.add_argument("--work", required=True)
     c.add_argument("--lineage-base", default=LINEAGE_BASE)
+    t = sub.add_parser("token")
+    t.add_argument("--work", required=True)
     a = ap.parse_args()
     try:
-        check(a)
+        {"check": check, "token": token_check}[a.cmd](a)
     except Fail as e:
         fail(str(e))
 
