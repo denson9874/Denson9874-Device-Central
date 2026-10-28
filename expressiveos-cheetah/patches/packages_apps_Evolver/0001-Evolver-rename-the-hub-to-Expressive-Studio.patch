@@ -1,4 +1,4 @@
-From 602cd104de8be4d82309bede114f61df8a5cbb57 Mon Sep 17 00:00:00 2001
+From 6dba6d79cd67ee5ed6db1f30f24e6adc9378a0ea Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Tue, 27 Oct 2026 00:34:10 +0000
 Subject: [PATCH] Evolver: rename the hub to Expressive Studio
@@ -129,7 +129,7 @@ index ad88202..a6505dd 100644
      <string name="themes_title">Temi</string>
      <string name="themes_summary">Motore Monet, caratteri, icone, animazioni</string>
 diff --git a/res/values-ja-rJP/evolution_strings.xml b/res/values-ja-rJP/evolution_strings.xml
-index a20e2e6..5b016ad 100644
+index 1fabab9..624dd58 100644
 --- a/res/values-ja-rJP/evolution_strings.xml
 +++ b/res/values-ja-rJP/evolution_strings.xml
 @@ -4,9 +4,6 @@
@@ -255,7 +255,7 @@ index 02a7403..a5cac26 100644
      <string name="themes_title">Temalar</string>
      <string name="themes_summary">Monet motoru, yazı tipleri, simgeler, animasyonlar</string>
 diff --git a/res/values-uk-rUA/evolution_strings.xml b/res/values-uk-rUA/evolution_strings.xml
-index ad8838d..64304d8 100644
+index 124ee38..6368cbe 100644
 --- a/res/values-uk-rUA/evolution_strings.xml
 +++ b/res/values-uk-rUA/evolution_strings.xml
 @@ -4,9 +4,6 @@
@@ -311,7 +311,7 @@ index 36cab94..707af5b 100644
      <string name="themes_title">主題</string>
      <string name="themes_summary">Monet、字體、圖示</string>
 diff --git a/res/values/evolution_strings.xml b/res/values/evolution_strings.xml
-index 6e71457..3bf0f13 100644
+index 3d98184..5b6a720 100644
 --- a/res/values/evolution_strings.xml
 +++ b/res/values/evolution_strings.xml
 @@ -5,8 +5,8 @@
@@ -319,7 +319,7 @@ index 6e71457..3bf0f13 100644
  <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
      <!-- Evolver -->
 -    <string name="evolver_dashboard_title">The Evolver</string>
--    <string name="evolver_dashboard_summary">Evolving your device, your way</string>
+-    <string name="evolver_dashboard_summary">Pixel at heart. Yours by design</string>
 +    <string name="evolver_dashboard_title">Expressive Studio</string>
 +    <string name="evolver_dashboard_summary">Make your device yours</string>
  
