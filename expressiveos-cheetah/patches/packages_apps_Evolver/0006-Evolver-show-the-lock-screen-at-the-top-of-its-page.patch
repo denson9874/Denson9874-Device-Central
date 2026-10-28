@@ -1,4 +1,4 @@
-From 97b564a44e6fde5459bf75f8c9688c9ad4fa27ea Mon Sep 17 00:00:00 2001
+From 9abfc71222574b450b9f6cec6abd0245c980caed Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Wed, 28 Oct 2026 08:50:48 +0000
 Subject: [PATCH] Evolver: show the lock screen at the top of its page

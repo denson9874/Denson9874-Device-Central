@@ -1,4 +1,4 @@
-From 7fe047ffeee6d3182f8cfab2827a9293600cbb15 Mon Sep 17 00:00:00 2001
+From dc958905eb7a785a775d587f9f9ed98843e879c2 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Tue, 27 Oct 2026 00:36:48 +0000
 Subject: [PATCH] Evolver: name ExpressiveOS in the logo, boot animation and
@@ -217,10 +217,10 @@ index ef0e264..42d77ce 100644
      <string name="ts_untrusted_root_replace">Sostituisci</string>
      <!-- Revocation status -->
 diff --git a/res/values-ja-rJP/evolution_strings.xml b/res/values-ja-rJP/evolution_strings.xml
-index ef05d69..658e947 100644
+index a7cc9f2..82c09cd 100644
 --- a/res/values-ja-rJP/evolution_strings.xml
 +++ b/res/values-ja-rJP/evolution_strings.xml
-@@ -471,7 +471,7 @@
+@@ -467,7 +467,7 @@
      <string name="status_bar_logo_position_right">右</string>
      <string name="status_bar_logo_style_title">ロゴのスタイル</string>
      <string name="status_bar_logo_style_summary">表示するカスタムロゴを選択</string>
@@ -229,7 +229,7 @@ index ef05d69..658e947 100644
      <string name="status_bar_logo_style_android">Android</string>
      <string name="status_bar_logo_style_adidas">adidas</string>
      <string name="status_bar_logo_style_alien">エイリアン</string>
-@@ -1058,7 +1058,6 @@
+@@ -1054,7 +1054,6 @@
      <string name="ts_verification_cert_count">%1$d 証明書</string>
      <string name="ts_verification_leaf_count">%1$d leaf</string>
      <string name="ts_fetch_keybox">最新のキーボックスを取得</string>
@@ -237,7 +237,7 @@ index ef05d69..658e947 100644
      <string name="ts_fetch_keybox_fetching">キーボックスを取得中…</string>
      <string name="ts_fetch_keybox_success">公式キーボックスの取得に成功しました</string>
      <string name="ts_fetch_keybox_failed">取得失敗: %s</string>
-@@ -1074,7 +1073,7 @@
+@@ -1070,7 +1069,7 @@
      <string name="ts_expiring_soon_message">このキーボックスの証明書は %1$sに期限が切れます。現在は整合性を渡しますが、有効期限が切れると動作を停止します。今すぐ公式キーボックスに置き換えますか？</string>
      <string name="ts_expiry_unknown">有効期限が不明</string>
      <string name="ts_untrusted_root_title">キーボックスのルートが認識できません</string>
@@ -451,7 +451,7 @@ index cab2b65..b9c5c5f 100644
      <string name="ts_untrusted_root_replace">Değiştir</string>
      <!-- Revocation status -->
 diff --git a/res/values-uk-rUA/evolution_strings.xml b/res/values-uk-rUA/evolution_strings.xml
-index 3f2aad7..864b5ea 100644
+index 79258e7..73c6933 100644
 --- a/res/values-uk-rUA/evolution_strings.xml
 +++ b/res/values-uk-rUA/evolution_strings.xml
 @@ -471,7 +471,7 @@
@@ -463,7 +463,7 @@ index 3f2aad7..864b5ea 100644
      <string name="status_bar_logo_style_android">Андроїд</string>
      <string name="status_bar_logo_style_adidas">Adidas</string>
      <string name="status_bar_logo_style_alien">Інопланетянин</string>
-@@ -1060,7 +1060,6 @@
+@@ -1058,7 +1058,6 @@
      <string name="ts_verification_cert_count">%1$d Сертифікат</string>
      <string name="ts_verification_leaf_count">%1$d Листок</string>
      <string name="ts_fetch_keybox">Завантажити останній keybox</string>
@@ -471,7 +471,7 @@ index 3f2aad7..864b5ea 100644
      <string name="ts_fetch_keybox_fetching">Отримання keybox…</string>
      <string name="ts_fetch_keybox_success">Останній keybox успішно завантажено</string>
      <string name="ts_fetch_keybox_failed">Не вдалося отримати: %s</string>
-@@ -1076,7 +1075,7 @@
+@@ -1074,7 +1073,7 @@
      <string name="ts_expiring_soon_message">Термін дії сертифіката цього keybox закінчується %1$s. Наразі він проходить перевірку цілісності, але перестане працювати після закінчення терміну дії. Замінити його зараз на останній keybox?</string>
      <string name="ts_expiry_unknown">невідомий термін дії</string>
      <string name="ts_untrusted_root_title">Нерозпізнаний кореневий ключ</string>
@@ -554,7 +554,7 @@ index 01654c1..a0ccf11 100644
      <string name="ts_untrusted_root_replace">更換</string>
      <!-- Revocation status -->
 diff --git a/res/values/evolution_arrays.xml b/res/values/evolution_arrays.xml
-index 2ef5dd2..fbdbdee 100644
+index 6f7d443..ba6a2bd 100644
 --- a/res/values/evolution_arrays.xml
 +++ b/res/values/evolution_arrays.xml
 @@ -103,7 +103,7 @@
@@ -578,7 +578,7 @@ index 2ef5dd2..fbdbdee 100644
          <item>SlimRoms</item>
          <item>Valorant</item>
 diff --git a/res/values/evolution_strings.xml b/res/values/evolution_strings.xml
-index 1596626..99beb15 100644
+index aec9a87..b538488 100644
 --- a/res/values/evolution_strings.xml
 +++ b/res/values/evolution_strings.xml
 @@ -507,7 +507,7 @@
@@ -590,16 +590,16 @@ index 1596626..99beb15 100644
      <string name="status_bar_logo_style_android">Android</string>
      <string name="status_bar_logo_style_adidas">Adidas</string>
      <string name="status_bar_logo_style_alien">Alien</string>
-@@ -1122,7 +1122,7 @@
+@@ -1117,7 +1117,7 @@
+     <string name="ts_verification_cert_count">%1$d cert</string>
      <string name="ts_verification_leaf_count">%1$d leaf</string>
-     <string name="ts_verification_skip_count">%1$d skip</string>
      <string name="ts_fetch_keybox">Fetch latest keybox</string>
 -    <string name="ts_fetch_keybox_summary">Download keybox from Evolution X servers</string>
 +    <string name="ts_fetch_keybox_summary">Download the latest shared keybox</string>
      <string name="ts_fetch_keybox_fetching">Fetching keybox…</string>
      <string name="ts_fetch_keybox_success">Latest keybox fetched successfully</string>
      <string name="ts_fetch_keybox_failed">Fetch failed: %s</string>
-@@ -1139,7 +1139,7 @@
+@@ -1134,7 +1134,7 @@
      <string name="ts_expiring_soon_message">This keybox\'s certificate expires on %1$s. It currently passes integrity but will stop working after expiry. Replace it now with the latest keybox?</string>
      <string name="ts_expiry_unknown">unknown expiry</string>
      <string name="ts_untrusted_root_title">Unrecognized keybox root</string>
