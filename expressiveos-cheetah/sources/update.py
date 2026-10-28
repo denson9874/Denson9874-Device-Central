@@ -48,7 +48,8 @@ def fail(msg):
 
 def git(*args, gd=None, timeout=600, ok=(0,), input=None, env=None, raw=False):
     # raw: stdout as bytes (blobs); input: str, or bytes when raw
-    cmd = ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false"]
+    # Never colour, and file names as they are (the -z outputs and patches this reads)
+    cmd = ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-c", "color.ui=false", "-c", "core.quotePath=false"]
     if gd:
         cmd += ["--git-dir", gd]
     try:
@@ -205,6 +206,19 @@ def count(gd, a, b):
 def is_ancestor(gd, a, b):
     return git("merge-base", "--is-ancestor", a, b, gd=gd, ok=(0, 1)).returncode == 0
 
+# How every merge here detects renames: git's defaults, pinned, so a merge on the build server
+# and the same merge in a clone elsewhere (a resolution's) come out the same whatever either
+# machine's git config says
+MERGE_CFG = ["-c", "merge.renames=true", "-c", "merge.directoryRenames=conflict", "-c", "merge.renameLimit=7000",
+             "-c", "merge.conflictStyle=merge"]
+
+def merge_tree_z(gd, ours, theirs, *extra, style="merge"):
+    # git merge-tree --write-tree -z: (rc, tree, the rest of its output, NUL-split)
+    r = git(*MERGE_CFG, "-c", f"merge.conflictStyle={style}", "merge-tree", "--write-tree", "--no-messages", "-z",
+            *extra, ours, theirs, gd=gd, timeout=1800, ok=(0, 1))
+    parts = r.stdout.split("\0")
+    return r.returncode, parts[0], [x for x in parts[1:] if x]
+
 _mt = None
 def merge_tree(gd, ours, theirs):
     # (merged tree or None, conflicted paths) of merging theirs into ours, nothing written but
@@ -214,19 +228,17 @@ def merge_tree(gd, ours, theirs):
         r = git("merge-tree", "-h", ok=(0, 129))
         _mt = "--write-tree" in r.stdout + r.stderr
     if _mt:
-        r = git("merge-tree", "--write-tree", "--name-only", "--no-messages", ours, theirs, gd=gd,
-                timeout=1800, ok=(0, 1))
-        lines = r.stdout.splitlines()
-        return (lines[0] if r.returncode == 0 else None), [l for l in lines[1:] if l]
+        rc, tree, files = merge_tree_z(gd, ours, theirs, "--name-only")
+        return (tree if rc == 0 else None), files
     wt = os.path.join(os.path.dirname(gd), os.path.basename(gd) + ".merge")
     git("worktree", "prune", gd=gd)
     git("worktree", "add", "-q", "--detach", "--force", wt, ours, gd=gd, timeout=3600)
     try:
         r = subprocess.run(["git", "-C", wt, "-c", "user.name=update check", "-c", "user.email=none@invalid",
-                            "merge", "-q", "--no-commit", "--no-ff", theirs],
+                            *MERGE_CFG, "merge", "-q", "--no-commit", "--no-ff", theirs],
                            capture_output=True, text=True, env=ENV, timeout=3600)
-        files = subprocess.run(["git", "-C", wt, "diff", "--name-only", "--diff-filter=U"],
-                               capture_output=True, text=True, env=ENV).stdout.split("\n")
+        files = subprocess.run(["git", "-C", wt, "diff", "-z", "--name-only", "--diff-filter=U"],
+                               capture_output=True, text=True, errors="surrogateescape", env=ENV).stdout.split("\0")
         tree = None
         if r.returncode == 0:
             tree = subprocess.run(["git", "-C", wt, "write-tree"], capture_output=True, text=True,
@@ -502,7 +514,9 @@ def check(a):
         o = ours.get(path)
         if o is None:
             where = " (not in ExpressiveOS's manifest)"
-        elif o.url == n.url and branch_of(o.upstream or o.revision) == branch_of(n.revision):
+        elif all({"url": o.url == n.url, "revision": branch_of(o.upstream or o.revision) == branch_of(n.revision),
+                  "groups": o.groups == n.groups, "depth": (o.depth or "") == (n.depth or ""),
+                  "kids": o.kids == n.kids}[k] for k in what):
             where = "; ExpressiveOS's manifest has it already"
         elif o.remote == "expressiveos":
             where = f"; ExpressiveOS's fork {o.name} is here"
@@ -590,10 +604,12 @@ def check(a):
 # to their branches (fast-forwards, never forced), then the manifest's commit to branch
 # update/<id> of ExpressiveOS's manifest, for a pull request into its own branch.
 #
-# A resolution's first line is "merge <fork commit> <LineageOS commit>", the merge it's for.
-# Then a line "resolved <file>" for each file that merge conflicts in, any notes, and last git
-# diff --binary --no-renames from the fork commit to the resolved files (and any other file the
-# resolution changes). A resolved file the diff leaves out is the fork's, as it was.
+# A resolution (update.py resolution makes it, from a clone where the merge was fixed by hand)
+# starts "merge <fork commit> <LineageOS commit>", the merge it's for, then "resolved <file>"
+# for each file that merge conflicts in and "changed <file>" for each other file the fix changes
+# from what the merge left, any notes, and last the diff (--binary, no renames) from the fork
+# commit to the fixed merge for those files. Put in, each of those files is the fork's (or none,
+# where the fork has none) with the diff on top: a file the diff leaves out is the fork's.
 
 UPDATE_ID = re.compile(r"[0-9]{4}-(?:0[1-9]|1[0-2])(?:-[2-9])?")
 MARKER = re.compile(rb"^(?:<<<<<<<|>>>>>>>)(?: |$)", re.M)
@@ -601,10 +617,15 @@ MARKER = re.compile(rb"^(?:<<<<<<<|>>>>>>>)(?: |$)", re.M)
 def esc(v):
     return v.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 
+def unesc(v):
+    return v.replace("&quot;", '"').replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+
 class Resolution:
     def __init__(self, path, data):
         self.path = path
         where = f"resolutions/{path}.patch"
+        if b"\x1b" in data:
+            raise Fail(f"{where}: has terminal colour codes in it (made by a git diff with colour on?): make it with update.py resolution")
         i = 0 if data.startswith(b"diff --git ") else data.find(b"\ndiff --git ")
         head, self.patch = (data, b"") if i < 0 else (data[:i], data[i:].lstrip(b"\n"))
         lines = head.decode("utf-8", "surrogateescape").split("\n")
@@ -613,21 +634,27 @@ class Resolution:
             raise Fail(f"{where}: the first line must be: merge <fork commit> <LineageOS commit>")
         self.ours, self.theirs = m.groups()
         self.resolved = [l[len("resolved "):] for l in lines[1:] if l.startswith("resolved ")]
-        if len(set(self.resolved)) != len(self.resolved) or not all(self.resolved):
-            raise Fail(f"{where}: a resolved line is empty or there twice")
-        self.touched = []
+        self.changed = [l[len("changed "):] for l in lines[1:] if l.startswith("changed ")]
+        names = self.resolved + self.changed
+        if len(set(names)) != len(names) or not all(names):
+            raise Fail(f"{where}: a resolved or changed line is empty or there twice")
+        if b"diff --git " in head:
+            raise Fail(f"{where}: a 'diff --git' that doesn't start a line")
+        heads = []
         for line in self.patch.split(b"\n"):
             if not line.startswith(b"diff --git "):
                 continue
-            # "diff --git a/<file> b/<file>": one file, never a rename (git diff --no-renames)
+            # "diff --git a/<file> b/<file>": one file, never a rename (no renames in the diff)
             rest = line[len(b"diff --git "):].decode("utf-8", "surrogateescape")
             f = rest[2:2 + (len(rest) - 5) // 2]
             if rest != f"a/{f} b/{f}" or not f:
                 raise Fail(f"{where}: can't read the file of '{line[:200].decode(errors='replace')}' "
                            f"(a rename, or a name git quotes: not supported)")
-            self.touched.append(f)
+            heads.append(f)
         if any(l.startswith((b"rename from ", b"copy from ")) for l in self.patch.split(b"\n")):
-            raise Fail(f"{where}: has a rename or copy; make it with git diff --no-renames")
+            raise Fail(f"{where}: has a rename or copy; make it with update.py resolution")
+        # Every file it puts in: the ones it names and the ones its diff changes
+        self.touched = sorted(set(names) | set(heads))
 
 class Update:
     # sources/updates/<id>/ of this kit, read and checked; digest: of all its files
@@ -691,7 +718,7 @@ class Index:
 
 def entry(gd, rev, f):
     # (mode, type, object) of file f in rev, or None
-    for e in git("ls-tree", "-z", rev, "--", f, gd=gd).stdout.split("\0"):
+    for e in git("--literal-pathspecs", "ls-tree", "-z", rev, "--", f, gd=gd).stdout.split("\0"):
         meta, _, name = e.partition("\t")
         if name == f:
             return tuple(meta.split())
@@ -700,10 +727,8 @@ def entry(gd, rev, f):
 def merge_conflicted(gd, ours, theirs):
     # (tree, conflicted files) of merging theirs into ours; on a conflict the tree has the
     # files with conflict markers
-    r = git("merge-tree", "--write-tree", "--name-only", "--no-messages", ours, theirs, gd=gd,
-            timeout=1800, ok=(0, 1))
-    lines = r.stdout.splitlines()
-    return lines[0], ([l for l in lines[1:] if l] if r.returncode == 1 else [])
+    rc, tree, files = merge_tree_z(gd, ours, theirs, "--name-only")
+    return tree, (files if rc == 1 else [])
 
 def resolve(gd, tree, files, ours, res):
     # The merged tree with the resolution put in: each file it resolves or changes is the
@@ -715,41 +740,52 @@ def resolve(gd, tree, files, ours, res):
                    else "the resolution lists files the merge doesn't conflict in: " + ", ".join(extra))
     with Index() as env:
         git("read-tree", tree, gd=gd, env=env)
-        for f in sorted(set(res.resolved) | set(res.touched)):
+        for f in res.touched:
             e = entry(gd, ours, f)
-            if e and e[1] == "tree":
-                raise Fail(f"{f} is a folder in the fork")
-            if e:
-                git("update-index", "--add", "--cacheinfo", f"{e[0]},{e[2]},{f}", gd=gd, env=env)
+            if e and e[1] != "tree":
+                # (--replace: a file in place of a folder the merge left there, or the other way)
+                git("update-index", "--add", "--replace", "--cacheinfo", f"{e[0]},{e[2]},{f}", gd=gd, env=env)
             else:
-                # (--force-remove needs a work tree; mode 0 takes the path out of the index)
-                git("update-index", "--index-info", gd=gd, env=env, input=f"0 {'0' * 40}\t{f}\n")
+                # None in the fork, or a folder there, whose files are each in touched if the
+                # resolution has them. (--force-remove needs a work tree; mode 0 takes the path
+                # out of the index)
+                git("update-index", "-z", "--index-info", gd=gd, env=env, raw=True,
+                    input=f"0 {'0' * 40}\t{f}\0".encode("utf-8", "surrogateescape"))
         if res.patch:
             git("apply", "--cached", "--whitespace=nowarn", "-", gd=gd, env=env, input=res.patch, raw=True)
         out = git("write-tree", gd=gd, env=env).stdout.strip()
-    for f in sorted(set(res.resolved) | set(res.touched)):
-        e = entry(gd, out, f)
-        if e and e[1] == "blob":
-            data = git("cat-file", "blob", e[2], gd=gd, raw=True).stdout
-            if b"\0" not in data[:8000] and MARKER.search(data):
-                raise Fail(f"{f} still has conflict markers after the resolution")
+    marked = [f for f in res.touched if has_markers(gd, out, f)]
+    if marked:
+        raise Fail(f"still has conflict markers after the resolution: {', '.join(marked)}")
     return out
 
-def show_conflicts(out, gd, path, ours, theirs, files, uid, max_lines=400):
-    # For writing a resolution: the merge, each conflicting file's commits on both sides, and
-    # its conflicts (zdiff3: the fork's, the merge base's, LineageOS's) with 3 lines around
+def has_markers(gd, rev, f):
+    # Is file f of rev a text file with a conflict marker line in it?
+    e = entry(gd, rev, f)
+    if not e or e[1] != "blob":
+        return False
+    data = git("cat-file", "blob", e[2], gd=gd, raw=True).stdout
+    return b"\0" not in data[:8000] and bool(MARKER.search(data))
+
+def show_conflicts(out, gd, r, uid, max_lines=400):
+    # For writing a resolution: how to make it, each conflicting file's commits on both sides,
+    # and its conflicts (zdiff3: the fork's, the merge base's, LineageOS's) with 3 lines around
+    path, ours, theirs, files = r["path"], r["tip"], r["up"], r["files"]
     bases = git("merge-base", "--all", ours, theirs, gd=gd).stdout.split()
-    out(f"--- {path}: LineageOS's {theirs} into the fork's {ours} (merge base {', '.join(bases) or 'none'})")
-    out(f"    resolution: sources/updates/{uid}/resolutions/{path}.patch, starting")
-    out(f"      merge {ours} {theirs}")
-    for f in files:
-        out(f"      resolved {f}")
-    r = git("-c", "merge.conflictStyle=zdiff3", "merge-tree", "--write-tree", "--no-messages", ours, theirs,
-            gd=gd, timeout=1800, ok=(0, 1))
-    lines = r.stdout.split("\n")
-    tree, stages = lines[0], {}
-    for l in lines[1:]:
-        m = re.fullmatch(r"\d+ [0-9a-f]+ (\d)\t(.*)", l)
+    out(f"--- {path}: LineageOS's {theirs} into the fork's {ours} (merge base {', '.join(bases) or 'none'}), "
+        f"conflicts in {len(files)} file{'' if len(files) == 1 else 's'}")
+    clone = r["name"]
+    out("    to resolve it, in a clone (README.md, \"The monthly update\", step 4):")
+    out(f"      git clone {r['url']} {clone} && cd {clone}")
+    out(f"      git checkout --detach {ours}")
+    out(f"      git fetch {r['up_url']} {r['up_ref']}")
+    out(f"      git merge --no-commit {theirs}")
+    out("      # fix each conflicting file, then git add it")
+    out(f"      python3 -I <kit>/sources/update.py resolution . --out <kit>/sources/updates/{uid}/resolutions/{path}.patch")
+    rc, tree, rest = merge_tree_z(gd, ours, theirs, style="zdiff3")
+    stages = {}
+    for x in rest:
+        m = re.fullmatch(r"\d+ [0-9a-f]+ (\d)\t(.*)", x, re.S)
         if m:
             stages.setdefault(m.group(2), set()).add(int(m.group(1)))
     kinds = {frozenset({1, 2, 3}): "both changed it", frozenset({2, 3}): "both added it",
@@ -759,7 +795,7 @@ def show_conflicts(out, gd, path, ours, theirs, files, uid, max_lines=400):
         st = frozenset(stages.get(f, ()))
         out(f"== {path}/{f}: {kinds.get(st, 'stages ' + ','.join(map(str, sorted(st))))}")
         for side, rng in (("the fork's", f"{theirs}..{ours}"), ("LineageOS's", f"{ours}..{theirs}")):
-            log = git("log", "-n", "8", "--format=%h %cs %s", rng, "--", f, gd=gd).stdout.strip()
+            log = git("--literal-pathspecs", "log", "-n", "8", "--format=%h %cs %s", rng, "--", f, gd=gd).stdout.strip()
             out(f"   {side} commits on it:" + ("" if log else " none"))
             for l in log.splitlines():
                 out(f"     {l[:160]}")
@@ -773,7 +809,7 @@ def show_conflicts(out, gd, path, ours, theirs, files, uid, max_lines=400):
             for label, rev in (("fork", ours), ("LineageOS", theirs)):
                 x = entry(gd, rev, f)
                 sizes.append(f"{label} " + (git("cat-file", "-s", x[2], gd=gd).stdout.strip() + " bytes" if x else "none"))
-            out(f"   binary ({', '.join(sizes)}): resolve by taking one side")
+            out(f"   binary ({', '.join(sizes)}): resolve by taking one side (the merge left the fork's)")
             continue
         text = data.decode("utf-8", "replace").split("\n")
         show, start = set(), None
@@ -783,6 +819,8 @@ def show_conflicts(out, gd, path, ours, theirs, files, uid, max_lines=400):
             elif line.startswith(">>>>>>> ") and start is not None:
                 show.update(range(max(0, start - 3), min(len(text), i + 4)))
                 start = None
+        if not show:
+            out("   (no conflict markers: the merge left one side's file here)")
         prev = None
         for n, i in enumerate(sorted(show)):
             if n == max_lines:
@@ -795,32 +833,50 @@ def show_conflicts(out, gd, path, ours, theirs, files, uid, max_lines=400):
 
 def make_resolution(a):
     # A resolution from a clone where the fork's commit has LineageOS's merged in by hand (git
-    # merge --no-commit, conflicts fixed, every file git added): printed, for
-    # sources/updates/<id>/resolutions/<project path>.patch
+    # merge --no-commit, conflicts fixed, every file git added), for
+    # sources/updates/<id>/resolutions/<project path>.patch: written to --out, or printed.
+    # Checked first: put into the merge as plan puts it in, it must make exactly the clone's
     gd = git("-C", a.repo, "rev-parse", "--absolute-git-dir").stdout.strip()
     ours = git("rev-parse", "HEAD", gd=gd).stdout.strip()
     r = git("rev-parse", "-q", "--verify", "MERGE_HEAD", gd=gd, ok=(0, 1))
     if r.returncode:
         fail(f"{a.repo} has no merge going: git merge --no-commit <LineageOS commit> there first")
     theirs = r.stdout.strip()
-    if git("-C", a.repo, "diff", "--name-only", "--diff-filter=U", gd=None).stdout.strip():
-        fail(f"{a.repo} has files still conflicting: fix them and git add them first")
+    left = sorted({x.partition("\t")[2] for x in git("-C", a.repo, "ls-files", "-z", "-u").stdout.split("\0") if x})
+    if left:
+        fail(f"{a.repo} has files still conflicting (fix them and git add them first): {', '.join(left)}")
     mtree, files = merge_conflicted(gd, ours, theirs)
     if not files:
         fail("that merge doesn't conflict: the update merges it without a resolution")
     itree = git("-C", a.repo, "write-tree").stdout.strip()
-    touched = [f for f in git("diff", "-z", "--name-only", "--no-renames", mtree, itree, gd=gd).stdout.split("\0") if f]
-    left = sorted(set(files) - set(touched))
-    if left:
-        fail(f"still as the merge left them, conflict markers and all: {', '.join(left)}")
-    patch = git("diff", "--binary", "--no-renames", "--full-index", ours, itree, "--", *touched, gd=gd, raw=True).stdout
-    head = f"merge {ours} {theirs}\n" + "".join(f"resolved {f}\n" for f in files)
-    also = sorted(set(touched) - set(files))
-    if also:
-        head += "also changed: " + ", ".join(also) + "\n"
+    marked = [f for f in files if has_markers(gd, itree, f)]
+    if marked:
+        fail(f"still has conflict markers: {', '.join(marked)}")
+    touched = [f for f in git("diff-tree", "-r", "-z", "--name-only", "--no-renames", mtree, itree, gd=gd).stdout.split("\0") if f]
+    names = sorted(set(files) | set(touched))
+    bad = [f for f in names if re.search(r'[\x00-\x1f\x7f"\\]', f)]
+    if bad:
+        fail(f"file names a resolution can't hold (control characters, quotes, backslashes): {bad[:5]}")
+    patch = git("--literal-pathspecs", "diff-tree", "-r", "-p", "--binary", "--full-index", "--no-renames",
+                "--no-ext-diff", "--no-textconv", "--src-prefix=a/", "--dst-prefix=b/", ours, itree, "--", *names,
+                gd=gd, raw=True).stdout
+    head = (f"merge {ours} {theirs}\n" + "".join(f"resolved {f}\n" for f in files)
+            + "".join(f"changed {f}\n" for f in sorted(set(touched) - set(files))))
     data = head.encode("utf-8", "surrogateescape") + b"\n" + patch
-    Resolution("this", data)
-    sys.stdout.buffer.write(data)
+    res = Resolution("this", data)
+    got = resolve(gd, mtree, files, ours, res)
+    if got != itree:
+        diff = git("diff-tree", "-r", "-z", "--name-only", "--no-renames", got, itree, gd=gd).stdout.split("\0")
+        fail(f"the resolution wouldn't make this clone's merge (it differs in {', '.join(x for x in diff if x)[:300]}): "
+             f"not written")
+    if a.out:
+        os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
+        with open(a.out, "wb") as f:
+            f.write(data)
+        print(f"{a.out}: {len(files)} conflicting file{'' if len(files) == 1 else 's'} resolved"
+              + (f", {len(touched) - len(set(touched) & set(files))} more changed" if set(touched) - set(files) else ""))
+    else:
+        sys.stdout.buffer.write(data)
 
 # ---- the manifest as text: ExpressiveOS's default.xml, changed line by line ----------------
 
@@ -902,6 +958,31 @@ class ManifestText:
             keys = [k for k, _ in attrs]
             attrs.insert(keys.index(after) + 1 if after in keys else len(attrs), (key, esc(value)))
 
+    def remove(self, path):
+        p = self.find(path)
+        if p is None:
+            raise Fail(f"{path}: not in the manifest's text")
+        self.projects.remove(p)
+
+    @staticmethod
+    def set_groups(p, groups):
+        # groups: a set; the line's own order kept, new ones after it
+        have = [g for g in dict(p[0]).get("groups", "").split(",") if g]
+        new = [g for g in have if g in groups] + sorted(groups - set(have))
+        ManifestText.set(p, "groups", ",".join(new) or None,
+                         after="dest-branch" if "dest-branch" in dict(p[0]) else "revision")
+
+    @staticmethod
+    def set_kids(p, kids):
+        # kids: a set of (linkfile|copyfile, src, dest); the line's own order kept, new ones last
+        def key(k):
+            d = dict(k[1])
+            return (k[0], unesc(d.get("src", "")), unesc(d.get("dest", "")))
+        keep = [k for k in p[1] if k[0] not in ("linkfile", "copyfile") or key(k) in kids]
+        have = {key(k) for k in keep}
+        p[1] = keep + [(t, [("src", esc(src)), ("dest", esc(dest))]) for t, src, dest in sorted(kids - have)]
+        p[2] = bool(p[1])
+
     def set_remote_revision(self, name, old, new):
         for n, l in enumerate(self.header):
             if l.startswith(f'  <remote name="{esc(name)}" '):
@@ -920,6 +1001,8 @@ def manifest_problems(text):
     out = [f"has <{t}>" for t in sorted(odd)]
     out += [f"{p.get('path') or p.get('name')} isn't at a commit" for p in r.iter("project")
             if not SHA.fullmatch(p.get("revision") or "")]
+    out += [f"{p.get('path') or p.get('name')} is outside repo's default sync (notdefault), so setup.sh's sync "
+            f"wouldn't check it out" for p in r.iter("project") if not_default(p.get("groups"))]
     return out
 
 # ---- plan --------------------------------------------------------------------------------
@@ -949,6 +1032,21 @@ def three_way(what, ours, base, now):
         return True
     raise Fail(f"{what}: LineageOS changed it from {show(base)} to {show(now)}, ExpressiveOS's manifest has {show(ours)}")
 
+def three_way_set(ours, base, now):
+    # A set-valued attribute (groups, linkfiles/copyfiles), element by element: LineageOS's
+    # additions and removals since base taken into ExpressiveOS's, which keeps its own; None
+    # when that changes nothing
+    o, b, n = set(ours), set(base), set(now)
+    new = (o - (b - n)) | (n - b)
+    return None if b == n or new == o else new
+
+def gset(groups):
+    return {g for g in (groups or "").split(",") if g}
+
+def not_default(groups):
+    # Outside repo's default sync (setup.sh's repo init takes the default groups): notdefault
+    return "notdefault" in gset(groups)
+
 def show(v):
     if isinstance(v, tuple):
         return "[" + ", ".join(f"{k} {s}->{d}" for k, s, d in v) + "]"
@@ -964,12 +1062,25 @@ def los_changes(o, b, n):
         c["repo"] = n
     if three_way("its branch", ref_of(o.upstream or o.revision), ref_of(b.revision), ref_of(n.revision)):
         c["branch"] = ref_of(n.revision)
-    if three_way("its groups", o.groups, b.groups, n.groups):
-        c["groups"] = n.groups
+    c.update(set_changes(o, b, n))
     if three_way("its clone-depth", o.depth or "", b.depth or "", n.depth or ""):
         c["depth"] = n.depth or ""
-    if three_way("its linkfiles/copyfiles", o.kids, b.kids, n.kids):
-        c["kids"] = n.kids
+    return c
+
+def set_changes(o, b, n):
+    # LineageOS's changes to a project's groups and linkfiles/copyfiles since b, element by
+    # element (forks too: their merges bring the files those name)
+    c = {}
+    g = three_way_set(gset(o.groups), gset(b.groups), gset(n.groups))
+    if g is not None:
+        c["groups"] = g
+    k = three_way_set(o.kids, b.kids, n.kids)
+    if k is not None:
+        dests = [(t, d) for t, _, d in k]
+        if len(set(dests)) != len(dests):
+            raise Fail(f"its linkfiles/copyfiles: LineageOS changed them from {show(b.kids)} to {show(n.kids)}, "
+                       f"ExpressiveOS's manifest has {show(o.kids)}: two would make the same file")
+        c["kids"] = k
     return c
 
 def plan(a):
@@ -1083,6 +1194,7 @@ def plan(a):
             return r
         with name_lock(p.name):
             gd = scratch(work, top, p)
+            git("update-ref", refname(p, "ours"), p.revision, gd=gd)
             got = fetch(gd, p, url, ref)
             if got != sha:
                 raise Fail(f"{url} {ref} moved while this ran ({sha[:12]}, then {got[:12]}); plan again")
@@ -1093,14 +1205,16 @@ def plan(a):
 
     def plan_fork(p, n):
         branch = branch_of(p.upstream or "refs/heads/expressiveos")
+        lref = n.revision if SHA.fullmatch(n.revision) else ref_of(n.revision)
         r = {"path": p.path, "kind": "fork", "name": p.name, "url": p.url, "branch": branch,
-             "upstream": f"{n.name} {tag_of(n.revision) or branch_of(n.revision)}"}
+             "upstream": f"{n.name} {tag_of(n.revision) or branch_of(n.revision)}", "up_url": n.url, "up_ref": lref}
         tip = ls_remote(p.url, "refs/heads/" + branch)
         if not tip:
             raise Fail(f"{p.url} has no branch {branch}")
         up = ls_remote(n.url, ref_of(n.revision))
         if not up:
             raise Fail(f"{n.url} has no {n.revision}")
+        notes_ = []
         with name_lock(p.name):
             gd = scratch(work, top, p)
             r["gd"] = gd
@@ -1112,23 +1226,44 @@ def plan(a):
                     raise Fail(f"its {branch} branch moved while this ran; plan again")
                 if not is_ancestor(gd, p.revision, ours_c):
                     raise Fail(f"its {branch} branch ({tip[:12]}) doesn't descend from the manifest's {p.revision[:12]}")
-                r["note"] = f"its {branch} branch has {count(gd, p.revision, ours_c)} commits the manifest doesn't pin yet; the update takes them"
-            got = fetch(gd, p, n.url, up if SHA.fullmatch(n.revision) else ref_of(n.revision))
+                notes_.append(f"its {branch} branch has {count(gd, p.revision, ours_c)} commits the manifest doesn't pin yet; the update takes them")
+            got = fetch(gd, p, n.url, lref)
             if got != up:
                 raise Fail(f"{n.url} {n.revision} moved while this ran; plan again")
+            res = upd.resolutions.get(p.path)
+            def has(c):
+                return git("cat-file", "-e", f"{c}^{{commit}}", gd=gd, ok=(0, 1, 128)).returncode == 0
+            if res and has(res.ours) and has(res.theirs) and is_ancestor(gd, res.ours, ours_c) \
+                    and is_ancestor(gd, res.theirs, ours_c):
+                # Its merge is in the fork already: an earlier push of this update pushed it
+                notes_.append(f"the merge its resolution is for ({res.theirs[:12]} into {res.ours[:12]}) is in the "
+                              f"fork already, pushed before")
+                r["spent"] = True
+                res = None
+            elif res and res.ours == ours_c and res.theirs != up and has(res.theirs) \
+                    and is_ancestor(gd, res.theirs, up) and not is_ancestor(gd, res.theirs, ours_c):
+                # The resolution's LineageOS commit, not the branch's newest: a resolution stays
+                # good while LineageOS goes on; the newer commits wait for the next update
+                notes_.append(f"takes LineageOS's {res.theirs[:12]}, the commit its resolution is for: "
+                              f"{commits(count(gd, res.theirs, up))} after it wait for the next update")
+                up = res.theirs
+            if notes_:
+                r["note"] = "; ".join(notes_)
             r["tip"], r["up"] = ours_c, up
             r["new"] = count(gd, ours_c, up)
-            res = upd.resolutions.get(p.path)
             if r["new"] == 0:
                 r["merge"], r["new_rev"] = None, ours_c
                 if res:
                     r["status"] = "resolution unused"
+                    r["error"] = f"nothing to merge; delete resolutions/{p.path}.patch"
                 return r
             tree, files = merge_conflicted(gd, ours_c, up)
             r["files"] = files
             if files:
                 if res is None:
                     r["status"] = "unresolved"
+                    if r.get("spent"):
+                        r["error"] = f"a new merge; its resolution file is for the one pushed before: replace it"
                     return r
                 if (res.ours, res.theirs) != (ours_c, up):
                     r["status"] = "stale resolution"
@@ -1144,6 +1279,7 @@ def plan(a):
                 r["also"] = sorted(set(res.touched) - set(files))
             elif res:
                 r["status"] = "resolution unused"
+                r["error"] = f"the merge is clean; delete resolutions/{p.path}.patch"
                 return r
             date = git("log", "-1", "--format=%cs", up, gd=gd).stdout.strip()
             msg = (f"Merge LineageOS {tag_of(n.revision) or branch_of(n.revision)} into {branch}\n\n"
@@ -1166,7 +1302,7 @@ def plan(a):
             except Fail as e:
                 results[p.path] = {"path": p.path, "kind": "error", "error": str(e)}
                 problems.append(f"{p.path}: {e}")
-    for path in sorted(set(upd.resolutions) - set(r["path"] for r in results.values() if r["kind"] == "fork")):
+    for path in sorted(set(upd.resolutions) - set(r["path"] for r in results.values() if r["kind"] in ("fork", "error"))):
         problems.append(f"resolutions/{path}.patch: {path} isn't one of ExpressiveOS's forks of a LineageOS repo")
 
     forks = sorted((r for r in results.values() if r["kind"] == "fork"), key=lambda r: r["path"])
@@ -1196,10 +1332,10 @@ def plan(a):
     need = [r for r in forks if r.get("status") in ("unresolved", "stale resolution", "bad resolution")]
     if need:
         out()
-        out("== Conflicts to resolve (resolutions/<path>.patch: see the top of this section of update.py)")
+        out("== Conflicts to resolve: a resolution for each (sources/updates/<id>/resolutions/<project path>.patch)")
         for r in need:
             try:
-                show_conflicts(out, r["gd"], r["path"], r["tip"], r["up"], r["files"], upd.id)
+                show_conflicts(out, r["gd"], r, upd.id)
             except Fail as e:
                 out(f"--- {r['path']}: can't show the conflicts: {e}")
 
@@ -1229,8 +1365,25 @@ def plan(a):
         raise Fail(f"ExpressiveOS's manifest has no remote for {lp.fetch}")
     expect = {path: (ours[path].url, r["new_rev"]) for path, r in results.items() if r.get("new_rev")}
     nchanges = 0
-    for path in sorted(set(now) - set(base) - set(ours)):
+    added = sorted(set(now) - set(base) - set(ours))
+    dropped = sorted(set(base) - set(now))
+    # A repo LineageOS moved to another path: gone from one, added at the other
+    moved_to = {}
+    for path in dropped:
+        to = [x for x in added if now[x].name == base[path].name]
+        if path in ours and len(to) == 1:
+            moved_to[path] = to[0]
+    for path in added:
         n = now[path]
+        frm = [x for x, y in moved_to.items() if y == path]
+        if frm and ours[frm[0]].remote == "expressiveos":
+            problems.append(f"manifest: LineageOS moved {n.name} from {frm[0]} to {path}, where ExpressiveOS has its "
+                            f"fork {ours[frm[0]].name}: move the fork's line by hand (a manifest commit), then plan again")
+            continue
+        if not_default(n.groups):
+            out(f"LineageOS added {path} ({n.name}) outside repo's default sync (groups {n.groups}): left out, "
+                f"as LineageOS's own sync leaves it out")
+            continue
         try:
             ref = ref_of(n.revision)
             sha = ls_remote(n.url, ref)
@@ -1245,49 +1398,81 @@ def plan(a):
             kids = [(k, [("src", esc(src)), ("dest", esc(dest))]) for k, src, dest in n.kids]
             mt.projects.append([attrs, kids, bool(kids)])
             expect[path] = (f"{fetch_of[rn]}/{n.name}", sha)
-            out(f"added {path} ({n.name} {tag_of(ref) or branch_of(ref)}, {sha[:12]})")
+            out(f"added {path} ({n.name} {tag_of(ref) or branch_of(ref)}, {sha[:12]})"
+                + (f", moved from {frm[0]}" if frm else ""))
             nchanges += 1
         except Fail as e:
             problems.append(f"manifest, adding {path}: {e}")
-    for path in sorted(set(base) - set(now)):
-        if path in ours and ours[path].remote != "expressiveos":
-            out(f"LineageOS dropped {path}: kept, following its own upstream")
+    for path in dropped:
+        o = ours.get(path)
+        if o is None:
+            continue
+        try:
+            if path in moved_to:
+                if o.remote != "expressiveos":
+                    mt.remove(path)
+                    expect.pop(path, None)
+                    out(f"removed {path}: LineageOS moved {o.name} to {moved_to[path]}")
+                    nchanges += 1
+            elif o.remote == "expressiveos":
+                notes.append(f"LineageOS dropped {path} from its manifest: ExpressiveOS's fork {o.name} doesn't "
+                             f"follow LineageOS any more (it stays, as ExpressiveOS's own)")
+            elif tag_of(o.upstream):
+                notes.append(f"LineageOS dropped {path} ({o.name}): kept on AOSP's {tag_of(o.upstream)}, which doesn't "
+                             f"move; take it out of the manifest by hand if nothing builds from it")
+            else:
+                out(f"LineageOS dropped {path}: kept, following its own upstream")
+        except Fail as e:
+            problems.append(f"manifest, {path}: {e}")
     for path in sorted(set(base) & set(now) & set(ours)):
         b, n, o = base[path], now[path], ours[path]
-        if o.remote == "expressiveos":
-            if (b.url, ref_of(b.revision)) != (n.url, ref_of(n.revision)):
-                out(f"{path}: LineageOS takes it from {n.name} {n.revision} now (was {b.name} {b.revision}); "
-                    f"ExpressiveOS's fork merged that")
-            continue
-        c = changes.get(path)
-        if not c:
-            continue
         try:
             p = mt.find(path)
             if p is None:
                 raise Fail("not in the manifest's text")
             did = []
+            if o.remote == "expressiveos":
+                # A fork: its merge takes LineageOS's commits; its line takes LineageOS's groups
+                # and linkfiles/copyfiles changes (not clone-depth: own-manifest.py gives forks
+                # their whole history)
+                if (b.url, ref_of(b.revision)) != (n.url, ref_of(n.revision)):
+                    out(f"{path}: LineageOS takes it from {n.name} {n.revision} now (was {b.name} {b.revision}); "
+                        f"ExpressiveOS's fork merged that")
+                c = set_changes(o, b, n)
+                if "groups" in c and not_default(",".join(c["groups"])) and not not_default(o.groups):
+                    raise Fail(f"LineageOS takes it out of the default sync (groups {n.groups}), and it's "
+                               f"ExpressiveOS's fork {o.name}: decide by hand")
+            else:
+                c = changes.get(path) or {}
+                if "groups" in c and not_default(",".join(c["groups"])) and not not_default(o.groups):
+                    mt.remove(path)
+                    expect.pop(path, None)
+                    out(f"removed {path}: LineageOS takes it out of the default sync (groups {n.groups})")
+                    nchanges += 1
+                    continue
+            if not c:
+                continue
             if "repo" in c:
+                if "path" not in dict(p[0]):
+                    ManifestText.set(p, "path", path, after="name")
                 ManifestText.set(p, "name", n.name)
                 rn = our_remote(n)
-                ManifestText.set(p, "remote", None if rn == odefault.get("remote") else rn,
-                                 after="path" if "path" in dict(p[0]) else "name")
-                expect[path] = (n.url, expect[path][1])
+                ManifestText.set(p, "remote", None if rn == odefault.get("remote") else rn, after="path")
+                if path in expect:
+                    expect[path] = (n.url, expect[path][1])
                 did.append(f"repo {b.name} -> {n.name}")
             if "branch" in c:
                 ManifestText.set(p, "upstream", c["branch"])
                 ManifestText.set(p, "dest-branch", c["branch"], after="upstream")
                 did.append(f"branch {b.revision} -> {n.revision}")
             if "groups" in c:
-                ManifestText.set(p, "groups", c["groups"] or None, after="dest-branch")
+                ManifestText.set_groups(p, c["groups"])
                 did.append("groups")
             if "depth" in c:
                 ManifestText.set(p, "clone-depth", c["depth"] or None)
                 did.append("clone-depth")
             if "kids" in c:
-                keep = [k for k in p[1] if k[0] == "annotation"]
-                p[1] = [(k, [("src", esc(src)), ("dest", esc(dest))]) for k, src, dest in c["kids"]] + keep
-                p[2] = bool(p[1])
+                ManifestText.set_kids(p, c["kids"])
                 did.append("linkfiles/copyfiles")
             out(f"changed {path}: {'; '.join(did)}")
             nchanges += 1
@@ -1336,22 +1521,43 @@ def plan(a):
                        f"(+{sorted(set(know) - set(pins))} -{sorted(set(pins) - set(know))}): change the pins by hand")
         kmoves = []
         for path in sorted(know):
-            sha = ls_remote(know[path].url, ref_of(know[path].revision))
+            k, pin = know[path], pins[path]
+            if (k.url, k.kids) != (pin.url, pin.kids):
+                raise Fail(f"{path}: LineageOS's kernel manifest has it from another repo, or with other "
+                           f"linkfiles/copyfiles, now: change the pins by hand")
+            ref = ref_of(k.revision)
+            sha = ls_remote(k.url, ref)
             if not sha:
-                raise Fail(f"{know[path].url} has no {know[path].revision}")
-            if sha != pins[path].revision:
-                kmoves.append((path, pins[path].revision, sha))
+                raise Fail(f"{k.url} has no {k.revision}")
+            # A new branch or tag (Google's next GKI tag) moves the line's upstream with it
+            newref = None if SHA.fullmatch(k.revision) or ref == ref_of(pin.upstream or pin.revision) else ref
+            if sha != pin.revision or newref:
+                kmoves.append((path, pin.revision, sha, newref))
         out(f"== Kernel (LineageOS's {eos['EOS_KERNEL_MANIFEST_BRANCH']} kernel manifest, {krev[:12]}): "
             f"{len(kmoves)} of {len(know)} projects move")
-        for path, old, new in kmoves:
-            if ktext.count(f'revision="{old}"') != 1:
-                raise Fail(f"pins/kernel.xml has {old[:12]} other than once")
-            ktext = ktext.replace(f'revision="{old}"', f'revision="{new}"')
-            out(f"{path}: {old[:12]} -> {new[:12]}")
+        klines = ktext.split("\n")
+        for path, old, new, newref in kmoves:
+            at = []
+            for i, l in enumerate(klines):
+                if l.lstrip().startswith("<project "):
+                    d = dict(re.findall(r'([A-Za-z][A-Za-z0-9_-]*)="([^"]*)"', l))
+                    if unesc(d.get("path") or d.get("name") or "") == path:
+                        at.append(i)
+            if len(at) != 1:
+                raise Fail(f"pins/kernel.xml has {path} other than once on a line of its own")
+            l = klines[at[0]]
+            for attr, v in (("revision", new),) + ((("upstream", newref), ("dest-branch", newref)) if newref else ()):
+                l, n = re.subn(rf'(?<=\s){attr}="[^"]*"', f'{attr}="{esc(v)}"', l, count=1)
+                if n != 1:
+                    raise Fail(f"pins/kernel.xml's line for {path} has no {attr}")
+            klines[at[0]] = l
+            out(f"{path}: {old[:12]} -> {new[:12]}" + (f" ({tag_of(newref) or branch_of(newref)})" if newref else ""))
+        ktext = "\n".join(klines)
         if kmoves:
             with open(kfile, "w") as f:
                 f.write(ktext)
-            out(f"pins/kernel.xml to take: {kfile} (the kit's update commit carries it)")
+            out(f"pins/kernel.xml to take: {kfile}. After the manifest's pull request is merged, commit it as the "
+                f"kit's pins/kernel.xml, on its own, and build with kernel-sync")
             out("----- BEGIN kernel.xml -----")
             for l in ktext.rstrip("\n").split("\n"):
                 out(l)
@@ -1402,20 +1608,26 @@ def plan(a):
         # The pushes, asked of GitHub as push will ask: does the token reach each repo?
         token = os.environ.get("EOS_PUSH_TOKEN", "")
         urls = sorted({r["url"] for r in merged} | {eos["EOS_MANIFEST_URL"].rstrip("/")})
-        https = [u for u in urls if u.startswith("https://")]
-        if https and not token:
-            out(f"push token: not here (EOS_PUSH_TOKEN), so the {len(https)} pushes aren't checked")
-        elif https:
-            denied = [u for u in https if receive_pack(u, token) != (200, "application/x-git-receive-pack-advertisement")]
+        if push_urls_problem(urls):
+            problems.append(push_urls_problem(urls))
+        gh = [u for u in urls if on_github(u)]
+        if gh and not token:
+            out(f"push token: not here (EOS_PUSH_TOKEN), so the {len(gh)} pushes aren't checked")
+        elif gh:
+            denied = [u for u in gh if receive_pack(u, token) != (200, "application/x-git-receive-pack-advertisement")]
             if denied:
                 problems.append(f"the push token can't push to {', '.join(denied)}")
-            out(f"push token: {len(https) - len(denied)} of {len(https)} repos to push to would take it")
+            out(f"push token: {len(gh) - len(denied)} of {len(gh)} repos to push to would take it")
         if not problems:
             plan_data = {"id": upd.id, "digest": upd.digest, "parent": parent, "manifest_commit": mcommit,
                          "manifest_url": eos["EOS_MANIFEST_URL"].rstrip("/"), "manifest_gd": mgd,
                          "lineage_manifest": upd.lineage, "made": started.isoformat(),
                          "forks": [{k: r[k] for k in ("path", "url", "branch", "tip", "up", "merge", "gd")}
-                                   for r in merged]}
+                                   for r in merged],
+                         # Forks the new manifest moves to their branch's tip without a merge:
+                         # push checks they're still there
+                         "pins": [{k: r[k] for k in ("path", "url", "branch", "tip")} for r in forks
+                                  if not r.get("merge") and r.get("new_rev") != ours[r["path"]].revision]}
             with open(os.path.join(udir, "plan.json.tmp"), "w") as f:
                 json.dump(plan_data, f, indent=1)
             os.replace(os.path.join(udir, "plan.json.tmp"), os.path.join(udir, "plan.json"))
@@ -1445,12 +1657,21 @@ def remote_sha(url, ref):
     out = git("ls-remote", url, ref, timeout=180).stdout.split()
     return out[0] if out else None
 
+def on_github(url):
+    # The only place the push token goes: https://github.com/, never another host or plain http
+    return url.startswith("https://github.com/")
+
+def push_urls_problem(urls):
+    # URLs push couldn't push to with the token (file:// is for tests: no login)
+    off = [u for u in urls if not on_github(u) and not u.startswith("file://")]
+    return f"not on GitHub (https://github.com/), the only place the push token goes: {', '.join(off)}" if off else None
+
 # git asks this for a login to github.com: the token from the environment, never written down
 HELPER = '!f() { test "$1" = get || exit 0; echo username=x-access-token; printf "password=%s\\n" "$EOS_PUSH_TOKEN"; }; f'
 
 def push_one(gd, url, sha, ref):
     cfg = ["-c", "credential.helper=", "-c", "core.hooksPath=/dev/null"]
-    if url.startswith("https://github.com/"):
+    if on_github(url):
         cfg += ["-c", f"credential.https://github.com.helper={HELPER}"]
     git(*cfg, "push", "--porcelain", "--no-verify", url, f"{sha}:{ref}", gd=gd, timeout=3600)
 
@@ -1472,7 +1693,9 @@ def push(a):
         fail("the plan is for another manifest")
     token = os.environ.get("EOS_PUSH_TOKEN", "")
     urls = [f["url"] for f in plan_data["forks"]] + [plan_data["manifest_url"]]
-    if any(u.startswith("https://") for u in urls) and not token:
+    if push_urls_problem(urls):
+        fail(push_urls_problem(urls))
+    if any(on_github(u) for u in urls) and not token:
         fail("EOS_PUSH_TOKEN is empty: the Actions secret EXPRESSIVEOS_PUSH_TOKEN isn't set")
 
     # Nothing pushed until every push is known to fit: GitHub's manifest and each fork where
@@ -1491,6 +1714,10 @@ def push(a):
             fail(f"{f['path']}: {f['url']} {f['branch']} is at {(cur or 'nothing')[:12]}, the plan merged into {f['tip'][:12]}: plan again")
         git("cat-file", "-e", f"{f['merge']}^{{commit}}", gd=f["gd"])
         todo.append(f)
+    for f in plan_data.get("pins", []):
+        cur = remote_sha(f["url"], "refs/heads/" + f["branch"])
+        if cur != f["tip"]:
+            fail(f"{f['path']}: {f['url']} {f['branch']} is at {(cur or 'nothing')[:12]}, the plan pins {f['tip'][:12]}: plan again")
     mref = f"refs/heads/update/{upd.id}"
     have = remote_sha(plan_data["manifest_url"], mref)
     if have and have != plan_data["manifest_commit"]:
@@ -1523,6 +1750,8 @@ def receive_pack(url, token):
     # GitHub's answer to a git push's first request (the refs it would update) for <url>:
     # 200 only for a login that may push there, 401 without one, 403 for one that may not.
     # Nothing is sent or changed
+    if token is not None and not on_github(url):
+        return None, "not on GitHub: the token isn't sent there"
     req = urllib.request.Request(url + ".git/info/refs?service=git-receive-pack",
                                  headers={"User-Agent": "git/expressiveos-update"})
     if token is not None:
@@ -1559,9 +1788,12 @@ def token_check(a):
     print(f"{len(urls)} repos: {eos['EOS_MANIFEST_URL']} and the projects its {eos['EOS_MANIFEST_BRANCH']} branch "
           f"({rev[:12]}) takes from ExpressiveOS")
     # Without a login GitHub must refuse, or a 200 below wouldn't mean the token may push
-    code, _ = receive_pack(urls[0], None)
+    murl = eos["EOS_MANIFEST_URL"].rstrip("/")
+    if not on_github(murl):
+        fail(f"eos.conf's EOS_MANIFEST_URL {murl} isn't on GitHub (https://github.com/), the only place the token goes")
+    code, _ = receive_pack(murl, None)
     if code != 401:
-        fail(f"{urls[0]} answered {code} to a push request without a login (401 expected), so its answer can't tell what the token may do")
+        fail(f"{murl} answered {code} to a push request without a login (401 expected), so its answer can't tell what the token may do")
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
         answers = dict(zip(urls, ex.map(lambda u: receive_pack(u, token), urls)))
     meaning = {401: "token refused (wrong, expired or revoked)",
@@ -1573,7 +1805,7 @@ def token_check(a):
         if code == 200 and ctype == "application/x-git-receive-pack-advertisement":
             continue
         bad += 1
-        print(f"{u}: {meaning.get(code, f'answered {code} {ctype}'.strip())}")
+        print(f"{u}: {ctype if code is None else meaning.get(code, f'answered {code} {ctype}'.strip())}")
     print(f"-- {len(urls) - bad} of {len(urls)} repos would take a push")
     print(f"TOKEN_CHECK={'OK' if not bad else 'FAIL'}")
     if bad:
@@ -1610,14 +1842,21 @@ def main():
     pu = sub.add_parser("push")
     pu.add_argument("id")
     pu.add_argument("--work", required=True)
-    mr = sub.add_parser("resolution", help="print the resolution of a merge fixed by hand in a clone")
+    mr = sub.add_parser("resolution", help="the resolution of a merge fixed by hand in a clone")
     mr.add_argument("repo")
+    mr.add_argument("--out", help="write it here (folders made); otherwise it's printed")
     a = ap.parse_args()
     try:
         {"check": check, "token": token_check, "plan": plan, "push": push,
          "resolution": make_resolution}[a.cmd](a)
     except Fail as e:
         fail(str(e))
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        if a.cmd == "plan":
+            print("UPDATE_PLAN=NOT_READY (update.py stopped on an error it doesn't handle, above)", flush=True)
+        fail("update.py stopped on an error it doesn't handle (above): a bug to fix")
 
 if __name__ == "__main__":
     main()
