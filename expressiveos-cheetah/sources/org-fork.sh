@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Copy ExpressiveOS's sources into its own GitHub organization (Daryl, 2026-10-28: fully
 # independent of Evolution X, whose changes and rewrites must stop reaching ExpressiveOS):
-#   - a fork of every Evolution X repo the pins name (pins/manifest.xml and
-#     local_manifests/cheetah.xml: Evolution-X, Evolution-X-Devices and BtHelper's
+#   - a fork of every Evolution X repo the 1.0 builds' sources name (eos-1.0-base/manifest.xml
+#     and eos-1.0-base/cheetah.xml: Evolution-X, Evolution-X-Devices and BtHelper's
 #     TheParasiteProject), each with tag eos-1.0-base and branch expressiveos at its pinned
 #     commit, the source of the 1.0 builds. expressiveos becomes the default branch; the
 #     kit's commits go on top of it;
@@ -38,7 +38,7 @@ gitgh() { git -c credential.https://github.com.helper= -c 'credential.https://gi
 # A repo pinned twice (evolution/OTA on cnb, evolution/OTA-VANILLA on cnb-vanilla) gets a
 # tag and a branch for each: <suffix> is - for its first pin, else the other's branch less
 # the first's ("vanilla")
-list=$(python3 -I - "$kit/pins/manifest.xml" "$kit/local_manifests/cheetah.xml" <<'EOF'
+list=$(python3 -I - "$kit/sources/eos-1.0-base/manifest.xml" "$kit/sources/eos-1.0-base/cheetah.xml" <<'EOF'
 import re, sys, xml.etree.ElementTree as ET
 seen, pins = {}, {}
 for f in sys.argv[1:]:

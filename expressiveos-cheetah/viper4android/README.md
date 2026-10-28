@@ -62,7 +62,7 @@ Why it is put together this way:
 |---|---|
 | `v4a.conf` | The pins (below), sourced by every script |
 | `fetch-v4a.sh [--out <dir>]` | Downloads the APK, the app's LICENSE and the driver zip into `~/android-dt/v4a/` (`V4A_CACHE` overrides it) and checks them: sizes and SHA-256, the APK's package, version, v2 signer, permissions and uses-library tags (`tools/apk-info.py`, no build tools needed), then extracts only the arm64 library and LICENSE (`unzip -j`) into a fresh temporary folder and checks those. A download is renamed into the cache only once it matches; a cached file that doesn't match is deleted. `V4A_OFFLINE=1` never downloads. With `--out`, the four verified files appear in `<dir>` only when everything passed. Last line `V4A_FETCH=OK app=2.1.1 fx=v2.1.1` |
-| `apply-v4a.sh [top]` | Default `~/expressiveos`. Fetches, stages `tree/` and the verified files into `vendor/extra/viper4android` (removes `Android.bp` first, copies the rest, writes `Android.bp` last only when every copy worked, and removes files the kit no longer ships), adds `$(call inherit-product, vendor/extra/viper4android/viper4android.mk)` to `vendor/extra/product.mk` if that line isn't there at the top level (creating the file if needed; it fails if the line is only inside an `ifeq`/`ifdef`/`define` block), applies `patches/frameworks_av/` as local commits (`git am --3way`, skipping a patch whose subject is already in the log; it refuses to start while frameworks/av has a `git am` or rebase in progress, aborts only its own `am` on a conflict, and fails if `git am` makes no commit because the change is already there), then runs `tools/v4a-check.sh tree`. A second run changes nothing. Last line `V4A_APPLY=OK ...` |
+| `apply-v4a.sh [top]` | Default `~/expressiveos`. Fetches, stages `tree/` and the verified files into `vendor/extra/viper4android` (removes `Android.bp` first, copies the rest, writes `Android.bp` last only when every copy worked, and removes files the kit no longer ships), adds `$(call inherit-product, vendor/extra/viper4android/viper4android.mk)` to `vendor/extra/product.mk` if that line isn't there at the top level (creating the file if needed; it fails if the line is only inside an `ifeq`/`ifdef`/`define` block), puts `patches/frameworks_av/` in with `lib.sh`'s `am_patches`, as `apply.sh` does the tree's own patches (on ExpressiveOS's manifest, frameworks/av is ExpressiveOS's `frameworks_av` fork, which has both as commits: they're only checked, and a missing one or one changed in place fails; on another manifest they're local commits, `git am --3way`, skipping a patch whose subject is already in the log; it refuses to start while frameworks/av has a `git am` or rebase in progress, aborts only its own `am` on a conflict, and fails if `git am` makes no commit because the change is already there), then runs `tools/v4a-check.sh tree`. A second run changes nothing. Last line `V4A_APPLY=OK ...` |
 | `tree/` | What lands in `vendor/extra/viper4android`: `Android.bp`, `viper4android.mk`, the two XMLs, `NOTICE.viperdsp`, `NOTICE.pffft` and a `README.md` with the sources and credits |
 | `patches/frameworks_av/` | The two fixes below |
 | `tools/v4a-check.sh` | `tree`, `out` and `device` checks (below). Every check prints `PASS`, `FAIL` or `INFO`; all of them run; exit 1 on any `FAIL`; last line `V4A_CHECK=OK` or `V4A_CHECK=FAIL` |
@@ -83,8 +83,8 @@ $K/tools/v4a-check.sh out ~/expressiveos/out/target/product/cheetah ~/expressive
 $K/tools/v4a-check.sh device
 ```
 
-`apply-v4a.sh` has to run on every build: `repo sync` drops the frameworks/av commits, and it puts them
-back. `git am` needs a committer identity in `~/expressiveos/frameworks/av` (as `evolution-cheetah/apply.sh`
+`apply-v4a.sh` has to run on every build: it stages the files and checks the frameworks/av commits (on a
+tree with them as local commits, `repo sync` drops them and it puts them back). `git am` needs a committer identity in `~/expressiveos/frameworks/av` (as `evolution-cheetah/apply.sh`
 does on the Evolution X tree).
 
 `../tools/eos-images.sh` runs `apply-v4a.sh` on every build, and `../tools/eos-verify.sh` (which the
@@ -159,19 +159,19 @@ Keep the app and the driver at matching releases: a newer app may expect a newer
 
 ## The two frameworks_av fixes
 
-Both go on the ExpressiveOS tree's own `frameworks/av` (it isn't shared with the Evolution X tree) as
-local commits, made with `git format-patch` against Evolution X `frameworks_av` `cnb` 8e6f34b6ba:
+Both are commits on ExpressiveOS's `frameworks_av` fork (branch `expressiveos`, on top of Evolution X's
+`cnb` 8e6f34b6ba, the commit of the 1.0 builds), made from the patches here, which stay as their record:
 
 | Patch | Fix |
 |---|---|
 | `0001-libeffects-don-t-register-ViPER-twice` | `loadViperEffect()` never checked whether the effect was already registered. If a user flashes the ViPER4Android RE module anyway, its lines in `audio_effects.xml` register the effect first and the built-in loader added a second library with the same uuid. Now it calls `findEffect(NULL, &kViperImplUuid, &registeredLib, NULL)` first and returns with `ALOGI("loadViperEffect: ViPER effect already registered by library %s, skipping", ...)` |
 | `0002-audioflinger-exempt-ViPER-from-suspend-by-uuid` | Evolution X's "don't suspend ViperFx" exemption (commit 61dd835e5a) compares `SL_V4A_RE`, the effect's implementation uuid, with `desc.type`. The v2.1.1 descriptor's type is `EFFECT_UUID_NULL`, so it never matched, and Global mode (the output-mix effect) was suspended whenever another app turned on an effect on its own session. It now compares `desc.uuid` |
 
-If Evolution X changes that code and `git am` stops, `apply-v4a.sh` aborts the `am` and fails. To
-regenerate: copy `frameworks/av`, make the same change on top of its new `cnb`, commit with the kit's
-author line (`Daryl Denson <9751141+denson9874@users.noreply.github.com>`) and the same subject, and
-`git format-patch --zero-commit -2`. If Evolution X makes the same change itself, `git am` makes no
-commit and `apply-v4a.sh` fails saying so: check the code, then remove that patch from the kit.
+To change either fix, commit the change to the fork's `expressiveos` branch and move frameworks/av's
+revision in ExpressiveOS's manifest (`../README.md`, "Sources"). Never edit a patch here for it:
+`apply-v4a.sh` then fails, as `apply.sh` does for the tree's own patches. On a tree from another manifest
+they're local commits again, and if that code changed and `git am` stops, `apply-v4a.sh` aborts the `am`
+and fails.
 
 ### If Evolution X drops its loader
 

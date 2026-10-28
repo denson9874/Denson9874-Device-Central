@@ -86,9 +86,11 @@ done
 echo "OK: $name (the date is the build's own)"
 
 echo "== sources"
-# Only the pinned sources are built (setup.sh syncs to them; the kit's commits sit on top)
-pins_check "$top" "$EOS_MANIFEST_BRANCH" "$kit/pins/manifest.xml" "$kit/local_manifests/cheetah.xml" \
-    || fail "the tree isn't on ExpressiveOS's pinned sources (above): run setup.sh, which syncs it back to them"
+# Only ExpressiveOS's manifest, as GitHub has it, is built (setup.sh syncs to it; the kit's
+# commits for projects that aren't ExpressiveOS's own repos sit on top)
+mf=$(tree_manifest) || fail "the tree isn't on ExpressiveOS's manifest (above)"
+pins_check "$top" "$EOS_MANIFEST_BRANCH" "$mf" \
+    || fail "the tree isn't on ExpressiveOS's manifest's commits (above): run setup.sh, which syncs it back to them"
 mkdir -p -- out/eos
 repo manifest -r -o out/eos/manifest.xml >/dev/null || fail "repo manifest -r failed"
 # Collected first, outside any redirection: a fail here must end the build with its status line

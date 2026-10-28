@@ -2,7 +2,9 @@
 # Apply the ExpressiveOS cheetah tree patches (idempotent): patches/<project path with
 # underscores>/*.patch as local commits (git am --3way, skipping a patch whose subject
 # is already in the project's log), the same convention as evolution-cheetah; a folder
-# whose project has a _ of its own names it in a PROJECT file. The set:
+# whose project has a _ of its own names it in a PROJECT file. A project that's one of
+# ExpressiveOS's own repos (README.md, "Sources") has them as commits already: there each is
+# only checked, and a patch it lacks stops this (change such a repo with a commit). The set:
 #   device_google_pantah 0001, 0002, 0010   ExpressiveOS's own: maintainer, update feed,
 #                                           only ExpressiveOS's boot animation
 #   device_google_pantah 0003-0009,         evolution-cheetah's, copied unchanged
@@ -26,7 +28,7 @@
 #                                           key; recovery's sideload also takes LineageOS's
 #                                           release key, in its otacerts), never older
 # Never evolution-cheetah's apply.sh, or its pantah 0001/0002: they point the Updater
-# at Evolution X's feed. prepare.sh runs this; repo sync drops the commits again.
+# at Evolution X's feed. prepare.sh runs this; repo sync drops the local commits again.
 #
 #   apply.sh [top]      # default ~/expressiveos
 set -euo pipefail

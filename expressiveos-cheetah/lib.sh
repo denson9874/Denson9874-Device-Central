@@ -79,9 +79,13 @@ subject_of() {   # subject_of <patch>: its Subject:, folded lines joined, [PATCH
 }
 
 am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local commit (git am --3way), unless its subject is in the log
-    local d=$1 label=$2 patch subject before log h rc
+    local d=$1 label=$2 patch subject before log h rc own
     shift 2
     project_ok "$d"
+    # A project from ExpressiveOS's manifest that's one of its own repos (github.com/ExpressiveOS)
+    # has the kit's patches as commits already: a patch it lacks, or has another version of, is a
+    # kit change made the old way. Those go into the repo itself (README.md, "Sources")
+    own=$(git -C "$d" config --get remote.expressiveos.url || true)
     git -C "$d" var GIT_COMMITTER_IDENT >/dev/null || fail "git has no user.name/user.email here; git am needs one"
     # One git log per project: frameworks/base has over a million commits. Each line is the
     # commit's hash, a tab and its subject
@@ -97,12 +101,22 @@ am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local co
             # older version: then the patch put on that commit's parent doesn't give its tree
             rc=0
             same_change "$d" "$h" "$patch" || rc=$?
-            if [[ $rc = 1 ]]; then
+            if [[ $rc = 1 && -n "$own" ]]; then
+                rm -f -- "$log"
+                fail "$label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change, and ${d#"$top"/} is ExpressiveOS's own repo ($own): change it with a new commit there, never by editing a kit patch (README.md, \"Sources\")"
+            elif [[ $rc = 1 ]]; then
                 echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change. If apply.sh or apply-ksu.sh made it (an older version of the patch): repo sync -d ${d#"$top"/}, then build again (tools/eos-images.sh puts the kit's patches back). If it came with Evolution X's source: compare the two, then drop or regenerate the patch"
             elif [[ $rc != 0 ]]; then
                 echo "note: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/}, but its change can't be compared with the patch here (no parent in this clone, or git failed)"
             fi
             continue
+        fi
+        if [[ -n "$own" ]]; then
+            rm -f -- "$log"
+            # A clone cut short (clone-depth) shows only the commits above the cut
+            [[ "$(git -C "$d" rev-parse --is-shallow-repository 2>/dev/null)" != true ]] \
+                || fail "$label: ${d#"$top"/} lacks ${patch##*/} in its log, but it's ExpressiveOS's own repo ($own) cloned shallow (clone-depth in the manifest), so that commit may be under the cut: a project the kit has patches for needs its full history (README.md, \"Sources\")"
+            fail "$label: ${d#"$top"/} lacks ${patch##*/}, and it's ExpressiveOS's own repo ($own): commit the change there, on its expressiveos branch, and move its revision in ExpressiveOS's manifest; a kit patch for it is never applied (README.md, \"Sources\")"
         fi
         before=$(git -C "$d" rev-parse HEAD)
         # --keep-cr: some files have CRLF line ends (SystemUI's clocks/AnalogClockView.java),
@@ -282,6 +296,24 @@ tree_build() {   # tree_build: the soong_ui or ninja of this user running in $to
         cwd=$(readlink -- "/proc/$pid/cwd" 2>/dev/null) || continue
         [[ "$cwd" != "$top" && "$cwd" != "$top"/* ]] || { ps -o args= -p "$pid" 2>/dev/null | cut -c1-150; return 0; }
     done
+}
+
+tree_manifest() {   # tree_manifest: the manifest file $top syncs to, after checking it's ExpressiveOS's (eos.conf) as GitHub has it, alone
+    local m=$top/.repo/manifests url b f
+    url=$(git -C "$m" config --get remote.origin.url 2>/dev/null) || fail "$top has no repo manifest (run setup.sh)"
+    [[ "${url%.git}" = "$EOS_MANIFEST_URL" ]] || fail "$top's manifest is $url, not $EOS_MANIFEST_URL (run setup.sh)"
+    b=$(git -C "$m" config --get branch.default.merge 2>/dev/null) || b=
+    [[ "${b#refs/heads/}" = "$EOS_MANIFEST_BRANCH" ]] || fail "$top's manifest is on branch '${b#refs/heads/}', not $EOS_MANIFEST_BRANCH (run setup.sh)"
+    grep -qF '<include name="default.xml" />' "$top/.repo/manifest.xml" 2>/dev/null \
+        || fail "$top/.repo/manifest.xml isn't ExpressiveOS's default.xml (run setup.sh)"
+    # What GitHub has, nothing edited or committed here: the build's sources are on record there
+    [[ -z "$(git -C "$m" status --porcelain 2>/dev/null)" && \
+       "$(git -C "$m" rev-parse HEAD 2>/dev/null)" = "$(git -C "$m" rev-parse -q --verify "refs/remotes/origin/$EOS_MANIFEST_BRANCH" 2>/dev/null)" ]] \
+        || fail "$top's manifest (.repo/manifests) has local changes or commits (git -C $m status): it must be ExpressiveOS's as GitHub has it, and a change to it is a commit there (README.md, \"Sources\"). Undo the change, then run setup.sh"
+    for f in "$top"/.repo/local_manifests/*.xml; do
+        [[ ! -e "$f" ]] || fail "$f: ExpressiveOS's tree is its manifest alone; move that local manifest out of .repo/local_manifests"
+    done
+    printf '%s\n' "$m/default.xml"
 }
 
 pins_list() {   # pins_list <manifest>...: "<path> <revision>" for each project the repo manifests name
