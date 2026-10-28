@@ -106,8 +106,9 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
   older builds' packages are deleted first, so `out/` holds only this build's. The last line is
   `MAKE_EXIT=0` only if pass 2 shipped the patched init_boot (`ksu-check.sh images`). `TOP`, `OUT`
   and the other variables a shell set up for another tree are cleared first, and lunch must land in
-  `~/expressiveos`. The kernel source follows branch heads, so it is synced once (lunch runs
-  `build_kernel`), then `SKIP_KERNEL_SYNC=1`; its `repo manifest -r` goes to
+  `~/expressiveos`. The kernel source is `pins/kernel.xml`'s: synced to it once (or again with
+  `EOS_KERNEL_SYNC=1`) and checked against it, and `build_kernel` (lunch runs it) never syncs it
+  (`SKIP_KERNEL_SYNC=1`); its `repo manifest -r` goes to
   `out/eos/kernel-manifest.xml` for the GPL source offer.
 - **Release checks** (`tools/ksu-check.sh`; the last line is `KSU_CHECK=OK` or `KSU_CHECK=FAIL`):
   - `manager [top]`: the APK in the build is `ksu.conf`'s byte for byte (so it keeps the signature

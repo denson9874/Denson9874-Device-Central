@@ -25,7 +25,8 @@ holding the lock the Evolution X routines take (`~/.evolution-tree.lock`). The o
 | Path | What it does |
 |---|---|
 | `eos.conf` | Names, feed, release folders and key pins every script reads |
-| `setup.sh` | Sets up `~/expressiveos` (Evolution X's manifest, full history, Git LFS, `local_manifests/cheetah.xml`) or syncs it |
+| `setup.sh` | Sets up `~/expressiveos` (Evolution X's manifest, full history, Git LFS, `local_manifests/cheetah.xml`) or syncs it, always to the pinned commits (`pins/`, below) |
+| `pins/` | The exact sources ExpressiveOS builds: `manifest.xml` for the tree, `kernel.xml` for the kernel source |
 | `prepare.sh`, `apply.sh`, `patches/` | Git LFS files, the kit's tree patches (below), the newest cached firmware (`update-firmware.sh`) |
 | `tools/eos-keys-check.sh` | The key guard: ExpressiveOS's own keys, never Evolution X's, DerpFest's or the AOSP test keys |
 | `tools/eos-images.sh` | The build, start to finish |
@@ -131,7 +132,7 @@ The keys never go into git, and never `tools/keys/expressive_platform.keystore`.
 In tmux. A first build runs longer than the runner job's 4-hour limit.
 
 ```bash
-~/expressiveos-cheetah/setup.sh               # only when you want newer sources (repo sync)
+~/expressiveos-cheetah/setup.sh               # only to set up the tree or put it back on its pins
 ~/expressiveos-cheetah/tools/eos-images.sh    # waits for the Evolution X routines' lock and any running build
 ```
 
@@ -144,8 +145,32 @@ also goes to `~/expressiveos-build.log` (the run before is kept as `.1`); the la
 or `BUILD_EXIT=1`.
 
 - `KERNEL_ONLY=1`: stop after `build_kernel` and `kernelsu.ko`.
-- `EOS_KERNEL_SYNC=1`: sync the kernel source again. It follows branch heads, so only the first build
-  syncs it otherwise.
+- `EOS_KERNEL_SYNC=1`: sync the kernel source to `pins/kernel.xml` again. Otherwise only the first
+  build syncs it, and later ones check it's still on the pins.
+
+## Pinned sources
+
+ExpressiveOS builds only the sources in `pins/` (Daryl, 2026-10-28: Evolution X's changes mustn't
+reach ExpressiveOS on their own; Evolution X rebuilds and force-pushes its branches several times a
+month, which is what broke the Studio patches on 2026-10-27). They are the exact commits of the
+1.0 builds of 2026-10-26 and 2026-10-27, read off the build server's tree by the runner's read-only
+`expressiveos-pins` action:
+
+- `pins/manifest.xml`: all 1,257 projects of Evolution X's cnb manifest, each at a commit, never a
+  branch. `setup.sh` installs it as `.repo/manifests/expressiveos-pins.xml` with `repo init -m`, so
+  any `repo sync` in the tree, by hand too, lands on these commits. `local_manifests/cheetah.xml`
+  pins its four projects the same way.
+- `pins/kernel.xml`: the 18 projects of LineageOS's gs-6.1 kernel manifest (lineage-24.0), which
+  `ksu/tools/ksu-images.sh` syncs `out-kernel/google/gs-6.1` to before `build_kernel`, which never
+  syncs it itself (`SKIP_KERNEL_SYNC=1`).
+
+`setup.sh` and every build check the tree against them (`pins_check` in `lib.sh`: each project synced
+to its pinned commit, the kit's commits on top) and stop if anything is off. A pinned commit the tree
+already has is never fetched again, so a sync on the build server changes nothing. Some of these
+commits are on no Evolution X branch any more; until ExpressiveOS's own repos hold them, the server's
+tree is where they live, so don't delete `~/expressiveos/.repo`.
+
+Newer sources come only with new pins, and only when Daryl asks.
 
 A complete run leaves in `out/eos/`: `build.ok` (the OTA package's sha256, which `eos-pack.sh` needs),
 `target-files.ok` (the sha256 of the target-files zip it was made from, which `m evolution` leaves in
@@ -237,7 +262,5 @@ too. An older release's can go once its `.uploaded` marker is there.
 - The incremental OTA script: `ota_from_target_files -i` from a release's target-files to the next, signed
   with the tree's release key, everything but the dynamic partitions in full (`--full_ota_partitions`), and
   offered only to phones on that base build (`packages_apps_Updater` 0005's `base_timestamp`).
-- Freezing the tree: 318 projects follow branch heads. After the first good build, rebuild from its
-  `out/eos/manifest.xml` until moving on is a decision.
 - Decisions still open: patch-level properties in cheetah's vbmeta, purging the old keystore from this
   repo's history.

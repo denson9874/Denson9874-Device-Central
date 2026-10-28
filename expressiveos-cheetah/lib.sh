@@ -283,3 +283,72 @@ tree_build() {   # tree_build: the soong_ui or ninja of this user running in $to
         [[ "$cwd" != "$top" && "$cwd" != "$top"/* ]] || { ps -o args= -p "$pid" 2>/dev/null | cut -c1-150; return 0; }
     done
 }
+
+pins_list() {   # pins_list <manifest>...: "<path> <revision>" for each project the repo manifests name
+    python3 -c '
+import sys, xml.etree.ElementTree as ET
+for f in sys.argv[1:]:
+    for e in ET.parse(f).getroot().iter("project"):
+        print(e.get("path") or e.get("name"), e.get("revision") or "-")
+' "$@"
+}
+
+pins_check() {   # pins_check <tree> <manifest branch> <manifest>...: each project the manifests pin was synced to its pinned commit (repo's m/<branch>) and has it under HEAD (the kit's commits sit on top); names each that isn't and returns 1
+    local tree=$1 branch=$2 list p rev m n=0 bad=0
+    shift 2
+    list=$(pins_list "$@") || fail "can't read $*"
+    while read -r p rev; do
+        n=$((n + 1))
+        if [[ ! $rev =~ ^[0-9a-f]{40}$ ]]; then
+            echo "off the pins: $p follows '$rev', not a commit"; bad=$((bad + 1)); continue
+        fi
+        m=$(git -C "$tree/$p" rev-parse -q --verify "refs/remotes/m/$branch^{commit}" 2>/dev/null) || m=
+        if [[ $m != "$rev" ]]; then
+            echo "off the pins: $p was synced to ${m:-nothing}, not ${rev:0:12}"; bad=$((bad + 1))
+        elif ! git -C "$tree/$p" merge-base --is-ancestor "$rev" HEAD 2>/dev/null; then
+            echo "off the pins: $p's HEAD $(git -C "$tree/$p" rev-parse --short HEAD 2>/dev/null) isn't ${rev:0:12} or a commit on top of it"; bad=$((bad + 1))
+        fi
+    done <<<"$list"
+    (( bad == 0 )) || { echo "$bad of $n projects are off the pins"; return 1; }
+    echo "OK: all $n projects on their pinned commits"
+}
+
+pins_install() {   # pins_install <tree> <pins file>: <tree>'s repo uses <pins file> (as .repo/manifests/expressiveos-pins.xml), so every repo sync there, by hand too, lands on its commits
+    local tree=$1 m=$1/.repo/manifests
+    in_top "$m/expressiveos-pins.xml"
+    if cmp -s -- "$2" "$m/expressiveos-pins.xml"; then
+        echo "unchanged: ${m#"$top"/}/expressiveos-pins.xml"
+    else
+        { cp -- "$2" "$m/.expressiveos-pins.xml.tmp" && mv -f -- "$m/.expressiveos-pins.xml.tmp" "$m/expressiveos-pins.xml"; } \
+            || fail "can't install ${m#"$top"/}/expressiveos-pins.xml"
+        echo "installed: ${m#"$top"/}/expressiveos-pins.xml"
+    fi
+    # repo init -m writes .repo/manifest.xml as an include of the named file. No terminal on
+    # stdin: repo init then asks nothing
+    grep -qF '<include name="expressiveos-pins.xml" />' "$tree/.repo/manifest.xml" 2>/dev/null \
+        || (cd "$tree" && repo init -m expressiveos-pins.xml </dev/null) || fail "repo init -m expressiveos-pins.xml failed in $tree"
+    grep -qF '<include name="expressiveos-pins.xml" />' "$tree/.repo/manifest.xml" \
+        || fail "$tree/.repo/manifest.xml doesn't use expressiveos-pins.xml after repo init -m"
+}
+
+kernel_pinned() {   # kernel_pinned: out-kernel/google/gs-6.1 holds the kernel source pins/kernel.xml pins, synced to it first when it's missing or EOS_KERNEL_SYNC=1; build_kernel then never syncs (SKIP_KERNEL_SYNC=1)
+    local kt=$top/out-kernel/google/gs-6.1
+    in_top "$kt/.repo"
+    if [[ ! -d $kt/.repo/manifests || "${EOS_KERNEL_SYNC:-0}" = 1 ]]; then
+        echo "== kernel source: out-kernel/google/gs-6.1 to pins/kernel.xml"
+        if [[ ! -d $kt/.repo/manifests ]]; then
+            # Laid out as build_kernel does it: repo's own copy from the tree, and the marker
+            # that keeps the platform build from scanning the kernel source
+            mkdir -p -- "$kt/.repo" || fail "can't make $kt/.repo"
+            [[ -d $kt/.repo/repo ]] || cp -R -- "$top/.repo/repo" "$kt/.repo/repo" || fail "can't copy repo into $kt/.repo"
+            touch -- "$kt/.out-dir" || fail "can't write $kt/.out-dir"
+            (cd "$kt" && repo init -u "$EOS_KERNEL_MANIFEST_URL" -b "$EOS_KERNEL_MANIFEST_BRANCH" </dev/null) \
+                || fail "repo init of the kernel source failed"
+        fi
+        pins_install "$kt" "$kit/pins/kernel.xml"
+        (cd "$kt" && repo sync --detach --force-sync) || fail "repo sync of the kernel source failed"
+    fi
+    pins_check "$kt" "$EOS_KERNEL_MANIFEST_BRANCH" "$kit/pins/kernel.xml" \
+        || fail "out-kernel/google/gs-6.1 isn't the kernel source pins/kernel.xml pins (EOS_KERNEL_SYNC=1 syncs it to them)"
+    export SKIP_KERNEL_SYNC=1
+}

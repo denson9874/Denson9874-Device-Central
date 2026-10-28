@@ -12,8 +12,9 @@
 #   ksu-images.sh [top]                  # default ~/expressiveos; lunch target EOS_LUNCH (eos.conf)
 #   KERNEL_ONLY=1 ksu-images.sh [top]    # stop after build_kernel and kernelsu.ko
 #
-# build_kernel re-syncs the kernel source unless SKIP_KERNEL_SYNC=1 (eos-images.sh sets it
-# once out-kernel/ is there); lunch runs it too, so the kernel is synced at most once here.
+# The kernel source is pins/kernel.xml's (kernel_pinned in lib.sh): synced to those commits
+# when out-kernel/ has none yet or EOS_KERNEL_SYNC=1, checked against them otherwise, and
+# build_kernel (lunch runs it too) never syncs it itself (SKIP_KERNEL_SYNC=1).
 # Saves the kernel tree's repo manifest -r to out/eos/kernel-manifest.xml (GPL source).
 # Not -e or -u: envsetup.sh and its functions rely on neither; every step is checked
 set -o pipefail
@@ -41,6 +42,8 @@ for p in "$here"/patches/device_google_pantah/*.patch; do
 done
 [[ -f vendor/extra/ksu/Android.mk ]] || fail "no vendor/extra/ksu/Android.mk (run apply-ksu.sh)"
 
+# Before lunch, which runs build_kernel
+kernel_pinned
 export EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
 if command -v ccache >/dev/null; then export USE_CCACHE=1 CCACHE_EXEC; CCACHE_EXEC=$(command -v ccache); fi
 # shellcheck source=/dev/null
@@ -49,8 +52,6 @@ lunch "$EOS_LUNCH" || fail "lunch $EOS_LUNCH failed"
 [[ "$(cd "$(gettop)" && pwd -P)" = "$top" ]] || fail "lunch picked the tree $(gettop), not $top"
 [[ "$(get_build_var PRODUCT_OUT)" = "$O" ]] || fail "PRODUCT_OUT is $(get_build_var PRODUCT_OUT), not $O"
 kt=out-kernel/google/gs-6.1
-# lunch runs build_kernel, sync included: once the source is there, don't sync again
-[[ ! -d $kt/.repo ]] || export SKIP_KERNEL_SYNC=1
 mkdir -p -- "$O" out/eos
 # The build's AB_OTA_PARTITIONS, for the OTA script's payload check
 get_build_var AB_OTA_PARTITIONS | tr ' ' '\n' | sed '/^$/d' > "$O/ab_partitions.txt" \
