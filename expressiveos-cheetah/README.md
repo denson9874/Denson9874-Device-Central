@@ -27,7 +27,7 @@ holding the lock the Evolution X routines take (`~/.evolution-tree.lock`). The o
 | `eos.conf` | Names, feed, release folders and key pins every script reads |
 | `setup.sh` | Sets up `~/expressiveos` (ExpressiveOS's own manifest, full history, Git LFS) or syncs it again, and moves a 1.0 tree onto that manifest (Sources, below) |
 | `pins/kernel.xml` | The exact kernel source ExpressiveOS builds |
-| `sources/` | Where ExpressiveOS's own sources came from: `eos-1.0-base/` (the 1.0 builds' sources), `org-fork.sh` (the forks in the ExpressiveOS GitHub organization) and `own-manifest.py` (ExpressiveOS's manifest) |
+| `sources/` | Where ExpressiveOS's own sources came from: `eos-1.0-base/` (the 1.0 builds' sources), `org-fork.sh` (the forks in the ExpressiveOS GitHub organization) and `own-manifest.py` (ExpressiveOS's manifest); `update-check.sh` and `update.py`, the monthly update's dry run |
 | `prepare.sh`, `apply.sh`, `patches/` | Git LFS files, the kit's tree patches (below), the newest cached firmware (`update-firmware.sh`) |
 | `tools/eos-keys-check.sh` | The key guard: ExpressiveOS's own keys, never Evolution X's, DerpFest's or the AOSP test keys |
 | `tools/eos-images.sh` | The build, start to finish |
@@ -185,6 +185,26 @@ To change a project that's ExpressiveOS's own repo: commit to its `expressiveos`
 it, and never edit a kit patch for it: `apply.sh` stops on both), then move that project's `revision`
 in the manifest's `default.xml` to the new commit, and commit that. Newer LineageOS or AOSP sources come
 the same way, with a new manifest commit, and only when Daryl asks.
+
+The monthly update starts with its dry run, `sources/update-check.sh` (the runner's read-only
+`expressiveos-update-check`), which changes nothing in the tree and pushes nothing. Against LineageOS's
+manifest today it shows:
+
+- for LineageOS's and AOSP's projects, which move and by how many commits (each must descend from
+  ours);
+- for ExpressiveOS's forks of LineageOS's and AOSP's repos (45 of the 74), LineageOS's new commits
+  merged into each in memory (`git merge-tree`): clean, or the files that conflict, and which of those
+  the kit's own changes touch;
+- what LineageOS's manifest changed since the sources' base (projects added, removed, moved to a fork);
+- the security patch level before and after (our release config's flag in `vendor/lineage`, which
+  LineageOS bumps monthly);
+- the kernel's 18 projects against `pins/kernel.xml` (Google's GKI tag), and KernelSU Next's and
+  NeoZygisk's newest releases against `ksu/ksu.conf`.
+
+Its fetches and test merges stay in `~/expressiveos-update`, in scratch repos that borrow the tree's git
+objects, so only new commits download; the report is `reports/update-check-<time>.txt` there. The
+other 29 forks (Evolution X's own apps and vendor repos, cheetah's trees and blobs) have nothing
+upstream, and Google's factory images (cheetah's firmware and vendor blobs) aren't part of it.
 
 Where it came from, in `sources/`:
 
