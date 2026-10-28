@@ -248,8 +248,8 @@ reaches GitHub before step 5.
 `sources/update-check.sh` (the runner's read-only `expressiveos-update-check`) changes nothing in the
 tree and pushes nothing. Against LineageOS's manifest today it shows:
 
-- for LineageOS's and AOSP's projects, which move and by how many commits (each must descend from
-  ours);
+- for LineageOS's and AOSP's projects, which move and by how many commits (a LineageOS project's
+  must descend from ours; shallow and AOSP projects aren't counted);
 - for ExpressiveOS's forks of LineageOS's and AOSP's repos (44 of the 74), LineageOS's new commits
   merged into each in memory (`git merge-tree`): clean, or the files that conflict, and which of those
   the kit's own changes touch;
@@ -270,8 +270,11 @@ An update is a folder of this kit, committed here before it runs: `sources/updat
 month (`2026-11`; `2026-11-2` for a second one that month):
 
 - `update.conf`: `LINEAGE_MANIFEST=<commit>`, the commit of LineageOS's manifest (on its `lineage-24.0`
-  branch) the update takes, and nothing else. A commit, not the branch, so every plan of it makes the
-  same update;
+  branch) the update takes, and nothing else. It fixes which repos, branches and tags the update takes.
+  LineageOS's manifest names branches, not commits, so each project takes its branch's newest commit
+  when the plan runs, except a fork with a resolution, which takes the LineageOS commit the resolution
+  was made for: LineageOS can go on committing while a conflict is resolved, and the resolution stays
+  good (the newer commits wait for the next update);
 - `resolutions/<project path>.patch`: how a fork's merge that conflicts is resolved (step 4), one per
   such fork.
 
@@ -287,54 +290,72 @@ build needed) and doesn't run while a build or setup does (`~/.expressiveos.lock
 `~/expressiveos-update/updates/<id>/`:
 
 - each fork's merge of LineageOS's commits, a merge commit by `EOS_UPDATE_IDENT` (`eos.conf`) in its
-  scratch repo, with the resolution put in where the merge conflicts;
-- every other LineageOS and AOSP project's new commit (each must descend from ours);
+  scratch repo, with the resolution put in where the merge conflicts. Every merge runs with git's
+  default rename settings pinned, so the build server and the machine a resolution is made on merge
+  alike;
+- every other LineageOS and AOSP project's new commit. A LineageOS project's must descend from ours
+  (LineageOS never rewrites its branches); a shallow one's (`clone-depth`) and AOSP's (a new tag) aren't
+  checked;
 - the new `default.xml`: those commits, and what LineageOS's manifest changed since the last update,
-  taken three ways (a project's repo, branch, groups or clone depth moves where ours was still
-  LineageOS's, and stops the plan where both changed it; projects LineageOS added are added; projects it
-  dropped stay, following their own branch; a new AOSP tag moves the `aosp` remote and each project's
-  upstream). It's checked as `setup.sh` checks a manifest, then committed with `last-update.conf` on
-  top of GitHub's (`plan.json` records it and every fork's merge);
+  taken three ways. A project's repo, branch or clone depth moves where ours was still LineageOS's, and
+  the plan stops where both changed it; groups and linkfiles/copyfiles are taken element by element
+  (LineageOS's additions and removals, ExpressiveOS's own entries kept), forks' too. Projects LineageOS
+  added are added, except ones outside repo's default sync (`notdefault`), which LineageOS's own sync
+  leaves out too, and a project LineageOS takes out of the default sync is taken out. A repo LineageOS
+  moved to another path moves (a fork's: by hand). Projects it dropped stay, following their own branch
+  (one on an AOSP tag, or a fork, gets a note). A new AOSP tag moves the `aosp` remote and each project's
+  upstream. It's checked as `setup.sh` checks a manifest, then committed with `last-update.conf` on top
+  of GitHub's (`plan.json` records it, every fork's merge, and the forks it moves to their branch's tip
+  without one);
 - the security patch level before and after;
 - `kernel.xml`: `pins/kernel.xml` with each kernel project on LineageOS's kernel manifest's commit
-  today, also printed in the report;
+  today (and its branch or tag, where that moved), also printed in the report;
 - the push token's reach, asked of GitHub as a push would ask (step 5).
 
 The report is `reports/update-plan-<id>-<time>.txt`. The run ends with `UPDATE_PLAN=READY`,
 `UPDATE_PLAN=CONFLICTS` (each conflict shown with the fork's side, the merge base's and LineageOS's, the
-commits on each side that touch the file, and the resolution's first lines to start from) or
-`UPDATE_PLAN=NOT_READY` (the problems listed). A plan can run again any time; it starts over.
+commits on each side that touch the file, and the commands to resolve it) or `UPDATE_PLAN=NOT_READY` (the
+problems listed). A plan can run again any time; it starts over.
 
 ### 4. Resolving a conflict
 
-By hand, in a clone of the fork, on any machine (the plan names the two commits):
+By hand, in a clone of the fork, on any machine with git 2.38 or newer. The plan prints these commands
+with the fork's and LineageOS's addresses and commits filled in:
 
 ```bash
-git clone https://github.com/ExpressiveOS/<fork> && cd <fork>
-git checkout <fork commit>
-git fetch <LineageOS's repo, as the plan names it> <its branch>
+git clone https://github.com/ExpressiveOS/<fork> <fork> && cd <fork>
+git checkout --detach <fork commit>
+git fetch https://github.com/LineageOS/<repo> refs/heads/lineage-24.0
 git merge --no-commit <LineageOS commit>
 # fix each conflicting file, then git add it
-python3 -I <kit>/sources/update.py resolution . > <kit>/sources/updates/<id>/resolutions/<project path>.patch
+python3 -I <kit>/sources/update.py resolution . --out <kit>/sources/updates/<id>/resolutions/<project path>.patch
 ```
 
-`resolution` refuses a merge with files still conflicting or still as the merge left them. Its file
-starts `merge <fork commit> <LineageOS commit>`, then `resolved <file>` for each conflicting file, and
-holds the diff from the fork's commit to the resolved files (renames written as a delete and an add). The
-plan puts it in only where the merge is that same one and conflicts in exactly those files, and stops on
-conflict markers left in: a resolution for an older fork commit or another LineageOS commit is stale, and
-the merge is resolved again. Commit it here, then plan again.
+`resolution` refuses a merge with files still conflicting or conflict markers left in, and file names it
+can't write down (control characters, quotes, backslashes). Its file starts `merge <fork commit>
+<LineageOS commit>`, then `resolved <file>` for each conflicting file and `changed <file>` for each other
+file the fix changed, and holds the diff from the fork's commit to the fixed merge for those files
+(renames written as a delete and an add). Keeping one side as the merge left it (a binary file, a file
+one side deleted) is a resolution too. Before writing it, `resolution` puts it into the merge the way the
+plan will and refuses unless that makes exactly the clone's merge. The plan puts it in only where the
+merge is that same one and conflicts in exactly those files, and stops on conflict markers left in: a
+resolution for an older fork commit is stale, and the merge is resolved again. Commit it here, then plan
+again.
 
 ### 5. The push
 
 When the plan is `READY` and Daryl says go: `expressiveos-update` with query `push <id>`. The runner hands
 it the push token (step 6) for that step only. It checks the plan first and pushes nothing unless all of
-it still fits: the kit's `updates/<id>/` as the plan read it, GitHub's manifest and every fork's branch
-where the plan left them (a fork already at its merge was pushed by an earlier run, and is skipped). Then
-it pushes each fork's merge to its `expressiveos` branch (a fast-forward, never forced), then the
-manifest's commit as branch `update/<id>` of ExpressiveOS's manifest, and prints the pull request link
-(`expressiveos...update/<id>`). Anything moved since the plan: plan again. Run again after a failure, it
-pushes only what's left.
+it still fits: the kit's `updates/<id>/` as the plan read it, GitHub's manifest, every fork's branch the
+plan merged into and every fork it pins at its branch's tip, all where the plan left them. Then it
+pushes each fork's merge to its `expressiveos` branch (a fast-forward, never forced), then the manifest's
+commit as branch `update/<id>` of ExpressiveOS's manifest, and prints the pull request link
+(`expressiveos...update/<id>`).
+
+If a push stops partway, run push again: it skips the forks already at their merge and pushes the rest.
+If it says to plan again (something moved since the plan), plan again: a fork whose merge was pushed
+already is up to date then, its resolution noted as in the fork already, and the next push goes on from
+there.
 
 Merging that pull request is the update. Then `expressiveos-setup` syncs the tree to it; the plan's
 `kernel.xml` goes into this kit as `pins/kernel.xml` in a commit of its own, and the next build runs
@@ -349,8 +370,9 @@ ExpressiveOS's manifest and the manifest itself? It asks GitHub as a push's firs
 must get 401, the token 200) and pushes nothing; it ends `TOKEN_CHECK=OK`. The token is a fine-grained
 one of the ExpressiveOS organization's (Repository access: All repositories; Permissions: Contents, read
 and write; nothing else), saved as the Actions secret `EXPRESSIVEOS_PUSH_TOKEN` of this repo. It lives
-in that step's environment only: never on the server's disk, in a command line or in a log (git gets it
-from a credential helper that reads the environment). It expires after a year: make a new one the same
+in that step's environment only, never on the server's disk, in a command line or in a log (git gets it
+from a credential helper that reads the environment), and goes only to https://github.com/, never to
+another host or over plain http, whatever the manifest names. It expires after a year: make a new one the same
 way, save it over the secret, and check it.
 
 ## Test and release
