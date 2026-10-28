@@ -3,8 +3,9 @@
 # (EOS_MANIFEST_URL, branch EOS_MANIFEST_BRANCH: every project at a commit, never a branch
 # head, cheetah's device trees and blobs included) with full git history and Git LFS, then
 # repo sync. Only a new commit of that manifest brings newer sources. The manifest is fetched
-# and checked first (as GitHub has it, no local manifest, every project at a commit), and the
-# projects sync to that commit of it only, so a bad manifest changes no source.
+# and checked first (as GitHub has it, no local manifest, nothing but remotes and projects, every
+# project at a commit), and the projects sync to that commit of it only, so a bad manifest
+# changes no source.
 # A tree still on Evolution X's manifest and the 1.0 pins (EOS_OLD_MANIFEST_URL, the kit's
 # expressiveos-pins.xml and local_manifests/cheetah.xml) moves to ExpressiveOS's manifest
 # here: same paths, the forks' commits instead of Evolution X's, so the sync fetches only the
@@ -40,8 +41,17 @@ else
     flock -n 8 || fail "an ExpressiveOS build or setup is running (~/.expressiveos.lock)"
 fi
 
+fresh=0
 if [[ ! -e "$arg/.repo" ]]; then
     [[ ! -e "$arg" || -z "$(ls -A -- "$arg")" ]] || fail "$arg exists and isn't a repo checkout; move it away or name another folder"
+    fresh=1
+elif [[ ! -L "$arg/.repo" && "$(ls -A -- "$arg")" = .repo \
+        && -z "$(git --git-dir="$arg/.repo/manifests.git" config --get remote.origin.url 2>/dev/null)" ]]; then
+    # A first repo init that never got the manifest (unreachable then) leaves .repo/repo alone
+    echo "== $arg has a .repo but no manifest yet (a first repo init that didn't finish): initializing it again"
+    fresh=1
+fi
+if (( fresh )); then
     mkdir -p -- "$arg"
     top=$(cd "$arg" && pwd -P)
     not_other "$top"
@@ -49,7 +59,8 @@ if [[ ! -e "$arg/.repo" ]]; then
     min=${EOS_MIN_FREE_GB:-450}
     (( free >= min )) || fail "$top has $free GB free; a new ExpressiveOS tree needs about $min GB (EOS_MIN_FREE_GB)"
     echo "== repo init $EOS_MANIFEST_URL -b $EOS_MANIFEST_BRANCH in $top (full history, Git LFS)"
-    (cd "$top" && repo init -u "$EOS_MANIFEST_URL" -b "$EOS_MANIFEST_BRANCH" --git-lfs)
+    (cd "$top" && repo init -u "$EOS_MANIFEST_URL" -b "$EOS_MANIFEST_BRANCH" --git-lfs </dev/null) \
+        || fail "repo init -u $EOS_MANIFEST_URL -b $EOS_MANIFEST_BRANCH failed (above); no project was synced, run setup.sh again"
 else
     top=$(cd "$arg" && pwd -P)
     not_other "$top"
@@ -60,6 +71,7 @@ b=$(tree_build); [[ -z "$b" ]] || fail "a build is running in $top: $b"
 m="$top/.repo/manifests"
 lm="$top/.repo/local_manifests"
 url=$(git -C "$m" config --get remote.origin.url || true)
+[[ -n "$url" ]] || fail "$top/.repo has no manifest (no remote.origin.url in $m), a repo init that didn't finish: run (cd $top && repo init -u $EOS_MANIFEST_URL -b $EOS_MANIFEST_BRANCH --git-lfs), then setup.sh again"
 # Full history: git am --3way can then merge a kit patch around a later change to the same
 # file, and a merge of LineageOS's changes needs it too; in a shallow tree they just fail
 depth=$(git -C "$m" config --get repo.depth || true)
@@ -82,6 +94,14 @@ fi
 for f in "$lm"/*.xml; do
     [[ ! -e "$f" ]] || fail "$f is a local manifest: ExpressiveOS's tree is its manifest alone (cheetah's projects are in it); move it out of .repo/local_manifests"
 done
+# The manifest checkout as repo left it. repo init can't move a checkout with local changes to a
+# newer commit: it stops halfway, the checkout on no commit at all. The manifest is GitHub's alone
+# anyway (a change to it is a commit there). The 1.0 tree's pins file goes below
+git -C "$m" rev-parse -q --verify HEAD >/dev/null \
+    || fail "$top's manifest checkout (.repo/manifests) is on no commit (a repo init that stopped halfway), nothing was synced: run git -C $m reset -q --hard origin/$EOS_MANIFEST_BRANCH, then setup.sh"
+dirty=$(git -C "$m" status --porcelain -- . ':(exclude)expressiveos-pins.xml' ':(exclude).expressiveos-pins.xml.tmp') \
+    || fail "can't read the git status of $m"
+[[ -z "$dirty" ]] || fail "$top's manifest checkout (.repo/manifests) has local changes, nothing was synced: $(tr "\n" " " <<<"$dirty" | cut -c1-200). ExpressiveOS's manifest is GitHub's alone, and a change to it is a commit there (README.md, \"Sources\"): discard these with git -C $m checkout -q -f HEAD -- . and git -C $m clean -q -fd, then run setup.sh"
 # ExpressiveOS's manifest as GitHub has it now, on default.xml and its branch, whatever the tree
 # was on (the 1.0 tree, one set up by hand, a commit made here: repo init drops it). Nothing
 # syncs before it's checked below, and then only to it (--no-manifest-update). No terminal on
@@ -93,9 +113,18 @@ in_top "$m/expressiveos-pins.xml"
 rm -f -- "$m/expressiveos-pins.xml" "$m/.expressiveos-pins.xml.tmp"
 mf=$(tree_manifest) || exit 1
 # Every project at a commit before anything syncs: a branch head would check out whatever that
-# branch has today, and an <include> brings in a manifest of branch heads (Evolution X's)
+# branch has today. So nothing but remotes, the default and projects (with their linkfiles and
+# copyfiles): an <include> or <submanifest> brings in a manifest of branch heads (Evolution X's),
+# and an <extend-project> moves a project to another revision
 mrev=$(git -C "$m" rev-parse --short HEAD)
-! grep -q '<include' "$mf" || fail "$EOS_MANIFEST_URL ($EOS_MANIFEST_BRANCH, $mrev) includes another manifest, so not every project is at a commit; nothing was synced"
+odd=$(python3 -I -c '
+import sys, xml.etree.ElementTree as ET
+r = ET.parse(sys.argv[1]).getroot()
+odd = {e.tag for e in r if e.tag not in ("remote", "default", "project", "notice", "contactinfo")}
+odd |= {"project/" + k.tag for p in r.iter("project") for k in p if k.tag not in ("linkfile", "copyfile", "annotation")}
+print(" ".join("<%s>" % t for t in sorted(odd)))
+' "$mf") || fail "can't read $mf"
+[[ -z "$odd" ]] || fail "$EOS_MANIFEST_URL ($EOS_MANIFEST_BRANCH, $mrev) has $odd, which could bring in or move projects, so not every project is known to be at a commit; nothing was synced"
 off=$(pins_list "$mf" | awk '$2 !~ /^[0-9a-f]{40}$/ { print $1 }') || fail "can't read $mf"
 [[ -z "$off" ]] || fail "$EOS_MANIFEST_URL ($EOS_MANIFEST_BRANCH, $mrev) has projects that aren't at a commit, nothing was synced: $(tr "\n" " " <<<"$off" | cut -c1-300)"
 
