@@ -113,6 +113,9 @@ am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local co
         fi
         if [[ -n "$own" ]]; then
             rm -f -- "$log"
+            # A clone cut short (clone-depth) shows only the commits above the cut
+            [[ "$(git -C "$d" rev-parse --is-shallow-repository 2>/dev/null)" != true ]] \
+                || fail "$label: ${d#"$top"/} lacks ${patch##*/} in its log, but it's ExpressiveOS's own repo ($own) cloned shallow (clone-depth in the manifest), so that commit may be under the cut: a project the kit has patches for needs its full history (README.md, \"Sources\")"
             fail "$label: ${d#"$top"/} lacks ${patch##*/}, and it's ExpressiveOS's own repo ($own): commit the change there, on its expressiveos branch, and move its revision in ExpressiveOS's manifest; a kit patch for it is never applied (README.md, \"Sources\")"
         fi
         before=$(git -C "$d" rev-parse HEAD)
@@ -306,7 +309,7 @@ tree_manifest() {   # tree_manifest: the manifest file $top syncs to, after chec
     # What GitHub has, nothing edited or committed here: the build's sources are on record there
     [[ -z "$(git -C "$m" status --porcelain 2>/dev/null)" && \
        "$(git -C "$m" rev-parse HEAD 2>/dev/null)" = "$(git -C "$m" rev-parse -q --verify "refs/remotes/origin/$EOS_MANIFEST_BRANCH" 2>/dev/null)" ]] \
-        || fail "$top's manifest (.repo/manifests) has local changes or commits; it must be ExpressiveOS's as fetched (run setup.sh)"
+        || fail "$top's manifest (.repo/manifests) has local changes or commits (git -C $m status): it must be ExpressiveOS's as GitHub has it, and a change to it is a commit there (README.md, \"Sources\"). Undo the change, then run setup.sh"
     for f in "$top"/.repo/local_manifests/*.xml; do
         [[ ! -e "$f" ]] || fail "$f: ExpressiveOS's tree is its manifest alone; move that local manifest out of .repo/local_manifests"
     done

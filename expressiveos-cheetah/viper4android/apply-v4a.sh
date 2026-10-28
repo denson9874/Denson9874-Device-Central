@@ -6,8 +6,8 @@
 #      first and written last, so Soong never sees it without its files);
 #   3. vendor/extra/product.mk inherits viper4android.mk (Evolution X's vendor_evolution,
 #      checked out at vendor/lineage, has config/common.mk inherit vendor/extra/product.mk);
-#   4. patches/frameworks_av/*.patch as local commits in frameworks/av (git am
-#      --3way, skipping a patch whose subject is already in its log);
+#   4. patches/frameworks_av/*.patch in frameworks/av (lib.sh's am_patches: commits of
+#      ExpressiveOS's frameworks_av fork already, else local commits by git am --3way);
 #   5. tools/v4a-check.sh tree: the pre-build guards.
 # Run it on every build, after the tree's own patches (repo sync drops local commits).
 # Never on the Evolution X tree (~/evolution): its vendor/extra and frameworks/av are
@@ -134,28 +134,10 @@ else
     echo "created vendor/extra/product.mk: $line"
 fi
 
-# 4. frameworks/av patches, as local commits
-for patch in "$here"/patches/frameworks_av/*.patch; do
-    # Subjects longer than ~70 chars are folded onto continuation lines
-    subject="$(awk '/^Subject: /{s=substr($0,10); while ((getline l) > 0 && l ~ /^ /) s = s l; print s; exit}' "$patch" | sed 's/^\[PATCH[^]]*\] //')"
-    [[ -n "$subject" ]] || fail "no Subject: in $patch"
-    # Not grep -q: exiting at the first match would kill git log with SIGPIPE under pipefail
-    if git -C "$av" log --format=%s | grep -xF -- "$subject" >/dev/null; then
-        echo "already applied: frameworks_av: $subject"
-        continue
-    fi
-    before=$(git -C "$av" rev-parse HEAD)
-    if git -C "$av" am -q --3way "$patch"; then
-        # git am exits 0 without a commit when the tree already has the change
-        [[ "$(git -C "$av" rev-parse HEAD)" != "$before" && "$(git -C "$av" log -1 --format=%s)" = "$subject" ]] \
-            || fail "frameworks/av: git am made no commit for ${patch##*/}: frameworks/av already has that change under another subject (did Evolution X take it?). Check, then remove the patch from the kit"
-        echo "applied: frameworks_av: $subject"
-    else
-        # No am was running when this run started, so a rebase-apply now is this run's own
-        [[ ! -e "$gd/rebase-apply" ]] || git -C "$av" am --abort || true
-        fail "frameworks/av: git am failed on ${patch##*/} and was aborted (git's message is above; on a conflict, Evolution X changed that code: regenerate the patch as README.md says)"
-    fi
-done
+# 4. frameworks/av patches: lib.sh's am_patches, as apply.sh puts the tree's own. On
+# ExpressiveOS's manifest frameworks/av is ExpressiveOS's frameworks_av fork, which has them as
+# commits already: they're only checked there, and a missing or edited one fails (README.md)
+( source "$here/../lib.sh" && am_patches "$av" frameworks_av "$here"/patches/frameworks_av/*.patch )
 
 # 5. Pre-build guards
 "$here/tools/v4a-check.sh" tree "$top" || fail "the tree checks above failed; don't build"

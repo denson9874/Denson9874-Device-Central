@@ -8,14 +8,21 @@
 # tree can sync it too, since each commit is on the branch named as its upstream.
 # evolution/manifest stays at Evolution X's last manifest (its 1.0 pin): build_kernel reads
 # the LineageOS version from it, and a manifest can't name its own next commit.
+# A fork the kit has patches for (patches/, ksu/patches/, viper4android/patches/) must have
+# each of them as a commit above its 1.0 pin (by subject, as apply.sh's am_patches looks for
+# them), and gets its full history (no clone-depth): in a clone one commit deep, apply.sh
+# and eos-verify.sh couldn't see the kit's commits under the top one.
 #
 #   own-manifest.py [org url]     # default https://github.com/ExpressiveOS; prints default.xml
 #
-# Reads each fork's branch with git ls-remote; fails if a fork or its branch is missing.
-import os, re, subprocess, sys
+# Reads each fork's branch with git ls-remote, and a patched fork's commits above tag
+# eos-1.0-base (no trees or blobs); fails if a fork, its branch or a kit patch's commit is
+# missing.
+import os, re, subprocess, sys, tempfile
 import xml.etree.ElementTree as ET
 
 here = os.path.dirname(os.path.abspath(__file__))
+kit = os.path.dirname(here)
 base = [os.path.join(here, "eos-1.0-base", f) for f in ("manifest.xml", "cheetah.xml")]
 org = (sys.argv[1] if len(sys.argv) > 1 else "https://github.com/ExpressiveOS").rstrip("/")
 SELF = "evolution/manifest"
@@ -23,16 +30,79 @@ SELF = "evolution/manifest"
 def fail(msg):
     sys.exit(f"FAIL: {msg}")
 
-def tip(name, branch):
+def git(*args):
     try:
-        out = subprocess.run(["git", "ls-remote", f"{org}/{name}", f"refs/heads/{branch}"],
-                             capture_output=True, text=True, timeout=120, check=True).stdout.split()
+        return subprocess.run(["git", *args], capture_output=True, text=True, timeout=300,
+                              check=True).stdout
+    except subprocess.CalledProcessError as e:
+        fail(f"git {' '.join(args)} failed: {e.stderr.strip()}")
     except (subprocess.SubprocessError, OSError) as e:
-        fail(f"git ls-remote {org}/{name} failed: {e}")
-    if len(out) != 2 or not re.fullmatch(r"[0-9a-f]{40}", out[0]):
-        fail(f"{org}/{name} has no branch {branch}")
-    return out[0]
+        fail(f"git {' '.join(args)} failed: {e}")
 
+def refs(name, *want):
+    out = {}
+    for line in git("ls-remote", f"{org}/{name}", *want).splitlines():
+        sha, ref = line.split("\t")
+        out[ref] = sha
+    return out
+
+def tip(name, branch):
+    sha = refs(name, f"refs/heads/{branch}").get(f"refs/heads/{branch}", "")
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        fail(f"{org}/{name} has no branch {branch}")
+    return sha
+
+def subject_of(patch):
+    # lib.sh's subject_of: the Subject: line with its folded lines, [PATCH n/m] dropped
+    s = None
+    with open(patch, encoding="utf-8", errors="surrogateescape") as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if s is None:
+                if line.startswith("Subject: "):
+                    s = line[9:]
+            elif line.startswith(" "):
+                s += line
+            else:
+                break
+    return re.sub(r"^\[PATCH[^]]*\] ", "", s or "")
+
+def kit_patches():
+    # tree path -> [(patch, subject)] for each kit patch dir, mapped as lib.sh's patch_project does
+    out = {}
+    for sub in ("patches", "ksu/patches", "viper4android/patches"):
+        root = os.path.join(kit, sub)
+        for d in sorted(os.listdir(root)) if os.path.isdir(root) else []:
+            dp = os.path.join(root, d)
+            if not os.path.isdir(dp):
+                continue
+            pf = os.path.join(dp, "PROJECT")
+            path = open(pf).readline().strip() if os.path.isfile(pf) else d.replace("_", "/")
+            for f in sorted(os.listdir(dp)):
+                if f.endswith(".patch"):
+                    subject = subject_of(os.path.join(dp, f))
+                    if not subject:
+                        fail(f"no Subject: in {sub}/{d}/{f}")
+                    out.setdefault(path, []).append((f"{sub}/{d}/{f}", subject))
+    return out
+
+def above_base(name, branch, sha):
+    # The subjects of the fork's commits from tag eos-1.0-base up to sha, its branch's tip
+    r = refs(name, "refs/tags/eos-1.0-base", "refs/tags/eos-1.0-base^{}")
+    b = r.get("refs/tags/eos-1.0-base^{}") or r.get("refs/tags/eos-1.0-base")
+    if not b:
+        fail(f"{org}/{name} has no tag eos-1.0-base")
+    if b == sha:
+        return []
+    with tempfile.TemporaryDirectory() as t:
+        git("init", "-q", "--bare", t)
+        git("-C", t, "fetch", "-q", "--filter=tree:0", "--shallow-exclude=refs/tags/eos-1.0-base",
+            f"{org}/{name}", f"refs/heads/{branch}")
+        if git("-C", t, "rev-parse", "FETCH_HEAD").strip() != sha:
+            fail(f"{org}/{name}'s {branch} moved while this ran; run it again")
+        return git("-C", t, "log", "--format=%s", "FETCH_HEAD").splitlines()
+
+patched = kit_patches()
 remotes, projects, seen = {}, [], {}
 for f in base:
     r = ET.parse(f).getroot()
@@ -61,6 +131,14 @@ for f in base:
                      revision=rev if p.get("path") == SELF else tip(name, branch),
                      upstream=f"refs/heads/{branch}")
             a["dest-branch"] = f"refs/heads/{branch}"
+            path = p.get("path") or p.get("name")
+            if path in patched:
+                a.pop("clone-depth", None)
+                have = set(above_base(name, branch, a["revision"]))
+                lacks = [k for k, subject in patched[path] if subject not in have]
+                if lacks:
+                    fail(f"{org}/{name} ({branch}, {a['revision'][:12]}) lacks the kit's "
+                         f"{', '.join(lacks)}: commit them there first (README.md, \"Sources\")")
         elif rem not in ("aosp", "github"):
             fail(f"{url}: a remote this manifest doesn't keep ({rem})")
         projects.append((a, list(p)))
@@ -96,5 +174,7 @@ for a, kids in projects:
         out.append("  </project>")
     else:
         out.append(f"  {tag('project', a)} />")
+for p in sorted(set(patched) - paths):
+    fail(f"the kit patches {p} ({patched[p][0][0]}), which isn't in the manifest")
 out.append("</manifest>")
 print("\n".join(out))
