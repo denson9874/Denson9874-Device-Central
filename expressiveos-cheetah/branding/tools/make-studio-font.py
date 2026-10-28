@@ -4,10 +4,11 @@
 usage: make-studio-font.py FONT.ttf OUT.ttf
 
 FONT.ttf is the variable Google Sans Flex (googlesansflex_variable.ttf, see README.md). OUT.ttf is
-the font at its rounded terminals (ROND 100), text optical size (opsz 18), normal width and grade,
-upright, with its weights from 400 to 800 still variable, and only Latin, the punctuation Studio's
-strings use and the euro and trademark signs. It goes to the Evolver's
-res/font/google_sans_flex_rounded.ttf.
+a static font: bold (wght 700, the one weight Studio sets it in) with its rounded terminals
+(ROND 100), text optical size (opsz 18), normal width and grade, upright, and only Latin, the
+punctuation Studio's strings use and the euro and trademark signs. Static, so no text engine has
+to apply variation settings to get the weight. It goes to the Evolver's
+res/font/google_sans_flex_rounded_bold.ttf.
 
 Needs fonttools. Google Sans Flex is under the SIL Open Font License 1.1, with no Reserved Font
 Name; its copyright and licence stay in the cut font's name table, and the licence's text goes with
@@ -25,7 +26,7 @@ UNICODES = (
     + [0x2013, 0x2014, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2026, 0x20AC, 0x2122]
 )
 FEATURES = ["kern", "liga", "calt", "tnum", "pnum", "lnum", "ccmp", "locl", "mark", "mkmk"]
-AXES = {"opsz": 18, "wdth": 100, "GRAD": 0, "slnt": 0, "ROND": 100, "wght": (400, 800)}
+AXES = {"opsz": 18, "wdth": 100, "GRAD": 0, "slnt": 0, "ROND": 100, "wght": 700}
 
 
 def main():
@@ -46,7 +47,8 @@ def main():
     s = subset.Subsetter(opts)
     s.populate(unicodes=UNICODES)
     s.subset(f)
-    f = instancer.instantiateVariableFont(f, AXES)
+    # Named from the font's STAT: Google Sans Flex Rounded, Bold
+    f = instancer.instantiateVariableFont(f, AXES, updateFontNames=True)
     f.save(a.out)
 
 
