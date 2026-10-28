@@ -971,7 +971,8 @@ jobs:
         run: |
           top=~/expressiveos
           [[ -d $top/.repo ]] || { echo "::error::no ExpressiveOS tree in ~/expressiveos"; exit 1; }
-          export PATH=~/bin:$PATH
+          # It may run beside a build: no git index refreshes, no repo trace file
+          export PATH=~/bin:$PATH GIT_OPTIONAL_LOCKS=0 REPO_TRACE=0
           cd "$top"
           branch=$(git -C .repo/manifests config --get branch.default.merge || true)
           branch=${branch#refs/heads/}
@@ -1018,7 +1019,7 @@ jobs:
           k=$top/out-kernel/google/gs-6.1
           if [[ -d $k/.repo ]]; then
             echo "== kernel tree: $(git -C "$k/.repo/manifests" config --get remote.origin.url) $(git -C "$k/.repo/manifests" config --get branch.default.merge)"
-            (cd "$k" && repo manifest -r -o "$work/kernel.xml" >/dev/null && repo status 2>/dev/null | head -20 || true)
+            (cd "$k" && repo manifest -r -o "$work/kernel.xml" >/dev/null || true)
             echo "----- BEGIN kernel.xml -----"
             cat "$work/kernel.xml"; echo
             echo "----- END kernel.xml -----"
@@ -1031,7 +1032,9 @@ jobs:
             echo "== LFS in $p ($(git -C "$p" config --get lfs.url || git -C "$p" config -f .lfsconfig --get lfs.url 2>/dev/null || echo 'no lfs.url'))"
             git -C "$p" lfs ls-files -l 2>/dev/null | awk '{print $2}' | sort | uniq -c || true
             git -C "$p" lfs ls-files -s 2>/dev/null | head -20 || true
-            echo "objects in .git/lfs: $(find "$(git -C "$p" rev-parse --git-common-dir)/lfs/objects" -type f 2>/dev/null | wc -l), $(du -sh "$(git -C "$p" rev-parse --git-common-dir)/lfs" 2>/dev/null | cut -f1)"
+            # The project's own git folder (.repo/projects/...), as an absolute path
+            c=$(git -C "$p" rev-parse --path-format=absolute --git-common-dir)
+            echo "objects in $c/lfs: $(find "$c/lfs/objects" -type f 2>/dev/null | wc -l), $(du -sh "$c/lfs" 2>/dev/null | cut -f1)"
           done
 
       - name: Check out expressiveos-cheetah

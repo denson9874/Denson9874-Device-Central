@@ -340,11 +340,20 @@ kernel_pinned() {   # kernel_pinned: out-kernel/google/gs-6.1 holds the kernel s
             # Laid out as build_kernel does it: repo's own copy from the tree, and the marker
             # that keeps the platform build from scanning the kernel source
             mkdir -p -- "$kt/.repo" || fail "can't make $kt/.repo"
-            [[ -d $kt/.repo/repo ]] || cp -R -- "$top/.repo/repo" "$kt/.repo/repo" || fail "can't copy repo into $kt/.repo"
+            # repo runs the first .repo/repo/main.py it finds from its directory up: a copy cut
+            # off before main.py would send every repo command below to the main tree. So the
+            # copy is made under another name, and only a whole one is renamed into place
+            if [[ ! -f $kt/.repo/repo/main.py ]]; then
+                rm -rf -- "$kt/.repo/repo" "$kt/.repo/repo.tmp" \
+                    && cp -R -- "$top/.repo/repo" "$kt/.repo/repo.tmp" \
+                    && mv -- "$kt/.repo/repo.tmp" "$kt/.repo/repo" || fail "can't copy repo into $kt/.repo"
+            fi
             touch -- "$kt/.out-dir" || fail "can't write $kt/.out-dir"
             (cd "$kt" && repo init -u "$EOS_KERNEL_MANIFEST_URL" -b "$EOS_KERNEL_MANIFEST_BRANCH" </dev/null) \
                 || fail "repo init of the kernel source failed"
         fi
+        [[ -f $kt/.repo/repo/main.py && -d $kt/.repo/manifests ]] \
+            || fail "out-kernel/google/gs-6.1/.repo has no repo of its own: remove out-kernel/google/gs-6.1 and build again (the main tree is untouched)"
         pins_install "$kt" "$kit/pins/kernel.xml"
         (cd "$kt" && repo sync --detach --force-sync) || fail "repo sync of the kernel source failed"
     fi
