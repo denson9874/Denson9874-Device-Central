@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# Set up the ExpressiveOS cheetah tree, or bring it up to date: Evolution X's cnb
-# manifest with full git history and Git LFS, plus this kit's local manifest
-# (local_manifests/cheetah.xml: cheetah's device trees and blobs), then repo sync.
+# Set up the ExpressiveOS cheetah tree, or put it back on its pinned sources: Evolution
+# X's cnb manifest with full git history and Git LFS, synced only to the commits
+# pins/manifest.xml pins (as .repo/manifests/expressiveos-pins.xml, so a repo sync by hand
+# lands on them too), plus this kit's local manifest (local_manifests/cheetah.xml:
+# cheetah's device trees and blobs, pinned the same way), then repo sync. Evolution X's
+# newer commits never come in this way: they need new pins.
 # The tree is its own: nothing in it may be a symlink, hardlink or git alternate into
 # ~/evolution or ~/derpfest, so nothing this kit does can reach their builds.
 # A sync drops the kit's local commits; eos-images.sh puts them back (prepare.sh).
@@ -73,8 +76,15 @@ else
     echo "installed: .repo/local_manifests/cheetah.xml"
 fi
 
+# The pins. A pinned commit the tree already has needs no fetch: on the build server, whose
+# tree has them all, this sync downloads nothing but Evolution X's manifest repo
+[[ -f "$kit/pins/manifest.xml" ]] || fail "no $kit/pins/manifest.xml"
+pins_install "$top" "$kit/pins/manifest.xml"
+
 echo "== repo sync (-j${EOS_SYNC_JOBS:-4}; the first one downloads a few hundred GB)"
 (cd "$top" && repo sync -c -j"${EOS_SYNC_JOBS:-4}" --no-tags --no-clone-bundle --optimized-fetch) || fail "repo sync failed (its errors are above); run setup.sh again to resume"
+pins_check "$top" "$EOS_MANIFEST_BRANCH" "$kit/pins/manifest.xml" "$kit/local_manifests/cheetah.xml" \
+    || fail "the tree isn't on its pinned commits after the sync (above)"
 
 # Nothing borrowed from another tree: git alternates (repo --reference) or a hardlinked copy
 while IFS= read -r -d '' a; do
@@ -92,4 +102,4 @@ for f in build/make/core/Makefile vendor/lineage/config/common.mk device/google/
     [[ "$(stat -c %h -- "$top/$f")" = 1 ]] || fail "$f has other hard links: is $top a hardlinked copy of another tree? Set it up again from scratch"
 done
 done=1
-echo "SETUP_OK $top ($(df -h --output=avail -- "$top" | tail -1 | tr -d ' ') free)"
+echo "SETUP_OK $top, pinned sources ($(df -h --output=avail -- "$top" | tail -1 | tr -d ' ') free)"
