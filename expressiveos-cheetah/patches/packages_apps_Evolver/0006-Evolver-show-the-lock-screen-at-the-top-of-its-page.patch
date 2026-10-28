@@ -1,0 +1,212 @@
+From cb0d8feffa861ff58aad4a9cb7a61fef9f926d62 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Wed, 28 Oct 2026 08:50:48 +0000
+Subject: [PATCH] Evolver: show the lock screen at the top of its page
+
+Open Expressive Studio's lock screen page with the lock screen as it is
+now, the name of its clock face, and buttons for the clock face picker
+and the wallpaper picker.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ res/values/studio_strings.xml                 |   4 +
+ res/xml/evolution_settings_lock_screen.xml    |   7 +
+ .../fragments/lockscreen/LockScreen.java      |   2 +
+ .../settings/studio/StudioLockHeader.kt       | 134 ++++++++++++++++++
+ 4 files changed, 147 insertions(+)
+ create mode 100644 src/org/evolution/settings/studio/StudioLockHeader.kt
+
+diff --git a/res/values/studio_strings.xml b/res/values/studio_strings.xml
+index 89d53f1..3903da8 100644
+--- a/res/values/studio_strings.xml
++++ b/res/values/studio_strings.xml
+@@ -16,4 +16,8 @@
+     <!-- Summary of the clock styles card: %1$s is the clock face's name, e.g. "Default Clock" -->
+     <string name="studio_clock_using">Using <xliff:g id="clock_name" example="Default Clock">%1$s</xliff:g></string>
+     <string name="studio_whats_new_title">What\'s new in ExpressiveOS</string>
++
++    <!-- Expressive Studio's lock screen page -->
++    <string name="studio_lock_clock_face">Clock face</string>
++    <string name="studio_lock_browse_clocks">Browse clocks</string>
+ </resources>
+diff --git a/res/xml/evolution_settings_lock_screen.xml b/res/xml/evolution_settings_lock_screen.xml
+index 7e3464a..9ddaed5 100644
+--- a/res/xml/evolution_settings_lock_screen.xml
++++ b/res/xml/evolution_settings_lock_screen.xml
+@@ -8,6 +8,13 @@
+     xmlns:settings="http://schemas.android.com/apk/res/com.android.settings"
+     android:title="@string/lock_screen_title">
+ 
++    <!-- ExpressiveOS: the lock screen as it is now (org.evolution.settings.studio.StudioLockHeader) -->
++    <com.android.settingslib.widget.LayoutPreference
++        android:key="studio_lock_preview"
++        android:layout="@layout/studio_compose"
++        android:selectable="false"
++        settings:searchable="false" />
++
+     <PreferenceCategory
+         android:key="lock_screen_clock_category"
+         android:title="@string/lock_screen_clock_category">
+diff --git a/src/org/evolution/settings/fragments/lockscreen/LockScreen.java b/src/org/evolution/settings/fragments/lockscreen/LockScreen.java
+index c18e68c..80ef874 100644
+--- a/src/org/evolution/settings/fragments/lockscreen/LockScreen.java
++++ b/src/org/evolution/settings/fragments/lockscreen/LockScreen.java
+@@ -26,6 +26,7 @@ import com.android.settingslib.search.SearchIndexable;
+ import java.util.List;
+ 
+ import org.evolution.settings.preferences.SecureSettingSwitchPreference;
++import org.evolution.settings.studio.StudioLockHeader;
+ import org.evolution.settings.utils.DeviceUtils;
+ import org.evolution.settings.utils.PixelAmbientIndicationDetector;
+ import org.evolution.settings.utils.PreferenceUtils;
+@@ -58,6 +59,7 @@ public class LockScreen extends SettingsPreferenceFragment implements
+     public void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         addPreferencesFromResource(R.xml.evolution_settings_lock_screen);
++        StudioLockHeader.bind(this, findPreference(StudioLockHeader.KEY));
+ 
+         final Context context = getContext();
+ 
+diff --git a/src/org/evolution/settings/studio/StudioLockHeader.kt b/src/org/evolution/settings/studio/StudioLockHeader.kt
+new file mode 100644
+index 0000000..76ea2e6
+--- /dev/null
++++ b/src/org/evolution/settings/studio/StudioLockHeader.kt
+@@ -0,0 +1,134 @@
++/*
++ * SPDX-FileCopyrightText: ExpressiveOS
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package org.evolution.settings.studio
++
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.Row
++import androidx.compose.foundation.layout.aspectRatio
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.padding
++import androidx.compose.foundation.layout.width
++import androidx.compose.material3.Button
++import androidx.compose.material3.ButtonDefaults
++import androidx.compose.material3.FilledTonalButton
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.remember
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.platform.ComposeView
++import androidx.compose.ui.res.stringResource
++import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.unit.dp
++import androidx.compose.ui.unit.sp
++import androidx.preference.PreferenceFragmentCompat
++import com.android.settings.R
++import com.android.settingslib.widget.LayoutPreference
++import org.evolution.settings.fragments.miscellaneous.ExpressiveTheme
++import org.evolution.settings.fragments.miscellaneous.insetFocusRing
++
++/**
++ * The top of Expressive Studio's lock screen page: the lock screen as it is now, with its clock
++ * face's name and buttons for the face picker and the wallpaper picker. The page's own options
++ * follow it.
++ */
++object StudioLockHeader {
++
++    const val KEY = "studio_lock_preview"
++
++    /** Draws the header into [preference], a LayoutPreference of R.layout.studio_compose. */
++    @JvmStatic
++    fun bind(fragment: PreferenceFragmentCompat, preference: LayoutPreference?) {
++        val view = preference?.findViewById<ComposeView>(R.id.studio_compose) ?: return
++        val actions = StudioActions(fragment)
++        view.setContent {
++            ExpressiveTheme {
++                LockHeader(actions)
++            }
++        }
++    }
++}
++
++@Composable
++private fun LockHeader(actions: StudioActions) {
++    val resumes = rememberResumeCount()
++    val style = rememberClockStyle(resumes)
++    val hasPicker = remember { actions.hasWallpaperPicker }
++    Row(
++        modifier = Modifier
++            .fillMaxWidth()
++            .padding(top = 4.dp, bottom = 12.dp),
++        horizontalArrangement = Arrangement.spacedBy(16.dp),
++        verticalAlignment = Alignment.CenterVertically,
++    ) {
++        // A phone's proportions, 9 by 19.5
++        LockScreenPreview(
++            modifier = Modifier
++                .width(148.dp)
++                .aspectRatio(9f / 19.5f),
++        )
++        Column(
++            modifier = Modifier.weight(1f),
++            verticalArrangement = Arrangement.spacedBy(4.dp),
++        ) {
++            Text(
++                text = stringResource(R.string.studio_lock_clock_face),
++                color = Petal.Coral.ink,
++                fontFamily = BloomRounded,
++                fontWeight = FontWeight.Bold,
++                fontSize = 14.sp,
++            )
++            Text(
++                text = clockName(style),
++                // No Surface above this header to give it the theme's text colour
++                color = MaterialTheme.colorScheme.onSurface,
++                style = MaterialTheme.typography.titleLarge,
++                fontFamily = BloomRounded,
++                fontWeight = FontWeight.Bold,
++            )
++            Column(
++                modifier = Modifier.padding(top = 12.dp),
++                verticalArrangement = Arrangement.spacedBy(8.dp),
++            ) {
++                Button(
++                    onClick = { actions.openClockPicker() },
++                    colors = ButtonDefaults.buttonColors(
++                        containerColor = Petal.Blue.deep,
++                        contentColor = Color.White,
++                    ),
++                    modifier = Modifier
++                        .fillMaxWidth()
++                        .insetFocusRing(
++                            ButtonDefaults.shape,
++                            ringHeight = ButtonDefaults.MinHeight,
++                        ),
++                ) {
++                    Text(stringResource(R.string.studio_lock_browse_clocks))
++                }
++                if (hasPicker) {
++                    FilledTonalButton(
++                        onClick = { actions.openWallpaperPicker() },
++                        colors = ButtonDefaults.filledTonalButtonColors(
++                            containerColor = Petal.Blue.tile,
++                            contentColor = Petal.Blue.ink,
++                        ),
++                        modifier = Modifier
++                            .fillMaxWidth()
++                            .insetFocusRing(
++                                ButtonDefaults.filledTonalShape,
++                                ringHeight = ButtonDefaults.MinHeight,
++                            ),
++                    ) {
++                        Text(remember { actions.wallpaperTitle })
++                    }
++                }
++            }
++        }
++    }
++}
+-- 
+2.43.0
+
