@@ -172,12 +172,14 @@ branch head:
 - `evolution/manifest` stays at Evolution X's last manifest: `build_kernel` reads the LineageOS version
   from it, and a manifest can't name its own next commit.
 
-Each commit is on the branch its `upstream` names, so a fresh tree syncs anywhere. `setup.sh` and every
-build check the tree against it (`tree_manifest` and `pins_check` in `lib.sh`: the manifest as GitHub
-has it, no local manifest, each project synced to its commit, the kit's own commits on top) and stop if
-anything is off. `pins/kernel.xml` pins the kernel source the same way: the 18 projects of LineageOS's
-gs-6.1 kernel manifest (lineage-24.0), which `ksu/tools/ksu-images.sh` syncs `out-kernel/google/gs-6.1`
-to before `build_kernel`, which never syncs it itself (`SKIP_KERNEL_SYNC=1`).
+Each commit is on the branch its `upstream` names, so a fresh tree syncs anywhere. `setup.sh` fetches the
+manifest and checks it before anything syncs (no `<include>`, every project at a commit), then syncs the
+projects to that commit of it only, so a bad manifest changes no source. `setup.sh` and every build check
+the tree against it (`tree_manifest` and `pins_check` in `lib.sh`: the manifest as GitHub has it, no local
+manifest, each project synced to its commit, the kit's own commits on top) and stop if anything is off.
+`pins/kernel.xml` pins the kernel source the same way: the 18 projects of LineageOS's gs-6.1 kernel
+manifest (lineage-24.0), which `ksu/tools/ksu-images.sh` syncs `out-kernel/google/gs-6.1` to before
+`build_kernel`, which never syncs it itself (`SKIP_KERNEL_SYNC=1`).
 
 To change a project that's ExpressiveOS's own repo: commit to its `expressiveos` branch (never rewrite
 it, and never edit a kit patch for it: `apply.sh` stops on both), then move that project's `revision`
@@ -195,13 +197,18 @@ Where it came from, in `sources/`:
   `blobs`, which holds the Git LFS files of `vendor_gms` and `vendor_google_cheetah` (Evolution X keeps
   them on gitea.com and a personal gitlab.com account; the forks' `.lfsconfig` points at `blobs`). It
   can run again any time and redoes nothing.
-- `own-manifest.py` made `default.xml` from them and the forks' branches.
+- `own-manifest.py` made `default.xml` from them and the forks' branches. It fails unless each fork the
+  kit has patches for (`patches/`, `ksu/patches/`, `viper4android/patches/`) has every one of them as a
+  commit above its 1.0 commit, and it gives those forks their full history (no `clone-depth`):
+  `vendor_google_cheetah` was one commit deep, which would hide its kit commits under the top one from
+  `apply.sh` and `eos-verify.sh`.
 
 A tree from before (Evolution X's manifest, `.repo/manifests/expressiveos-pins.xml` and
 `.repo/local_manifests/cheetah.xml`) moves to ExpressiveOS's manifest with `setup.sh`: the local manifest
-is kept beside it as `cheetah.xml.eos-1.0`, BtHelper (another repo name now) is checked out again, and
-the sync fetches only the kit's commits from the forks; their files are what the 1.0 tree had with the
-kit's patches applied.
+is kept beside it as `cheetah.xml.eos-1.0`, `expressiveos-pins.xml` is deleted, BtHelper (another repo
+name now) is checked out again, and the sync fetches only the kit's commits from the forks (and
+`vendor/google/cheetah`'s few older commits, its clone being one commit deep); their files are what the
+1.0 tree had with the kit's patches applied.
 
 A complete run leaves in `out/eos/`: `build.ok` (the OTA package's sha256, which `eos-pack.sh` needs),
 `target-files.ok` (the sha256 of the target-files zip it was made from, which `m evolution` leaves in
