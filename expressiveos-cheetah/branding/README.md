@@ -16,6 +16,33 @@ names Evolution X, apart from the links it lists on purpose:
 - the Expressive Studio HTTP user agent and `paste.evolution-x.org` in PastyUtils, which nothing calls
   any more: the crash dialog's Copy button copies the log itself.
 
+## The colours
+
+ExpressiveOS's own colours are the Bloom mark's four petals (Daryl, 2026-10-27: "instead of the neon
+ExpressiveOS in several places in the rom let's do the bloom colors"). The light and deep tones are
+`make-brand.py`'s `mark-colors.txt`; the mid tones are the middle of each petal's gradient in the logo.
+
+| Petal | Light | Mid | Deep |
+|---|---|---|---|
+| Violet | `#F3B1FC` | `#AE69FC` | `#6B2BBB` |
+| Blue | `#76BCFB` | `#417BFC` | `#1842D1` |
+| Coral | `#FDCF8E` | `#FD7771` | `#D33952` |
+| Green | `#ACEFB3` | `#4AD29D` | `#18A07C` |
+
+The ground behind the logo is `#141329`.
+
+The glowing wordmark (Settings' `GlowView` on the Android version screen and Expressive Studio's About
+page, the Updater's `EvolutionLogoGlow`) was Evolution X's neon pink `#FF2E9A`, violet `#8B5CF6` and
+cyan `#22D3EE`. `packages_apps_Settings` 0005 and `packages_apps_Updater` 0006 sweep the petals instead,
+in the boot animation wordmark's order (violet, blue, green, coral), with a blue fringe on the left and
+a violet one on the right: the mid tones (light tones for the fringe) when the theme's text is light,
+which means a dark surface, and the deep tones when it is dark. `packages_apps_EvoEgg` 0003 tints the
+easter egg's background stars with the petals' mid tones, in turn, instead of Evolution X's electric blue
+`#005eff`. The boot animation (its wordmark gradient runs through the petals' hues with six stops of its
+own, and its glow is the blurred petals; the halo behind the mark is a neutral grey lift), the app icons
+and the egg's flying marks already use the petals, and the status bar logo is white or the theme's accent.
+Recovery and fastbootd still outline the mark in Evolution X's recovery blue `#0060FE` (`RECOVERY_BLUE`).
+
 ## The images
 
 `tools/make-brand.py` draws every icon and image the patches carry from two inputs:
