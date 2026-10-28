@@ -86,7 +86,13 @@
 # ExpressiveOS organization (Contents: read and write), which pushes to ExpressiveOS's repos.
 # The token reaches only that step's environment: never the server's disk, a command line or
 # the log. query: token (read-only: may the token push to every ExpressiveOS repo? It asks
-# GitHub as a git push would and pushes nothing).
+# GitHub as a git push would and pushes nothing); plan <id> (makes update <id>, this ref's
+# expressiveos-cheetah/sources/updates/<id>, in ~/expressiveos-update: LineageOS's commits
+# merged into the forks with the update's conflict resolutions, the new manifest, the kernel
+# pins to take; pushes nothing. For a conflict it prints the conflicting lines of those
+# open-source files); push <id> (pushes what the last plan of <id> made: the forks' merges
+# to their branches, then the manifest's commit as branch update/<id> for a pull request.
+# Only when Daryl says so).
 #
 # Never add an upload-artifact step: build output contains Google's
 # proprietary images, which must not leave the server. Logs only. `inspect`
@@ -148,7 +154,8 @@ on:
           ExpressiveOS tree, as a manifest, plus its kernel tree and LFS files.
           expressiveos-update-check: read-only: the dry run of the monthly update
           (what LineageOS added, and whether ExpressiveOS's forks merge it cleanly).
-          expressiveos-update: the monthly update, with the push token (see query).
+          expressiveos-update: the monthly update, with the push token (see query;
+          dispatch it on the branch that has the update's sources/updates/<id>).
           expressiveos-build: install the kit, then eos-images.sh and eos-pack.sh in
           tmux. expressiveos-pack: install the kit, then eos-pack.sh in tmux.
         type: choice
@@ -211,7 +218,9 @@ on:
           (required): tree, product, then up to two products to compare, e.g.
           'evolution lineage_yogi lineage_cubs'. release-checks (optional): devices,
           e.g. 'kodiak cheetah' (default: all six). expressiveos-update (required):
-          token (read-only: may the push token push to every ExpressiveOS repo?).
+          token (read-only: may the push token push to every ExpressiveOS repo?),
+          plan <id> (make update <id>, e.g. 2026-11; nothing pushed) or push <id>
+          (push what plan <id> made).
         type: string
         default: ''
 
@@ -1084,9 +1093,11 @@ jobs:
         env:
           EOS_PUSH_TOKEN: ${{ secrets.EXPRESSIVEOS_PUSH_TOKEN }}
         run: |
-          [[ "$QUERY" = token ]] || { echo "::error::query must be: token"; exit 1; }
+          [[ "$QUERY" =~ ^(token|(plan|push)\ [0-9]{4}-(0[1-9]|1[0-2])(-[2-9])?)$ ]] \
+            || { echo "::error::query must be: token, plan <id> or push <id> (id: the update's month, as 2026-11)"; exit 1; }
           export PATH=~/bin:$PATH
-          bash expressiveos-cheetah/sources/update.sh token
+          read -r -a q <<< "$QUERY"
+          bash expressiveos-cheetah/sources/update.sh "${q[@]}"
 
       - name: Check out expressiveos-cheetah
         if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack"]'), inputs.action)
