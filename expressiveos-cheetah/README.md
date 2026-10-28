@@ -176,8 +176,10 @@ Newer sources come only with new pins, and only when Daryl asks.
 ExpressiveOS is moving to its own copies of these sources (Daryl, 2026-10-28: fully independent of
 Evolution X; it merges LineageOS and Google's security fixes itself). `sources/org-fork.sh` makes
 them in the [ExpressiveOS](https://github.com/ExpressiveOS) organization, from a machine where `gh`
-is logged in as an owner (Daryl's Mac): a fork of each of the 74 Evolution X repos the pins name,
-with tag `eos-1.0-base` and default branch `expressiveos` at its pinned commit, and `blobs`, which
+is logged in as an owner (Daryl's Mac): a fork of each of the 73 repos the pins name outside
+LineageOS (69 Evolution-X, 3 Evolution-X-Devices, BtHelper), with tag `eos-1.0-base` and default
+branch `expressiveos` at its pinned commit (`OTA`, pinned twice, also has `eos-1.0-base-vanilla`
+and `expressiveos-vanilla` for `evolution/OTA-VANILLA`), and `blobs`, which
 holds the Git LFS files of `vendor_gms` and `vendor_google_cheetah` (Evolution X keeps them on
 gitea.com and a personal gitlab.com account). It can run again any time and redoes nothing. The
 kit's patches then become commits on `expressiveos`, and the tree moves to ExpressiveOS's own

@@ -34,10 +34,13 @@ role=$(gh api "orgs/$org/memberships/$me" --jq .role 2>/dev/null) || role=
 # git and git-lfs talk to GitHub with gh's login, whatever git's own config says
 gitgh() { git -c credential.https://github.com.helper= -c 'credential.https://github.com.helper=!gh auth git-credential' "$@"; }
 
-# "<owner/repo> <pinned commit>" for each project hosted on GitHub outside LineageOS
+# "<owner/repo> <pinned commit> <suffix>" for each project hosted on GitHub outside LineageOS.
+# A repo pinned twice (evolution/OTA on cnb, evolution/OTA-VANILLA on cnb-vanilla) gets a
+# tag and a branch for each: <suffix> is - for its first pin, else the other's branch less
+# the first's ("vanilla")
 list=$(python3 -I - "$kit/pins/manifest.xml" "$kit/local_manifests/cheetah.xml" <<'EOF'
 import re, sys, xml.etree.ElementTree as ET
-seen = {}
+seen, pins = {}, {}
 for f in sys.argv[1:]:
     r = ET.parse(f).getroot()
     fetch = {e.get("name"): e.get("fetch") for e in r.iter("remote")}
@@ -54,11 +57,22 @@ for f in sys.argv[1:]:
         if seen.get(name, url) != url:
             sys.exit(f"two repos named {name}: {seen[name]} and {url}")
         seen[name] = url
-        print(f"{m.group(1)}/{name} {rev}")
+        up = re.sub(r"^refs/heads/", "", p.get("upstream") or "")
+        pins.setdefault(f"{m.group(1)}/{name}", []).append((up, rev, p.get("path")))
+for key, pl in pins.items():
+    first = pl[0][0]
+    sfxs = {"-": pl[0][1]}
+    for up, rev, path in pl[1:]:
+        sfx = up[len(first) + 1:] if up.startswith(first + "-") else up
+        if not re.fullmatch(r"[a-z0-9][a-z0-9.-]*", sfx) or sfxs.get(sfx, rev) != rev:
+            sys.exit(f"{key}: no tag or branch name for its pin of {path} ({up!r})")
+        sfxs[sfx] = rev
+    for sfx, rev in sfxs.items():
+        print(f"{key} {rev} {sfx}")
 EOF
 ) || fail "can't read the pins"
-n=$(printf '%s\n' "$list" | wc -l | tr -d ' ')
-echo "== $n repos to fork into $org"
+n=$(printf '%s\n' "$list" | awk '{print $1}' | sort -u | wc -l | tr -d ' ')
+echo "== $n repos to fork into $org ($(printf '%s\n' "$list" | wc -l | tr -d ' ') pinned commits)"
 
 api_retry() {   # api_retry <what> <gh api args>...: a new fork answers 404/409/422 until GitHub has copied it
     local what=$1 i out
@@ -103,13 +117,15 @@ ensure_ref() {   # ensure_ref <repo> <tags/x|heads/x> <commit>: the ref is there
     echo "  $ref: ${pin:0:12} (made)"
 }
 
-while read -r src pin; do
+while read -r src pin sfx; do
     name=${src#*/}
+    s=${sfx#-}; s=${s:+-$s}
     ensure_fork "$src"
     # The commit itself, which GitHub may hold for the fork only by way of Evolution X's network
     api_retry "$org/$name: commit $pin" "repos/$org/$name/git/commits/$pin" --silent
-    ensure_ref "$org/$name" tags/eos-1.0-base "$pin"
-    ensure_ref "$org/$name" heads/expressiveos "$pin"
+    ensure_ref "$org/$name" "tags/eos-1.0-base$s" "$pin"
+    ensure_ref "$org/$name" "heads/expressiveos$s" "$pin"
+    [[ -z $s ]] || continue
     if [[ "$(gh api "repos/$org/$name" --jq .default_branch)" != expressiveos ]]; then
         gh api -X PATCH "repos/$org/$name" -f default_branch=expressiveos --silent || fail "$org/$name: can't make expressiveos the default branch"
         echo "  default branch: expressiveos"
@@ -127,8 +143,9 @@ if ! gh api "repos/$org/blobs" --silent 2>/dev/null; then
 fi
 blobs=https://github.com/$org/blobs.git
 lfs=()
-while read -r src pin; do
+while read -r src pin sfx; do
     name=${src#*/}
+    [[ $sfx = - ]] || fail "$src has more than one pin; only one pin's LFS files are copied"
     d=$work/$name
     git init -q "$d" || fail "git init failed"
     git -C "$d" fetch -q --depth=1 --no-tags "https://github.com/$src" "$pin" || fail "can't fetch $src $pin"
@@ -188,6 +205,6 @@ else
     echo "blobs main: there"
 fi
 
-echo "OK: $n forks in $org, each with tag eos-1.0-base and default branch expressiveos at its pin; Git LFS files in $org/blobs"
+echo "OK: $n forks in $org, each with tag eos-1.0-base and default branch expressiveos at its pin (a second pin: eos-1.0-base-<suffix> and expressiveos-<suffix>); Git LFS files in $org/blobs"
 done=1
 echo "ORG_FORK=OK"
