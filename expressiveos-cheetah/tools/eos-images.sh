@@ -22,8 +22,8 @@
 #
 #   eos-images.sh [top]                  # default ~/expressiveos
 #   KERNEL_ONLY=1 eos-images.sh [top]    # steps 1-4, then build_kernel and kernelsu.ko only
-#   EOS_KERNEL_SYNC=1 eos-images.sh      # sync the kernel source again (otherwise only the
-#                                        # first build syncs it: it follows branch heads)
+#   EOS_KERNEL_SYNC=1 eos-images.sh      # sync the kernel source to pins/kernel.xml again
+#                                        # (otherwise only the first build syncs it)
 set -o pipefail
 self=$(readlink -f -- "$0")
 # Until the build's own trap below, a failure ends with the status line too, except while
@@ -86,6 +86,9 @@ done
 echo "OK: $name (the date is the build's own)"
 
 echo "== sources"
+# Only the pinned sources are built (setup.sh syncs to them; the kit's commits sit on top)
+pins_check "$top" "$EOS_MANIFEST_BRANCH" "$kit/pins/manifest.xml" "$kit/local_manifests/cheetah.xml" \
+    || fail "the tree isn't on ExpressiveOS's pinned sources (above): run setup.sh, which syncs it back to them"
 mkdir -p -- out/eos
 repo manifest -r -o out/eos/manifest.xml >/dev/null || fail "repo manifest -r failed"
 # Collected first, outside any redirection: a fail here must end the build with its status line
@@ -108,13 +111,8 @@ done
 } > out/eos/sources.txt
 cat out/eos/sources.txt
 
-# Kernel source: synced by the first build only, unless asked (it follows branch heads)
-if [[ "${EOS_KERNEL_SYNC:-0}" != 1 && -d out-kernel/google/gs-6.1/.repo ]]; then
-    export SKIP_KERNEL_SYNC=1
-    echo "note: building the kernel source already in out-kernel/ (EOS_KERNEL_SYNC=1 syncs it)"
-else
-    unset SKIP_KERNEL_SYNC
-fi
+# Kernel source: ksu-images.sh syncs it to pins/kernel.xml when it's missing or
+# EOS_KERNEL_SYNC=1, and checks it's on them otherwise
 step "make (ksu-images.sh)" 'MAKE_EXIT=0' "$kit/ksu/tools/ksu-images.sh" "$top"
 if [[ "${KERNEL_ONLY:-0}" = 1 ]]; then
     echo "OK: kernel only (KERNEL_ONLY=1): nothing to pack"
