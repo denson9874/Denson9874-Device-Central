@@ -19,6 +19,9 @@
 #   Evolver, Updater and the rest
 #   packages_apps_Updater 0005              ExpressiveOS's own: an incremental is offered
 #                                           only to its base build
+#   packages_apps_Settings 0005,            the Bloom colours: the glowing wordmark and the
+#   packages_apps_Updater 0006,             egg's stars take the logo's petals, not neon
+#   packages_apps_EvoEgg 0003
 #   system_update_engine 0001-0003          OTA payloads must be signed again (ExpressiveOS's
 #                                           key; recovery's sideload also takes LineageOS's
 #                                           release key, in its otacerts), never older
