@@ -75,14 +75,15 @@ server's revisions, commit there and export the patches again (`git format-patch
 Expressive Studio's home and lock screen header (`packages_apps_Evolver` 0005, 0006) set their titles and
 clock in Google Sans Flex with its rounded terminals, in bold. `tools/make-studio-font.py` cuts it from the
 same variable font as above into one static font: wght 700, ROND 100, opsz 18, normal width and grade,
-upright, Latin only. Static, so the weight never depends on the text engine applying variation settings.
+upright, Latin only (Vietnamese included). Static, so the weight never depends on the text engine
+applying variation settings.
 
 ```bash
 brandenv/bin/python tools/make-studio-font.py googlesansflex_variable.ttf google_sans_flex_rounded_bold.ttf
 ```
 
-It gives the Evolver's `res/font/google_sans_flex_rounded_bold.ttf` byte for byte (69,380 bytes, sha256
-`b393dc4eb2332ae24384c27256fa237911462cf14a88c1cabfed58cbbed1f5a2`, with fontTools 4.68), named Google Sans
+It gives the Evolver's `res/font/google_sans_flex_rounded_bold.ttf` byte for byte (92,908 bytes, sha256
+`35592f26cea8a30bf16e1740ee55259ce84d20e9394dac94af9013f5f5d54ea2`, with fontTools 4.68), named Google Sans
 Flex Rounded Bold. Google Sans Flex is under the SIL Open Font License 1.1, with no Reserved Font Name: the
 cut font keeps its copyright and licence in its name table, and 0005 adds the licence's text as the
 Evolver's `licenses/GoogleSansFlex-OFL.txt`.

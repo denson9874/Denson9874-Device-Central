@@ -1,4 +1,4 @@
-From 9abfc71222574b450b9f6cec6abd0245c980caed Mon Sep 17 00:00:00 2001
+From cb0d8feffa861ff58aad4a9cb7a61fef9f926d62 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Wed, 28 Oct 2026 08:50:48 +0000
 Subject: [PATCH] Evolver: show the lock screen at the top of its page
@@ -12,8 +12,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>
  res/values/studio_strings.xml                 |   4 +
  res/xml/evolution_settings_lock_screen.xml    |   7 +
  .../fragments/lockscreen/LockScreen.java      |   2 +
- .../settings/studio/StudioLockHeader.kt       | 123 ++++++++++++++++++
- 4 files changed, 136 insertions(+)
+ .../settings/studio/StudioLockHeader.kt       | 134 ++++++++++++++++++
+ 4 files changed, 147 insertions(+)
  create mode 100644 src/org/evolution/settings/studio/StudioLockHeader.kt
 
 diff --git a/res/values/studio_strings.xml b/res/values/studio_strings.xml
@@ -69,10 +69,10 @@ index c18e68c..80ef874 100644
  
 diff --git a/src/org/evolution/settings/studio/StudioLockHeader.kt b/src/org/evolution/settings/studio/StudioLockHeader.kt
 new file mode 100644
-index 0000000..0ca942f
+index 0000000..76ea2e6
 --- /dev/null
 +++ b/src/org/evolution/settings/studio/StudioLockHeader.kt
-@@ -0,0 +1,123 @@
+@@ -0,0 +1,134 @@
 +/*
 + * SPDX-FileCopyrightText: ExpressiveOS
 + * SPDX-License-Identifier: Apache-2.0
@@ -106,6 +106,7 @@ index 0000000..0ca942f
 +import com.android.settings.R
 +import com.android.settingslib.widget.LayoutPreference
 +import org.evolution.settings.fragments.miscellaneous.ExpressiveTheme
++import org.evolution.settings.fragments.miscellaneous.insetFocusRing
 +
 +/**
 + * The top of Expressive Studio's lock screen page: the lock screen as it is now, with its clock
@@ -176,7 +177,12 @@ index 0000000..0ca942f
 +                        containerColor = Petal.Blue.deep,
 +                        contentColor = Color.White,
 +                    ),
-+                    modifier = Modifier.fillMaxWidth(),
++                    modifier = Modifier
++                        .fillMaxWidth()
++                        .insetFocusRing(
++                            ButtonDefaults.shape,
++                            ringHeight = ButtonDefaults.MinHeight,
++                        ),
 +                ) {
 +                    Text(stringResource(R.string.studio_lock_browse_clocks))
 +                }
@@ -187,7 +193,12 @@ index 0000000..0ca942f
 +                            containerColor = Petal.Blue.tile,
 +                            contentColor = Petal.Blue.ink,
 +                        ),
-+                        modifier = Modifier.fillMaxWidth(),
++                        modifier = Modifier
++                            .fillMaxWidth()
++                            .insetFocusRing(
++                                ButtonDefaults.filledTonalShape,
++                                ringHeight = ButtonDefaults.MinHeight,
++                            ),
 +                    ) {
 +                        Text(remember { actions.wallpaperTitle })
 +                    }
