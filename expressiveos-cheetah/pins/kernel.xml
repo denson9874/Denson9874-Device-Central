@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The kernel source ExpressiveOS builds (ksu-images.sh syncs out-kernel/google/gs-6.1 to
+     these, never to a branch head): LineageOS's gs-6.1 kernel manifest (lineage-24.0) as the
+     build server's tree had it for the 1.0 builds of 2026-10-26 and 2026-10-27, read by the
+     runner's expressiveos-pins action (run 40670948991, 2026-10-28). -->
+<manifest>
+  <remote name="aosp" fetch="https://android.googlesource.com" review="android-review.googlesource.com" revision="refs/heads/main-kernel-build-2023"/>
+  <remote name="github" fetch=".." review="review.lineageos.org"/>
+  
+  <default remote="github" revision="refs/heads/lineage-24.0" sync-j="4" sync-c="true"/>
+  
+  <project name="LineageOS/android_kernel_google_gs-6.1_devices" path="private/devices" revision="10af805ff55ce273e1b0c66a0e357b29e94130c1" upstream="refs/heads/lineage-24.0" dest-branch="refs/heads/lineage-24.0">
+    <linkfile src="google/common/workspace/root.AGENTS.md" dest="AGENTS.md"/>
+    <linkfile src="google/common/workspace/root.WORKSPACE" dest="WORKSPACE"/>
+    <linkfile src="google/common/workspace/common.BUILD.bazel" dest="common/BUILD.bazel"/>
+    <linkfile src="google/common/workspace/private.clang-format" dest="private/.clang-format"/>
+    <linkfile src="google/common/tools/bazel.sh" dest="tools/bazel"/>
+    <linkfile src="google/common/tools/build_dist.sh" dest="tools/build_dist.sh"/>
+    <linkfile src="google/common/tools/build_compile_commands.sh" dest="tools/build_compile_commands.sh"/>
+    <linkfile src="google/common/update_symbol_list.sh" dest="update_symbol_list.sh"/>
+    <linkfile src="google/raviole/build_raviole.sh" dest="build_raviole.sh"/>
+    <linkfile src="google/bluejay/build_bluejay.sh" dest="build_bluejay.sh"/>
+    <linkfile src="google/pantah/build_pantah.sh" dest="build_pantah.sh"/>
+    <linkfile src="google/lynx/build_lynx.sh" dest="build_lynx.sh"/>
+    <linkfile src="google/felix/build_felix.sh" dest="build_felix.sh"/>
+    <linkfile src="google/tangorpro/build_tangorpro.sh" dest="build_tangorpro.sh"/>
+    <linkfile src="google/shusky/build_shusky.sh" dest="build_shusky.sh"/>
+    <linkfile src="google/akita/build_akita.sh" dest="build_akita.sh"/>
+    <linkfile src="google/caimito/build_caimito.sh" dest="build_caimito.sh"/>
+    <linkfile src="google/comet/build_comet.sh" dest="build_comet.sh"/>
+    <linkfile src="google/tegu/build_tegu.sh" dest="build_tegu.sh"/>
+    <linkfile src="google/stallion/build_stallion.sh" dest="build_stallion.sh"/>
+  </project>
+  <project name="LineageOS/android_kernel_google_gs-6.1_google-modules" path="private/google-modules" revision="25a95e4a29816368c4877c42d7c6865a75236164" upstream="refs/heads/lineage-24.0" dest-branch="refs/heads/lineage-24.0"/>
+  <project name="LineageOS/android_kernel_google_gs-6.1_manifest" path="manifest" revision="afa3f59d6164dd2cf2ea0b6185a361b59002d7ed" upstream="refs/heads/lineage-24.0" dest-branch="refs/heads/lineage-24.0"/>
+  <project name="kernel/build" path="build/kernel" remote="aosp" revision="120ee136dc3b65275b400d51f7292163bb4cb3cd" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023"/>
+  <project name="kernel/common" path="common/gki" remote="aosp" revision="33365f631c2825a14714e4cae41b63dae20ee68e" upstream="refs/tags/android14-6.1-2026-03_r24" dest-branch="refs/tags/android14-6.1-2026-03_r24">
+    <linkfile src="build.config.constants" dest="common/build.config.constants"/>
+    <linkfile src="modules.bzl" dest="common/modules.bzl"/>
+    <linkfile src=".clang-format" dest=".clang-format"/>
+  </project>
+  <project name="kernel/prebuilts/build-tools" path="prebuilts/kernel-build-tools" remote="aosp" revision="e905be252a53d20c52bd9e59df3ff8fdd46b9eab" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023" clone-depth="1"/>
+  <project name="platform/bionic" path="external/bionic" remote="aosp" revision="65578658e58b52506b2b39f88481cb31ec6643fc" upstream="main-kernel" dest-branch="main-kernel"/>
+  <project name="platform/build/bazel_common_rules" path="build/bazel_common_rules" remote="aosp" revision="62c496cd1d821948d2f4a7fcf702e54416e5a754" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023"/>
+  <project name="platform/external/bazel-skylib" path="external/bazel-skylib" remote="aosp" revision="f998e5dc13c03f0eae9e373263d3afff0932c738" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023"/>
+  <project name="platform/external/python/absl-py" path="external/python/absl-py" remote="aosp" revision="2f199605a9875340569e039657f8b4c72d51b84d" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023"/>
+  <project name="platform/external/stardoc" path="external/stardoc" remote="aosp" revision="e83f522ee95419e55d2c5654aa6e0143beeef595" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023"/>
+  <project name="platform/prebuilts/bazel/linux-x86_64" path="prebuilts/bazel/linux-x86_64" remote="aosp" revision="7bfbec9e829bbae6816d5f39aba345df76e627c1" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023" clone-depth="1"/>
+  <project name="platform/prebuilts/build-tools" path="prebuilts/build-tools" remote="aosp" revision="4649614b4030ad825f2e94401d04526651f44e88" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023" clone-depth="1"/>
+  <project name="platform/prebuilts/clang/host/linux-x86" path="prebuilts/clang/host/linux-x86" remote="aosp" revision="382db94fa9597402b69e252c36bf9902cc283b82" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023" clone-depth="1"/>
+  <project name="platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8" path="prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8" remote="aosp" revision="f6d40532273c8bd628b960ecc0970c7294c8d891" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023" clone-depth="1"/>
+  <project name="platform/prebuilts/jdk/jdk11" path="prebuilts/jdk/jdk11" remote="aosp" revision="649eec4416e2ed6298af49a56876772767a0e5ae" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023" clone-depth="1"/>
+  <project name="platform/system/tools/mkbootimg" path="tools/mkbootimg" remote="aosp" revision="615a1fced5f8e2755642d30357674d3bfa21b85e" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023"/>
+  <project name="toolchain/prebuilts/ndk/r23" path="prebuilts/ndk-r23" remote="aosp" revision="19ac7e4eded12adb99d4f613490dde6dd0e72664" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023" clone-depth="1"/>
+</manifest>
