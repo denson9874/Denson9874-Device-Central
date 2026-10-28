@@ -51,6 +51,7 @@ Tree patches (`apply.sh`, as local commits; `repo sync` drops them and the next 
 | `system_update_engine` 0001 | update_engine checks payload and metadata signatures again (Daryl, 2026-10-27); Evolution X's 59fbd47 skips them, on the phone and in the host's `delta_generator` |
 | `system_update_engine` 0002 | No OTA downgrades on user builds again (59fbd47's other half): going back to an older build means fastboot |
 | `packages_apps_Updater` 0005 | ExpressiveOS's own: a feed entry with `base_timestamp` (an incremental package) is offered only to the build it was made from |
+| `packages_apps_Settings` 0005, `packages_apps_Updater` 0006, `packages_apps_EvoEgg` 0003 | The Bloom colours (Daryl, 2026-10-27: "instead of the neon ExpressiveOS ... the bloom colors"; the logo's petals were Daryl's pick): the glowing wordmark on Settings' Android version screen, Expressive Studio's About page and the Updater's main screen and top bar sweeps the Bloom mark's four petals instead of Evolution X's neon pink, violet and cyan, and the easter egg's stars take the petals instead of Evolution X's blue ([`branding/`](branding/README.md#the-colours)) |
 | `system_update_engine` 0003 | Recovery's sideload checks payload signatures too (LineageOS's 27c007a skips them, and Evolution X's recovery has no package check at all) |
 | `ksu/patches`, `viper4android/patches` | Their kits' own (see their READMEs) |
 
