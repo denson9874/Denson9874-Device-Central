@@ -1,4 +1,4 @@
-From 89cb65d61ea6b0564be5b4e0286707e44e024f5f Mon Sep 17 00:00:00 2001
+From 97b564a44e6fde5459bf75f8c9688c9ad4fa27ea Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Wed, 28 Oct 2026 08:50:48 +0000
 Subject: [PATCH] Evolver: show the lock screen at the top of its page
@@ -12,12 +12,12 @@ Co-Authored-By: Claude <noreply@anthropic.com>
  res/values/studio_strings.xml                 |   4 +
  res/xml/evolution_settings_lock_screen.xml    |   7 +
  .../fragments/lockscreen/LockScreen.java      |   2 +
- .../settings/studio/StudioLockHeader.kt       | 121 ++++++++++++++++++
- 4 files changed, 134 insertions(+)
+ .../settings/studio/StudioLockHeader.kt       | 123 ++++++++++++++++++
+ 4 files changed, 136 insertions(+)
  create mode 100644 src/org/evolution/settings/studio/StudioLockHeader.kt
 
 diff --git a/res/values/studio_strings.xml b/res/values/studio_strings.xml
-index 13f926a..6a02e5a 100644
+index 89d53f1..3903da8 100644
 --- a/res/values/studio_strings.xml
 +++ b/res/values/studio_strings.xml
 @@ -16,4 +16,8 @@
@@ -69,10 +69,10 @@ index c18e68c..80ef874 100644
  
 diff --git a/src/org/evolution/settings/studio/StudioLockHeader.kt b/src/org/evolution/settings/studio/StudioLockHeader.kt
 new file mode 100644
-index 0000000..c5df2aa
+index 0000000..0ca942f
 --- /dev/null
 +++ b/src/org/evolution/settings/studio/StudioLockHeader.kt
-@@ -0,0 +1,121 @@
+@@ -0,0 +1,123 @@
 +/*
 + * SPDX-FileCopyrightText: ExpressiveOS
 + * SPDX-License-Identifier: Apache-2.0
@@ -160,6 +160,8 @@ index 0000000..c5df2aa
 +            )
 +            Text(
 +                text = clockName(style),
++                // No Surface above this header to give it the theme's text colour
++                color = MaterialTheme.colorScheme.onSurface,
 +                style = MaterialTheme.typography.titleLarge,
 +                fontFamily = BloomRounded,
 +                fontWeight = FontWeight.Bold,
