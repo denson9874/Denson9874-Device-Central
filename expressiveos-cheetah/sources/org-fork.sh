@@ -93,11 +93,14 @@ ensure_fork() {   # ensure_fork <owner/repo>: $org/<repo> is a fork of it
         return
     fi
     [[ $out == *"HTTP 404"* ]] || fail "gh api repos/$org/$name: $out"
-    out=$(cd / && gh repo fork "$src" --org "$org" --clone=false --remote=false 2>&1) \
-        || fail "gh repo fork $src --org $org: $out"
-    sleep 2   # GitHub's limits on creating content
+    # The REST call rather than gh repo fork, whose flags change between gh versions (2.102
+    # refuses --remote with a repository argument). All branches, not just the default one
+    out=$(gh api -X POST "repos/$src/forks" -f "organization=$org" -F default_branch_only=false --jq .full_name 2>&1) \
+        || fail "forking $src into $org: $out"
     # GitHub answers with an existing fork of the same network instead, under its own name
-    api_retry "$org/$name after gh repo fork ($out)" "repos/$org/$name" --silent
+    [[ "$(lower "$out")" = "$(lower "$org/$name")" ]] || fail "GitHub forked $src as $out, not $org/$name"
+    sleep 2   # GitHub's limits on creating content
+    api_retry "$org/$name after forking" "repos/$org/$name" --silent
     out=$(gh api "repos/$org/$name" --jq '.parent.full_name // "-"') || fail "gh api repos/$org/$name failed"
     [[ "$(lower "$out")" = "$(lower "$src")" ]] || fail "$org/$name was forked from $out, not $src"
     echo "forked: $src -> $org/$name"
