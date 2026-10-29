@@ -10,7 +10,9 @@
 #   update-check.sh [top]       # default ~/expressiveos
 #
 #   EOS_UPDATE_WORK=<dir>   the work folder (default ~/expressiveos-update): the scratch repos and
-#                           reports/update-check-<time>.txt. Safe to delete between runs
+#                           reports/update-check-<time>.txt. Shared with update.sh, whose plan and
+#                           push keep an update there until its pull request is merged and its
+#                           kernel.xml committed; safe to delete when no update is under way
 #   EOS_UPDATE_JOBS=<n>     projects checked at once (default 6)
 set -euo pipefail
 # shellcheck source=../lib.sh
