@@ -73,6 +73,27 @@
 # LFS files the tree holds. Those commits are what ExpressiveOS's own sources start from;
 # commit SHAs and file names only, never file contents.
 #
+# expressiveos-update-check (read-only on the tree) is the dry run of ExpressiveOS's monthly
+# update (expressiveos-cheetah/sources/update-check.sh): what LineageOS has added since the
+# commits ExpressiveOS's manifest pins, LineageOS's commits merged into each of ExpressiveOS's
+# forks in memory (clean, or which files conflict), the security patch level before and after,
+# the kernel's pins and KernelSU Next's release. Its fetches and merges stay in its own work
+# folder (~/expressiveos-update), borrowing the tree's git objects; nothing is committed or
+# pushed. Paths, commit counts and dates only, never file contents.
+#
+# expressiveos-update makes the monthly update (expressiveos-cheetah/sources/update.sh). It's
+# the one action given a secret: EXPRESSIVEOS_PUSH_TOKEN, a fine-grained token of the
+# ExpressiveOS organization (Contents: read and write), which pushes to ExpressiveOS's repos.
+# The token reaches only that step's environment: never the server's disk, a command line or
+# the log. query: token (read-only: may the token push to every ExpressiveOS repo? It asks
+# GitHub as a git push would and pushes nothing); plan <id> (makes update <id>, this ref's
+# expressiveos-cheetah/sources/updates/<id>, in ~/expressiveos-update: LineageOS's commits
+# merged into the forks with the update's conflict resolutions, the new manifest, the kernel
+# pins to take; pushes nothing. For a conflict it prints the conflicting lines of those
+# open-source files); push <id> (pushes what the last plan of <id> made: the forks' merges
+# to their branches, then the manifest's commit as branch update/<id> for a pull request.
+# Only when Daryl says so).
+#
 # Never add an upload-artifact step: build output contains Google's
 # proprietary images, which must not leave the server. Logs only. `inspect`
 # prints policy excerpts, manifests and library lists, never file contents
@@ -131,6 +152,10 @@ on:
           expressiveos-keys: make ExpressiveOS's keys (once) and a backup archive.
           expressiveos-pins: read-only: the upstream commit of every project in the
           ExpressiveOS tree, as a manifest, plus its kernel tree and LFS files.
+          expressiveos-update-check: read-only: the dry run of the monthly update
+          (what LineageOS added, and whether ExpressiveOS's forks merge it cleanly).
+          expressiveos-update: the monthly update, with the push token (see query;
+          dispatch it on the branch that has the update's sources/updates/<id>).
           expressiveos-build: install the kit, then eos-images.sh and eos-pack.sh in
           tmux. expressiveos-pack: install the kit, then eos-pack.sh in tmux.
         type: choice
@@ -165,6 +190,8 @@ on:
           - server-cleanup
           - expressiveos-status
           - expressiveos-pins
+          - expressiveos-update-check
+          - expressiveos-update
           - expressiveos-setup
           - expressiveos-keys
           - expressiveos-build
@@ -190,7 +217,10 @@ on:
           no pack), kernel-sync (sync the kernel source to its pins again). build-explain
           (required): tree, product, then up to two products to compare, e.g.
           'evolution lineage_yogi lineage_cubs'. release-checks (optional): devices,
-          e.g. 'kodiak cheetah' (default: all six).
+          e.g. 'kodiak cheetah' (default: all six). expressiveos-update (required):
+          token (read-only: may the push token push to every ExpressiveOS repo?),
+          plan <id> (make update <id>, e.g. 2026-11; nothing pushed) or push <id>
+          (push what plan <id> made).
         type: string
         default: ''
 
@@ -223,11 +253,13 @@ jobs:
           # Builds started by hand (or by another agent) share ~/evolution with
           # this job, and the husky build too. Don't start on top of one. The
           # read-only actions run anyway, and so do expressiveos-setup (a repo sync
-          # of its own tree, ~/expressiveos: network and disk, no build) and
-          # expressiveos-keys (two minutes of openssl in that tree)
+          # of its own tree, ~/expressiveos: network and disk, no build),
+          # expressiveos-keys (two minutes of openssl in that tree),
+          # expressiveos-update-check (fetches and merges in its own folder) and
+          # expressiveos-update (the same, and pushes to GitHub)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -1036,6 +1068,36 @@ jobs:
             c=$(git -C "$p" rev-parse --path-format=absolute --git-common-dir)
             echo "objects in $c/lfs: $(find "$c/lfs/objects" -type f 2>/dev/null | wc -l), $(du -sh "$c/lfs" 2>/dev/null | cut -f1)"
           done
+
+      # The monthly update and its dry run: this ref's kit, run from the job's checkout (nothing
+      # is installed). update-check.sh holds ~/.expressiveos.lock while it runs: setup.sh refuses
+      # meanwhile, and a build waits for it
+      - name: Check out the update check
+        if: contains(fromJSON('["expressiveos-update-check","expressiveos-update"]'), inputs.action)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: expressiveos-cheetah
+          fetch-depth: 1
+
+      - name: ExpressiveOS update check (dry run)
+        if: inputs.action == 'expressiveos-update-check'
+        run: |
+          export PATH=~/bin:$PATH
+          bash expressiveos-cheetah/sources/update-check.sh
+
+      # The only step given a secret. The token is in this step's environment alone; the runner
+      # masks it in the log, and update.py passes it to git and GitHub without writing it down
+      - name: ExpressiveOS update
+        if: inputs.action == 'expressiveos-update'
+        env:
+          EOS_PUSH_TOKEN: ${{ secrets.EXPRESSIVEOS_PUSH_TOKEN }}
+        run: |
+          [[ "$QUERY" =~ ^(token|(plan|push)\ [0-9]{4}-(0[1-9]|1[0-2])(-[2-9])?)$ ]] \
+            || { echo "::error::query must be: token, plan <id> or push <id> (id: the update's month, as 2026-11)"; exit 1; }
+          export PATH=~/bin:$PATH
+          read -r -a q <<< "$QUERY"
+          bash expressiveos-cheetah/sources/update.sh "${q[@]}"
 
       - name: Check out expressiveos-cheetah
         if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack"]'), inputs.action)
