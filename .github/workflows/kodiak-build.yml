@@ -73,6 +73,14 @@
 # LFS files the tree holds. Those commits are what ExpressiveOS's own sources start from;
 # commit SHAs and file names only, never file contents.
 #
+# expressiveos-devices (read-only) prints what ExpressiveOS builds for husky and the four Pixel
+# 11 phones need from the server (expressiveos-cheetah/tools/devices-check.sh): disk per product,
+# Evolution X's device and vendor projects (commits, remotes, local commits), whether the Pixel 11
+# repos are public, kernel versions, config facts and struct module sizes, KernelSU Next's KMIs,
+# firmware zips, fastboot files and board names, AVB and Updater makefile lines, the audio effect
+# HAL type, Evolution X's commits on shared projects, build times, device-ok records and the
+# release folders' names. Names, sizes, SHAs, versions and build-file lines only.
+#
 # expressiveos-update-check (read-only on the tree) is the dry run of ExpressiveOS's monthly
 # update (expressiveos-cheetah/sources/update-check.sh): what LineageOS has added since the
 # commits ExpressiveOS's manifest pins, LineageOS's commits merged into each of ExpressiveOS's
@@ -152,6 +160,8 @@ on:
           expressiveos-keys: make ExpressiveOS's keys (once) and a backup archive.
           expressiveos-pins: read-only: the upstream commit of every project in the
           ExpressiveOS tree, as a manifest, plus its kernel tree and LFS files.
+          expressiveos-devices: read-only: what ExpressiveOS builds for husky and
+          the Pixel 11 phones need from the server.
           expressiveos-update-check: read-only: the dry run of the monthly update
           (what LineageOS added, and whether ExpressiveOS's forks merge it cleanly).
           expressiveos-update: the monthly update, with the push token (see query;
@@ -190,6 +200,7 @@ on:
           - server-cleanup
           - expressiveos-status
           - expressiveos-pins
+          - expressiveos-devices
           - expressiveos-update-check
           - expressiveos-update
           - expressiveos-setup
@@ -259,7 +270,7 @@ jobs:
           # expressiveos-update (the same, and pushes to GitHub)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -271,7 +282,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins|expressiveos-devices)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -1068,6 +1079,20 @@ jobs:
             c=$(git -C "$p" rev-parse --path-format=absolute --git-common-dir)
             echo "objects in $c/lfs: $(find "$c/lfs/objects" -type f 2>/dev/null | wc -l), $(du -sh "$c/lfs" 2>/dev/null | cut -f1)"
           done
+
+      # Read-only, from this ref's kit (nothing is installed); it may run beside a build
+      - name: Check out the devices check
+        if: inputs.action == 'expressiveos-devices'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: expressiveos-cheetah
+          fetch-depth: 1
+
+      - name: ExpressiveOS devices check (read-only)
+        if: inputs.action == 'expressiveos-devices'
+        run: |
+          bash expressiveos-cheetah/tools/devices-check.sh
 
       # The monthly update and its dry run: this ref's kit, run from the job's checkout (nothing
       # is installed). update-check.sh holds ~/.expressiveos.lock while it runs: setup.sh refuses
