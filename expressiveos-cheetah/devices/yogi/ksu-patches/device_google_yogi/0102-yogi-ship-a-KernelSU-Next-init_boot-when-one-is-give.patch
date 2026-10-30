@@ -1,0 +1,61 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Fri, 30 Oct 2026 12:00:00 +0000
+Subject: [PATCH 102/102] yogi: ship a KernelSU Next init_boot when one is
+ given
+
+With EOS_KSU_INIT_BOOT set, init_boot is that prebuilt (the build's own
+init_boot patched by KernelSU Next's ksud) instead of one made from the
+generic ramdisk. The build system re-signs it with the init_boot AVB key and
+puts it in target-files, so the fastboot images and the OTA both carry it and
+root survives updates. Unlike cheetah's and husky's trees, this one sets
+PRODUCT_BUILD_INIT_BOOT_IMAGE, and with it the build system makes init_boot
+even when a prebuilt one is given, so device.mk sets it only while
+EOS_KSU_INIT_BOOT is unset. Unset, nothing changes: init_boot is built as
+before. Only ExpressiveOS's build sets it. Same as cheetah's, whose variable
+is CHEETAH_KSU_INIT_BOOT.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ BoardConfig.mk | 10 ++++++++++
+ device.mk      |  5 +++++
+ 2 files changed, 15 insertions(+)
+
+diff --git a/BoardConfig.mk b/BoardConfig.mk
+index 2b77318..1b50de2 100644
+--- a/BoardConfig.mk
++++ b/BoardConfig.mk
+@@ -239,3 +239,13 @@ BOARD_USES_SYSTEM_OTHER_ODEX :=
+ 
+ # KernelSU Next manager (ExpressiveOS only): libksud.so is a program
+ TARGET_FS_CONFIG_GEN += device/google/yogi/ksu/config.fs
++
++# KernelSU Next (ExpressiveOS only): expressiveos-cheetah/ksu/tools/ksu-images.sh
++# builds once, patches that build's init_boot with KernelSU Next
++# (cheetah-ksu.sh), then builds again with EOS_KSU_INIT_BOOT set, so the
++# images and the OTA ship the patched init_boot (re-signed with the tree's
++# init_boot AVB key like a built one). device.mk then stops asking for a
++# built init_boot, which the build system would make instead.
++ifneq ($(EOS_KSU_INIT_BOOT),)
++BOARD_PREBUILT_INIT_BOOT_IMAGE := $(EOS_KSU_INIT_BOOT)
++endif
+diff --git a/device.mk b/device.mk
+index 2acf256..3beb7f6 100644
+--- a/device.mk
++++ b/device.mk
+@@ -49,7 +49,12 @@ PRODUCT_PACKAGES += \
+ # Partitions
+ PRODUCT_USE_DYNAMIC_PARTITIONS := true
+ PRODUCT_BUILD_SUPER_PARTITION := false
++# Built from the generic ramdisk, unless ExpressiveOS's KernelSU Next build gives
++# its own (EOS_KSU_INIT_BOOT, BoardConfig.mk): the build system takes a prebuilt
++# init_boot only while the product doesn't ask for a built one
++ifeq ($(EOS_KSU_INIT_BOOT),)
+ PRODUCT_BUILD_INIT_BOOT_IMAGE := true
++endif
+ PRODUCT_BUILD_VENDOR_BOOT_IMAGE := true
+ 
+ # A/B
+-- 
+2.43.0
+

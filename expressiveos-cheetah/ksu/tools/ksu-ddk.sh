@@ -119,12 +119,17 @@ build() {
     fi
     mkdir -p -- "$out/kbuild"; rm -f -- "$out/kernelsu.ko"
     log=$out/kbuild.log
-    # What the image's environment sets (its ENV), and KernelSU Next's CI's make in kernel/
+    # What the image's environment sets (its ENV), and KernelSU Next's CI's make in kernel/.
+    # No BTF section, as cheetah's module has none (its tree has no vmlinux to base one on):
+    # this tree's vmlinux is the DDK's, not the phone's, and a module whose BTF doesn't fit
+    # the running kernel's fails to load unless CONFIG_MODULE_ALLOW_BTF_MISMATCH is on. The
+    # compile keeps the option (autoconf.h), so struct module stays the kernel's
     PATH=$clang:$rust:$PATH make -C "$kdir" M="$src/kernel" ARCH=arm64 LLVM=1 LLVM_IAS=1 CROSS_COMPILE=aarch64-linux-gnu- \
-        CONFIG_KSU=m -j"$(nproc)" modules > "$log" 2>&1 \
+        CONFIG_KSU=m CONFIG_DEBUG_INFO_BTF_MODULES= -j"$(nproc)" modules > "$log" 2>&1 \
         || { tail -30 "$log" >&2; fail "kernelsu.ko didn't build with the DDK (log: $log)"; }
     # Debug info would make it several MB, too big for an init_boot with a ramdisk
     "$clang/llvm-strip" --strip-debug -o "$out/kernelsu.ko" "$src/kernel/kernelsu.ko"
+    if readelf -S -- "$out/kernelsu.ko" | grep -q '\.BTF'; then fail "$out/kernelsu.ko has a BTF section, built against the DDK's vmlinux"; fi
     cp -- "$kdir/.config" "$out/kbuild/.config"
     echo "OK: $out/kernelsu.ko built with the DDK $want"
 }
