@@ -87,7 +87,7 @@ EOF
 q() { python3 -I "$WD/aux/q.py" "$@"; }
 
 world() {   # a fresh world in $WD/w, sourced; frameworks/base's conflict resolved
-    bash "$H" "$KSRC" "$WD/w" >/dev/null 2>&1 || { echo "FAIL: harness.sh couldn't build a world"; exit 1; }
+    bash "$H" "$KSRC" "$WD/w" >"$WD.harness.log" 2>&1 || { tail -n 20 "$WD.harness.log" >&2; echo "FAIL: harness.sh couldn't build a world"; exit 1; }
     # shellcheck disable=SC1091
     source "$WD/w/env.sh"
     W=$HOME/expressiveos-update

@@ -244,6 +244,49 @@ the tree; its scratch repos borrow the tree's git objects, so only new commits d
 reaches GitHub before step 5. That folder holds an update's plan, merges, `kernel.xml` and reports until
 its pull request is merged and its `kernel.xml` committed (step 5); otherwise it's safe to delete.
 
+How the update treats a project of ExpressiveOS's manifest depends only on its line's remote name and on
+whether LineageOS's manifest has a project at the same path (`update.py`'s `kind_of`):
+
+| the line | LineageOS's manifest has the path | every update |
+|---|---|---|
+| `remote="expressiveos"` | yes | a fork: LineageOS's commits merged into its branch, pushed |
+| `remote="expressiveos"` | no (every device's trees and blobs) | ExpressiveOS's own: keeps its commit |
+| another remote | yes | LineageOS's or AOSP's: moves to what LineageOS's manifest names |
+| another remote, with `upstream=` | no | moves to its upstream's tip, unreviewed (the `-kernels` prebuilts) |
+| another remote, no `upstream=` | no | pinned: stays at its commit, never contacted |
+
+GitHub's fork relation, `org-fork.sh` and `dest-branch` play no part: a repo of the ExpressiveOS
+organization under any other remote name is not ExpressiveOS's to the update (lint calls it a problem).
+So a device's trees and blobs in the organization, on `expressiveos`, are ExpressiveOS's own; LineageOS's
+or TheMuppets' (husky's) with no `upstream=` are pinned, and listed with the projects outside LineageOS's
+manifest. Either way the update never brings LineageOS's (or TheMuppets') device commits into them: those
+move together by hand, as a manifest commit. A manifest change is one line per project before `</manifest>`, in
+`own-manifest.py`'s layout (plan writes the update into that text, and refuses anything else), never a
+second manifest file, an `<include>` or a `notdefault` group, and `own-manifest.py` is never run again
+(it would put the projects back on the 1.0 sources). Before such a change is merged, lint it:
+`expressiveos-update` with query `lint pull/<n>` (or `sources/update.sh lint <branch>`, which needs no
+tree, on the build server or any Linux machine with git 2.38 or newer and python3) shows what plan would refuse, each new or changed project's kind, and
+whether its commit is where its line says; it ends `MANIFEST_LINT=OK` or `MANIFEST_LINT=PROBLEMS`.
+From an update's first plan until its pull request is merged, nothing else changes the manifest or the
+forks' `expressiveos` branches: plan and push stop on anything that moved, and a fork's new commits would
+go into its merge.
+
+Every run ends with one status line, the last of its output:
+
+| run | its last line |
+|---|---|
+| `update-check.sh` | `UPDATE_CHECK=OK`, `INCOMPLETE`, `FAILED` or `NOT_RUN` |
+| `update.sh plan <id>` | `UPDATE_PLAN=READY`, `CONFLICTS`, `NOT_READY` or `NOT_RUN` |
+| `update.sh push <id>` | `UPDATE_PUSH=OK`, `FAILED` or `NOT_RUN` |
+| `update.sh verify <id>` | `UPDATE_VERIFY=OK`, `DIFFERS`, `FAILED` or `NOT_RUN` |
+| `update.sh lint [ref]` | `MANIFEST_LINT=OK`, `PROBLEMS` or `FAILED` |
+| `update.sh token` | `TOKEN_CHECK=OK` or `FAIL` |
+
+A run that stops, in `update.py` or in the script before it (no tree, the tree on another manifest, a key
+missing from `eos.conf`), prints a `FAIL:` line and ends with its `FAILED` (plan: `NOT_READY`; token:
+`FAIL`) and `(stopped: <why>)`. `NOT_RUN` names the build or setup holding `~/.expressiveos.lock`: run it
+again in a gap between builds.
+
 ### 1. The dry run
 
 `sources/update-check.sh` (the runner's read-only `expressiveos-update-check`) changes nothing in the
@@ -251,9 +294,12 @@ tree and pushes nothing. Against LineageOS's manifest today it shows:
 
 - for LineageOS's and AOSP's projects, which move and by how many commits (a LineageOS project's
   must descend from ours; shallow and AOSP projects aren't counted);
-- for ExpressiveOS's forks of LineageOS's and AOSP's repos (44 of the 74), LineageOS's new commits
+- for ExpressiveOS's forks of LineageOS's and AOSP's repos (44 at 1.0), LineageOS's new commits
   merged into each in memory (`git merge-tree`): clean, or the files that conflict, and which of those
-  the kit's own changes touch;
+  the kit's own changes touch (any device's), and the commits a fork's branch has past its pin, which
+  the update takes too;
+- the projects outside LineageOS's manifest on other remotes: those that will move to their own
+  upstream's tip, and those pinned;
 - what LineageOS's manifest changed since the last update (`last-update.conf`; before the first, the
   1.0 sources' base): projects added, removed, moved to a fork;
 - the security patch level before and after (our release config's flag in `vendor/lineage`, which
@@ -261,9 +307,12 @@ tree and pushes nothing. Against LineageOS's manifest today it shows:
 - the kernel's 18 projects against `pins/kernel.xml` (Google's GKI tag), and KernelSU Next's and
   NeoZygisk's newest releases against `ksu/ksu.conf`.
 
-The report is `~/expressiveos-update/reports/update-check-<time>.txt`. The other 30 forks (Evolution
-X's own apps and vendor repos, cheetah's trees and blobs) have nothing upstream, and Google's factory
-images (cheetah's firmware and vendor blobs) aren't part of it.
+It also checks the manifest's text as plan will (the tree's, and GitHub's where that's newer). The report
+is `~/expressiveos-update/reports/update-check-<time>.txt`. ExpressiveOS's own repos (Evolution X's apps
+and vendor repos, the devices' trees and blobs) have nothing upstream, and Google's factory images (each
+device's firmware and vendor blobs) aren't part of it. It ends `UPDATE_CHECK=OK` or
+`UPDATE_CHECK=INCOMPLETE`, or `UPDATE_CHECK=NOT_RUN` (naming the holder) while a build or setup holds
+`~/.expressiveos.lock`: check again in a gap between builds.
 
 ### 2. The update's folder
 
@@ -295,9 +344,10 @@ build needed) and doesn't run while a build or setup does (`~/.expressiveos.lock
   default merge settings pinned and none of the machine's git config or attributes (no `.gitattributes`
   merge drivers, no renormalizing), so the build server and the machine a resolution is made on merge
   alike;
-- every other LineageOS and AOSP project's new commit. A LineageOS project's must descend from ours
-  (LineageOS never rewrites its branches); a shallow one's (`clone-depth`) and AOSP's (a new tag) aren't
-  checked;
+- every other LineageOS and AOSP project's new commit, and each project outside LineageOS's manifest
+  with an `upstream=` its upstream's tip (listed on their own). A LineageOS project's must descend from
+  ours (LineageOS never rewrites its branches); a shallow one's (`clone-depth`) and AOSP's (a new tag)
+  aren't checked;
 - the new `default.xml`: those commits, and what LineageOS's manifest changed since the last update,
   taken three ways. A project's repo, branch or clone depth moves where ours was still LineageOS's, and
   the plan stops where both changed it; groups and linkfiles/copyfiles are taken element by element
@@ -312,13 +362,17 @@ build needed) and doesn't run while a build or setup does (`~/.expressiveos.lock
   the forks it moves to their branch's tip without one);
 - the security patch level before and after;
 - `kernel.xml`: `pins/kernel.xml` with each kernel project on LineageOS's kernel manifest's commit
-  today (and its branch or tag, where that moved), also printed in the report;
+  today (and its branch or tag, where that moved), also printed in the report. `pins/kernel.xml` is the
+  kernel of every device built from LineageOS's gs-6.1 kernel manifest (cheetah, husky): one file, with
+  that manifest's projects exactly. Where it can't be proposed, the plan says why under "Needs a look"
+  and its last line adds `kernel: no new pins proposed`;
 - the push token's reach, asked of GitHub as a push would ask (step 5).
 
 The report is `reports/update-plan-<id>-<time>.txt`. The run ends with `UPDATE_PLAN=READY`,
 `UPDATE_PLAN=CONFLICTS` (each conflict shown with the fork's side, the merge base's and LineageOS's, the
 commits on each side that touch the file, and the commands to resolve it) or `UPDATE_PLAN=NOT_READY` (the
-problems listed). A plan can run again, and starts over, until a push of it has made `update/<id>`.
+problems listed); a plan that stops ends `UPDATE_PLAN=NOT_READY (stopped: <why>)`. A plan can run again,
+and starts over, until a push of it has made `update/<id>`.
 After that it refuses and leaves the update's files as they are: `plan.json` for push run again, and
 `kernel.xml` for step 5.
 
@@ -365,9 +419,13 @@ If it says to plan again (something moved since the plan), plan again: a fork wh
 already keeps it ("merged by this update and pushed before"; LineageOS's newer commits wait for the next
 update, as in step 2), and the next push goes on from there.
 
-Merging that pull request is the update. Then `expressiveos-setup` syncs the tree to it; the plan's
-`kernel.xml` goes into this kit as `pins/kernel.xml` in a commit of its own, and the next build runs
-with `kernel-sync`; then build, test and release as usual. A fork's new commits on its own branch are
+Merging that pull request is the update. Then `expressiveos-update` with query `verify <id>` checks
+GitHub's manifest against the plan: each project at the plan's commit (or a later one of a fork's branch
+that has the merge), each fork's branch holding its merge, `last-update.conf` naming the update, and
+what's there that the plan didn't make; it ends `UPDATE_VERIFY=OK` or `UPDATE_VERIFY=DIFFERS`. Then
+`expressiveos-setup` syncs the tree to it; the plan's `kernel.xml` goes into this kit as
+`pins/kernel.xml` in a commit of its own, and the next build of each gs-6.1 device runs with
+`kernel-sync`; then build, test and release as usual. A fork's new commits on its own branch are
 already in the merge: the forks' `expressiveos` branches never rewind, so a pull request that isn't
 merged leaves only the forks a commit ahead of the manifest's pins, which the next update takes.
 
@@ -389,7 +447,8 @@ way, save it over the secret, and check it.
 repos standing in for LineageOS, AOSP and GitHub, with a tree and a copy of this kit (git 2.38 or newer,
 about 10 minutes; nothing leaves the machine, and nothing outside `$EOS_TEST_WORK`, default
 `$TMPDIR/eos-update-tests`, is touched). Run it after any change to `update.py`; each script's header
-says what it checks.
+says what it checks (`devices.sh`: device projects, the lint, verify, and a kit missing what the update
+reads).
 
 ## Test and release
 

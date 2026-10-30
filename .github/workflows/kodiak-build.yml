@@ -92,7 +92,10 @@
 # pins to take; pushes nothing. For a conflict it prints the conflicting lines of those
 # open-source files); push <id> (pushes what the last plan of <id> made: the forks' merges
 # to their branches, then the manifest's commit as branch update/<id> for a pull request.
-# Only when Daryl says so).
+# Only when Daryl says so); verify <id> (read-only, after that pull request is merged: is
+# everything the plan made in the manifest's branch?); lint [ref] (read-only, no tree: a
+# change of ExpressiveOS's manifest, a branch of its repo or pull/<n>, read as the update reads
+# it, before it's merged).
 #
 # Never add an upload-artifact step: build output contains Google's
 # proprietary images, which must not leave the server. Logs only. `inspect`
@@ -219,8 +222,10 @@ on:
           'evolution lineage_yogi lineage_cubs'. release-checks (optional): devices,
           e.g. 'kodiak cheetah' (default: all six). expressiveos-update (required):
           token (read-only: may the push token push to every ExpressiveOS repo?),
-          plan <id> (make update <id>, e.g. 2026-11; nothing pushed) or push <id>
-          (push what plan <id> made).
+          lint [ref] (read-only: a change of ExpressiveOS's manifest, e.g. pull/2, read
+          as the update reads it), plan <id> (make update <id>, e.g. 2026-11; nothing
+          pushed), push <id> (push what plan <id> made) or verify <id> (read-only, after
+          its pull request is merged: is everything the plan made there?).
         type: string
         default: ''
 
@@ -1093,8 +1098,8 @@ jobs:
         env:
           EOS_PUSH_TOKEN: ${{ secrets.EXPRESSIVEOS_PUSH_TOKEN }}
         run: |
-          [[ "$QUERY" =~ ^(token|(plan|push)\ [0-9]{4}-(0[1-9]|1[0-2])(-[2-9])?)$ ]] \
-            || { echo "::error::query must be: token, plan <id> or push <id> (id: the update's month, as 2026-11)"; exit 1; }
+          [[ "$QUERY" =~ ^(token|lint(\ [A-Za-z0-9][A-Za-z0-9._/-]*)?|(plan|push|verify)\ [0-9]{4}-(0[1-9]|1[0-2])(-[2-9])?)$ ]] \
+            || { echo "::error::query must be: token, lint [ref], plan <id>, push <id> or verify <id> (id: the update's month, as 2026-11)"; exit 1; }
           export PATH=~/bin:$PATH
           read -r -a q <<< "$QUERY"
           bash expressiveos-cheetah/sources/update.sh "${q[@]}"

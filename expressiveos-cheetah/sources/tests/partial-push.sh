@@ -24,6 +24,7 @@ if [[ $# -ne 1 || ! -f $1/sources/update.py ]]; then
 fi
 KSRC=$(cd "$1" && pwd)
 WD=${EOS_TEST_WORK:-${TMPDIR:-/tmp}/eos-update-tests}/partial-push
+mkdir -p -- "$(dirname -- "$WD")"   # the harness log goes next to it
 LB=lineage-24.0
 ID=2026-11
 trap 'rm -rf "$WD"' EXIT
@@ -50,7 +51,7 @@ run() { OUT=$("$@" 2>&1); RC=$?; }   # run <cmd...>: OUT, RC
 
 # --- the world ------------------------------------------------------------------------------------
 fresh() {   # a new world with frameworks/base's conflict resolved; sets T kit top G FB VL MAN LFB LVL W U PF RES
-    bash "$HARNESS" "$KSRC" "$WD" >/dev/null 2>&1 || { echo "FAIL: harness.sh couldn't build the world"; exit 1; }
+    bash "$HARNESS" "$KSRC" "$WD" >"$WD.harness.log" 2>&1 || { tail -n 20 "$WD.harness.log" >&2; echo "FAIL: harness.sh couldn't build the world"; exit 1; }
     # shellcheck disable=SC1091
     source "$WD/env.sh"
     FB=$T/gh/ExpressiveOS/frameworks_base.git
