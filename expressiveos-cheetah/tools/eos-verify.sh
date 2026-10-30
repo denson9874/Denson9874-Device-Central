@@ -388,15 +388,32 @@ while IFS= read -r a; do
     fi
     n=$((n + 1))
 done < "$T/apks.txt"
-dups=$(cut -d' ' -f1 "$T/pkgs.txt" | sort | uniq -d)
-if [[ -n $dups ]]; then
-    for d in $dups; do
-        echo "FAIL: $d is in $(awk -v d="$d" '$1 == d { printf "%s ", $2 }' "$T/pkgs.txt")" >&2
-    done
-    fail "more than one APK for a package (above): an app the product overrides is in $O. Build again with installclean (the runner's expressiveos-build query)"
-fi
+# Pairs the product itself installs, so m installclean keeps them (seen on 2026-10-30's clean
+# cheetah build): Evolution X's Poppins font and clock font overlays share a package, and so
+# do the two wallpaper picker overlays. PackageManager keeps one of each, as on every build
+# so far. Each passes only with exactly these APKs (LC_ALL=C order)
+known_dups=(
+    "com.android.theme.font.poppins product/overlay/ClockFontPoppins/ClockFontPoppinsSourceOverlay.apk product/overlay/FontPoppins/FontPoppinsSourceOverlay.apk"
+    "com.google.android.wallpaper.picker.overlay product/overlay/WallpaperPicker2Overlay.apk product/overlay/WallpaperPicker2PixelOverlay.apk"
+)
+dups=$(cut -d' ' -f1 "$T/pkgs.txt" | LC_ALL=C sort | uniq -d)
+bad=0 k=0
+for d in $dups; do
+    got="$d $(awk -v d="$d" '$1 == d { print $2 }' "$T/pkgs.txt" | LC_ALL=C sort | tr '\n' ' ')"
+    got=${got% }
+    if printf '%s\n' "${known_dups[@]}" | grep -qxF -- "$got"; then
+        echo "note: $d is in ${got#"$d "}: the product installs both (a known pair; PackageManager keeps one)"
+        k=$((k + 1))
+    else
+        echo "FAIL: $d is in ${got#"$d "}" >&2
+        bad=1
+    fi
+done
+[[ $bad = 0 ]] || fail "more than one APK for a package (above): an app the product overrides is in $O. Build again with installclean (the runner's expressiveos-build query); a pair the product itself installs goes in known_dups here"
 r=$(wc -l < "$T/pkgs.txt")
-echo "OK: one APK per package among the $r of $n APKs in app, priv-app and overlay that aapt2 read"
+extra=
+[[ $k = 0 ]] || extra=", but for the $k known pairs above"
+echo "OK: one APK per package among the $r of $n APKs in app, priv-app and overlay that aapt2 read$extra"
 
 echo "== branding"
 checked "the build still shows Evolution X somewhere (patches/: Settings, Evolver, Updater...)" 'BRAND_CHECK=OK' \

@@ -480,7 +480,8 @@ one of ExpressiveOS's own projects (it stays checked out until a build without `
 `m` would leave a module the product doesn't install, like Settings beside SettingsGoogle, in `out/`
 and the target-files zip, though not in the images, which take only the build's file list;
 `installclean` asks any build that makes images for it, and `eos-verify.sh` refuses two APKs with
-one package name). The phones share the tree, so they build one after another, never at once (each
+one package name, but for two pairs of Evolution X overlays the product itself installs:
+`known_dups` there). The phones share the tree, so they build one after another, never at once (each
 build holds `~/.expressiveos.lock`).
 
 - **husky** builds like cheetah: LineageOS's husky, shusky and zuma trees with TheMuppets' blobs (its
