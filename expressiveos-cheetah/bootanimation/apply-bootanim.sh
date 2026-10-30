@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # Put the ExpressiveOS boot animation into the ExpressiveOS tree (idempotent: a second run
 # changes nothing), for every phone it builds:
-#   1. check bootanimation.zip against bootanim.conf;
-#   2. stage it and bootanimation.mk into vendor/extra/bootanimation;
+#   1. check bootanimation.zip and bootanimation_holiday.zip against bootanim.conf;
+#   2. stage them, expressiveos-bootanim-hint.rc and bootanimation.mk into
+#      vendor/extra/bootanimation;
 #   3. vendor/extra/product.mk inherits bootanimation.mk (Evolution X's vendor_evolution,
 #      checked out at vendor/lineage, has config/common.mk inherit vendor/extra/product.mk),
-#      which sets TARGET_BOOTANIMATION for ExpressiveOS's lineage_<device> products.
+#      which sets TARGET_BOOTANIMATION for ExpressiveOS's lineage_<device> products and
+#      installs the holiday zip and its init rc.
 # Before that, the phone's lineage_<device>.mk (EOS_DEVICE, cheetah unless set) mustn't turn
-# Evolution X's other styles on.
+# Evolution X's other styles on, and frameworks/base and device/lineage/sepolicy must let
+# bootanim read the holiday zip's /metadata hint. Notes, without failing, when the hint looks
+# unneeded (README.md, "Holiday boot animations").
 # Never on the Evolution X tree (~/evolution). Nothing is written through a symlink that
 # leads out of the tree.
 #
@@ -50,8 +54,8 @@ grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "
 # exports it as well. The export only wins over vendor/lineage's common.mk default (?= true),
 # never over a := true in the device tree (the Pixel 11 trees started with one), so that's
 # refused here, before hours of building
-read -r dev lmk <<<"$(source "$here/../lib.sh" && printf '%s %s' "$EOS_DEVICE" "$EOS_DEVICE_TREE/lineage_$EOS_DEVICE.mk")"
-[[ -n ${dev:-} && -n ${lmk:-} ]] || fail "can't read this phone's device tree (lib.sh, devices/<device>.conf)"
+read -r dev lmk vdir <<<"$(source "$here/../lib.sh" && printf '%s %s %s' "$EOS_DEVICE" "$EOS_DEVICE_TREE/lineage_$EOS_DEVICE.mk" "$EOS_VENDOR_DIR")"
+[[ -n ${dev:-} && -n ${lmk:-} && -n ${vdir:-} ]] || fail "can't read this phone's device and vendor trees (lib.sh, devices/<device>.conf)"
 ib=$(sed -nE 's/^[[:space:]]*TARGET_INCLUDE_BOOT_ANIMATIONS[[:space:]]*:?=[[:space:]]*([^[:space:]#]*).*$/\1/p' -- "$top/$lmk" 2>/dev/null | tail -1 || true)
 [[ -z $ib || $ib = false ]] \
     || fail "$lmk sets TARGET_INCLUDE_BOOT_ANIMATIONS to '$ib', which eos-images.sh's export can't override: Evolution X's 12 other styles (about 190 MiB) would ship for $dev. Set it to false there: a commit on that tree, or a patch in devices/$dev/patches (bootanimation/README.md)"
@@ -71,17 +75,40 @@ where=$([[ ! -f "$pm" ]] || want="$line" awk -f "$here/tools/mk-line.awk" -- "$p
 [[ $where != nested ]] \
     || fail "vendor/extra/product.mk has '$line' only inside an ifeq/ifdef/define block; move it out to the top level"
 
-# 1. The zip is the one bootanim.conf names
-zip="$here/bootanimation.zip"
+# 1. The zips are the ones bootanim.conf names
+zip="$here/bootanimation.zip" hzip="$here/bootanimation_holiday.zip" hint="$here/expressiveos-bootanim-hint.rc"
 [[ -f "$zip" ]] || fail "no $zip"
 sha=$(sha256sum -- "$zip" | cut -d' ' -f1)
 [[ "$sha" = "$BOOTANIM_ZIP_SHA256" ]] \
     || fail "bootanimation.zip is $sha, bootanim.conf says $BOOTANIM_ZIP_SHA256 (a partial checkout, or a re-render without updating bootanim.conf?)"
+for f in "$hzip" "$hint"; do [[ -f "$f" ]] || fail "no $f (a partial checkout?); the holiday zip and its init rc ship together"; done
+hsha=$(sha256sum -- "$hzip" | cut -d' ' -f1)
+[[ "$hsha" = "$BOOTANIM_HOLIDAY_ZIP_SHA256" ]] \
+    || fail "bootanimation_holiday.zip is $hsha, bootanim.conf says $BOOTANIM_HOLIDAY_ZIP_SHA256 (a partial checkout, or a re-render without updating bootanim.conf?)"
+
+# The /metadata hint is there because the phone's vendor init starts bootanim at late-fs, before
+# /data and its persist properties (cheetah: init.gs201.rc). If none does any more, the hint may
+# do nothing, which does no harm
+late=$(find "$top/$vdir" -path '*/etc/init/hw/init.*.rc' -type f -exec awk '
+    FNR == 1 { f = 0 }
+    $1 == "on" || $1 == "service" || $1 == "import" { f = $1 == "on" && $2 == "late-fs" && NF == 2 }
+    f && $1 == "start" && $2 == "bootanim" { print FILENAME; exit }' {} + 2>/dev/null | head -1 || true)
+[[ -n $late ]] \
+    || echo "note: no init rc in $vdir starts bootanim under 'on late-fs' (cheetah's init.gs201.rc did): check whether holiday boots still need the /metadata hint (README.md, \"Holiday boot animations\")"
+# But the hint does nothing unless frameworks/base's BootAnimation reads it and
+# device/lineage/sepolicy labels it for bootanim: without either, every holiday boot plays the
+# everyday animation. eos-verify.sh fails such a build, so it's refused here, before hours of building
+grep -qF '/metadata/bootanim' "$top/frameworks/base/cmds/bootanimation/BootAnimation.cpp" 2>/dev/null \
+    || fail "frameworks/base's BootAnimation.cpp doesn't read /metadata/bootanim: holiday boots would play the everyday animation (README.md, \"Holiday boot animations\")"
+grep -qF 'u:object_r:bootanim_metadata_file:s0' "$top/device/lineage/sepolicy/common/private/file_contexts" 2>/dev/null \
+    || fail "device/lineage/sepolicy's common/private/file_contexts doesn't label /metadata/bootanim bootanim_metadata_file: bootanim couldn't read the hint, so holiday boots would play the everyday animation (README.md, \"Holiday boot animations\")"
+grep -qF 'r_dir_file(bootanim, bootanim_metadata_file)' "$top/device/lineage/sepolicy/common/private/bootanim.te" 2>/dev/null \
+    || fail "device/lineage/sepolicy's common/private/bootanim.te doesn't let bootanim read bootanim_metadata_file: holiday boots would play the everyday animation (README.md, \"Holiday boot animations\")"
 
 # 2. Stage. The folder belongs to this kit: anything else in it goes.
 dest="$top/vendor/extra/bootanimation"
 mkdir -p -- "$dest"
-for f in "$zip" "$here/bootanimation.mk"; do
+for f in "$zip" "$hzip" "$hint" "$here/bootanimation.mk"; do
     n=${f##*/}
     if cmp -s -- "$f" "$dest/$n"; then
         echo "unchanged: vendor/extra/bootanimation/$n"
@@ -93,7 +120,7 @@ for f in "$zip" "$here/bootanimation.mk"; do
 done
 while IFS= read -r -d '' f; do
     n=${f##*/}
-    [[ "$n" = bootanimation.zip || "$n" = bootanimation.mk ]] && continue
+    [[ "$n" = bootanimation.zip || "$n" = bootanimation_holiday.zip || "$n" = expressiveos-bootanim-hint.rc || "$n" = bootanimation.mk ]] && continue
     [[ -f "$f" || -L "$f" ]] || fail "$f isn't a file this kit put there; move it out of the way"
     rm -f -- "$f"; echo "removed: vendor/extra/bootanimation/$n"
 done < <(find "$dest" -mindepth 1 -maxdepth 1 -print0)
@@ -119,4 +146,4 @@ if [[ "${TARGET_INCLUDE_BOOT_ANIMATIONS:-}" != false ]]; then
     echo "note: export TARGET_INCLUDE_BOOT_ANIMATIONS=false before building, or Evolution X's 12 other styles (about 190 MiB) ship in /product/media too"
 fi
 done=1
-echo "BOOTANIM_APPLY=OK sha256=$sha"
+echo "BOOTANIM_APPLY=OK sha256=$sha holiday=$hsha"
