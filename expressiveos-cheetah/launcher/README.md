@@ -10,8 +10,8 @@ newer releases from GitHub or the launcher's own updater install over the built-
 ## Status: waiting on an Android 17 build of Expressive Launcher
 
 **Don't build ExpressiveOS with this kit until `launcher.conf` pins a release built for Android 17.**
-QA 5.0.4, pinned here for now, and Stable 2.0.8 are compiled against android-16.0.0_r3's framework and
-WindowManager Shell (`framework-16.jar` and `WindowManager-Shell-16.jar` in the launcher's
+QA 5.0.4 (66), pinned here for now, and the current Stable 5.0.0 (62), like the older 2.0.8, are
+compiled against android-16.0.0_r3's framework and WindowManager Shell (`framework-16.jar` and `WindowManager-Shell-16.jar` in the launcher's
 `build.gradle` at `896a25f`), and the Shell's AIDL stubs are built into the APK. ExpressiveOS is Android
 17 r1, whose Shell sends `IRecentsAnimationRunner.onAnimationStart` one `Rect` fewer than the APK reads
 (Android 17 dropped `minimizedHomeBounds`), so as the Recents app every swipe-up and Overview
@@ -81,10 +81,11 @@ Home itself needs no config: the Home role's default is the highest-priority sys
 | `launcher.conf` | The pins (below), sourced by every script |
 | `fetch-launcher.sh [--out <dir>]` | Downloads the APK, its LICENSE and the two notices into `~/android-dt/launcher/` (`EL_CACHE` overrides it) and checks them: SHA-256 (and the APK's size), then the APK's package, version, v2 signer, permissions and uses-library tags (`tools/apk-info.py`, no build tools needed). A download is renamed into the cache only once it matches; a cached file that doesn't match is deleted. `EL_OFFLINE=1` never downloads. With `--out`, the verified `ExpressiveLauncher.apk`, `LICENSE`, `NOTICE.calculator` and `NOTICE.font` appear in `<dir>` only when everything passed. Last line `LAUNCHER_FETCH=OK dev.launcher.expressive.l3 5.0.4 (66)` |
 | `apply-launcher.sh [top]` | Default `~/expressiveos`. Fetches, stages `tree/` and the verified files into `vendor/extra/launcher` (removes `Android.bp` first, copies the rest, writes `Android.bp` last only when every copy worked, and removes files the kit no longer ships), adds `$(call inherit-product, vendor/extra/launcher/launcher.mk)` to `vendor/extra/product.mk` if that line isn't there at the top level (creating the file if needed; it fails if the line is only inside an `ifeq`/`ifdef`/`define` block), then runs `tools/launcher-check.sh tree`. A second run changes nothing. Last line `LAUNCHER_APPLY=OK ...` |
-| `tree/` | What lands in `vendor/extra/launcher`: `Android.bp`, `launcher.mk` (every ExpressiveOS phone's `lineage_<device>` product), the two XMLs, the two overlays and a `README.md` |
+| `tree/` | What lands in `vendor/extra/launcher`: `Android.bp`, `launcher.mk` (every ExpressiveOS phone's `lineage_<device>` product), the three XMLs (privapp permissions, hidden-API and user-type sysconfig), the two overlays and a `README.md` |
 | `tools/launcher-check.sh` | `tree`, `out` and `device` checks (below). Every check prints `PASS`, `FAIL` or `INFO`; all of them run; exit 1 on any `FAIL`; last line `LAUNCHER_CHECK=OK` or `LAUNCHER_CHECK=FAIL` |
 | `tools/launcher-xml.py` | XML and APK reads for the checks (`python3 -I`); its privapp and hidden-API reads are copies of `../viper4android/tools/v4a-xml.py`'s |
-| `tools/apk-info.py`, `tools/mk-line.awk` | Copies of ViPER4Android's APK reader and makefile-line finder, so this kit stands alone |
+| `tools/apk-info.py` | ViPER4Android's APK reader plus the `--home` and `--overlay` reads the `out` check uses: don't replace it with ViPER4Android's copy |
+| `tools/mk-line.awk` | A copy of ViPER4Android's makefile-line finder, so this kit stands alone |
 
 ## How to run
 
@@ -157,8 +158,8 @@ build is left in `out/`: `out` fails if one is.
 
 The full QA build, not "Core": Core leaves out the notification listener (dots) and the accessibility
 service. To move to a new release, change the whole block in `launcher.conf` from the release page and
-the update feed (`updates/qa-v2/latest.json` on the launcher repo's `updates` branch for QA,
-`updates/release/latest.json` for Stable), run `fetch-launcher.sh` (it refuses an APK whose permissions,
+the update feed (`qa-v2/latest.json` on the launcher repo's `updates` branch for QA,
+`release/latest.json` for Stable), run `fetch-launcher.sh` (it refuses an APK whose permissions,
 signer or uses-library tags changed: a new privileged permission goes into the privapp XML and
 `EL_PRIVAPP_PERMS` on purpose, or a clean flash won't boot under `enforce`), then `apply-launcher.sh` and the `out` and
 `device` checks. Keep the versionCode rising: a phone keeps whichever copy is newer.

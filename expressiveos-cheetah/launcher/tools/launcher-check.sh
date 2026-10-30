@@ -7,9 +7,10 @@
 #       Before the build (apply-launcher.sh runs it): vendor/extra/launcher matches the kit and
 #       launcher.conf, vendor/extra/product.mk inherits launcher.mk for every ExpressiveOS
 #       phone, the privapp allowlist covers every privileged permission the APK asks for (as
-#       this tree's frameworks/base declares them: a missing one stops the boot), the
-#       overlays still replace what Pixel's own config sets for Pixel Launcher, and the
-#       modules the launcher overrides are still the ones the tree builds.
+#       this tree's frameworks/base declares them: a missing one stops a clean flash's boot
+#       under ro.control_privapp_permissions=enforce), the overlays still replace what
+#       Pixel's own config sets for Pixel Launcher, and vendor/gms still names Pixel
+#       Launcher NexusLauncherRelease, which the launcher overrides.
 #   launcher-check.sh out <product_out> [host_out]
 #       After the build, before packing (the ExpressiveOS OTA script runs it): the APK
 #       landed unchanged with its permissions, sysconfig and two overlays, Pixel Launcher,
@@ -168,7 +169,7 @@ tree)
         if [[ -z "$missing" ]]; then
             pass "EL_PRIVAPP_PERMS covers every privileged permission the APK asks for ($(wc -w <<<"$priv") in this tree's frameworks/base)"
         else
-            bad "privileged in this tree's frameworks/base but not in EL_PRIVAPP_PERMS: $missing (add them to launcher.conf and tree/privapp-permissions-$EL_PACKAGE.xml, or the phone won't boot)"
+            bad "privileged in this tree's frameworks/base but not in EL_PRIVAPP_PERMS: $missing (add them to launcher.conf and tree/privapp-permissions-$EL_PACKAGE.xml, or a clean flash won't boot under enforce)"
         fi
         [[ -z "$extra" ]] || info "EL_PRIVAPP_PERMS also lists $extra, which this tree's frameworks/base doesn't mark privileged (harmless)"
     fi

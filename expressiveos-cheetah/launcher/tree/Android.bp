@@ -10,7 +10,7 @@ soong_namespace {
 // release's revision, launcher.conf EL_COMMIT), but 18 of the Lawnchair files it carries are
 // GPL-3.0-or-later (FontCache.kt, compiled into the APK, is one), its calculator is MIT
 // (NOTICE.calculator) and its Google Sans Flex font OFL-1.1 (NOTICE.font). The source repository
-// has no GPL text of its own yet (README.md, "Licence and credits").
+// has no GPL text of its own yet (the kit's launcher/README.md, "Licence and credits").
 license {
     name: "expressive_launcher_license",
     visibility: [":__subpackages__"],
