@@ -7,7 +7,7 @@ build because it is way ahead on 2.0.8"). It is the unmodified QA release APK, s
 Expressive's own release key, as a privileged system_ext app: nothing is rebuilt or re-signed, so
 newer releases from GitHub or the launcher's own updater install over the built-in copy.
 
-## Status: 5.0.5, the first Android 17 build, pinned for the 7 Pro test
+## Status: 5.0.7, the first Android 17 build that passes as the Recents app
 
 Releases up to QA 5.0.4 (66), and the current Stable 5.0.0 (62), are compiled against
 android-16.0.0_r3's framework and WindowManager Shell, and the Shell's AIDL stubs are built into the
@@ -18,13 +18,15 @@ swipe-up and Overview transition failed in the launcher's binder thread; `IHomeT
 differed too. Daryl chose (2026-10-30) to rebuild Expressive Launcher for Android 17 first and then
 replace Pixel Launcher completely, rather than ship it as Home only or with broken gestures.
 
-QA 5.0.5 (67, source `c6bbbe5`) is that rebuild: still compiled against the Android 16 jars, but on
-Android 17 (SDK 37) it reads and sends Android 17's layouts for each of those calls. It is pinned here
-before it is published, for the 7 Pro test: the build server's cache
-(`~/android-dt/launcher/<EL_FILE>`) holds the sealed APK, so `fetch-launcher.sh` uses it without a
-download, and it's published afterwards under `EL_TAG` as the same bytes, so `EL_URL` then works with no
-change here. `device` checks it on the phone: it fails on the launcher's failed binder calls in logcat
-once gestures have been tried.
+The rebuild is still compiled against the Android 16 jars, but on Android 17 (SDK 37) it reads and
+sends Android 17's layouts for each of those calls. On Daryl's 7 Pro (2026-10-30), QA 5.0.5 (67)
+crashed as the Recents app (`android.companion.virtualdevice.flags.Flags`, which Android 17 moved out
+of the boot classpath) and QA 5.0.6 (68) ran every gesture but left Overview's cards blank (four
+`TaskContainer` functions were lambda-returning expression bodies, so they never ran). QA 5.0.7 (69,
+source `512a855`) fixes both. Daryl waived the on-phone gesture test for 5.0.7 (2026-10-30 18:09
+UTC); it was installed on the 7 Pro over 5.0.6 without a crash. `tools/dex-refs.py` checks a release
+against a phone's own boot jars before a flash (it would have caught 5.0.5's crash), and `device`
+fails on the launcher's failed binder calls in logcat once gestures have been tried.
 
 This folder is only the launcher part of the ExpressiveOS kit. It works on the ExpressiveOS tree
 (`~/expressiveos`), for every phone in `../devices/`. **None of it applies to the Evolution X tree
@@ -36,13 +38,13 @@ tree` fails on the same.
 
 | On the phone | What it is | Source |
 |---|---|---|
-| `/system_ext/priv-app/ExpressiveLauncher/ExpressiveLauncher.apk` | Expressive Launcher QA 5.0.5 (`dev.launcher.expressive.l3`, versionCode 67), byte for byte | [denson9874/ExpressiveLauncher](https://github.com/denson9874/ExpressiveLauncher) release `qa-v5.0.5-67`, source revision `c6bbbe5` |
+| `/system_ext/priv-app/ExpressiveLauncher/ExpressiveLauncher.apk` | Expressive Launcher QA 5.0.7 (`dev.launcher.expressive.l3`, versionCode 69), byte for byte | [denson9874/ExpressiveLauncher](https://github.com/denson9874/ExpressiveLauncher) release `qa-v5.0.7-69`, source revision `512a855` |
 | `/system_ext/etc/permissions/privapp-permissions-dev.launcher.expressive.l3.xml` | Grants the 9 privileged permissions it asks for (Pixel Launcher is granted all 9 too) | this kit |
 | `/system_ext/etc/sysconfig/hiddenapi-dev.launcher.expressive.l3.xml` | Lifts hidden-API restrictions, as Google's list does for Pixel Launcher | this kit |
 | `/system_ext/etc/sysconfig/preinstalled-packages-dev.launcher.expressive.l3.xml` | Installs it for the phone's own users (`SYSTEM`, `FULL`) only, as Google's list does Pixel Launcher; without it the build's user-type mode would put it in work profiles, clones and the private space too | this kit |
 | `/system_ext/overlay/ExpressiveLauncherFrameworkOverlay.apk` | The framework config below | this kit |
 | `/system_ext/overlay/ExpressiveLauncherSetupWizardOverlay.apk` | Pixel's setup wizard ends on Expressive Launcher's "All set" page and knows it as the launcher | this kit |
-| The licence texts in the system_ext NOTICE file | Apache-2.0 (AOSP Launcher3, Lawnchair), MIT (the calculator), OFL-1.1 (Google Sans Flex) | `LICENSE.txt` and the calculator's `LICENSE` at `c6bbbe5`; Google Sans Flex's `OFL.txt` at `6cffd50` |
+| The licence texts in the system_ext NOTICE file | Apache-2.0 (AOSP Launcher3, Lawnchair), MIT (the calculator), OFL-1.1 (Google Sans Flex) | `LICENSE.txt` and the calculator's `LICENSE` at `512a855`; Google Sans Flex's `OFL.txt` at `6cffd50` |
 
 What goes: Pixel Launcher (vendor/gms's `NexusLauncherRelease`) and AOSP's `Launcher3QuickStep`
 (build/make's `handheld_system_ext.mk`), the two launchers the build installs, through
@@ -78,13 +80,15 @@ Home itself needs no config: the Home role's default is the highest-priority sys
 | File | What it does |
 |---|---|
 | `launcher.conf` | The pins (below), sourced by every script |
-| `fetch-launcher.sh [--out <dir>]` | Downloads the APK, its LICENSE and the two notices into `~/android-dt/launcher/` (`EL_CACHE` overrides it) and checks them: SHA-256 (and the APK's size), then the APK's package, version, signer (its v3.1, v3 or v2 block), permissions and uses-library tags (`tools/apk-info.py`, no build tools needed). A download is renamed into the cache only once it matches; a cached file that doesn't match is deleted. `EL_OFFLINE=1` never downloads. With `--out`, the verified `ExpressiveLauncher.apk`, `LICENSE`, `NOTICE.calculator` and `NOTICE.font` appear in `<dir>` only when everything passed. Last line `LAUNCHER_FETCH=OK dev.launcher.expressive.l3 5.0.4 (66)` |
+| `fetch-launcher.sh [--out <dir>]` | Downloads the APK, its LICENSE and the two notices into `~/android-dt/launcher/` (`EL_CACHE` overrides it) and checks them: SHA-256 (and the APK's size), then the APK's package, version, signer (its v3.1, v3 or v2 block), permissions and uses-library tags (`tools/apk-info.py`, no build tools needed). A download is renamed into the cache only once it matches; a cached file that doesn't match is deleted. `EL_OFFLINE=1` never downloads. With `--out`, the verified `ExpressiveLauncher.apk`, `LICENSE`, `NOTICE.calculator` and `NOTICE.font` appear in `<dir>` only when everything passed. Last line `LAUNCHER_FETCH=OK dev.launcher.expressive.l3 5.0.7 (69)` |
 | `apply-launcher.sh [top]` | Default `~/expressiveos`. Fetches, stages `tree/` and the verified files into `vendor/extra/launcher` (removes `Android.bp` first, copies the rest, writes `Android.bp` last only when every copy worked, and removes files the kit no longer ships), adds `$(call inherit-product, vendor/extra/launcher/launcher.mk)` to `vendor/extra/product.mk` if that line isn't there at the top level (creating the file if needed; it fails if the line is only inside an `ifeq`/`ifdef`/`define` block), then runs `tools/launcher-check.sh tree`. A second run changes nothing. Last line `LAUNCHER_APPLY=OK ...` |
 | `tree/` | What lands in `vendor/extra/launcher`: `Android.bp`, `launcher.mk` (every ExpressiveOS phone's `lineage_<device>` product), the three XMLs (privapp permissions, hidden-API and user-type sysconfig), the two overlays and a `README.md` |
 | `tools/launcher-check.sh` | `tree`, `out` and `device` checks (below). Every check prints `PASS`, `FAIL` or `INFO`; all of them run; exit 1 on any `FAIL`; last line `LAUNCHER_CHECK=OK` or `LAUNCHER_CHECK=FAIL` |
 | `tools/launcher-xml.py` | XML and APK reads for the checks (`python3 -I`); its privapp and hidden-API reads are copies of `../viper4android/tools/v4a-xml.py`'s |
 | `tools/apk-info.py` | ViPER4Android's APK reader plus the `--home` and `--overlay` reads the `out` check uses: don't replace it with ViPER4Android's copy |
 | `tools/mk-line.awk` | A copy of ViPER4Android's makefile-line finder, so this kit stands alone |
+| `tools/dex-refs.py` | What a launcher release's code needs that a phone's platform lacks, read from the APK's dex files and the phone's jars (no build tools): missing classes, methods and fields with the APK methods that use them, uses that can't link (static/instance, invoke kind, access, final), APK classes the platform shadows, and abstract platform methods an APK class doesn't implement. Each use is marked `[caught: ...]` or `[reads SDK_INT]` when a catch or SDK check may keep it from running, so the output is for review, not a verdict. `--mapping` turns R8 names back into source names. The output format is in the script's header. Exit 2 when a platform dex can't be read |
+| `tools/tests/dex-refs-test.py` | Builds its own dex files and checks `dex-refs.py` on them (`python3 -I`); last line `DEX_REFS_TEST=OK` |
 
 ## How to run
 
@@ -101,6 +105,24 @@ $K/tools/launcher-check.sh out ~/expressiveos/out/target/product/cheetah ~/expre
 # on a test phone with the build flashed, after a reboot and one unlock:
 $K/tools/launcher-check.sh device
 ```
+
+Before a new launcher release reaches a phone, check it against that phone's platform: Expressive
+Launcher is compiled against Android 16's jars, so a class Android 17 moved or removed only shows up
+when the code runs (5.0.5's crash). Take the jars in the phone's boot classpath order, plus the
+`<uses-library>` jars, either from the phone or from the build's `system.img` and `system_ext.img`:
+
+```bash
+mkdir jars && i=0
+for j in $(adb shell 'echo $BOOTCLASSPATH' | tr -d '\r' | tr : ' ') \
+         /system_ext/framework/androidx.window.extensions.jar /system_ext/framework/androidx.window.sidecar.jar; do
+  i=$((i+1)); adb pull "$j" "jars/$(printf %02d $i)-$(basename "$j")"
+done
+python3 -I $K/tools/dex-refs.py --mapping <release>/mapping/mapping.txt <release APK> jars/*.jar > dex-refs.txt
+```
+
+Read every `missing-*`, `link-error` and `unimplemented` entry that has a `from` or `in` line without
+`[caught: ...]`: if that method can run on the phone, it's a crash. The mapping must be the release's own
+(`dex-refs.py` notes a `pg_map_id` that doesn't match the APK).
 
 The first build after this kit lands should start with `m installclean` (the runner's
 `expressiveos-build` with installclean, or `EOS_INSTALLCLEAN=1`), so no Pixel Launcher from an earlier
@@ -145,13 +167,13 @@ build is left in `out/`: `out` fails if one is.
 
 | What | Value |
 |---|---|
-| Release | QA `5.0.5`, versionCode 67, tag `qa-v5.0.5-67` (published after the 7 Pro test; Jenkins build 14, release id `qa-5.0.5-67-build-14`), source revision `c6bbbe52f4108ba1991837d01f9270c18a4af6ef` |
-| URL | https://github.com/denson9874/ExpressiveLauncher/releases/download/qa-v5.0.5-67/ExpressiveLauncherL3-5.0.5-Android17-QPR2-Beta5-Jenkins-QA-release-signed.apk |
-| sha256 / size | `3c44a7e53983d0673fa25183fe4c2a91039e5304dc2b5b0dc791a419a9d2e6cc` / 24,424,574 bytes |
+| Release | QA `5.0.7`, versionCode 69, tag `qa-v5.0.7-69` (Jenkins build 16, release id `qa-5.0.7-69-build-16`), source revision `512a855381ac5f142db52c29dca0dda81c803c02` |
+| URL | https://github.com/denson9874/ExpressiveLauncher/releases/download/qa-v5.0.7-69/ExpressiveLauncherL3-5.0.7-Android17-QPR2-Beta5-Jenkins-QA-release-signed.apk |
+| sha256 / size | `e6a16aedf3a22c81967508fb48760f17cef8ea689f4dde339aa0837f815f30ee` / 24,424,575 bytes |
 | Signer | certificate sha256 `c14160306d5c059b3d119f15fb74e08c57cc272316e80b36e192c71dc9e4d0d2`, the same for Stable and QA |
 | Package | `dev.launcher.expressive.l3`, minSdk 31, targetSdk 37 |
-| LICENSE | `LICENSE.txt` at `c6bbbe5`, sha256 `4bb3ad323fe4c27f06a47b39c0ae6ad35315f15c40e46c81a5211f7f519286ab` (Apache-2.0) |
-| Notices | the calculator's `LICENSE` at `c6bbbe5`, sha256 `6f1b3f6fecde974467f78fec9fdad2614c1652ec2bda13206b83c2f9f083a0c9` (MIT); Google Sans Flex's `OFL.txt` at `6cffd50d9ff4ead23eda9dc7864eb9aed9fe304c`, sha256 `831b6e041705873c3e6efb18c4c96202bc41c8be42a456d3d26c47abf14816d0` (OFL-1.1). The launcher's own `docs/licenses/GoogleSansFlex-OFL.txt` is empty at `c6bbbe5`, so the font's repository is the source |
+| LICENSE | `LICENSE.txt` at `512a855`, sha256 `4bb3ad323fe4c27f06a47b39c0ae6ad35315f15c40e46c81a5211f7f519286ab` (Apache-2.0) |
+| Notices | the calculator's `LICENSE` at `512a855`, sha256 `6f1b3f6fecde974467f78fec9fdad2614c1652ec2bda13206b83c2f9f083a0c9` (MIT); Google Sans Flex's `OFL.txt` at `6cffd50d9ff4ead23eda9dc7864eb9aed9fe304c`, sha256 `831b6e041705873c3e6efb18c4c96202bc41c8be42a456d3d26c47abf14816d0` (OFL-1.1). The launcher's own `docs/licenses/GoogleSansFlex-OFL.txt` is empty at `512a855`, so the font's repository is the source |
 | Permissions | 46 (`EL_PERMS`); privileged: `PACKAGE_USAGE_STATS`, `BROADCAST_CLOSE_SYSTEM_DIALOGS`, `CONTROL_REMOTE_APP_TRANSITION_ANIMATIONS`, `START_TASKS_FROM_RECENTS`, `WRITE_SECURE_SETTINGS`, `STATUS_BAR`, `STOP_APP_SWITCHES`, `ALLOW_SLIPPERY_TOUCHES`, `ACCESS_HIDDEN_PROFILES_FULL` |
 | uses-library | `androidx.window.extensions`, `androidx.window.sidecar`, both `required="false"` |
 
@@ -165,7 +187,7 @@ signer or uses-library tags changed: a new privileged permission goes into the p
 
 ## On a phone that already has it
 
-A phone with Expressive Launcher installed from GitHub (Daryl's 7 Pro: 5.0.4, versionCode 66, holding
+A phone with Expressive Launcher installed from GitHub (Daryl's 7 Pro: 5.0.7, versionCode 69, holding
 the Home role) keeps its copy as an update of the built-in app when its versionCode is at least the
 built-in one's; otherwise the built-in one replaces it. Its home screen and settings stay either way.
 An update is not checked against the privapp allowlist, so such a phone can't show a missing
@@ -186,7 +208,7 @@ What follows from the GPL part: every ExpressiveOS release must come with the la
 the release's source revision (`EL_COMMIT`, which `sources.txt` records), like the other GPL code in the
 ROM. The launcher's repository has no GPL-3.0 text of its own yet; once it has one, pin it here and add
 it to `license_text`. Its source at the pinned revision is public at
-https://github.com/denson9874/ExpressiveLauncher/tree/c6bbbe52f4108ba1991837d01f9270c18a4af6ef.
+https://github.com/denson9874/ExpressiveLauncher/tree/512a855381ac5f142db52c29dca0dda81c803c02.
 
 ## Not covered, and follow-ups
 
