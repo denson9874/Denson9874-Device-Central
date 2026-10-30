@@ -41,7 +41,8 @@ APK isn't even a module), removes anything else there, and adds
 Running it again changes nothing; its last line is `WALLPAPERS_APPLY=OK` or `WALLPAPERS_APPLY=FAIL`.
 `vendor/extra` isn't a repo project, so `repo sync` leaves it alone.
 
-`wallpapers.mk` (for `lineage_cheetah` only) does two things, and in 1.1 a third:
+`wallpapers.mk` (for every ExpressiveOS phone: `lineage_cheetah`, `lineage_husky`, `lineage_kodiak`,
+`lineage_grizzly`, `lineage_cubs` and `lineage_yogi`) does two things, and in 1.1 a third:
 
 1. **The first-boot wallpaper.** It copies Bloom to `/product/media/wallpaper/expressiveos_bloom.png`
    and sets `ro.config.wallpaper` to it. `WallpaperManager.openRawDefaultWallpaper()` (frameworks/base
@@ -69,10 +70,27 @@ Running it again changes nothing; its last line is `WALLPAPERS_APPLY=OK` or `WAL
    build. `default_wallpapper_hidden` (the picker's spelling) keeps Bloom from showing twice. 1.1 has to
    add Pixel's own wallpapers to it (or the other way round) before it goes into `PRODUCT_PACKAGES`.
 
+## On the other phones
+
+Every ExpressiveOS phone starts on Bloom, with the theme following it. The four were drawn for
+cheetah's 1440x3120 screen, and no phone gets a size of its own: the system scales the picture to
+fill each screen and crops what's left over (`WallpaperCropper`). On the other screens (their trees'
+`TARGET_SCREEN_WIDTH`x`TARGET_SCREEN_HEIGHT`) that is cosmetic only:
+
+- No phone's screen is taller than 3120 px, so the picture is only ever scaled down and stays sharp.
+- husky and kodiak (1344x2992), grizzly (1280x2856) and cubs (1080x2424) are a little taller for their
+  width than cheetah: about 3% of the picture's width is cropped, split between the sides. yogi's
+  outer screen (1080x2342) has cheetah's shape.
+- yogi's inner screen is close to square, so any crop of this tall picture shows a much shorter band
+  of it there: less of the ribbon in the lower part, or of the clear top, depending on the crop the
+  system picks for that screen.
+- The first-boot colours come from the wallpaper (`theming_defaults`), so they're Bloom's blue on
+  every phone, within the few degrees of hue `tools/monet.py` already allows for.
+
 ## Files
 
 - `wallpapers.conf`: the sha256 of every PNG, the default, and the pinned sources.
-- `wallpapers.mk`: the first two parts above.
+- `wallpapers.mk`: the first two parts above, for every ExpressiveOS phone.
 - `overlay/frameworks/base/core/res/res/values/config.xml`: `theming_defaults`.
 - `ExpressiveWallpapers/`: `Android.bp`, the manifest (`org.expressiveos.wallpapers`),
   `res/xml/wallpapers.xml` (the picker's format: attributes without a namespace), strings, and the

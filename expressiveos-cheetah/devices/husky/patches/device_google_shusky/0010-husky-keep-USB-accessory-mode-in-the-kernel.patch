@@ -1,0 +1,34 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 15:13:40 +0200
+Subject: [PATCH 10/10] husky: keep USB accessory mode in the kernel
+
+CP3A's usb_accessory_utils sets ro.vendor.usb.userspace.aoa.enabled at
+early boot from an aconfig flag, and init.zuma.usb.rc then turns on
+ro.usb.userspace.aoa.enabled, which hands accessory mode (wired Android
+Auto) to the userspace aoad daemon. This platform has no aoad (no AID, no
+policy), so set the vendor property to false at build time: read-only
+properties can't be set twice, and accessory mode stays on the kernel's
+accessory function, as with the CP2A blobs.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ husky/vendor.prop | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/husky/vendor.prop b/husky/vendor.prop
+index cd4c7b5..48173d9 100644
+--- a/husky/vendor.prop
++++ b/husky/vendor.prop
+@@ -44,3 +44,8 @@ persist.vendor.vibrator.hal.context.scale=60
+ ro.vendor.vibrator.hal.device.mass=0.222
+ ro.vendor.vibrator.hal.loc.coeff=2.8
+ vendor.audio.hapticgenerator.distortion.output.gain=0.38
++
++# USB: AOA (accessory mode, wired Android Auto) through the kernel accessory function.
++# CP3A vendor can hand it to the userspace aoad daemon, which this platform lacks;
++# usb_accessory_utils sets this from an aconfig flag, and a build prop is read-only.
++ro.vendor.usb.userspace.aoa.enabled=false
+-- 
+2.43.0
+

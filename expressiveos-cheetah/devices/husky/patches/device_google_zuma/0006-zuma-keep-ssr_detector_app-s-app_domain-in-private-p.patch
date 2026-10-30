@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 13:31:19 +0200
+Subject: [PATCH 6/6] zuma: keep ssr_detector_app's app_domain() in private
+ policy
+
+The CP3A sepolicy import put app_domain(ssr_detector_app) in
+system_ext/public. The macro expands to type_transition rules, which
+version_policy can't attributize in public policy, so the husky build
+stopped at plat_pub_versioned.cil ("typetransition unsupported statement
+in attributee policy"). Declare the type with appdomain in public and
+call app_domain() in private, as the tree did before the import.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ sepolicy/system_ext/private/ssr_detector_app.te | 2 ++
+ sepolicy/system_ext/public/ssr_detector_app.te  | 4 +---
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/sepolicy/system_ext/private/ssr_detector_app.te b/sepolicy/system_ext/private/ssr_detector_app.te
+index 22727519..ca932a69 100644
+--- a/sepolicy/system_ext/private/ssr_detector_app.te
++++ b/sepolicy/system_ext/private/ssr_detector_app.te
+@@ -1,3 +1,5 @@
++app_domain(ssr_detector_app)
++
+ set_prop(ssr_detector_app, system_ssrdump_prop)
+ 
+ allow ssr_detector_app app_api_service:service_manager find;
+diff --git a/sepolicy/system_ext/public/ssr_detector_app.te b/sepolicy/system_ext/public/ssr_detector_app.te
+index 7e146766..f08d31f8 100644
+--- a/sepolicy/system_ext/public/ssr_detector_app.te
++++ b/sepolicy/system_ext/public/ssr_detector_app.te
+@@ -1,3 +1 @@
+-type ssr_detector_app, coredomain, domain;
+-
+-app_domain(ssr_detector_app)
++type ssr_detector_app, appdomain, coredomain, domain;
+-- 
+2.43.0
+

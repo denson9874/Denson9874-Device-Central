@@ -1,0 +1,330 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 13:07:11 +0200
+Subject: [PATCH 08/10] husky: values stock sets that our build left at the
+ AOSP default
+
+A stock-vs-build comparison of every static overlay's values (stock
+CP3A.261005.005 against the target packages' effective values in our
+build) found these left at the AOSP default, or overridden. Each overlay
+copies stock's values from its APKs (rro2xml.py):
+- framework (priority 2): pin the camera app, compile Play Store in
+  pre-reboot dexopt's synchronous phase, Play Protect's dynamic
+  instrumentation consumer (OdadPrebuilt), and stock's 3440x1600 external
+  display peak (vendor/pixel-style's Pixelframework-res sets 3840x2160 at
+  priority 1, tied with zuma's stock value)
+- SystemUI: the screenshot Edit button opens Markup, the Files button opens
+  Files by Google, Quick Share copy, the avatar picker we ship
+  (com.google.android.avatarpicker, not com.android.avatarpicker), and Google
+  Home first in device controls
+- Settings: Google search and TalkBack slices, network list aggregation
+- Wi-Fi: stock's 5 GHz scoring thresholds (bad -80, entry -77; AOSP -90/-85
+  kept a weak 5 GHz network much longer)
+- Photo picker: Google Photos as the cloud media provider
+Same as cheetah's.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ device-husky.mk                                   |  8 ++++++++
+ .../FrameworkResOverlayStockHusky/Android.bp      |  9 +++++++++
+ .../AndroidManifest.xml                           | 13 +++++++++++++
+ .../res/values/stock.xml                          | 11 +++++++++++
+ .../MediaProviderOverlayStockHusky/Android.bp     |  9 +++++++++
+ .../AndroidManifest.xml                           | 14 ++++++++++++++
+ .../res/values/stock.xml                          |  6 ++++++
+ .../overlay/SettingsOverlayStockHusky/Android.bp  |  9 +++++++++
+ .../SettingsOverlayStockHusky/AndroidManifest.xml | 13 +++++++++++++
+ .../res/values/stock.xml                          | 15 +++++++++++++++
+ .../overlay/SystemUIOverlayStockHusky/Android.bp  |  9 +++++++++
+ .../SystemUIOverlayStockHusky/AndroidManifest.xml | 13 +++++++++++++
+ .../res/values/stock.xml                          | 11 +++++++++++
+ husky/overlay/WifiOverlayStockHusky/Android.bp    |  9 +++++++++
+ .../WifiOverlayStockHusky/AndroidManifest.xml     | 14 ++++++++++++++
+ .../WifiOverlayStockHusky/res/values/stock.xml    |  6 ++++++
+ 16 files changed, 169 insertions(+)
+ create mode 100644 husky/overlay/FrameworkResOverlayStockHusky/Android.bp
+ create mode 100644 husky/overlay/FrameworkResOverlayStockHusky/AndroidManifest.xml
+ create mode 100644 husky/overlay/FrameworkResOverlayStockHusky/res/values/stock.xml
+ create mode 100644 husky/overlay/MediaProviderOverlayStockHusky/Android.bp
+ create mode 100644 husky/overlay/MediaProviderOverlayStockHusky/AndroidManifest.xml
+ create mode 100644 husky/overlay/MediaProviderOverlayStockHusky/res/values/stock.xml
+ create mode 100644 husky/overlay/SettingsOverlayStockHusky/Android.bp
+ create mode 100644 husky/overlay/SettingsOverlayStockHusky/AndroidManifest.xml
+ create mode 100644 husky/overlay/SettingsOverlayStockHusky/res/values/stock.xml
+ create mode 100644 husky/overlay/SystemUIOverlayStockHusky/Android.bp
+ create mode 100644 husky/overlay/SystemUIOverlayStockHusky/AndroidManifest.xml
+ create mode 100644 husky/overlay/SystemUIOverlayStockHusky/res/values/stock.xml
+ create mode 100644 husky/overlay/WifiOverlayStockHusky/Android.bp
+ create mode 100644 husky/overlay/WifiOverlayStockHusky/AndroidManifest.xml
+ create mode 100644 husky/overlay/WifiOverlayStockHusky/res/values/stock.xml
+
+diff --git a/device-husky.mk b/device-husky.mk
+index dad467a..a5629f1 100644
+--- a/device-husky.mk
++++ b/device-husky.mk
+@@ -95,3 +95,11 @@ PRODUCT_PACKAGES += \
+ # Keep Google Play services from preparing Google's OTAs (sysconfig/disable-google-ota.xml).
+ PRODUCT_COPY_FILES += \
+     $(DEVICE_PATH)/sysconfig/disable-google-ota.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/sysconfig/disable-google-ota.xml
++
++# Values stock husky (CP3A.261005.005) sets that our build left at the AOSP default
++PRODUCT_PACKAGES += \
++    FrameworkResOverlayStockHusky \
++    MediaProviderOverlayStockHusky \
++    SettingsOverlayStockHusky \
++    SystemUIOverlayStockHusky \
++    WifiOverlayStockHusky
+diff --git a/husky/overlay/FrameworkResOverlayStockHusky/Android.bp b/husky/overlay/FrameworkResOverlayStockHusky/Android.bp
+new file mode 100644
+index 0000000..bbe3bb3
+--- /dev/null
++++ b/husky/overlay/FrameworkResOverlayStockHusky/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "FrameworkResOverlayStockHusky",
++    product_specific: true,
++}
+diff --git a/husky/overlay/FrameworkResOverlayStockHusky/AndroidManifest.xml b/husky/overlay/FrameworkResOverlayStockHusky/AndroidManifest.xml
+new file mode 100644
+index 0000000..d24c2ec
+--- /dev/null
++++ b/husky/overlay/FrameworkResOverlayStockHusky/AndroidManifest.xml
+@@ -0,0 +1,13 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="android.overlay.stock.husky">
++    <!-- Values stock husky (CP3A.261005.005) sets and our build didn't. Priority 2: vendor/pixel-style's Pixelframework-res (priority 1) sets a 3840x2160 external display peak; stock husky's is 3440x1600. -->
++    <overlay
++        android:isStatic="true"
++        android:priority="2"
++        android:targetPackage="android" />
++</manifest>
+diff --git a/husky/overlay/FrameworkResOverlayStockHusky/res/values/stock.xml b/husky/overlay/FrameworkResOverlayStockHusky/res/values/stock.xml
+new file mode 100644
+index 0000000..d1f2baa
+--- /dev/null
++++ b/husky/overlay/FrameworkResOverlayStockHusky/res/values/stock.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Generated by tools/rro2xml.py from the stock husky CP3A.261005.005 overlays: framework-res__husky__auto_generated_rro_vendor.apk, PixelConfigOverlayCommon.apk, framework-res__husky__auto_generated_rro_product.apk. -->
++<resources>
++    <bool name="config_pinnerCameraApp">true</bool>
++    <integer name="config_externalDisplayPeakHeight">1600</integer>
++    <integer name="config_externalDisplayPeakWidth">3440</integer>
++    <string name="config_dynamicInstrumentationEventConsumer" translatable="false">com.google.android.odad/com.google.android.apps.miphone.odad.hb.HummingbirdEventService</string>
++    <string-array name="config_pr_dexopt_sync_forced_packages">
++        <item>com.android.vending</item>
++    </string-array>
++</resources>
+diff --git a/husky/overlay/MediaProviderOverlayStockHusky/Android.bp b/husky/overlay/MediaProviderOverlayStockHusky/Android.bp
+new file mode 100644
+index 0000000..41ffc7f
+--- /dev/null
++++ b/husky/overlay/MediaProviderOverlayStockHusky/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "MediaProviderOverlayStockHusky",
++    product_specific: true,
++}
+diff --git a/husky/overlay/MediaProviderOverlayStockHusky/AndroidManifest.xml b/husky/overlay/MediaProviderOverlayStockHusky/AndroidManifest.xml
+new file mode 100644
+index 0000000..2fa7c8b
+--- /dev/null
++++ b/husky/overlay/MediaProviderOverlayStockHusky/AndroidManifest.xml
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.android.providers.media.module.overlay.stock.husky">
++    <!-- Values stock husky (CP3A.261005.005) sets and our build didn't. Priority 1: nothing else sets them. -->
++    <overlay
++        android:isStatic="true"
++        android:priority="1"
++        android:targetName="MediaProviderConfig"
++        android:targetPackage="com.android.providers.media.module" />
++</manifest>
+diff --git a/husky/overlay/MediaProviderOverlayStockHusky/res/values/stock.xml b/husky/overlay/MediaProviderOverlayStockHusky/res/values/stock.xml
+new file mode 100644
+index 0000000..62c0120
+--- /dev/null
++++ b/husky/overlay/MediaProviderOverlayStockHusky/res/values/stock.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Generated by tools/rro2xml.py from the stock husky CP3A.261005.005 overlays: MediaProviderOverlay.apk. -->
++<resources>
++    <string name="config_default_cloud_media_provider_package" translatable="false">com.google.android.apps.photos</string>
++    <string name="config_default_cloud_provider_authority" translatable="false">com.google.android.apps.photos.cloudpicker</string>
++</resources>
+diff --git a/husky/overlay/SettingsOverlayStockHusky/Android.bp b/husky/overlay/SettingsOverlayStockHusky/Android.bp
+new file mode 100644
+index 0000000..2bd3651
+--- /dev/null
++++ b/husky/overlay/SettingsOverlayStockHusky/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "SettingsOverlayStockHusky",
++    product_specific: true,
++}
+diff --git a/husky/overlay/SettingsOverlayStockHusky/AndroidManifest.xml b/husky/overlay/SettingsOverlayStockHusky/AndroidManifest.xml
+new file mode 100644
+index 0000000..a1ce77c
+--- /dev/null
++++ b/husky/overlay/SettingsOverlayStockHusky/AndroidManifest.xml
+@@ -0,0 +1,13 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.android.settings.overlay.stock.husky">
++    <!-- Values stock husky (CP3A.261005.005) sets and our build didn't. Priority 1: nothing else sets them. -->
++    <overlay
++        android:isStatic="true"
++        android:priority="1"
++        android:targetPackage="com.android.settings" />
++</manifest>
+diff --git a/husky/overlay/SettingsOverlayStockHusky/res/values/stock.xml b/husky/overlay/SettingsOverlayStockHusky/res/values/stock.xml
+new file mode 100644
+index 0000000..5dad349
+--- /dev/null
++++ b/husky/overlay/SettingsOverlayStockHusky/res/values/stock.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Generated by tools/rro2xml.py from the stock husky CP3A.261005.005 overlays: SettingsGoogle__husky__auto_generated_rro_product.apk, SettingsGoogle__husky__auto_generated_rro_vendor.apk. -->
++<resources>
++    <bool name="config_network_selection_list_aggregation_enabled">true</bool>
++    <string-array name="config_settings_slices_accessibility_components">
++        <item>com.google.android.marvin.talkback/com.android.switchaccess.SwitchAccessService</item>
++        <item>com.google.android.marvin.talkback/com.google.android.marvin.talkback.TalkBackService</item>
++        <item>com.google.android.marvin.talkback/com.google.android.accessibility.selecttospeak.SelectToSpeakService</item>
++        <item>com.google.android.marvin.talkback/com.google.android.accessibility.accessibilitymenu.AccessibilityMenuService</item>
++    </string-array>
++    <string-array name="slice_allowlist_package_names">
++        <item>com.google.android.gms</item>
++        <item>com.google.android.googlequicksearchbox</item>
++    </string-array>
++</resources>
+diff --git a/husky/overlay/SystemUIOverlayStockHusky/Android.bp b/husky/overlay/SystemUIOverlayStockHusky/Android.bp
+new file mode 100644
+index 0000000..5c01e00
+--- /dev/null
++++ b/husky/overlay/SystemUIOverlayStockHusky/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "SystemUIOverlayStockHusky",
++    product_specific: true,
++}
+diff --git a/husky/overlay/SystemUIOverlayStockHusky/AndroidManifest.xml b/husky/overlay/SystemUIOverlayStockHusky/AndroidManifest.xml
+new file mode 100644
+index 0000000..0861a22
+--- /dev/null
++++ b/husky/overlay/SystemUIOverlayStockHusky/AndroidManifest.xml
+@@ -0,0 +1,13 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.android.systemui.overlay.stock.husky">
++    <!-- Values stock husky (CP3A.261005.005) sets and our build didn't. Priority 1: nothing else sets them. -->
++    <overlay
++        android:isStatic="true"
++        android:priority="1"
++        android:targetPackage="com.android.systemui" />
++</manifest>
+diff --git a/husky/overlay/SystemUIOverlayStockHusky/res/values/stock.xml b/husky/overlay/SystemUIOverlayStockHusky/res/values/stock.xml
+new file mode 100644
+index 0000000..15d39bf
+--- /dev/null
++++ b/husky/overlay/SystemUIOverlayStockHusky/res/values/stock.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Generated by tools/rro2xml.py from the stock husky CP3A.261005.005 overlays: SystemUIGoogle__husky__auto_generated_rro_product.apk. -->
++<resources>
++    <string name="config_avatar_picker_package" translatable="false">com.google.android.avatarpicker</string>
++    <string name="config_remoteCopyPackage" translatable="false">com.google.android.gms/.nearby.sharing.RemoteCopyShareSheetActivity</string>
++    <string name="config_screenshotEditor" translatable="false">com.google.android.markup/com.google.android.markup.AnnotateActivity</string>
++    <string name="config_screenshotFilesApp" translatable="false">com.google.android.apps.nbu.files/com.google.android.apps.nbu.files.home.HomeActivity</string>
++    <string-array name="config_controlsPreferredPackages">
++        <item>com.google.android.apps.chromecast.app</item>
++    </string-array>
++</resources>
+diff --git a/husky/overlay/WifiOverlayStockHusky/Android.bp b/husky/overlay/WifiOverlayStockHusky/Android.bp
+new file mode 100644
+index 0000000..9a6a846
+--- /dev/null
++++ b/husky/overlay/WifiOverlayStockHusky/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "WifiOverlayStockHusky",
++    product_specific: true,
++}
+diff --git a/husky/overlay/WifiOverlayStockHusky/AndroidManifest.xml b/husky/overlay/WifiOverlayStockHusky/AndroidManifest.xml
+new file mode 100644
+index 0000000..e65eb27
+--- /dev/null
++++ b/husky/overlay/WifiOverlayStockHusky/AndroidManifest.xml
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="com.android.wifi.resources.overlay.stock.husky">
++    <!-- Values stock husky (CP3A.261005.005) sets and our build didn't. Priority 1: nothing else sets them. -->
++    <overlay
++        android:isStatic="true"
++        android:priority="1"
++        android:targetName="WifiCustomization"
++        android:targetPackage="com.android.wifi.resources" />
++</manifest>
+diff --git a/husky/overlay/WifiOverlayStockHusky/res/values/stock.xml b/husky/overlay/WifiOverlayStockHusky/res/values/stock.xml
+new file mode 100644
+index 0000000..e14318e
+--- /dev/null
++++ b/husky/overlay/WifiOverlayStockHusky/res/values/stock.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Generated by tools/rro2xml.py from the stock husky CP3A.261005.005 overlays: PixelWifiOverlay2023.apk. -->
++<resources>
++    <integer name="config_wifi_framework_wifi_score_bad_rssi_threshold_5GHz">-80</integer>
++    <integer name="config_wifi_framework_wifi_score_entry_rssi_threshold_5GHz">-77</integer>
++</resources>
+-- 
+2.43.0
+
