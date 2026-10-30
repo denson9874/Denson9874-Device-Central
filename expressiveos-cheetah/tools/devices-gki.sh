@@ -247,7 +247,7 @@ if nice -n 19 bash "$here_kit/ksu/tools/ksu-ddk.sh" fetch "$K" "$ddk"; then
             echo "-- undefined symbols: ours vs ksud's own 6.12 module (< only ours, > only theirs)"
             diff <(readelf -sW "$ko" | awk '$7 == "UND" && $8 != "" {print $8}' | sort -u) \
                  <(readelf -sW "$ko612" | awk '$7 == "UND" && $8 != "" {print $8}' | sort -u) | grep '^[<>]' | head -20
-            echo "ko-info.py like (what cheetah-ksu.sh checks): $(koinfo like "$ko" "$ko612" 2>&1)"
+            echo "ko-info.py like (what cheetah-ksu.sh checks): $(python3 -I "$here_kit/ksu/tools/ko-info.py" like "$ko" "$ko612" 2>&1)"
         fi
         echo "-- against the stock kodiak kernel"
         vkb=$(find "$eos/vendor/google/kodiak-images" "$evo/vendor/google/kodiak-images" -maxdepth 3 -name vendor_kernel_boot.img 2> /dev/null | head -1)
