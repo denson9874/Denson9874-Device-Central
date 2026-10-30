@@ -41,6 +41,12 @@ if [[ ${1:-} = more ]]; then
     source "$(dirname -- "$(readlink -f -- "$0")")/devices-more.sh"
     exit 0
 fi
+# Query "gki": what a kernelsu.ko for the Pixel 11s' stock android16-6.12 kernel needs (devices-gki.sh)
+if [[ ${1:-} = gki ]]; then
+    # shellcheck source=devices-gki.sh
+    source "$(dirname -- "$(readlink -f -- "$0")")/devices-gki.sh"
+    exit 0
+fi
 
 h "disk"
 df -BG ~ | sed 1d
