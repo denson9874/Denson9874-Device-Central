@@ -207,3 +207,57 @@ for c in rustc bindgen pahole clang make bc flex bison lz4 git-lfs repo; do
     echo "$c: ${p:-not installed}${p:+ ($("$p" --version 2> /dev/null | head -1 | cut -c1-80))}"
 done
 df -BG ~ | sed 1d
+
+h "trial: ExpressiveOS's own kernelsu.ko for android16-6.12 with KernelSU Next's DDK (ksu/tools/ksu-ddk.sh, in a scratch folder)"
+# The DDK unpacks to about 12G: a scratch folder on the home disk, not /tmp, removed at the end
+big=$(mktemp -d ~/eos-gki-trial.XXXXXX)
+trap 'rm -rf "$work" "$big"' EXIT
+df -BG /tmp ~ | sed 1d
+ddk=$big/ddk K=android16-6.12
+if nice -n 19 bash "$here_kit/ksu/tools/ksu-ddk.sh" fetch "$K" "$ddk"; then
+    kd=$ddk/kdir/$K
+    echo "-- layout"
+    find "$ddk" -mindepth 1 -maxdepth 2 | sed "s#^$ddk/##" | sort | head -30
+    echo "-- the prepared tree: kernel.release $(cat "$kd/include/config/kernel.release" 2> /dev/null || echo '?'), Module.symvers $(wc -l < "$kd/Module.symvers" 2> /dev/null || echo none) lines"
+    head -8 "$kd/Makefile"
+    find "$kd" -maxdepth 1 | sed "s#^$kd/##" | sort | tr '\n' ' '; echo
+    echo "security/selinux: $(find "$kd/security/selinux" -maxdepth 1 -name '*.h' -printf '%f ' 2> /dev/null)"
+    grep -E '^(# )?CONFIG_(LTO[A-Z_]*|CFI[A-Z_]*|PAHOLE_VERSION|DEBUG_INFO_BTF[A-Z_]*|LOCALVERSION[A-Z_]*|RUST|RUSTC_VERSION_TEXT|MODVERSIONS|GENDWARFKSYMS|MODULE_SIG_PROTECT|TRIM_UNUSED_KSYMS|CC_VERSION_TEXT)[= ]' "$kd/.config" | cut -c1-160
+    echo "files still naming /opt/ddk: $(grep -rIl /opt/ddk "$kd" --include='Makefile*' 2> /dev/null | wc -l) Makefiles, $(find "$ddk" -type l -lname '/opt/ddk/*' | wc -l) symlinks"
+    "$ddk/clang/clang-r536225/bin/clang" --version 2>&1 | head -1
+    "$ddk/rust/rust-1.82.0/bin/rustc" --version 2>&1 | head -1
+    echo "rust/bin: $(find "$ddk/rust/rust-1.82.0/bin" -maxdepth 1 -printf '%f ' 2> /dev/null)"
+    echo "-- the build"
+    cp -a "$src" "$big/ksn"
+    for p in "$here_kit"/ksu/kernel-patches/*.patch; do git -C "$big/ksn" apply "$p" && echo "OK: applied ${p##*/}"; done
+    nice -n 19 bash "$here_kit/ksu/tools/ksu-ddk.sh" build "$K" "$ddk" "$big/ksn" "$big/out"; echo "build exit $?"
+    grep -E '^-- KernelSU-Next|warning: the compiler differs|error' "$big/out/kbuild.log" 2> /dev/null | head -12
+    tail -6 "$big/out/kbuild.log" 2> /dev/null
+    ko=$big/out/kernelsu.ko
+    if [[ -s $ko ]]; then
+        echo "-- ours: $(stat -c %s "$ko") bytes, $(strings "$ko" | grep -m1 '^vermagic=')"
+        koinfo this-module "$ko" | awk '{print "struct module: " $1 " bytes"}'
+        echo "__versions sections: $(readelf -S "$ko" | grep -c __versions); product/app: $(strings "$ko" | grep -c '^/product/app/KernelSUNext/KernelSUNext.apk$'); undefined symbols: $(readelf -sW "$ko" | awk '$7 == "UND" && $8 != ""' | wc -l)"
+        if [[ -s $ko612 ]]; then
+            echo "-- undefined symbols: ours vs ksud's own 6.12 module (< only ours, > only theirs)"
+            diff <(readelf -sW "$ko" | awk '$7 == "UND" && $8 != "" {print $8}' | sort -u) \
+                 <(readelf -sW "$ko612" | awk '$7 == "UND" && $8 != "" {print $8}' | sort -u) | grep '^[<>]' | head -20
+        fi
+        echo "-- against the stock kodiak kernel"
+        vkb=$(find "$eos/vendor/google/kodiak-images" "$evo/vendor/google/kodiak-images" -maxdepth 3 -name vendor_kernel_boot.img 2> /dev/null | head -1)
+        if [[ -n $vkb ]] && mkbootimg_unpack "$vkb" "$big/vkb"; then
+            mkdir -p "$big/vkm"
+            for rd in "$big"/vkb/vendor_ramdisk*; do
+                [[ -f $rd ]] || continue
+                (cd "$big/vkm" && { lz4 -dc "$rd" 2> /dev/null || gzip -dc "$rd"; } | cpio -id --quiet --no-absolute-filenames 'lib/modules/*.ko')
+            done
+            echo "same-struct vs ${vkb#"$HOME"/}: $(koinfo same-struct "$ko" "$big/vkm" 2>&1)"
+            km=$(find "$big/vkm" -name '*.ko' | head -1)
+            echo "a stock module's vermagic: $(strings "$km" | grep -m1 '^vermagic=')"
+        else
+            echo "no stock kodiak vendor_kernel_boot.img to compare with"
+        fi
+        echo "-- config-diff vs the stock kernel's IKCONFIG ($first)"
+        koinfo config-diff "$img" "$big/out/kbuild/.config"; echo "config-diff exit $?"
+    fi
+fi
