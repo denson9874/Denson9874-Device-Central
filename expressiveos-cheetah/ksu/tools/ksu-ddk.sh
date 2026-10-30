@@ -68,13 +68,14 @@ for l in m["layers"]:
         reg "blobs/$d" -o "$part/layer" || fail "can't fetch layer $n ($d, $size bytes)"
         [[ "sha256:$(sha256sum < "$part/layer" | cut -d' ' -f1)" = "$d" ]] || fail "layer $n isn't $d"
         tar -tzf "$part/layer" > "$part/list" || fail "layer $n ($d) isn't a gzip tarball"
-        if grep -qE '^(\./)?opt/ddk/' "$part/list"; then
+        # Entries under /opt/ddk, not the folder alone (the image's WORKDIR layer holds only that)
+        if grep -qE '^(\./)?opt/ddk/.' "$part/list"; then
             # A later layer deleting a lower one's files (whiteouts) isn't something this applies
             if grep -qE '^(\./)?opt/ddk/(.*/)?\.wh\.' "$part/list"; then fail "layer $n ($d) deletes files under /opt/ddk (whiteouts), which fetch doesn't apply"; fi
             pre=; grep -q '^\./opt/ddk/' "$part/list" && pre=./
-            tar -xzf "$part/layer" -C "$part/root" --no-same-owner --wildcards "${pre}opt/ddk/*" \
+            tar -xzf "$part/layer" -C "$part/root" --no-same-owner --wildcards --wildcards-match-slash "${pre}opt/ddk/?*" \
                 || fail "can't unpack /opt/ddk from layer $n ($d)"
-            echo "OK: layer $n ($d): $(grep -cE '^(\./)?opt/ddk/' "$part/list") files under /opt/ddk"
+            echo "OK: layer $n ($d): $(grep -cE '^(\./)?opt/ddk/.' "$part/list") entries under /opt/ddk"
         fi
         rm -f -- "$part/layer" "$part/list"
     done <<<"$layers"
