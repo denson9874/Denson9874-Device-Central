@@ -35,10 +35,19 @@ kernel_image() {  # <boot image> <out Image>: the uncompressed kernel of a boot 
 }
 koinfo() { python3 -I "$kit/ksu/tools/ko-info.py" "$@"; }
 
+# Query "more": the second round (devices-more.sh), with these helpers
+if [[ ${1:-} = more ]]; then
+    # shellcheck source=devices-more.sh
+    source "$(dirname -- "$(readlink -f -- "$0")")/devices-more.sh"
+    exit 0
+fi
+
 h "disk"
 df -BG ~ | sed 1d
 h "ExpressiveOS tree, one product (GiB)"
-lowdu "$eos/.repo" "$eos/out" "$eos/out/target/product/cheetah" "$eos/out/soong" "$eos/out/host" "$eos/out-kernel" ~/releases/expressiveos-cheetah
+# One du per path: GNU du skips an operand nested in one it already counted
+for p in .repo out/target/product/cheetah out/soong out/host out-kernel out; do lowdu "$eos/$p"; done
+lowdu ~/releases/expressiveos-cheetah
 ls "$eos/out/target/product" 2> /dev/null
 h "Evolution X tree, per product (GiB)"
 lowdu "$evo/out/soong" "$evo/out/host" "$evo"/out/target/product/* "$evo/out-kernel"

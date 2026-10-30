@@ -79,7 +79,10 @@
 # repos are public, kernel versions, config facts and struct module sizes, KernelSU Next's KMIs,
 # firmware zips, fastboot files and board names, AVB and Updater makefile lines, the audio effect
 # HAL type, Evolution X's commits on shared projects, build times, device-ok records and the
-# release folders' names. Names, sizes, SHAs, versions and build-file lines only.
+# release folders' names. Names, sizes, SHAs, versions and build-file lines only. query "more":
+# the second round (devices-more.sh): disk per path, the Sunday routines' times, the server's
+# Pixel 11 device trees against this ref's evolution-kodiak copies (open-source diffs), the
+# Pixel 11 firmware lists and images folders, husky's board, AVB chain and Updater lines.
 #
 # expressiveos-update-check (read-only on the tree) is the dry run of ExpressiveOS's monthly
 # update (expressiveos-cheetah/sources/update-check.sh): what LineageOS has added since the
@@ -161,7 +164,7 @@ on:
           expressiveos-pins: read-only: the upstream commit of every project in the
           ExpressiveOS tree, as a manifest, plus its kernel tree and LFS files.
           expressiveos-devices: read-only: what ExpressiveOS builds for husky and
-          the Pixel 11 phones need from the server.
+          the Pixel 11 phones need from the server (query "more": the second round).
           expressiveos-update-check: read-only: the dry run of the monthly update
           (what LineageOS added, and whether ExpressiveOS's forks merge it cleanly).
           expressiveos-update: the monthly update, with the push token (see query;
@@ -1086,13 +1089,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
-          sparse-checkout: expressiveos-cheetah
+          sparse-checkout: |
+            expressiveos-cheetah
+            evolution-kodiak
           fetch-depth: 1
 
       - name: ExpressiveOS devices check (read-only)
         if: inputs.action == 'expressiveos-devices'
         run: |
-          bash expressiveos-cheetah/tools/devices-check.sh
+          [[ -z "$QUERY" || "$QUERY" = more ]] || { echo "::error::query is empty or 'more'"; exit 1; }
+          bash expressiveos-cheetah/tools/devices-check.sh ${QUERY:+"$QUERY"}
 
       # The monthly update and its dry run: this ref's kit, run from the job's checkout (nothing
       # is installed). update-check.sh holds ~/.expressiveos.lock while it runs: setup.sh refuses
