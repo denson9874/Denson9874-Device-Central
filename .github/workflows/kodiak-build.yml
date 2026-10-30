@@ -255,7 +255,12 @@ on:
           kernel-only (build_kernel and kernelsu.ko, no pack), kernel-sync (sync the
           kernel source to its pins again), clean (once a phone's pack ends PACK=OK,
           remove its out/target/product/<phone> and print what that freed; never
-          cheetah's). expressiveos-pack (optional): device=<phone>, testers
+          cheetah's), try=<path>@<commit> (any number: build that commit of one of
+          ExpressiveOS's own projects, e.g. a branch before it's merged; it must have
+          the project's pinned commit under it, and stays checked out until a build
+          without try=), modules=<module>,<module>,... (lunch and m on just those
+          modules, a compile check: nothing packed; with try= or alone). try= and
+          modules= are for one phone. expressiveos-pack (optional): device=<phone>, testers
           (eos-pack.sh --testers: check/'s untested candidate to SourceForge's
           expressiveos/<phone>/testers; only when Daryl says so). build-explain
           (required): tree, product, then up to two products to compare, e.g.
@@ -1006,6 +1011,13 @@ jobs:
           else
             echo "not set up yet"
           fi
+          if [[ -s $jobs/try.txt ]]; then
+            echo "== try=: checked out in the tree until a build without try= (~/expressiveos-jobs/try.txt)"
+            while read -r p c; do
+              [[ -n $p ]] || continue
+              echo "$p: tried ${c:0:12}, HEAD $(git -C "$top/$p" rev-parse --short=12 HEAD 2>/dev/null || echo "?")"
+            done < "$jobs/try.txt"
+          fi
           echo "== keys: $(find "$top/vendor/evolution-priv/keys" -maxdepth 1 -name '*.pk8' 2>/dev/null | wc -l) .pk8 files in expressiveos/vendor/evolution-priv/keys"
           ls -l ~/expressiveos-keys-*.tar.gz 2>/dev/null || echo "no key backup archive on the server"
           # Each phone's records (lib.sh's EOS_STATE): cheetah's in out/eos, always shown, the
@@ -1063,11 +1075,16 @@ jobs:
             fi
             # ninja's progress lines (libthiserror:...) and the compilers' and aidl's own warnings
             # (WARNING: <file>:<line>) would bury the kit's lines
-            grep -aE '^(== |OK: |FAIL|WARNING|SETUP|FETCH_KSU|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|PACK=|VERIFY|SESSION_EXIT|DEVICE |CLEAN |CANDIDATE |UPLOADED_TESTERS )|FAILED:|error:' "$log" \
+            grep -aE '^(== |OK: |FAIL|WARNING|SETUP|FETCH_KSU|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|MODULES_EXIT|PACK=|VERIFY|SESSION_EXIT|DEVICE |CLEAN |CANDIDATE |UPLOADED_TESTERS )|FAILED:|error:' "$log" \
               | grep -avE '^(\[ *[0-9]+% |WARNING: [^ ]+:[0-9])' | tail -n 25 | cut -c1-300 || true
             # The kit's warnings from the whole log (apply.sh's come long before the end), each once
             w=$(grep -aE '^WARNING' "$log" | grep -avE '^WARNING: [^ ]+:[0-9]' | sort | uniq -c | sort -rn | head -n 10 | cut -c1-300 || true)
             [[ -z $w ]] || { echo "-- the kit's WARNING lines (times seen, line)"; echo "$w"; }
+            # modules= (a compile check) that failed: the compilers' errors, which the lines above cut
+            if [[ $log = "$jobs/build.log" ]] && grep -aq '^MODULES_EXIT=1' "$log"; then
+              echo "-- compile errors (error:, e:, FAILED:), up to 150 lines"
+              grep -aE 'error:|^e: |FAILED:' "$log" | awk '!seen[$0]++' | head -n 150 | cut -c1-400 || true
+            fi
             echo "-- last lines"
             tail -c 200000 "$log" | tr '\r' '\n' | grep -av '^[[:space:]]*$' | tail -n 15 | cut -c1-300 || true
           done
@@ -1214,13 +1231,24 @@ jobs:
           phone() {   # phone <name>: fail unless the kit has devices/<name>.conf
             [[ $1 =~ ^[a-z0-9]+$ && $known == *" $1 "* ]] || fail "'$1' isn't one of tree_ref's phones (expressiveos-cheetah/devices/*.conf):${known% }"
           }
-          envs=() dev= devs=() free_out=0 testers=0
+          envs=() dev= devs=() free_out=0 testers=0 tries=() mods=
           for o in ${opts[@]+"${opts[@]}"}; do
             case "$ACTION:$o" in
               expressiveos-build:kernel-only) envs+=(KERNEL_ONLY=1) ;;
               expressiveos-build:kernel-sync) envs+=(EOS_KERNEL_SYNC=1) ;;
               expressiveos-build:clean) free_out=1 ;;
               expressiveos-pack:testers) testers=1 ;;
+              expressiveos-build:try=*)
+                t=${o#try=}
+                [[ $t =~ ^[A-Za-z0-9_][A-Za-z0-9._-]*(/[A-Za-z0-9_][A-Za-z0-9._-]*)*@[0-9a-f]{40}$ && /${t%@*}/ != */../* ]] \
+                  || fail "try= is <project path>@<the full 40-hex commit>, e.g. try=packages/apps/Settings@<commit>"
+                for x in ${tries[@]+"${tries[@]}"}; do [[ ${x%@*} != "${t%@*}" ]] || fail "query names ${t%@*} in try= twice"; done
+                tries+=("$t") ;;
+              expressiveos-build:modules=*)
+                [[ -z $mods ]] || fail "query names modules= twice"
+                [[ ${o#modules=} =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*(,[A-Za-z0-9_][A-Za-z0-9_.-]*)*$ ]] \
+                  || fail "modules= is module names with commas between them, e.g. modules=Settings,Evolver"
+                mods=${o#modules=} ;;
               expressiveos-build:device=*|expressiveos-pack:device=*)
                 [[ -z $dev && ${#devs[@]} = 0 ]] || fail "query names the phone twice ($o)"
                 dev=${o#device=}; phone "$dev" ;;
@@ -1234,9 +1262,15 @@ jobs:
                   [[ $seen != *" $d "* ]] || fail "devices= names $d twice"
                   seen+="$d "
                 done ;;
-              *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, clean; expressiveos-pack takes device=<phone>, testers)" ;;
+              *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, clean, try=<path>@<commit>, modules=<module>,...; expressiveos-pack takes device=<phone>, testers)" ;;
             esac
           done
+          if (( ${#tries[@]} )) || [[ -n $mods ]]; then
+            (( ${#devs[@]} == 0 && free_out == 0 )) || fail "try= and modules= are for one phone (device=, cheetah unless named), not with devices= or clean"
+          fi
+          if [[ -n $mods ]]; then
+            (( ${#envs[@]} == 0 )) || fail "modules= runs m on those modules alone: not with kernel-only or kernel-sync"
+          fi
           if [[ $free_out = 1 ]]; then
             [[ " ${envs[*]-} " != *" KERNEL_ONLY=1 "* ]] || fail "clean is for builds that are packed, not kernel-only"
             # cheetah's build output always stays, so clean needs another phone to free
@@ -1326,6 +1360,88 @@ jobs:
               sed -n 's/^UNPINNED: \(.*\) is \([0-9A-F]*\)\. Once.*/- \1: `\2`/p' "$jobs/keys-check.log"
             } | tee -a "$GITHUB_STEP_SUMMARY"
             exit 0
+          fi
+
+          if [[ $ACTION = expressiveos-build ]]; then
+            # try=<path>@<commit>: a commit of one of ExpressiveOS's own projects (remote
+            # expressiveos in its manifest) that the manifest doesn't pin yet, such as a branch to
+            # build before it's merged. It must have the project's pinned commit under it, as
+            # lib.sh's pins_check wants. It stays checked out for this build and any after it
+            # (expressiveos-pack packs that build) until a build without try= puts the project
+            # back on the manifest's commit. try.txt names them ("<path> <commit>" lines), written
+            # before anything is checked out, so a run that stops half way is undone by the next.
+            tf=$jobs/try.txt
+            if (( ${#tries[@]} )) || [[ -s $tf ]]; then
+              tm=$(bash -c 'source "$1/lib.sh" && eos_top "" && m=$(tree_manifest) && printf "%s\n%s\n%s\n" "$top" "$m" "$EOS_MANIFEST_BRANCH"' _ "$kit") \
+                || fail "the tree isn't on ExpressiveOS's manifest (above): run expressiveos-setup"
+              { read -r top; read -r mf; read -r br; } <<< "$tm"
+              [[ -d $top && -f $mf && -n $br ]] || fail "can't find the tree, its manifest or its branch ($tm)"
+              want=" "
+              for t in ${tries[@]+"${tries[@]}"}; do want+="${t%@*} "; done
+              # First, back on the manifest's commit: each project an earlier try= moved that
+              # this build doesn't name (expressiveos-setup's repo sync puts them back too)
+              if [[ -s $tf ]]; then
+                while read -r p c; do
+                  [[ -n $p && $want != *" $p "* ]] || continue
+                  d=$top/$p
+                  pin=$(git -C "$d" rev-parse -q --verify "refs/remotes/m/$br^{commit}") || fail "$p has no m/$br: run expressiveos-setup"
+                  h=$(git -C "$d" rev-parse HEAD) || fail "can't read $p's HEAD"
+                  if [[ $h = "$pin" ]]; then echo "try: $p is on the manifest's ${pin:0:12} already"; continue; fi
+                  [[ $h = "$c" ]] || fail "$p is at ${h:0:12}, neither the manifest's ${pin:0:12} nor the tried ${c:0:12}: run expressiveos-setup"
+                  [[ -z "$(git -C "$d" status --porcelain --untracked-files=no)" ]] || fail "$p has changes (git -C $d status): run expressiveos-setup"
+                  git -C "$d" -c advice.detachedHead=false checkout -q --detach "$pin" || fail "can't put $p back on ${pin:0:12}"
+                  echo "try: $p back on the manifest's ${pin:0:12} (it was at the tried ${c:0:12})" | tee -a "$GITHUB_STEP_SUMMARY"
+                done < "$tf"
+              fi
+              # Then each try=: checked and fetched first, try.txt written, then checked out
+              lines=()
+              for t in ${tries[@]+"${tries[@]}"}; do
+                p=${t%@*} c=${t#*@}
+                d=$top/$p
+                info=$(python3 -c '
+          import sys, xml.etree.ElementTree as ET
+          for e in ET.parse(sys.argv[1]).getroot().iter("project"):
+              if (e.get("path") or e.get("name")) == sys.argv[2]:
+                  print(e.get("remote") or "-", e.get("name"), e.get("revision") or "-")
+                  break
+          ' "$mf" "$p") || fail "can't read $mf"
+                [[ -n $info ]] || fail "try=: ExpressiveOS's manifest has no project at $p"
+                read -r rem name rev <<< "$info"
+                [[ $rem = expressiveos ]] || fail "try=: $p isn't one of ExpressiveOS's own repos (its remote is $rem): only those take try="
+                [[ -d $d && "$(cd "$d" && git rev-parse --show-toplevel 2>/dev/null)" = "$(cd "$d" && pwd -P)" ]] || fail "$p isn't a git project in the tree: run expressiveos-setup"
+                gd=$(git -C "$d" rev-parse --absolute-git-dir) || fail "can't find $p's git folder"
+                [[ ! -e $gd/rebase-apply && ! -e $gd/rebase-merge ]] || fail "$p has a git am or rebase in progress"
+                url=$(git -C "$d" config --get remote.expressiveos.url) || fail "$p has no remote expressiveos: run expressiveos-setup"
+                [[ ${url%.git} = "https://github.com/ExpressiveOS/$name" ]] || fail "$p fetches from $url, not https://github.com/ExpressiveOS/$name"
+                pin=$(git -C "$d" rev-parse -q --verify "refs/remotes/m/$br^{commit}") || fail "$p has no m/$br: run expressiveos-setup"
+                [[ $pin = "$rev" ]] || fail "$p was synced to ${pin:0:12}, not the manifest's ${rev:0:12}: run expressiveos-setup"
+                h=$(git -C "$d" rev-parse HEAD) || fail "can't read $p's HEAD"
+                prev=
+                if [[ -s $tf ]]; then prev=$(awk -v p="$p" '$1 == p { print $2; exit }' "$tf"); fi
+                [[ $h = "$pin" || ( -n $prev && $h = "$prev" ) ]] \
+                  || fail "$p is at ${h:0:12}, not the manifest's ${pin:0:12}${prev:+ or the tried ${prev:0:12}}: run expressiveos-setup"
+                [[ -z "$(git -C "$d" status --porcelain --untracked-files=no)" ]] || fail "$p has changes (git -C $d status): run expressiveos-setup"
+                timeout 900 git -C "$d" fetch -q --no-tags expressiveos "$c" || fail "can't fetch $c from $url: is it pushed?"
+                git -C "$d" cat-file -e "$c^{commit}" || fail "$c isn't a commit in $p"
+                git -C "$d" merge-base --is-ancestor "$pin" "$c" \
+                  || fail "$c doesn't have the manifest's ${pin:0:12} under it: base the branch on $p's expressiveos branch at that commit or later"
+                lines+=("$p $c")
+              done
+              if (( ${#lines[@]} )); then
+                printf '%s\n' "${lines[@]}" > "$tf.new" && mv -f -- "$tf.new" "$tf" || fail "can't write $tf"
+                for l in "${lines[@]}"; do
+                  read -r p c <<< "$l"
+                  d=$top/$p
+                  pin=$(git -C "$d" rev-parse "refs/remotes/m/$br^{commit}")
+                  git -C "$d" -c advice.detachedHead=false checkout -q --detach "$c" || fail "can't check out $c in $p (try.txt names it: the next build puts it back)"
+                  echo "try: $p at ${c:0:12}, $(git -C "$d" rev-list --count "$pin..$c") commit(s) on the manifest's ${pin:0:12}" | tee -a "$GITHUB_STEP_SUMMARY"
+                  git -C "$d" log --format='  %h %s' "$pin..$c" | head -n 30 | cut -c1-160 | tee -a "$GITHUB_STEP_SUMMARY"
+                done
+              else
+                rm -f -- "$tf"
+                echo "try: none; every project is on the manifest's commits"
+              fi
+            fi
           fi
 
           # setup, build and pack take ~/.expressiveos.lock themselves
@@ -1448,7 +1564,49 @@ jobs:
           case $ACTION in
             expressiveos-setup) launch setup "$kit/setup.sh && $kit/ksu/fetch-ksu.sh" ;;
             expressiveos-build)
-              if (( ${#devs[@]} )); then
+              if [[ -n $mods ]]; then
+                # Written here, run in the eos-build session (nothing of ExpressiveOS's runs now)
+                cat > "$jobs/build-modules.sh" <<'EOF'
+          #!/bin/bash
+          # expressiveos-build modules=: lunch and m on those modules alone, a compile check (of a
+          # try= branch, say), written by the runner and run in the eos-build session. The tree,
+          # lunch and locks are a build's (ksu/tools/ksu-images.sh); nothing is signed, packed or
+          # recorded, and build.ok stays as it was. The last line is MODULES_EXIT=0 or MODULES_EXIT=1.
+          #   build-modules.sh <kit> <module>...
+          set -o pipefail
+          done=0
+          # Quiet while run_locked's marker is there: the run waiting for the locks prints it then
+          trap '[[ $done = 1 || -e "${EOS_STARTED:-}" ]] || echo "MODULES_EXIT=1"' EXIT
+          self=$(readlink -f -- "$0")
+          [[ $# -ge 2 ]] || { echo "usage: build-modules.sh <kit> <module>..."; exit 1; }
+          # shellcheck source=/dev/null
+          source "$1/lib.sh"
+          eos_top ""
+          run_locked MODULES_EXIT=1 "$self" "$@"
+          shift
+          clean_env
+          cd "$top" || fail "can't cd to $top"
+          PATH=$HOME/bin:$PATH
+          wait_builds
+          export EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
+          if command -v ccache >/dev/null; then export USE_CCACHE=1 CCACHE_EXEC; CCACHE_EXEC=$(command -v ccache); fi
+          # Before lunch, which runs build_kernel (the phones whose kernel is built here)
+          [[ ${EOS_KERNEL:-gs-6.1} != gs-6.1 ]] || kernel_pinned
+          # shellcheck source=/dev/null
+          source build/envsetup.sh >/dev/null || fail "build/envsetup.sh failed"
+          lunch "$EOS_LUNCH" || fail "lunch $EOS_LUNCH failed"
+          [[ "$(cd "$(gettop)" && pwd -P)" = "$top" ]] || fail "lunch picked the tree $(gettop), not $top"
+          echo "== m $*, $(date -u '+%F %T') UTC"
+          if ! m -j"$(nproc)" "$@"; then
+              # soong_ui keeps the failed build's output in out/error.log
+              if [[ -f out/error.log ]]; then echo "== out/error.log"; tail -n 300 out/error.log; fi
+              fail "m $* failed"
+          fi
+          done=1
+          echo "MODULES_EXIT=0"
+          EOF
+                launch build "bash $(printf %q "$jobs/build-modules.sh") $(printf %q "$kit") ${mods//,/ }"
+              elif (( ${#devs[@]} )); then
                 launch build "bash $(printf %q "$jobs/build-devices.sh") $(printf %q "$kit") $free_out ${e}-- ${devs[*]}"
               else
                 pack=" && $kit/tools/eos-pack.sh"
@@ -1458,6 +1616,9 @@ jobs:
             # testers: eos-pack.sh --testers (check/'s candidate to SourceForge's testers folder,
             # no device-ok), only when Daryl says so. --release and --upload aren't run from here
             expressiveos-pack)
+              if [[ -s $jobs/try.txt ]]; then
+                { echo "note: the tree has try= commits checked out (~/expressiveos-jobs/try.txt), so the newest build may have them:"; sed 's/^/  /' "$jobs/try.txt"; } | tee -a "$GITHUB_STEP_SUMMARY"
+              fi
               t=
               [[ $testers = 0 ]] || t=" --testers"
               launch pack "$kit/tools/eos-pack.sh$t" ;;
