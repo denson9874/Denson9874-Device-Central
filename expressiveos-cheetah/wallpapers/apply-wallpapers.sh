@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Put the ExpressiveOS wallpapers into an ExpressiveOS cheetah tree (idempotent: a second
-# run changes nothing):
+# Put the ExpressiveOS wallpapers into the ExpressiveOS tree (idempotent: a second run
+# changes nothing), for every phone it builds:
 #   1. check every PNG against wallpapers.conf;
 #   2. stage wallpapers.mk, the theming_defaults overlay and Bloom into vendor/extra/wallpapers
 #      (not ExpressiveWallpapers/'s picker APK: 1.0 keeps Pixel's wallpapers in the picker);
 #   3. vendor/extra/product.mk inherits wallpapers.mk (Evolution X's vendor_evolution, checked
 #      out at vendor/lineage, has config/common.mk inherit vendor/extra/product.mk), which sets
-#      ro.config.wallpaper and the overlay for lineage_cheetah.
+#      ro.config.wallpaper and the overlay for ExpressiveOS's lineage_<device> products.
 # Never on the Evolution X tree (~/evolution). Nothing is written through a symlink that
 # leads out of the tree.
 #
@@ -107,7 +107,7 @@ while IFS= read -r -d '' t; do
 done < <(find "$dest" -mindepth 1 ! -type d -print0)
 find "$dest" -mindepth 1 -type d -empty -delete
 
-# 3. vendor/extra/product.mk (ExpressiveOS's own; the tree builds only cheetah)
+# 3. vendor/extra/product.mk (ExpressiveOS's own; read for every phone the tree builds)
 if [[ $where = top ]]; then
     echo "unchanged: vendor/extra/product.mk"
 elif [[ -f "$pm" ]]; then

@@ -16,7 +16,7 @@ source "$(dirname -- "$(readlink -f -- "$0")")/lib.sh"
 [[ $# -eq 4 ]] || fail "usage: update-firmware.sh <top> <bootloader img> <radio img> <build-id>"
 eos_top "$1"; bootloader="$2"; radio="$3"; build="$4"
 [[ "$build" =~ ^[a-z0-9]{4}\.[0-9]{6}\.[0-9]{3}(\.[a-z0-9]+)?$ ]] || fail "'$build' isn't a build id like cp3a.261005.005"
-vendor="$top/vendor/google/cheetah"
+vendor="$top/$EOS_VENDOR_DIR"   # vendor/google/cheetah (devices/<device>.conf, EOS_FIRMWARE_MODE=cache)
 project_ok "$vendor"
 for p in radio Android.mk FIRMWARE_SOURCE; do in_top "$vendor/$p"; done
 fbpacktool="$top/lineage/scripts/fbpacktool/fbpacktool.py"
@@ -59,5 +59,5 @@ done
 echo "$build" > "$vendor/.FIRMWARE_SOURCE.new"
 mv -f -- "$vendor/.FIRMWARE_SOURCE.new" "$vendor/FIRMWARE_SOURCE"
 git -C "$vendor" add -A radio Android.mk FIRMWARE_SOURCE
-git -C "$vendor" commit -q -m "cheetah: firmware from $build" -m "$(basename "$bootloader") + $(basename "$radio")"
+git -C "$vendor" commit -q -m "$EOS_DEVICE: firmware from $build" -m "$(basename "$bootloader") + $(basename "$radio")"
 echo "applied: firmware $build ($(wc -w <<<"$images") images verified)"

@@ -32,4 +32,31 @@
         <item>com.google.android.apps.pixel.relationships</item>
         <item>com.google.android.contacts</item>
     </string-array>
+
+    <!-- Night Light curve for this panel, from stock's framework-res product RRO. -->
+    <string-array name="config_nightDisplayColorTemperatureCoefficients" translatable="false">
+        <item>0.0</item>
+        <item>0.0</item>
+        <item>1.0</item>
+        <item>-0.000000014365268757</item>
+        <item>0.000255092801250106</item>
+        <item>-0.064156942434907716</item>
+        <item>-0.000000000910931179</item>
+        <item>0.000207598323269139</item>
+        <item>-0.349361641294833436</item>
+    </string-array>
+
+    <!-- Play Protect's dynamic instrumentation consumer (OdadPrebuilt), from stock's
+         PixelConfigOverlayCommon; vendor/gms's copy lacks it, and empty discards events. -->
+    <string name="config_dynamicInstrumentationEventConsumer" translatable="false">com.google.android.odad/com.google.android.apps.miphone.odad.hb.HummingbirdEventService</string>
+
+    <!-- Display, from stock's framework-res product RRO. The stock vendor displayconfig
+         enables evenDimmer; the framework gate is off in AOSP. -->
+    <bool name="config_evenDimmerEnabled">true</bool>
+    <bool name="config_refreshRateSynchronizationEnabled">true</bool>
+
+    <!-- Ultrasonic UDFPS: no swipe gestures, 4 templates, as stock. PixelConfigOverlayCommon
+         (priority 1) sets gestures to true; this overlay's priority 2 wins. -->
+    <bool name="config_fingerprintSupportsGestures">false</bool>
+    <integer name="config_fingerprintMaxTemplatesPerUser">4</integer>
 </resources>

@@ -1,0 +1,84 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Fri, 30 Oct 2026 12:00:00 +0000
+Subject: [PATCH 05/11] husky: get updates from denson9874/expressiveos_ota
+
+ExpressiveOS is signed with its own keys, so it can't take Evolution X's
+OTAs, and Evolution X's phones must never be offered ExpressiveOS's. Point
+the Updater at ExpressiveOS's own feed, as cheetah's does.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ device-husky.mk                                       |  4 ++++
+ husky/overlay/UpdaterOverlayHusky/Android.bp          |  9 +++++++++
+ husky/overlay/UpdaterOverlayHusky/AndroidManifest.xml | 11 +++++++++++
+ .../UpdaterOverlayHusky/res/values/strings.xml        | 11 +++++++++++
+ 4 files changed, 35 insertions(+)
+ create mode 100644 husky/overlay/UpdaterOverlayHusky/Android.bp
+ create mode 100644 husky/overlay/UpdaterOverlayHusky/AndroidManifest.xml
+ create mode 100644 husky/overlay/UpdaterOverlayHusky/res/values/strings.xml
+
+diff --git a/device-husky.mk b/device-husky.mk
+index 92babfa..355bb06 100644
+--- a/device-husky.mk
++++ b/device-husky.mk
+@@ -83,3 +83,7 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/window_extensions.mk)
+ PRODUCT_PACKAGES += \
+     SCONE-v77459 \
+     Tycho
++
++# Updates come from denson9874/expressiveos_ota (ExpressiveOS's own feed and keys)
++PRODUCT_PACKAGES += \
++    UpdaterOverlayHusky
+diff --git a/husky/overlay/UpdaterOverlayHusky/Android.bp b/husky/overlay/UpdaterOverlayHusky/Android.bp
+new file mode 100644
+index 0000000..d3d534e
+--- /dev/null
++++ b/husky/overlay/UpdaterOverlayHusky/Android.bp
+@@ -0,0 +1,9 @@
++//
++// SPDX-FileCopyrightText: The LineageOS Project
++// SPDX-License-Identifier: Apache-2.0
++//
++
++runtime_resource_overlay {
++    name: "UpdaterOverlayHusky",
++    product_specific: true,
++}
+diff --git a/husky/overlay/UpdaterOverlayHusky/AndroidManifest.xml b/husky/overlay/UpdaterOverlayHusky/AndroidManifest.xml
+new file mode 100644
+index 0000000..fda9a28
+--- /dev/null
++++ b/husky/overlay/UpdaterOverlayHusky/AndroidManifest.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="org.evolution.updater.overlay.husky">
++    <overlay
++        android:isStatic="true"
++        android:targetPackage="org.evolution.updater" />
++</manifest>
+diff --git a/husky/overlay/UpdaterOverlayHusky/res/values/strings.xml b/husky/overlay/UpdaterOverlayHusky/res/values/strings.xml
+new file mode 100644
+index 0000000..7919593
+--- /dev/null
++++ b/husky/overlay/UpdaterOverlayHusky/res/values/strings.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++    SPDX-FileCopyrightText: The LineageOS Project
++    SPDX-License-Identifier: Apache-2.0
++-->
++<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
++    <!-- ExpressiveOS's own update feed. Never rename the repo or its branch: the Updater
++         doesn't follow redirects, so every phone already out there would stop getting updates. -->
++    <string name="updater_server_url" translatable="false">https://raw.githubusercontent.com/denson9874/expressiveos_ota/main/builds/{device}.json</string>
++    <string name="menu_changelog_url" translatable="false">https://raw.githubusercontent.com/denson9874/expressiveos_ota/main/changelogs/<xliff:g id="device_name">%1$s</xliff:g>.txt</string>
++</resources>
+-- 
+2.43.0
+

@@ -1,0 +1,50 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Fri, 30 Oct 2026 12:00:00 +0000
+Subject: [PATCH 7/7] zuma: keep the built images in target-files
+
+target-files made its system, system_ext, product, vendor, vendor_dlkm
+and system_dlkm images again from their folders, with
+ro.build.date.utc as every file's time, while the images the build
+flashes keep each file's time in out/. The OTA package is made
+from target-files' images and the fastboot zip from the build's, so
+an incremental OTA, which checks every source block it reads, would
+refuse phones installed from the fastboot zip.
+
+COPY_IMAGES_FOR_TARGET_FILES_ZIP has target-files take the built
+images (and makes their file times fixed). It takes only images whose
+file system type is set to ext4 or erofs, and zuma already sets ext4
+for all six, so that's the only line needed.
+
+This covers the six dynamic partitions, the ones an incremental patches
+block by block. target-files still makes its own init_boot,
+vendor_boot, vendor_kernel_boot, dtbo and vbmeta (signed with other AVB
+salts), so an incremental from it has to write those whole
+(ota_from_target_files --full_ota_partitions). Same as cheetah's
+gs201 change.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ BoardConfig-common.mk | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/BoardConfig-common.mk b/BoardConfig-common.mk
+index ac2d574d..278bee22 100644
+--- a/BoardConfig-common.mk
++++ b/BoardConfig-common.mk
+@@ -146,6 +146,12 @@ BOARD_USERDATAIMAGE_PARTITION_SIZE := 11796480000
+ PRODUCT_FS_COMPRESSION := 1
+ BOARD_FLASH_BLOCK_SIZE := 4096
+ 
++# ExpressiveOS: target-files takes the images the build made instead of making them
++# again, so they're the very images the fastboot zip flashes, and an incremental OTA
++# from a build applies on phones installed from its fastboot zip too. It takes only
++# images whose file system type is set to ext4 or erofs, as each one's is below.
++COPY_IMAGES_FOR_TARGET_FILES_ZIP := true
++
+ # system.img
+ BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := ext4
+ 
+-- 
+2.43.0
+

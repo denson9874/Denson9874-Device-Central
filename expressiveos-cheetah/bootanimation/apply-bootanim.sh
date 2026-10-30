@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Put the ExpressiveOS boot animation into an ExpressiveOS cheetah tree (idempotent: a
-# second run changes nothing):
+# Put the ExpressiveOS boot animation into the ExpressiveOS tree (idempotent: a second run
+# changes nothing), for every phone it builds:
 #   1. check bootanimation.zip against bootanim.conf;
 #   2. stage it and bootanimation.mk into vendor/extra/bootanimation;
 #   3. vendor/extra/product.mk inherits bootanimation.mk (Evolution X's vendor_evolution,
 #      checked out at vendor/lineage, has config/common.mk inherit vendor/extra/product.mk),
-#      which sets TARGET_BOOTANIMATION for lineage_cheetah.
+#      which sets TARGET_BOOTANIMATION for ExpressiveOS's lineage_<device> products.
+# Before that, the phone's lineage_<device>.mk (EOS_DEVICE, cheetah unless set) mustn't turn
+# Evolution X's other styles on.
 # Never on the Evolution X tree (~/evolution). Nothing is written through a symlink that
 # leads out of the tree.
 #
@@ -41,6 +43,18 @@ grep -q 'TARGET_BOOTANIMATION' "$bmk" 2>/dev/null \
     || fail "$bmk is missing or no longer reads TARGET_BOOTANIMATION; check how Evolution X installs its boot animation now"
 grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/lineage/config/common.mk" 2>/dev/null \
     || fail "vendor/lineage/config/common.mk no longer inherits vendor/extra/product.mk: the boot animation would silently not ship"
+# Evolution X's 12 other styles (about 190 MiB) stay out of /product/media only while
+# TARGET_INCLUDE_BOOT_ANIMATIONS is false for this phone. Its lineage_<device>.mk sets that
+# (cheetah: ../patches/device_google_pantah/0010; husky: ../devices/husky/patches/
+# device_google_shusky/; the Pixel 11s: a commit on their own trees), and eos-images.sh
+# exports it as well. The export only wins over vendor/lineage's common.mk default (?= true),
+# never over a := true in the device tree (the Pixel 11 trees started with one), so that's
+# refused here, before hours of building
+read -r dev lmk <<<"$(source "$here/../lib.sh" && printf '%s %s' "$EOS_DEVICE" "$EOS_DEVICE_TREE/lineage_$EOS_DEVICE.mk")"
+[[ -n ${dev:-} && -n ${lmk:-} ]] || fail "can't read this phone's device tree (lib.sh, devices/<device>.conf)"
+ib=$(sed -nE 's/^[[:space:]]*TARGET_INCLUDE_BOOT_ANIMATIONS[[:space:]]*:?=[[:space:]]*([^[:space:]#]*).*$/\1/p' -- "$top/$lmk" 2>/dev/null | tail -1 || true)
+[[ -z $ib || $ib = false ]] \
+    || fail "$lmk sets TARGET_INCLUDE_BOOT_ANIMATIONS to '$ib', which eos-images.sh's export can't override: Evolution X's 12 other styles (about 190 MiB) would ship for $dev. Set it to false there: a commit on that tree, or a patch in devices/$dev/patches (bootanimation/README.md)"
 in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top and not in ~/evolution or ~/derpfest
     local r
     r=$(realpath -m -- "$1") || fail "can't resolve $1"
@@ -84,7 +98,7 @@ while IFS= read -r -d '' f; do
     rm -f -- "$f"; echo "removed: vendor/extra/bootanimation/$n"
 done < <(find "$dest" -mindepth 1 -maxdepth 1 -print0)
 
-# 3. vendor/extra/product.mk (ExpressiveOS's own; the tree builds only cheetah)
+# 3. vendor/extra/product.mk (ExpressiveOS's own; read for every phone the tree builds)
 if [[ $where = top ]]; then
     echo "unchanged: vendor/extra/product.mk"
 elif [[ -f "$pm" ]]; then
