@@ -1,0 +1,42 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <daryldenson0405@gmail.com>
+Date: Wed, 21 Oct 2026 10:30:00 +0200
+Subject: [PATCH 3/5] husky: don't install gpuflag
+
+The vendor blob's gpuflag.rc runs /vendor/bin/gpuflag as
+exec_background u:r:gpuflag:s0, but our policy has no gpuflag domain:
+init's child fails setexeccon('u:r:gpuflag:s0') and aborts (SIGABRT,
+"Fatal signal 6 ... (init)") on every boot before running it. gpuflag
+(vendor/google/graphics/gpuflag) only sets power/autosuspend_delay_ms on
+/sys/devices/genpd:0:34f00000.gpu0, which this SoC doesn't have
+(the same binary as cheetah's; checked there), so it would exit "unsupported device" anyway.
+Stop installing gpuflag.rc, gpuflag and libgpuflag_aconfig_rust.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ husky-vendor.mk | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/husky-vendor.mk b/husky-vendor.mk
+index bdf95471..f4d2cb35 100644
+--- a/husky-vendor.mk
++++ b/husky-vendor.mk
+@@ -977,7 +977,6 @@ PRODUCT_COPY_FILES += \
+     vendor/google/husky/proprietary/vendor/etc/init/dump_power.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/dump_power.rc \
+     vendor/google/husky/proprietary/vendor/etc/init/fingerprint-goodix.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/fingerprint-goodix.rc \
+     vendor/google/husky/proprietary/vendor/etc/init/google.hardware.media.c2@2.0-service.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/google.hardware.media.c2@2.0-service.rc \
+-    vendor/google/husky/proprietary/vendor/etc/init/gpuflag.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/gpuflag.rc \
+     vendor/google/husky/proprietary/vendor/etc/init/hw/init.husky.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/hw/init.husky.rc \
+     vendor/google/husky/proprietary/vendor/etc/init/hw/init.zuma.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/hw/init.zuma.rc \
+     vendor/google/husky/proprietary/vendor/etc/init/hw/init.zuma.storage.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/hw/init.zuma.storage.rc \
+@@ -2841,7 +2840,6 @@ PRODUCT_PACKAGES += \
+     libgooglerilaudio \
+     libgooglerilmemmonitor \
+     libgpudataproducer \
+-    libgpuflag_aconfig_rust \
+     libgril_oem-google \
+     libgxp \
+     libhwjpeg \
+-- 
+2.43.0
+
