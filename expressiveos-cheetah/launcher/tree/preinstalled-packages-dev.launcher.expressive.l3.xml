@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Which users get Expressive Launcher: the phone's own users, as Pixel Launcher (vendor/gms
+     preinstalled-packages-product-pixel-2017-and-newer.xml). Without this the build's mode
+     (config_userTypePackageWhitelistMode) installs an unlisted system app for every user type,
+     so it would also land in work profiles, clones and the private space.
+     Documentation at frameworks/base/data/etc/preinstalled-packages-platform.xml -->
+<config>
+    <install-in-user-type package="dev.launcher.expressive.l3">
+        <!-- Recents looks for the launcher in user 0 -->
+        <install-in user-type="SYSTEM" />
+        <install-in user-type="FULL" />
+    </install-in-user-type>
+</config>
