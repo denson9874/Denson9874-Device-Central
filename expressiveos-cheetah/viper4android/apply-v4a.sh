@@ -10,6 +10,8 @@
 #      ExpressiveOS's frameworks_av fork already, else local commits by git am --3way);
 #   5. tools/v4a-check.sh tree: the pre-build guards.
 # Run it on every build, after the tree's own patches (repo sync drops local commits).
+# A phone with EOS_V4A=0 in its devices/<device>.conf (all but cheetah) gets none of this:
+# the run touches nothing and ends with V4A_APPLY=OK skipped.
 # Never on the Evolution X tree (~/evolution): its vendor/extra and frameworks/av are
 # shared by every Evolution X build there. Nothing is written through a symlink that
 # leads out of the tree.
@@ -31,6 +33,16 @@ source "$here/v4a.conf" || fail "can't read $here/v4a.conf"
 
 arg=${1:-$HOME/expressiveos}
 [[ $# -le 1 ]] || fail "usage: apply-v4a.sh [top]"
+# Only for a phone whose devices/<device>.conf has EOS_V4A=1 (EOS_DEVICE, cheetah unless set;
+# lib.sh reads it). For the others this leaves the tree alone: what a cheetah run staged in
+# vendor/extra stays, and tree/viper4android.mk adds nothing to their products
+read -r v4a_dev v4a_on <<<"$(source "$here/../lib.sh" && printf '%s %s' "$EOS_DEVICE" "$EOS_V4A")"
+[[ -n ${v4a_dev:-} && ${v4a_on:-} =~ ^[01]$ ]] || fail "can't read this phone's EOS_V4A (lib.sh, devices/<device>.conf)"
+if [[ $v4a_on = 0 ]]; then
+    done=1
+    echo "V4A_APPLY=OK skipped (ViPER4Android is off for $v4a_dev)"
+    exit 0
+fi
 not_evo() {
     [[ "${1%/}" != */evolution && "${1%/}" != evolution && "${1%/}" != */derpfest && "${1%/}" != derpfest ]] \
         || fail "$arg is the Evolution X or DerpFest tree ($1); ViPER4Android RE is for the ExpressiveOS tree only"
@@ -112,14 +124,15 @@ else
     echo "staged: vendor/extra/viper4android/Android.bp (last)"
 fi
 
-# 3. vendor/extra/product.mk (ExpressiveOS's own; the tree builds only cheetah)
+# 3. vendor/extra/product.mk (ExpressiveOS's own; read for every phone the tree builds, so
+#    viper4android.mk itself adds ViPER4Android only for the EOS_V4A=1 products)
 pm="$top/vendor/extra/product.mk"
 line='$(call inherit-product, vendor/extra/viper4android/viper4android.mk)'
 where=$([[ ! -f "$pm" ]] || want="$line" awk -f "$here/tools/mk-line.awk" -- "$pm") || fail "can't read $pm"
 if [[ $where = top ]]; then
     echo "unchanged: vendor/extra/product.mk"
 elif [[ $where = nested ]]; then
-    fail "vendor/extra/product.mk has '$line' only inside an ifeq/ifdef/define block, which may be false for cheetah; move it out to the top level"
+    fail "vendor/extra/product.mk has '$line' only inside an ifeq/ifdef/define block, which may be false for $v4a_dev; move it out to the top level"
 elif [[ -f "$pm" ]]; then
     [[ -z "$(tail -c1 -- "$pm")" ]] || echo >> "$pm"
     printf '%s\n' "# ViPER4Android RE (expressiveos-cheetah/viper4android)" "$line" >> "$pm"

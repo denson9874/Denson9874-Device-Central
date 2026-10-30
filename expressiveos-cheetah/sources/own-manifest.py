@@ -8,10 +8,13 @@
 # tree can sync it too, since each commit is on the branch named as its upstream.
 # evolution/manifest stays at Evolution X's last manifest (its 1.0 pin): build_kernel reads
 # the LineageOS version from it, and a manifest can't name its own next commit.
-# A fork the kit has patches for (patches/, ksu/patches/, viper4android/patches/) must have
-# each of them as a commit above its 1.0 pin (by subject, as apply.sh's am_patches looks for
-# them), and gets its full history (no clone-depth): in a clone one commit deep, apply.sh
-# and eos-verify.sh couldn't see the kit's commits under the top one.
+# A fork the kit has patches for (patches/, ksu/patches/, viper4android/patches/, and each
+# phone's own devices/<device>/patches/ and ksu-patches/) must have each of them as a commit
+# above its 1.0 pin (by subject, as apply.sh's am_patches looks for them), and gets its full
+# history (no clone-depth): in a clone one commit deep, apply.sh and eos-verify.sh couldn't
+# see the kit's commits under the top one. A phone's patches for a project the 1.0 sources
+# don't have (its own trees and blobs, added to ExpressiveOS's manifest since) are only noted:
+# this file doesn't make those projects' lines.
 #
 #   own-manifest.py [org url]     # default https://github.com/ExpressiveOS; prints default.xml
 #
@@ -68,9 +71,15 @@ def subject_of(patch):
     return re.sub(r"^\[PATCH[^]]*\] ", "", s or "")
 
 def kit_patches():
-    # tree path -> [(patch, subject)] for each kit patch dir, mapped as lib.sh's patch_project does
+    # tree path -> [(patch, subject)] for each kit patch dir, mapped as lib.sh's patch_project does:
+    # the shared ones, then every phone's own (lib.sh's kit_patch_dirs, for all the phones at once)
     out = {}
-    for sub in ("patches", "ksu/patches", "viper4android/patches"):
+    subs = ["patches", "ksu/patches", "viper4android/patches"]
+    dev = os.path.join(kit, "devices")
+    for d in sorted(os.listdir(dev)) if os.path.isdir(dev) else []:
+        if os.path.isdir(os.path.join(dev, d)):
+            subs += [f"devices/{d}/patches", f"devices/{d}/ksu-patches"]
+    for sub in subs:
         root = os.path.join(kit, sub)
         for d in sorted(os.listdir(root)) if os.path.isdir(root) else []:
             dp = os.path.join(root, d)
@@ -175,6 +184,13 @@ for a, kids in projects:
     else:
         out.append(f"  {tag('project', a)} />")
 for p in sorted(set(patched) - paths):
+    # A phone's own project (husky's LineageOS trees, a Pixel 11's) came to ExpressiveOS's
+    # manifest after the 1.0 builds: apply.sh patches it at build time, as it always did
+    if all(k.startswith("devices/") for k, _ in patched[p]):
+        print(f"note: the kit patches {p} ({patched[p][0][0]}), a phone's project the 1.0 sources "
+              f"don't have: its line in default.xml is ExpressiveOS's manifest's own, not made here",
+              file=sys.stderr)
+        continue
     fail(f"the kit patches {p} ({patched[p][0][0]}), which isn't in the manifest")
 out.append("</manifest>")
 print("\n".join(out))

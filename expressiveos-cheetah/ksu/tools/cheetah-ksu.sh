@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
-# KernelSU Next init_boot for ExpressiveOS on cheetah: patches the init_boot.img
+# KernelSU Next init_boot for ExpressiveOS on a phone with EOS_KSU=lkm (EOS_DEVICE, cheetah
+# unless set; the name is cheetah's, the first): patches the init_boot.img
 # the first make pass just built (ksu-images.sh) with our own kernelsu.ko
 # (ksu-module.sh) and ksuinit, using the host ksud from fetch-ksu.sh. The kernel stays
 # Google's signed GKI; susfs is the guard module ksud loads at boot while SUSFS auto-load
 # is on, which the first-boot setup (../tree/ksu-firstboot.sh) turns on for a new phone.
 # ksu-images.sh then builds again with
-# CHEETAH_KSU_INIT_BOOT=out/ksu/init_boot-ksu.img (patches/device_google_pantah/0102),
-# so the images and the OTA ship it. The last line is KSU_EXIT=0 or KSU_EXIT=1.
+# CHEETAH_KSU_INIT_BOOT=out/ksu/init_boot-ksu.img (patches/device_google_pantah/0102; another
+# phone's EOS_KSU_INIT_BOOT=out/ksu-<device>/init_boot-ksu.img, its ksu-patches' 0102),
+# so the images and the OTA ship it. The KMI is the phone's (EOS_KMI), which must be
+# ksu.conf's: ksud and kernelsu.ko are pinned for that one. The last line is KSU_EXIT=0 or
+# KSU_EXIT=1.
 #
-#   cheetah-ksu.sh [top]   # default ~/expressiveos; writes out/ksu/init_boot-{ksu,stock}.img
+#   cheetah-ksu.sh [top]   # default ~/expressiveos; writes EOS_KSU_OUT's init_boot-{ksu,stock}.img
+#                          # (out/ksu/ for cheetah, out/ksu-<device>/ for another phone)
 set -euo pipefail
 done=0 T=''
 cleanup() {
@@ -23,18 +28,20 @@ here="$(cd "$(dirname -- "$(readlink -f -- "$0")")/.." && pwd)"
 # shellcheck source=../../lib.sh
 source "$here/../lib.sh"
 [[ $# -le 1 ]] || fail "usage: cheetah-ksu.sh [top]"
+[[ $EOS_KSU = lkm ]] || fail "KernelSU Next is off for $EOS_DEVICE (EOS_KSU=$EOS_KSU, devices/$EOS_DEVICE.conf): its build ships the stock init_boot, there's nothing to patch"
 eos_top "${1:-}"
 # Run alone, this runs again under eos_lock (the locks eos-images.sh holds) and exits with it
 run_locked KSU_EXIT=1 "$0" "$top"
 cd "$top"
 for c in lz4 cpio strings od; do command -v "$c" >/dev/null || fail "$c isn't installed"; done
-O=out/target/product/cheetah
+O=$EOS_PRODUCT_OUT
 H=out/host/linux-x86/bin
-K=out/ksu
+K=$EOS_KSU_OUT
 in_top "$top/$K"
 unpack() { if [[ -x $H/unpack_bootimg ]]; then "$H/unpack_bootimg" "$@"; else python3 -I system/tools/mkbootimg/unpack_bootimg.py "$@"; fi; }
 get() { sed -n "s/^$1=//p" "$here/ksu.conf" | head -1; }
-version=$(get version); kmi=$(get kmi)
+version=$(get version); kmi=$EOS_KMI
+[[ "$(get kmi)" = "$kmi" ]] || fail "ksu.conf's kmi is $(get kmi), but $EOS_DEVICE's kernel is $kmi (devices/$EOS_DEVICE.conf): KernelSU Next is pinned for one KMI"
 ksud=$HOME/android-dt/ksu/$version/ksud
 [[ -x "$ksud" ]] || fail "no $ksud (run $here/fetch-ksu.sh)"
 [[ "$(sha256sum -- "$ksud" | cut -d' ' -f1)" = "$(get ksud_sha256)" ]] || fail "$ksud isn't ksu.conf's ksud_sha256 (run fetch-ksu.sh)"
@@ -70,8 +77,23 @@ echo "OK: $ko matches ($vermagic)"
 # ...and for its struct module, with its config. kernelsu.ko has no symbol versions, so 6.1
 # loads one built for another struct module and crashes reading past it: the first build
 # did, its module built without pahole (2026-10-26). The first-stage modules in this build
-# were built with the kernel's own config
-r=$(python3 -I "$here/tools/ko-info.py" same-struct "$ko" "$O/vendor_kernel_ramdisk/lib/modules") \
+# were built with the kernel's own config. A tree that doesn't stage them in out/ has them in
+# its vendor_kernel_boot.img's ramdisk, read as ksu-check.sh does
+mods=$O/vendor_kernel_ramdisk/lib/modules
+if [[ ! -d $mods ]]; then
+    [[ -f $O/vendor_kernel_boot.img ]] || fail "no $mods or $O/vendor_kernel_boot.img: no first-stage modules to compare $ko with"
+    unpack --boot_img "$O/vendor_kernel_boot.img" --out "$T/vkb" >/dev/null || fail "can't unpack $O/vendor_kernel_boot.img"
+    mkdir -p -- "$T/vkm"
+    for rd in "$T"/vkb/vendor_ramdisk*; do   # vendor_ramdisk00, 01... (header v4) or vendor_ramdisk (v3)
+        [[ -f $rd ]] || continue
+        (cd "$T/vkm" && { lz4 -dc "$rd" 2>/dev/null || gzip -dc "$rd"; } \
+            | cpio -id --quiet --no-absolute-filenames 'lib/modules/*.ko') \
+            || fail "can't unpack ${rd##*/} from $O/vendor_kernel_boot.img"
+    done
+    rm -rf -- "$T/vkb"
+    mods=$T/vkm
+fi
+r=$(python3 -I "$here/tools/ko-info.py" same-struct "$ko" "$mods") \
     || fail "$ko doesn't fit this kernel's struct module (tools/ksu-module.sh)"
 echo "OK: $ko is built for the kernel's struct module (${r% *} bytes, as its ${r#* } first-stage modules)"
 python3 -I "$here/tools/ko-info.py" config-diff "$k" "$K/kbuild/.config" > "$T/config.diff" \
@@ -80,7 +102,7 @@ echo "OK: $ko was built with boot.img's kernel config"
 
 # The input must be this build's own init_boot, never one a previous run patched
 ramdisk "$O/init_boot.img" "$T/stock"
-[[ ! -e $T/stock/kernelsu.ko ]] || fail "$O/init_boot.img is already KernelSU-patched (make it again without CHEETAH_KSU_INIT_BOOT)"
+[[ ! -e $T/stock/kernelsu.ko ]] || fail "$O/init_boot.img is already KernelSU-patched (make it again without $EOS_KSU_INIT_BOOT_VAR)"
 mkdir -p -- "$K"; rm -f -- "$K/init_boot-ksu.img" "$K/init_boot-stock.img" "$K/VERSION"
 cp -- "$O/init_boot.img" "$K/init_boot-stock.img"
 "$ksud" boot-patch -b "$K/init_boot-stock.img" --kmi "$kmi" -m "$ko" -o "$K" --out-name init_boot-ksu.img \

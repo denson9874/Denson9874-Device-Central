@@ -67,11 +67,31 @@
 # ones, plus a backup archive on the server (mode 600) for copying off it by scp; its
 # log shows counts, sizes and public fingerprints, never key material.
 #
+# expressiveos-build and expressiveos-pack build and pack cheetah, as they always did, unless
+# query names another of the kit's phones (tree_ref's expressiveos-cheetah/devices/
+# <device>.conf: husky, kodiak, grizzly, cubs, yogi): device=<device> runs the scripts with
+# EOS_DEVICE=<device>.
+# expressiveos-build's devices=<device>,<device>,... runs them for each phone in turn in the one
+# eos-build session, eos-images.sh then eos-pack.sh, stopping at the first that fails, with a
+# DEVICE line per phone in its log; the job never waits for it. Its 'clean' removes a phone's
+# build output (out/target/product/<device>) once its pack ended PACK=OK, holding
+# ~/.expressiveos.lock, and prints what that freed; never cheetah's. Daryl allowed freeing build
+# output on 2026-10-26: no builds need to stay on the server (check/ keeps the candidate zip and
+# its target-files; eos-pack.sh can't pack that build again, and the phone's next build starts
+# its product over). expressiveos-pack's 'testers' runs eos-pack.sh --testers: check/'s
+# candidate, not yet tested on a phone, to SourceForge's expressiveos/<device>/testers (and
+# ~/releases/expressiveos-<device>/testers), with no device-ok. Only when Daryl says so. No
+# query token releases or uploads a release (eos-pack.sh --release, --upload).
+# expressiveos-status shows every phone's build.ok, verify.log, check/, testers/ and build
+# log, cheetah's where they always were (out/eos, ~/expressiveos-build.log), the others'
+# (out/eos-<device>, ~/expressiveos-build-<device>.log) once they exist.
+#
 # expressiveos-pins (read-only) prints the exact upstream commit every project of the
 # ExpressiveOS tree was synced to (repo's m/<manifest branch>, not HEAD: HEAD carries the
 # kit's local commits), as a repo manifest, plus the kernel tree's manifest and which Git
-# LFS files the tree holds. Those commits are what ExpressiveOS's own sources start from;
-# commit SHAs and file names only, never file contents.
+# LFS files the tree holds (vendor/google/cheetah, vendor/google/husky, vendor/gms, those
+# present). Those commits are what ExpressiveOS's own sources start from; commit SHAs and
+# file names only, never file contents.
 #
 # expressiveos-devices (read-only) prints what ExpressiveOS builds for husky and the four Pixel
 # 11 phones need from the server (expressiveos-cheetah/tools/devices-check.sh): disk per product,
@@ -158,7 +178,7 @@ on:
           server-cleanup-list: read-only: what
           server-cleanup.sh's groups hold now. server-cleanup: permanently remove
           the groups in query. expressiveos-status: read-only: the ExpressiveOS
-          sessions, logs, keys and build. expressiveos-setup: install tree_ref's
+          sessions, logs, keys and every phone's build. expressiveos-setup: install tree_ref's
           expressiveos-cheetah, then setup.sh and ksu/fetch-ksu.sh in tmux.
           expressiveos-keys: make ExpressiveOS's keys (once) and a backup archive.
           expressiveos-pins: read-only: the upstream commit of every project in the
@@ -170,7 +190,8 @@ on:
           expressiveos-update: the monthly update, with the push token (see query;
           dispatch it on the branch that has the update's sources/updates/<id>).
           expressiveos-build: install the kit, then eos-images.sh and eos-pack.sh in
-          tmux. expressiveos-pack: install the kit, then eos-pack.sh in tmux.
+          tmux (cheetah, or the phone or phones in query). expressiveos-pack: install
+          the kit, then eos-pack.sh in tmux (query: the phone; testers).
         type: choice
         default: status
         options:
@@ -227,8 +248,16 @@ on:
           space-separated project paths under device/ or vendor/ (default:
           cheetah's four projects). server-cleanup-list (optional) and
           server-cleanup (required): groups, e.g. 1,2,3,4,5,6,7.
-          expressiveos-build (optional): kernel-only (build_kernel and kernelsu.ko,
-          no pack), kernel-sync (sync the kernel source to its pins again). build-explain
+          expressiveos-build (optional): device=<phone> (one of tree_ref's
+          expressiveos-cheetah/devices: cheetah husky kodiak grizzly cubs yogi;
+          default cheetah) or devices=<phone>,<phone>,... (each in turn in one tmux
+          session, eos-images.sh then eos-pack.sh, stopping at the first failure),
+          kernel-only (build_kernel and kernelsu.ko, no pack), kernel-sync (sync the
+          kernel source to its pins again), clean (once a phone's pack ends PACK=OK,
+          remove its out/target/product/<phone> and print what that freed; never
+          cheetah's). expressiveos-pack (optional): device=<phone>, testers
+          (eos-pack.sh --testers: check/'s untested candidate to SourceForge's
+          expressiveos/<phone>/testers; only when Daryl says so). build-explain
           (required): tree, product, then up to two products to compare, e.g.
           'evolution lineage_yogi lineage_cubs'. release-checks (optional): devices,
           e.g. 'kodiak cheetah' (default: all six). expressiveos-update (required):
@@ -280,8 +309,9 @@ jobs:
             echo "::notice::a build is running on the server"
           fi
           # An ExpressiveOS build or pack runs in tmux, outside this job and its
-          # concurrency group, for hours, with stretches where no soong_ui or ninja
-          # runs (the kernel build, verify, pack): count it as a running build too.
+          # concurrency group, for hours (with devices=, until its last phone is
+          # packed), with stretches where no soong_ui or ninja runs (the kernel
+          # build, verify, pack, clean): count it as a running build too.
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
@@ -935,6 +965,11 @@ jobs:
         if: inputs.action == 'expressiveos-status'
         run: |
           top=~/expressiveos jobs=~/expressiveos-jobs
+          # The phones: the six the kit builds, and any other the installed kit has a
+          # devices/<device>.conf for (cheetah first, its records where they always were)
+          devs=$( { printf '%s\n' cheetah husky kodiak grizzly cubs yogi
+                    for f in ~/expressiveos-cheetah/devices/*.conf; do if [[ -f $f ]]; then basename "$f" .conf; fi; done
+                  } | grep -xE '[a-z0-9]+' | awk '!seen[$0]++')
           echo "== machine"; uptime; free -g | head -2; df -h ~ | sed 1d
           echo "== sessions"; tmux ls 2>/dev/null | grep -E '^eos-' || echo "no ExpressiveOS session running"
           for l in ~/.expressiveos.lock ~/.evolution-tree.lock; do
@@ -951,7 +986,9 @@ jobs:
           # session: name what started it
           p=$(pgrep -o -u "$(id -u)" -f "$HOME/expressiveos-cheetah/tools/eos-(images|pack)\.sh" || true)
           if [[ -n $p ]]; then
-            echo "running: $p, started $(ps -o lstart= -p "$p" 2>/dev/null || echo "?"): $(ps -o args= -p "$p" 2>/dev/null | cut -c1-150 || true)"
+            # Which phone: its EOS_DEVICE, the one variable read from its environment
+            d=$(tr '\0' '\n' 2>/dev/null < "/proc/$p/environ" | sed -n 's/^EOS_DEVICE=\([a-z0-9]*\)$/\1/p' | head -n 1 || true)
+            echo "running: $p${d:+ (EOS_DEVICE=$d)}, started $(ps -o lstart= -p "$p" 2>/dev/null || echo "?"): $(ps -o args= -p "$p" 2>/dev/null | cut -c1-150 || true)"
             q=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ' || true)
             while [[ -n $q && $q != 0 && $q != 1 ]]; do
               echo "  under $q: $(ps -o args= -p "$q" 2>/dev/null | cut -c1-150 || true)"
@@ -971,14 +1008,23 @@ jobs:
           fi
           echo "== keys: $(find "$top/vendor/evolution-priv/keys" -maxdepth 1 -name '*.pk8' 2>/dev/null | wc -l) .pk8 files in expressiveos/vendor/evolution-priv/keys"
           ls -l ~/expressiveos-keys-*.tar.gz 2>/dev/null || echo "no key backup archive on the server"
-          echo "== build: $(cat "$top/out/eos/build.ok" 2>/dev/null || echo "no complete build (out/eos/build.ok)")"
-          # eos-verify.sh's whole log stays on the server: its warnings and notes, and the
-          # incremental base line eos-pack.sh --release looks for
-          v=$top/out/eos/verify.log
-          if [[ -f $v ]]; then
-            echo "== out/eos/verify.log, $(date -r "$v" '+%F %T'): warnings, notes, incremental base, verdict"
-            grep -aE '^(WARNING|note|OK: incremental base|FAIL|VERIFY=)' "$v" | cut -c1-300 | head -n 30 || true
-          fi
+          # Each phone's records (lib.sh's EOS_STATE): cheetah's in out/eos, always shown, the
+          # others' in out/eos-<device>, once they exist
+          for d in $devs; do
+            if [[ $d = cheetah ]]; then st=out/eos l=build; else st=out/eos-$d l="build, $d"; [[ -d $top/$st ]] || continue; fi
+            echo "== $l: $(cat "$top/$st/build.ok" 2>/dev/null || echo "no complete build ($st/build.ok)")"
+            # expressiveos-build's clean removes a packed phone's product out (never cheetah's)
+            if [[ -f $top/$st/build.ok && ! -d $top/out/target/product/$d ]]; then
+              echo "   out/target/product/$d is gone (clean?): check/ has its candidate; eos-pack.sh can't pack this build again"
+            fi
+            # eos-verify.sh's whole log stays on the server: its warnings and notes, and the
+            # incremental base line eos-pack.sh --release looks for
+            v=$top/$st/verify.log
+            if [[ -f $v ]]; then
+              echo "== $st/verify.log, $(date -r "$v" '+%F %T'): warnings, notes, incremental base, verdict"
+              grep -aE '^(WARNING|note|OK: incremental base|FAIL|VERIFY=)' "$v" | cut -c1-300 | head -n 30 || true
+            fi
+          done
           # Names only. The kit and the routines call ~/bin/rclone (eos-pack.sh --upload needs
           # EOS_R2_REMOTE's remote), which this step's PATH doesn't have
           if [[ -x ~/bin/rclone ]]; then echo "== ~/bin/rclone remotes: $(~/bin/rclone listremotes 2>/dev/null | tr '\n' ' ')"; else echo "== no ~/bin/rclone"; fi
@@ -989,9 +1035,23 @@ jobs:
           done
           ls -t ~/routine-logs 2>/dev/null | head -8 || true
           ls -lh ~/releases/expressiveos-cheetah/check 2>/dev/null || true
-          # The runner's sessions' logs, then eos-images.sh's own (whoever started it), then
-          # the newest ExpressiveOS routine log, if a routine started one
-          for log in "$jobs"/{setup,keys,build,pack}.log ~/expressiveos-build.log $(ls -t ~/routine-logs/eos-* 2>/dev/null | head -1); do
+          # The other phones' candidates, and any phone's builds for testers (eos-pack.sh
+          # --testers), where there are any
+          for d in $devs; do
+            for f in check testers; do
+              [[ $d != cheetah || $f != check ]] || continue
+              r=$HOME/releases/expressiveos-$d/$f
+              [[ -d $r ]] || continue
+              echo "== ${r#"$HOME"/}"; ls -lh "$r" 2>/dev/null || true
+            done
+          done
+          # The runner's sessions' logs, then eos-images.sh's own (whoever started it; cheetah's,
+          # then the other phones'), then the newest ExpressiveOS routine log, if a routine started one
+          logs=("$jobs"/{setup,keys,build,pack}.log ~/expressiveos-build.log)
+          for d in $devs; do
+            [[ $d = cheetah ]] || logs+=("$HOME/expressiveos-build-$d.log")
+          done
+          for log in "${logs[@]}" $(ls -t ~/routine-logs/eos-* 2>/dev/null | head -1); do
             [[ -f $log ]] || continue
             echo "== ${log#"$HOME"/}, $(date -r "$log" '+%F %T'), $(du -h "$log" | cut -f1)"
             if [[ $log == "$HOME"/routine-logs/* ]]; then
@@ -1003,7 +1063,7 @@ jobs:
             fi
             # ninja's progress lines (libthiserror:...) and the compilers' and aidl's own warnings
             # (WARNING: <file>:<line>) would bury the kit's lines
-            grep -aE '^(== |OK: |FAIL|WARNING|SETUP|FETCH_KSU|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|PACK=|VERIFY|SESSION_EXIT)|FAILED:|error:' "$log" \
+            grep -aE '^(== |OK: |FAIL|WARNING|SETUP|FETCH_KSU|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|PACK=|VERIFY|SESSION_EXIT|DEVICE |CLEAN |CANDIDATE |UPLOADED_TESTERS )|FAILED:|error:' "$log" \
               | grep -avE '^(\[ *[0-9]+% |WARNING: [^ ]+:[0-9])' | tail -n 25 | cut -c1-300 || true
             # The kit's warnings from the whole log (apply.sh's come long before the end), each once
             w=$(grep -aE '^WARNING' "$log" | grep -avE '^WARNING: [^ ]+:[0-9]' | sort | uniq -c | sort -rn | head -n 10 | cut -c1-300 || true)
@@ -1072,8 +1132,10 @@ jobs:
           else
             echo "== no kernel tree in out-kernel/google/gs-6.1"
           fi
-          # Git LFS: which big files the tree holds (* = downloaded, - = pointer only)
-          for p in vendor/google/cheetah vendor/gms; do
+          # Git LFS: which big files the tree holds (* = downloaded, - = pointer only), in the
+          # projects whose LFS files a phone's build needs (devices/<device>.conf's
+          # EOS_LFS_PROJECTS), those in the tree
+          for p in vendor/google/cheetah vendor/google/husky vendor/gms; do
             [[ -d $p ]] || continue
             echo "== LFS in $p ($(git -C "$p" config --get lfs.url || git -C "$p" config -f .lfsconfig --get lfs.url 2>/dev/null || echo 'no lfs.url'))"
             git -C "$p" lfs ls-files -l 2>/dev/null | awk '{print $2}' | sort | uniq -c || true
@@ -1144,14 +1206,44 @@ jobs:
           fail() { echo "::error::$*"; exit 1; }
           kit=~/expressiveos-cheetah jobs=~/expressiveos-jobs
           read -r -a opts <<< "$QUERY"
-          envs=()
+          # The phones tree_ref's kit builds: its devices/<device>.conf (lib.sh refuses any other)
+          known=" "
+          for f in "$GITHUB_WORKSPACE"/expressiveos-cheetah/devices/*.conf; do
+            if [[ -f $f ]]; then known+="$(basename "$f" .conf) "; fi
+          done
+          phone() {   # phone <name>: fail unless the kit has devices/<name>.conf
+            [[ $1 =~ ^[a-z0-9]+$ && $known == *" $1 "* ]] || fail "'$1' isn't one of tree_ref's phones (expressiveos-cheetah/devices/*.conf):${known% }"
+          }
+          envs=() dev= devs=() free_out=0 testers=0
           for o in ${opts[@]+"${opts[@]}"}; do
             case "$ACTION:$o" in
               expressiveos-build:kernel-only) envs+=(KERNEL_ONLY=1) ;;
               expressiveos-build:kernel-sync) envs+=(EOS_KERNEL_SYNC=1) ;;
-              *) fail "query '$o' isn't for $ACTION (only expressiveos-build takes one: kernel-only, kernel-sync)" ;;
+              expressiveos-build:clean) free_out=1 ;;
+              expressiveos-pack:testers) testers=1 ;;
+              expressiveos-build:device=*|expressiveos-pack:device=*)
+                [[ -z $dev && ${#devs[@]} = 0 ]] || fail "query names the phone twice ($o)"
+                dev=${o#device=}; phone "$dev" ;;
+              expressiveos-build:devices=*)
+                [[ -z $dev && ${#devs[@]} = 0 ]] || fail "query names the phone twice ($o)"
+                [[ ${o#devices=} =~ ^[a-z0-9]+(,[a-z0-9]+)*$ ]] || fail "devices= is phones with commas between them, e.g. devices=kodiak,grizzly"
+                IFS=, read -r -a devs <<< "${o#devices=}"
+                seen=" "
+                for d in "${devs[@]}"; do
+                  phone "$d"
+                  [[ $seen != *" $d "* ]] || fail "devices= names $d twice"
+                  seen+="$d "
+                done ;;
+              *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, clean; expressiveos-pack takes device=<phone>, testers)" ;;
             esac
           done
+          if [[ $free_out = 1 ]]; then
+            [[ " ${envs[*]-} " != *" KERNEL_ONLY=1 "* ]] || fail "clean is for builds that are packed, not kernel-only"
+            # cheetah's build output always stays, so clean needs another phone to free
+            other=0
+            for d in ${devs[@]+"${devs[@]}"} "${dev:-cheetah}"; do [[ $d = cheetah ]] || other=1; done
+            (( other )) || fail "clean frees the build output of phones other than cheetah, and cheetah's always stays: name them with device= or devices="
+          fi
           # Nothing of ExpressiveOS's may be running: the kit is replaced below, and bash
           # reads a script while it runs it
           for s in eos-setup eos-build eos-pack; do
@@ -1270,11 +1362,103 @@ jobs:
           }
           e=
           (( ${#envs[@]} == 0 )) || printf -v e '%q ' "${envs[@]}"
+          if [[ $ACTION = expressiveos-build ]] && (( ${#devs[@]} || free_out )); then
+            (( ${#devs[@]} )) || devs=("$dev")
+            echo "phones, in turn: ${devs[*]}$( (( ! free_out )) || echo "; clean: each one's out/target/product/<phone> removed once it's packed, cheetah's kept")" | tee -a "$GITHUB_STEP_SUMMARY"
+            # The phones in turn, in the one eos-build session: written here, run there. Nothing of
+            # ExpressiveOS's runs now (checked above), so no session is reading the old copy
+            cat > "$jobs/build-devices.sh" <<'EOF'
+          #!/bin/bash
+          # expressiveos-build for several phones (query devices=, or clean), written by the runner
+          # and run in the eos-build session: for each phone in turn, eos-images.sh, then
+          # eos-pack.sh, with its EOS_DEVICE, stopping at the first that fails. One DEVICE line per
+          # phone says how it went. With clean (Daryl, 2026-10-26: no builds need to stay on the
+          # server), a phone's product out, out/target/product/<device>, is removed once its pack
+          # ended PACK=OK (check/ keeps the candidate and its target-files); never cheetah's.
+          #   build-devices.sh <kit> <clean: 0 or 1> [NAME=value]... -- <device>...
+          # The NAME=value pairs (KERNEL_ONLY=1, EOS_KERNEL_SYNC=1) are eos-images.sh's, as for one
+          # phone; with KERNEL_ONLY=1 nothing is packed.
+          kit=$1 clean=$2
+          shift 2
+          envs=() konly=0
+          while [[ $# -gt 0 && $1 != -- ]]; do
+              [[ $1 != KERNEL_ONLY=1 ]] || konly=1
+              envs+=("$1")
+              shift
+          done
+          shift
+          t=$(mktemp) || exit 1
+          trap 'rm -f -- "$t"' EXIT
+
+          free_out() {   # free_out <device>: remove its out/target/product/<device> while holding ~/.expressiveos.lock, and say what that freed
+              local d=$1 p k rc=0
+              # The tree and the folder as the kit checks them (lib.sh: ~/expressiveos, nothing in
+              # it leading out of it or into another tree), and no build started by hand in it
+              p=$(EOS_DEVICE=$d bash -c 'source "$1/lib.sh" && eos_top "" && in_top "$top/$EOS_PRODUCT_OUT" &&
+                  b=$(tree_build) && { [[ -z $b ]] || fail "a build is running in $top: $b"; } &&
+                  printf "%s\n" "$top/$EOS_PRODUCT_OUT"' _ "$kit") || { echo "WARNING: CLEAN $d: not removed (above)"; return 1; }
+              [[ $d != cheetah && $p == /*/out/target/product/"$d" ]] || { echo "WARNING: CLEAN $d: not removed ($p)"; return 1; }
+              if [[ ! -e $p ]]; then echo "CLEAN $d: nothing to remove (no out/target/product/$d)"; return 0; fi
+              k=$(du -sk -- "$p" 2>/dev/null | cut -f1)
+              # Not while another ExpressiveOS run (a routine's build, a pack) has the tree
+              flock -n -E 75 "$HOME/.expressiveos.lock" rm -rf -- "$p" || rc=$?
+              case $rc in
+              0)  echo "CLEAN $d: removed out/target/product/$d, freed $(numfmt --to=iec --from-unit=1024 "${k:-0}"); $(df -h --output=avail "$HOME" | tail -n 1 | tr -d ' ') free now" ;;
+              75) echo "WARNING: CLEAN $d: not removed: ~/.expressiveos.lock is held (another ExpressiveOS run)"; return 1 ;;
+              *)  echo "WARNING: CLEAN $d: rm -rf failed (exit $rc): out/target/product/$d may be partly removed"; return 1 ;;
+              esac
+          }
+
+          n=0
+          for d in "$@"; do
+              n=$((n + 1))
+              rest=${*:n+1}
+              log=~/expressiveos-build-$d.log
+              [[ $d != cheetah ]] || log=~/expressiveos-build.log
+              echo "== $d ($n of $#): eos-images.sh, $(date -u '+%F %T') UTC"
+              rc=0
+              env EOS_DEVICE="$d" "${envs[@]}" "$kit/tools/eos-images.sh" || rc=$?
+              if (( rc )); then
+                  echo "DEVICE $d: BUILD_EXIT=1 (exit $rc; ${log/#"$HOME"/\~})${rest:+; not built: $rest}"
+                  exit 1
+              fi
+              if (( konly )); then echo "DEVICE $d: BUILD_EXIT=0, kernel only (nothing packed)"; continue; fi
+              echo "== $d ($n of $#): eos-pack.sh, $(date -u '+%F %T') UTC"
+              env EOS_DEVICE="$d" "$kit/tools/eos-pack.sh" 2>&1 | tee -- "$t"
+              rc=${PIPESTATUS[0]}
+              if (( rc )) || [[ "$(tail -n 1 -- "$t")" != PACK=OK ]]; then
+                  echo "DEVICE $d: BUILD_EXIT=0, PACK=FAIL (exit $rc)${rest:+; not packed: $rest}"
+                  exit 1
+              fi
+              c=
+              if [[ $clean = 1 && $d = cheetah ]]; then
+                  c=", out/target/product/cheetah kept (cheetah's always stays)"
+              elif [[ $clean = 1 ]]; then
+                  if free_out "$d"; then c=", out/target/product/$d removed"; else c=", out/target/product/$d kept (WARNING above)"; fi
+              fi
+              echo "DEVICE $d: BUILD_EXIT=0, PACK=OK$c"
+          done
+          if (( konly )); then echo "OK: kernels built: $*"; else echo "OK: built and packed: $*"; fi
+          EOF
+          elif [[ -n $dev ]]; then
+            # One phone: the session's environment names it (lib.sh: EOS_DEVICE, cheetah unless set)
+            clean+=(EOS_DEVICE="$dev")
+            echo "phone: $dev" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
           case $ACTION in
             expressiveos-setup) launch setup "$kit/setup.sh && $kit/ksu/fetch-ksu.sh" ;;
             expressiveos-build)
-              pack=" && $kit/tools/eos-pack.sh"
-              [[ " ${envs[*]-} " != *" KERNEL_ONLY=1 "* ]] || pack=
-              launch build "env ${e}$kit/tools/eos-images.sh$pack" ;;
-            expressiveos-pack) launch pack "$kit/tools/eos-pack.sh" ;;
+              if (( ${#devs[@]} )); then
+                launch build "bash $(printf %q "$jobs/build-devices.sh") $(printf %q "$kit") $free_out ${e}-- ${devs[*]}"
+              else
+                pack=" && $kit/tools/eos-pack.sh"
+                [[ " ${envs[*]-} " != *" KERNEL_ONLY=1 "* ]] || pack=
+                launch build "env ${e}$kit/tools/eos-images.sh$pack"
+              fi ;;
+            # testers: eos-pack.sh --testers (check/'s candidate to SourceForge's testers folder,
+            # no device-ok), only when Daryl says so. --release and --upload aren't run from here
+            expressiveos-pack)
+              t=
+              [[ $testers = 0 ]] || t=" --testers"
+              launch pack "$kit/tools/eos-pack.sh$t" ;;
           esac

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check a built ExpressiveOS tree for Evolution X branding a user could see.
 
-usage: brand-check.py OUT            # OUT = out/target/product/cheetah
+usage: brand-check.py OUT            # OUT = out/target/product/<device> (lib.sh's EOS_PRODUCT_OUT)
 
 Scans, in UTF-8 and UTF-16 (resource string pools use either):
   - every APK under system, system_ext, product and vendor: resources.arsc and
