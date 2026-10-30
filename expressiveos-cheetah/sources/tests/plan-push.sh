@@ -4,6 +4,7 @@
 set -uo pipefail
 P=$(cd "$(dirname "$0")" && pwd)
 WD=${EOS_TEST_WORK:-${TMPDIR:-/tmp}/eos-update-tests}/plan-push
+mkdir -p -- "$(dirname -- "$WD")"   # the harness log goes next to it
 trap 'rm -rf "$WD"' EXIT
 KSRC=$1
 pass=0 failn=0
@@ -20,7 +21,7 @@ expect() {   # expect <name> <want rc: 0|1> <grep -E pattern> -- cmd...
     fi
 }
 fresh() {   # a new world, kit from KSRC, frameworks/base resolved
-    bash "$P/harness.sh" "$KSRC" "$WD" >/dev/null 2>&1 || { echo "harness failed"; exit 1; }
+    bash "$P/harness.sh" "$KSRC" "$WD" >"$WD.harness.log" 2>&1 || { tail -n 20 "$WD.harness.log" >&2; echo "harness failed"; exit 1; }
     # shellcheck disable=SC1091
     source "$WD/env.sh"
     W=$HOME/expressiveos-update

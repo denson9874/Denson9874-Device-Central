@@ -11,6 +11,7 @@ KSRC=$(cd "${1:?usage: resolution-robustness.sh <kit src>}" && pwd) || exit 2
 R=$(cd "$(dirname "$0")" && pwd)
 H=$R/harness.sh
 WD=${EOS_TEST_WORK:-${TMPDIR:-/tmp}/eos-update-tests}/resolution-robustness
+mkdir -p -- "$(dirname -- "$WD")"   # the harness log goes next to it
 trap 'rm -rf "$WD"' EXIT
 pass=0 failn=0
 ok() { echo "PASS: $*"; pass=$((pass + 1)); }
@@ -19,7 +20,7 @@ bad() { echo "FAIL: $*"; failn=$((failn + 1)); }
 check() { local name=$1 why=$2; shift 2; if "$@"; then ok "$name"; else bad "$name ($why)"; fi; }
 
 world() {   # a fresh world (the old one deleted)
-    bash "$H" "$KSRC" "$WD" >/dev/null 2>&1 || { bad "harness.sh failed to build a world"; echo "== $pass passed, $failn failed"; exit 1; }
+    bash "$H" "$KSRC" "$WD" >"$WD.harness.log" 2>&1 || { tail -n 20 "$WD.harness.log" >&2; bad "harness.sh failed to build a world"; echo "== $pass passed, $failn failed"; exit 1; }
     # shellcheck disable=SC1091
     source "$WD/env.sh"
     export GIT_CEILING_DIRECTORIES=$T
