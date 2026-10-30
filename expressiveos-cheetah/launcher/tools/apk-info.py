@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Print what fetch-launcher.sh checks in an APK, without aapt2 or apksigner: the package,
-# version, the SHA-256 of its v2 signing certificate (first signer), and its
+# version, the SHA-256 of its signing certificate (first signer of the newest APK Signature
+# Scheme block it has: v3.1, v3 or v2), and its
 # <uses-permission> and <uses-library> tags, read from the binary AndroidManifest.xml.
 # The APK is untrusted input: run it with python3 -I and pass the path as an argument.
 # (A copy of viper4android/tools/apk-info.py, so each kit stands alone.)
@@ -21,7 +22,7 @@ import hashlib, struct, sys, zipfile
 def die(msg):
     sys.exit("apk-info: " + msg)
 
-def v2_cert(path):
+def signing_cert(path):
     d = open(path, "rb").read()
     eocd = d.rfind(b"PK\x05\x06")
     if eocd < 0 or eocd + 22 > len(d): die("no zip end of central directory")
@@ -35,16 +36,21 @@ def v2_cert(path):
         n = struct.unpack_from("<I", b, o)[0]
         if o + 4 + n > len(b): die("truncated signing block")
         return b[o + 4:o + 4 + n], o + 4 + n
+    blocks = {}
     pos = 8
     while pos + 12 <= len(blk):
         n, i = struct.unpack_from("<QI", blk, pos)
-        v = blk[pos + 12:pos + 8 + n]
-        if i == 0x7109871a:   # APK Signature Scheme v2: signers > signer > signed data > certificates
-            signer, _ = lp(lp(v, 0)[0], 0); sd, _ = lp(signer, 0); _, o = lp(sd, 0)
+        blocks.setdefault(i, blk[pos + 12:pos + 8 + n])
+        pos += 8 + n
+    # v3.1, v3, then v2: the newest scheme is the one the platform checks, and its signer is
+    # the current one when a key was rotated. All three start the same way: signers > signer >
+    # signed data > digests, then certificates.
+    for i in (0x1b93ad61, 0xf05368c0, 0x7109871a):
+        if i in blocks:
+            signer, _ = lp(lp(blocks[i], 0)[0], 0); sd, _ = lp(signer, 0); _, o = lp(sd, 0)
             cert, _ = lp(lp(sd, o)[0], 0)
             return hashlib.sha256(cert).hexdigest()
-        pos += 8 + n
-    die("no v2 signature")
+    die("no v2, v3 or v3.1 signature")
 
 # android: attribute resource ids
 R_NAME, R_REQUIRED, R_VERSION_CODE, R_VERSION_NAME = 0x01010003, 0x0101028e, 0x0101021b, 0x0101021c
@@ -151,7 +157,7 @@ if len(sys.argv) == 3 and sys.argv[1] == "--overlay":
 if len(sys.argv) != 2: die("usage: apk-info.py <apk> | --home <apk>... | --overlay <apk>")
 try:
     lines = manifest(sys.argv[1])
-    lines.insert(3, "cert " + v2_cert(sys.argv[1]))
+    lines.insert(3, "cert " + signing_cert(sys.argv[1]))
 except (KeyError, IndexError, struct.error, zipfile.BadZipFile, OSError) as e:
     die("can't read %s: %s" % (sys.argv[1], e))
 print("\n".join(lines))
