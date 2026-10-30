@@ -1,11 +1,25 @@
 #!/usr/bin/env bash
-# preview.sh SRC_DIR OUT.mp4 [loops]: what the phone shows on its 1080x2340 FHD+ boot screen,
-# following desc.txt (pauses hold the part's last frame): the looping part plays N times
-# (default 3), then a one-second hold at the end. 30 fps, scaled to 720 wide. Needs ffmpeg.
+# preview.sh SRC_DIR OUT.mp4 [loops] [--palette RRGGBB,RRGGBB,RRGGBB,RRGGBB]: what the phone
+# shows on its 1080x2340 FHD+ boot screen, following desc.txt (pauses hold the part's last
+# frame): the looping part plays N times (default 3), then a one-second hold at the end. 30 fps,
+# scaled to 720 wide. Needs ffmpeg.
+# The holiday zip's frames are colour masks: tint.py first draws them as the phone does, in
+# --palette's colours (a holiday's four petal mids) or desc.txt's start colours (Bloom's).
 set -euo pipefail
-src=$1 out=$2 loops=${3:-3}
+palette=() args=()
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --palette) palette=("${2:?--palette needs RRGGBB,RRGGBB,RRGGBB,RRGGBB}"); shift 2 ;;
+        *) args+=("$1"); shift ;;
+    esac
+done
+src=${args[0]:?usage: preview.sh SRC_DIR OUT.mp4 [loops] [--palette COLOURS]} out=${args[1]:?no OUT.mp4} loops=${args[2]:-3}
 seq=$(mktemp -d "${TMPDIR:-/tmp}/bootanim-preview.XXXXXX")
 trap 'rm -rf -- "$seq"' EXIT
+if grep -q '^dynamic_colors ' "$src/desc.txt"; then
+    python3 -I "$(dirname -- "$(readlink -f -- "$0")")/tint.py" "$src" "$seq/tinted" ${palette[@]+"${palette[@]}"}
+    src=$seq/tinted
+fi
 n=0
 put() { ln -s "$(cd "$(dirname -- "$1")" && pwd)/${1##*/}" "$seq/$(printf 'f%05d.png' $n)"; n=$((n + 1)); }
 last='' bg=''

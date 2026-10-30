@@ -5,8 +5,10 @@ Drawn from the ExpressiveOS logo (docs/assets/screenshots/logo.png) and Google S
 Motion inspired by Loic's boot animation concept: the petals unfurl, a ring pulses out,
 the wordmark pops in, the mark spins while booting, and a ripple plays when boot completes.
 
-usage: render.py LOGO.png FONT.ttf OUTDIR [--only part0,part1,part2]
+usage: render.py LOGO.png FONT.ttf OUTDIR [--only part0,part1,part2] [--dynamic]
 Writes OUTDIR/desc.txt and OUTDIR/part{0,1,2}/img%05d.png (1080x1320, 8-bit RGB, 30 fps).
+--dynamic draws the holiday copy instead: the same scene as 8-bit RGBA colour masks for
+BootAnimation's dynamic colours (DYN_CHANNEL), which the phone colours in at boot.
 Needs numpy and Pillow built with FreeType variable fonts and libraqm (kerning).
 """
 import argparse, math, os, sys
@@ -28,6 +30,20 @@ PARTS = {
     "part1": (4, 34, 0, 20),    # one turn (scene frames 4-37, ends at rest), then 20 frames at rest
     "part2": (0, 26, 1, 0),     # ripple when boot completes; ends at rest
 }
+FLASH = 0.45                           # part2's flash at its peak: how far the wordmark goes to white
+
+# --dynamic: BootAnimation's dynamic-colour shader (BootAnimationShaders.h) draws a pixel as
+# r*color1 + g*color2 + b*color3 + a*color4, the colours from persist.bootanim.color1..4: the
+# holiday's petal mids in the catalog's petal order (violet, blue, coral, green). So each channel
+# is one petal's weight, and the background is all zeros. Where all four channels are 0.05 or more
+# it draws grey instead, so no pixel may have all four above DYN_MASK_MAX (12/255 < 0.05 <= 13/255).
+DYN_CHANNEL = {"purple": 0, "blue": 1, "coral": 2, "green": 3}
+# desc.txt's start colours, drawn while the properties are empty: Bloom's petal mids (Evolver
+# studio/Bloom.kt), in the same order
+DYN_START = ("#AE69FC", "#417BFC", "#FD7771", "#4AD29D")
+DYN_MASK_MAX = 12
+DYN_SHADE = 0.62                       # a petal's deepest shade, as a fraction of its colour
+DYN_WORD = 0.85                        # the wordmark at rest, as a fraction of its colours
 
 # ---------------------------------------------------------------- easing
 def clamp01(t): return max(0.0, min(1.0, t))
@@ -46,7 +62,7 @@ class Mark:
     # petal order is clockwise from the top right, which is also the unfurl order
     NAMES = ["blue", "green", "coral", "purple"]
 
-    def __init__(self, path):
+    def __init__(self, path, dynamic=False):
         src = np.asarray(Image.open(path).convert("RGB")).astype(np.float64)
         bgc = np.median(np.concatenate([src[:40].reshape(-1, 3), src[-40:].reshape(-1, 3)]), axis=0)
         a = np.clip((np.abs(src - bgc).max(2) - 6) / 24, 0, 1)
@@ -78,16 +94,64 @@ class Mark:
         tot = sum(ws.values()) + 1e-9
         self.base_scale = base_scale
         size = (round(w0 * base_scale), round(h0 * base_scale))
+        self.dynamic = dynamic
+        if dynamic:
+            share = {k: ws[k] / tot for k in self.NAMES}
+            # The coral petal's tail sweeps through yellow into the green petal. One colour per
+            # petal would make that a hard seam, so coral hands over to green across the whole
+            # sweep (hues 40-140) instead
+            cg = share["coral"] + share["green"]
+            t = np.clip((np.where(hue >= 250, hue - 360, hue) - 40) / 100, 0, 1)
+            share["coral"], share["green"] = cg * (1 - t), cg * t
+            shares = self.dynamic_shares(src, bgc, a, share)
         self.layers = {}
         for k in self.NAMES:
-            ak = a * ws[k] / tot
-            rgba = np.dstack([fg * ak[..., None], ak * 255])          # premultiplied
+            if dynamic:
+                ak, wk = shares[k]
+                z = np.zeros_like(ak)
+                rgba = np.dstack([wk * 255, z, z, ak * 255])          # premultiplied; R is the weight
+            else:
+                ak = a * ws[k] / tot
+                rgba = np.dstack([fg * ak[..., None], ak * 255])      # premultiplied
             im = Image.fromarray(np.clip(np.rint(rgba), 0, 255).astype(np.uint8), "RGBa")
             self.layers[k] = im.resize(size, Image.LANCZOS)
         self.pivot = (self.pivot_src[0] * base_scale, self.pivot_src[1] * base_scale)
 
+    @staticmethod
+    def dynamic_shares(src, bgc, a, share):
+        """--dynamic: each petal's (coverage, weight) per source pixel. The weight is the logo's
+        own shading: the petal's luminance from its deepest to its brightest 3% mapped to
+        DYN_SHADE..1. Along the outline a pixel is part background, which that would read as
+        dark petal (and its hue as a petal's), so within 2 px of the background the petal and
+        shade come from the pixels further in, and the coverage from where the pixel's luminance
+        lies between the background's and theirs."""
+        luma = np.array([0.2126, 0.7152, 0.0722])
+        lum = src @ luma
+        inside = a >= 1
+        for _ in range(2):
+            inside = inside & np.all([np.roll(inside, d, ax) for ax in (0, 1) for d in (-1, 1)], 0)
+        fields = []
+        for k, wk in share.items():
+            lo, hi = np.percentile(lum[inside & (wk > 0.5)], [3, 97])
+            fields += [wk, wk * (DYN_SHADE + (1 - DYN_SHADE) * np.clip((lum - lo) / (hi - lo), 0, 1))]
+        fields = np.dstack(fields + [lum])
+        # fill outwards from inside, a ring of pixels at a time: each takes its filled neighbours' mean
+        done = inside.astype(np.float64)
+        fields[~inside] = 0
+        for _ in range(6):
+            sums = sum(np.roll(fields, d, ax) for ax in (0, 1) for d in (-1, 1))
+            n = sum(np.roll(done, d, ax) for ax in (0, 1) for d in (-1, 1))
+            new = (done == 0) & (n > 0)
+            fields[new] = sums[new] / n[new][:, None]
+            done[new] = 1
+        bl = bgc @ luma
+        cov = np.where(inside, 1, np.clip((lum - bl) / np.maximum(fields[..., -1] - bl, 1), 0, 1))
+        cov = np.where((a > 0) & (done > 0), cov, 0)
+        return {k: (cov * fields[..., 2 * i], cov * fields[..., 2 * i + 1]) for i, k in enumerate(share)}
+
     def draw(self, acc, pose):
-        """Composite petals (premultiplied) onto acc (H, W, 4 float, premultiplied).
+        """Composite petals (premultiplied) onto acc (H, W, 4 float, premultiplied); a dynamic
+        mark's acc is (H, W, 5): each petal's weight in its DYN_CHANNEL, then coverage.
         pose: {name: (rot_deg, scale, alpha)} with scale relative to rest."""
         for k in self.NAMES:
             rot, sc, al = pose[k]
@@ -105,8 +169,12 @@ class Mark:
             arr = np.asarray(out, dtype=np.float32)
             # 'RGBa' data is premultiplied. The petals split the logo's pixels between them, so
             # they add up (at rest the sum is the logo exactly); clamp where moving petals overlap.
-            acc += arr * al
-        over = np.maximum(acc[..., 3:4] / 255, 1)
+            if self.dynamic:
+                acc[..., DYN_CHANNEL[k]] += arr[..., 0] * al
+                acc[..., 4] += arr[..., 3] * al
+            else:
+                acc += arr * al
+        over = np.maximum(acc[..., -1:] / 255, 1)
         acc /= over
 
 
@@ -114,6 +182,8 @@ class Mark:
 class Wordmark:
     STOPS = np.array([[0xc1, 0x78, 0xfd], [0x8a, 0x6c, 0xf9], [0x3f, 0x79, 0xfd],
                       [0x34, 0xcb, 0x98], [0xfd, 0xa0, 0x7c], [0xfd, 0x57, 0x6e]], np.float32)
+    # --dynamic: each stop as the petal whose colour it is (violet, violet, blue, green, coral, coral)
+    DYN_STOPS = np.eye(4, dtype=np.float32)[[0, 0, 1, 3, 2, 2]]
 
     def __init__(self, font_path):
         size = 200
@@ -141,12 +211,13 @@ class Wordmark:
         i = np.minimum(t.astype(int), len(self.STOPS) - 2)
         fr = (t - i)[:, None]
         self.grad = self.STOPS[i] * (1 - fr) + self.STOPS[i + 1] * fr       # (W, 3)
+        self.dyn_grad = self.DYN_STOPS[i] * (1 - fr) + self.DYN_STOPS[i + 1] * fr   # (W, 4)
         # a gentle top-to-bottom lift, like the mark's lighting
         yy = np.arange(H, dtype=np.float32)
         self.lift = np.clip((WORD_BASE - yy) / (size * 0.75), 0, 1)[:, None] * 0.18
 
-    def draw(self, img, states, flash=0.0):
-        """states: per letter (scale, alpha, dy). img: (H, W, 3) float, straight."""
+    def coverage(self, states):
+        """states: per letter (scale, alpha, dy). The letters' coverage, (H, W) in 0-1."""
         cov = np.zeros((H, W), np.float32)
         for (m, left, top, gcx, gcy), (sc, al, dy) in zip(self.glyphs, states):
             if al <= 0.002 or sc <= 0.01:
@@ -158,10 +229,23 @@ class Wordmark:
             g = m.transform((W, H), Image.AFFINE, coeffs, resample=Image.BICUBIC)
             ga = np.asarray(g, np.float32) / 255 * al
             cov = 1 - (1 - cov) * (1 - ga)
+        return cov
+
+    def draw(self, img, states, flash=0.0):
+        """states: per letter (scale, alpha, dy). img: (H, W, 3) float, straight."""
+        cov = self.coverage(states)
         col = self.grad[None, :, :] + (255 - self.grad[None, :, :]) * self.lift[:, :, None]
         col = col + (255 - col) * flash
         img *= (1 - cov[..., None])
         img += col * cov[..., None]
+
+    def draw_dynamic(self, w, states, flash=0.0):
+        """As draw, onto petal weights w (H, W, 4, 0-255). No white lift: the letters are at
+        DYN_WORD, and the flash brightens them to their full colours instead of whitening them."""
+        cov = self.coverage(states)
+        col = self.dyn_grad[None, :, :] * (255 * (DYN_WORD + (1 - DYN_WORD) * flash / FLASH))
+        w *= (1 - cov[..., None])
+        w += col * cov[..., None]
 
 
 # ---------------------------------------------------------------- canvas pieces
@@ -190,6 +274,47 @@ def bloom(img, petal_acc, amount):
     big = np.asarray(small.resize((W, H), Image.BICUBIC), np.float32)
     fade = np.clip(1 - (RR - 300) / 180, 0, 1)[..., None]     # nothing past r = 480
     img += big * amount * fade
+
+# --dynamic: no halo (a grey lift is the shader's grey, and its tail would turn coloured where it
+# drops below the threshold) and no white: the rings take the petals' colours by quadrant, each
+# petal's around its own diagonal, blending over about 20 degrees where two meet
+_quad = None
+def quadrants():
+    global _quad
+    if _quad is None:
+        ang = np.arctan2(yy - CY, xx - CX)
+        centre = {"purple": -0.75 * math.pi, "blue": -0.25 * math.pi, "green": 0.25 * math.pi, "coral": 0.75 * math.pi}
+        q = np.zeros((H, W, 4), np.float32)
+        for k, c in centre.items():
+            q[..., DYN_CHANNEL[k]] = np.maximum(np.cos(ang - c), 0) ** 8
+        _quad = q / q.sum(2, keepdims=True)
+    return _quad
+
+def ring_dynamic(w, r, width, amp):
+    if amp <= 0.002: return
+    g = np.exp(-((RR - r) / width) ** 2) * amp
+    w += (quadrants() * 255 - w) * g[..., None]
+
+def bloom_dynamic(w, petal_acc, amount):
+    """bloom() for each petal's weight: its glow is in its own colour."""
+    if amount <= 0.002: return
+    fade = np.clip(1 - (RR - 300) / 180, 0, 1)
+    for c in range(4):
+        small = Image.fromarray(np.clip(petal_acc[..., c], 0, 255).astype(np.uint8), "L").resize((W // 4, H // 4), Image.BILINEAR)
+        small = small.filter(ImageFilter.GaussianBlur(14))
+        big = np.asarray(small.resize((W, H), Image.BICUBIC), np.float32)
+        w[..., c] += big * amount * fade
+
+def dynamic_mask(w):
+    """The weights as RGBA bytes. Where all four channels would reach the shader's grey, the
+    smallest goes down to DYN_MASK_MAX. Returns the image and how many pixels that took."""
+    m = np.clip(np.rint(w), 0, 255).astype(np.uint8)
+    grey = (m > DYN_MASK_MAX).all(2)
+    if grey.any():
+        px = m[grey]
+        px[np.arange(len(px)), px.argmin(1)] = DYN_MASK_MAX
+        m[grey] = px
+    return Image.fromarray(m, "RGBA"), int(grey.sum())
 
 # ---------------------------------------------------------------- poses
 REST_PETALS = {k: (0.0, 1.0, 1.0) for k in Mark.NAMES}
@@ -237,7 +362,7 @@ def state(part, f):
     elif part == "part2":
         # ripple when boot completes, then settle to rest
         s["scale"] = 1 + 0.14 * bump(clamp01(f / 24)) ** 0.8
-        s["flash"] = 0.45 * bump(clamp01((f - 1) / 16))
+        s["flash"] = FLASH * bump(clamp01((f - 1) / 16))
         s["bloom"] = 0.30 + 0.35 * bump(clamp01(f / 22))
         s["halo"] = 1 + 0.35 * bump(clamp01(f / 24))
         rings = []
@@ -262,21 +387,25 @@ def angular_speed(part, f):
         sp = max(sp, abs(rb - ra))
     return sp
 
-def render_frame(mark, word, part, f):
-    st = state(part, f)
-    img = halo(st["halo"])
+def draw_mark(mark, part, f):
     # motion blur: average the mark over half a frame of shutter when it moves fast
     deg = angular_speed(part, f)
     px = math.radians(deg) * 260          # travel at the petal tips, px per frame
     n = int(min(24, max(1, math.ceil(px * 0.5 / 3))))
-    acc_sum = np.zeros((H, W, 4), np.float32)
+    ch = 5 if mark.dynamic else 4
+    acc_sum = np.zeros((H, W, ch), np.float32)
     for j in range(n):
         ff = f + ((j + 0.5) / n - 0.5) * 0.5 if n > 1 else f
         sj = state(part, ff)
-        acc = np.zeros((H, W, 4), np.float32)
+        acc = np.zeros((H, W, ch), np.float32)
         mark.draw(acc, compose_petals(sj))
         acc_sum += acc
-    acc = acc_sum / n
+    return acc_sum / n
+
+def render_frame(mark, word, part, f):
+    st = state(part, f)
+    img = halo(st["halo"])
+    acc = draw_mark(mark, part, f)
     bloom(img, acc, st["bloom"])
     img *= (1 - acc[..., 3:4] / 255)
     img += acc[..., :3]
@@ -285,17 +414,35 @@ def render_frame(mark, word, part, f):
     word.draw(img, st["letters"], st["flash"])
     return Image.fromarray(np.clip(np.rint(img), 0, 255).astype(np.uint8), "RGB")
 
+def render_dynamic_frame(mark, word, part, f):
+    """render_frame for --dynamic, in petal weights (0-255) instead of colours, on zeros.
+    Returns the RGBA mask and how many pixels dynamic_mask lowered."""
+    st = state(part, f)
+    w = np.zeros((H, W, 4), np.float32)
+    acc = draw_mark(mark, part, f)
+    bloom_dynamic(w, acc, st["bloom"])
+    w *= (1 - acc[..., 4:5] / 255)
+    w += acc[..., :4]
+    for (r, w_, amp) in st["rings"]:
+        ring_dynamic(w, r, w_, amp)
+    word.draw_dynamic(w, st["letters"], st["flash"])
+    return dynamic_mask(w)
+
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("logo"); ap.add_argument("font"); ap.add_argument("out")
     ap.add_argument("--only", default=",".join(PARTS), help="parts to render (default all)")
+    ap.add_argument("--dynamic", action="store_true", help="the holiday copy: colour masks")
     args = ap.parse_args()
-    mark = Mark(args.logo)
+    mark = Mark(args.logo, args.dynamic)
     word = Wordmark(args.font)
     print(f"wordmark: {word.size}px, x {word.x0:.0f}-{word.x1:.0f}", file=sys.stderr)
     os.makedirs(args.out, exist_ok=True)
-    desc = f"{W} {H} {FPS}\n" + "".join(
+    # dynamic_colors must be the second line. Transition 0 0: only part0's first frame (black)
+    # is drawn in the start colours, every later one in the properties' colours
+    dyn = f"dynamic_colors part0 {' '.join(DYN_START)} 0 0\n" if args.dynamic else ""
+    desc = f"{W} {H} {FPS}\n" + dyn + "".join(
         f"c {plays} {pause} {name} #{BG[0]:02x}{BG[1]:02x}{BG[2]:02x}\n"
         for name, (_, _, plays, pause) in PARTS.items())
     tmp = os.path.join(args.out, f".desc.txt.{os.getpid()}")    # parts may render in parallel
@@ -306,10 +453,18 @@ def main():
         first, count, _, _ = PARTS[part]
         d = os.path.join(args.out, part)
         os.makedirs(d, exist_ok=True)
+        lowered = 0
         for i in range(count):
-            im = render_frame(mark, word, part, float(first + i))
+            if args.dynamic:
+                im, n = render_dynamic_frame(mark, word, part, float(first + i))
+                if n:
+                    print(f"{part}/img{i:05d}.png: {n} pixels lowered out of the shader's grey", file=sys.stderr)
+                lowered += n
+            else:
+                im = render_frame(mark, word, part, float(first + i))
             im.save(os.path.join(d, f"img{i:05d}.png"), optimize=True)
-        print(f"{part}: {count} frames", file=sys.stderr)
+        print(f"{part}: {count} frames" + (f", {lowered} pixels lowered out of the shader's grey" if args.dynamic else ""),
+              file=sys.stderr)
 
 
 if __name__ == "__main__":
