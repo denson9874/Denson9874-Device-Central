@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SPDX-FileCopyrightText: The LineageOS Project
+    SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- Values from stock PixelTetheringOverlay2021 (CD1A.261005.003), which targets
+         Google's tethering module; ours is AOSP com.android.tethering. USB tethering
+         must use NCM: neither the stock GKI nor the Espada kernel has the RNDIS gadget
+         function, and the AOSP default is RNDIS. The carrier entitlement keys are left
+         out because they name TetheringEntitlement, which this build doesn't ship. -->
+    <string-array name="config_tether_usb_regexs" translatable="false">
+        <item>rndis\\d</item>
+    </string-array>
+    <string-array name="config_tether_ncm_regexs" translatable="false">
+        <item>ncm\\d</item>
+    </string-array>
+    <string-array name="config_tether_wifi_p2p_regexs" translatable="false">
+        <item>p2p-p2p\\d-.*</item>
+        <item>p2p\\d</item>
+        <item>p2p-wlan\\d-.*</item>
+    </string-array>
+    <integer name="config_tether_usb_functions">1</integer>
+</resources>

@@ -1,0 +1,30 @@
+From 8b2dded5b421a6ec28434b59f7843883874b5058 Mon Sep 17 00:00:00 2001
+From: ExtremeXT <extremext@lineageos.org>
+Date: Sun, 18 Oct 2026 20:52:01 +0300
+Subject: [PATCH] Settings: Fix NFC payment settings activity
+
+Google appears to have forgotten to do this
+after e74ad7a0a7b57f1e40430bb1a5acbc36d89655a1.
+
+10-14 17:59:23.391  8500  8500 E Settings: Unable to get target fragment
+10-14 17:59:23.391  8500  8500 E Settings: androidx.fragment.app.Fragment$InstantiationException: Unable to instantiate fragment com.android.settings.nfc.PaymentSettings: make sure class name exists
+
+Change-Id: Ifda85eebf9a87d720e2c0a5bc599a2365a3bc231
+Signed-off-by: ExtremeXT <extremext@lineageos.org>
+---
+ AndroidManifest.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 10643091406..31551c0160e 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -4143,7 +4143,7 @@
+                 <category android:name="android.intent.category.DEFAULT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+-                android:value="com.android.settings.nfc.PaymentSettings" />
++                android:value="com.android.settings.connecteddevice.NfcAndPaymentFragment" />
+             <meta-data android:name="com.android.settings.HIGHLIGHT_MENU_KEY"
+                        android:value="@string/menu_key_connected_devices"/>
+             <meta-data android:name="com.android.settings.PRIMARY_PROFILE_CONTROLLED"
