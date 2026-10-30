@@ -190,10 +190,22 @@ EOF
 
 # The kit, pointed at this world
 kit=$T/kit
+# A copy with no symlinks: the world's edits must never reach the real kit through one
+if [[ -n $(find "$KIT_SRC" -type l -print -quit) ]]; then
+    echo "harness.sh: the kit has symlinks ($(find "$KIT_SRC" -type l | head -3 | tr '\n' ' ')): a world's edits would go through them" >&2
+    exit 1
+fi
 cp -a "$KIT_SRC" "$kit"
 rm -rf "$kit/sources/updates" "$kit/sources/__pycache__"
 sed -i "s#^EOS_MANIFEST_URL=.*#EOS_MANIFEST_URL=$G/ExpressiveOS/manifest#; s#^EOS_KERNEL_MANIFEST_URL=.*#EOS_KERNEL_MANIFEST_URL=$G/LineageOS/android_kernel_google_gs-6.1_manifest#" "$kit/eos.conf"
 sed -i "s#^LINEAGE_MANIFEST = .*#LINEAGE_MANIFEST = \"$G/LineageOS/android\"#; s#^LINEAGE_BASE = .*#LINEAGE_BASE = \"$C0\"#" "$kit/sources/update.py"
+# Each of those found its line (a kit that moved them would test the real addresses)
+grep -qx "EOS_MANIFEST_URL=$G/ExpressiveOS/manifest" "$kit/eos.conf" \
+    && grep -qx "EOS_KERNEL_MANIFEST_URL=$G/LineageOS/android_kernel_google_gs-6.1_manifest" "$kit/eos.conf" \
+    && grep -qx "LINEAGE_MANIFEST = \"$G/LineageOS/android\"" "$kit/sources/update.py" \
+    && grep -qx "LINEAGE_BASE = \"$C0\"" "$kit/sources/update.py" \
+    || { echo "harness.sh: eos.conf's or update.py's addresses aren't where the harness puts the world's" >&2; exit 1; }
+rm -f "$kit/pins/kernel.xml"
 cat > "$kit/pins/kernel.xml" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- test kernel pins -->

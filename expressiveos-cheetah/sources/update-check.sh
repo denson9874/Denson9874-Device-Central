@@ -15,8 +15,14 @@
 #                           kernel.xml committed; safe to delete when no update is under way
 #   EOS_UPDATE_JOBS=<n>     projects checked at once (default 6)
 set -euo pipefail
+# A stop before update.py runs still ends with UPDATE_CHECK=FAILED (update.py prints its own)
+st=UPDATE_CHECK=FAILED why=
+trap 'e=$?; [[ $e -eq 0 || -z $st ]] || echo "$st (stopped: ${why:-see the FAIL line})"' EXIT
 # shellcheck source=../lib.sh
 source "$(dirname -- "$(readlink -f -- "$0")")/../lib.sh"
+fail() { why=$*; why=${why//$'\n'/ }; why=${why:0:300}; echo "FAIL: $*" >&2; exit 1; }   # lib.sh's, keeping the reason for the status line
+# shellcheck source=lock-holder.sh
+source "$(dirname -- "$(readlink -f -- "$0")")/lock-holder.sh"
 
 [[ $# -le 1 ]] || fail "usage: update-check.sh [top]"
 eos_top "${1:-}"
@@ -25,7 +31,12 @@ not_other "$work"
 r=$(realpath -m -- "$work") || fail "can't resolve $work"
 [[ "$r" != "$top" && "$r" != "$top"/* && "$top" != "$r"/* ]] || fail "the work folder $work is in the tree $top, or holds it"
 exec 8>"$HOME/.expressiveos.lock"
-flock -n 8 || fail "an ExpressiveOS build or setup is running (~/.expressiveos.lock); check again when it's done"
+if ! flock -n 8; then
+    h=$(lock_holder) st=
+    echo "UPDATE_CHECK=NOT_RUN (an ExpressiveOS build or setup holds ~/.expressiveos.lock${h:+: $h})"
+    fail "an ExpressiveOS build or setup is running (~/.expressiveos.lock); check again when it's done"
+fi
 mf=$(tree_manifest) || exit 1
 mkdir -p -- "$r"
+st=
 python3 -I "$kit/sources/update.py" check --top "$top" --manifest "$mf" --work "$r"

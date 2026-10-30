@@ -86,7 +86,7 @@ start_server() {
 no_token_in() { ! grep -v 'Authorization=None$' "$1" | grep -q . && ! grep -qE "$TOKEN|$TOKEN64" "$1"; }
 
 world() {   # a fresh world (the old one deleted)
-    bash "$H" "$KSRC" "$WD/world" >/dev/null 2>&1 || { bad "harness.sh failed to build a world"; echo "== $pass passed, $failn failed"; exit 1; }
+    bash "$H" "$KSRC" "$WD/world" >"$WD.harness.log" 2>&1 || { tail -n 20 "$WD.harness.log" >&2; bad "harness.sh failed to build a world"; echo "== $pass passed, $failn failed"; exit 1; }
     # shellcheck disable=SC1091
     source "$WD/world/env.sh"
     export GIT_CEILING_DIRECTORIES=$T
@@ -314,7 +314,8 @@ d = json.load(open(sys.argv[1]))
 pins = d["pins"]
 assert len(pins) == 1, pins
 p = pins[0]
-assert p == {"path": "packages/apps/Settings", "url": p["url"], "branch": "expressiveos", "tip": sys.argv[2]}, p
+assert p == {"path": "packages/apps/Settings", "url": p["url"], "branch": "expressiveos", "tip": sys.argv[2], "gd": p["gd"]}, p
+assert p["gd"].endswith("/packages_apps_Settings.git"), p
 assert p["url"].endswith("/ExpressiveOS/packages_apps_Settings"), p
 assert "packages/apps/Settings" not in [f["path"] for f in d["forks"]]
 assert sorted(f["path"] for f in d["forks"]) == ["frameworks/base", "vendor/lineage"], d["forks"]' "$pj" "$T1" 2>/dev/null; then
