@@ -187,7 +187,8 @@ on:
           expressiveos-pins: read-only: the upstream commit of every project in the
           ExpressiveOS tree, as a manifest, plus its kernel tree and LFS files.
           expressiveos-devices: read-only: what ExpressiveOS builds for husky and
-          the Pixel 11 phones need from the server (query "more": the second round).
+          the Pixel 11 phones need from the server (query "more": the second round;
+          "gki": what a kernelsu.ko for the Pixel 11s' stock android16-6.12 kernel needs).
           expressiveos-update-check: read-only: the dry run of the monthly update
           (what LineageOS added, and whether ExpressiveOS's forks merge it cleanly).
           expressiveos-update: the monthly update, with the push token (see query;
@@ -1196,7 +1197,7 @@ jobs:
       - name: ExpressiveOS devices check (read-only)
         if: inputs.action == 'expressiveos-devices'
         run: |
-          [[ -z "$QUERY" || "$QUERY" = more ]] || { echo "::error::query is empty or 'more'"; exit 1; }
+          [[ -z "$QUERY" || "$QUERY" = more || "$QUERY" = gki ]] || { echo "::error::query is empty, 'more' or 'gki'"; exit 1; }
           bash expressiveos-cheetah/tools/devices-check.sh ${QUERY:+"$QUERY"}
 
       # The monthly update and its dry run: this ref's kit, run from the job's checkout (nothing
