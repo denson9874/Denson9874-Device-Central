@@ -1,0 +1,116 @@
+// Expressive Launcher for ExpressiveOS: Daryl's own launcher, the unmodified release APK, as
+// every phone's Home and Recents app in place of Pixel Launcher.
+// expressiveos-cheetah/launcher/apply-launcher.sh stages this folder into vendor/extra/launcher:
+// the APK first, this file last. The kit's launcher/README.md has the pins and the reasons.
+
+soong_namespace {
+}
+
+// AOSP Launcher3 and Lawnchair are Apache-2.0 (LICENSE: the source's LICENSE.txt at the
+// release's revision, launcher.conf EL_COMMIT), but 18 of the Lawnchair files it carries are
+// GPL-3.0-or-later (FontCache.kt, compiled into the APK, is one), its calculator is MIT
+// (NOTICE.calculator) and its Google Sans Flex font OFL-1.1 (NOTICE.font). The source repository
+// has no GPL text of its own yet (the kit's launcher/README.md, "Licence and credits").
+license {
+    name: "expressive_launcher_license",
+    visibility: [":__subpackages__"],
+    license_kinds: [
+        "SPDX-license-identifier-Apache-2.0",
+        "SPDX-license-identifier-GPL-3.0-or-later",
+        "SPDX-license-identifier-MIT",
+        "SPDX-license-identifier-OFL-1.1",
+    ],
+    license_text: [
+        "LICENSE",
+        "NOTICE.calculator",
+        "NOTICE.font",
+    ],
+}
+
+// /system_ext/priv-app/ExpressiveLauncher/ExpressiveLauncher.apk, byte for byte: targetSdk 37,
+// signed with Expressive's release certificate (v1, v2 and v3), dex and native libraries
+// stored and aligned, so it is preprocessed (the build copies it and keeps its signature, and
+// newer releases from GitHub or the launcher's own updater install over it).
+android_app_import {
+    name: "ExpressiveLauncher",
+    licenses: ["expressive_launcher_license"],
+    apk: "ExpressiveLauncher.apk",
+    preprocessed: true,
+    presigned: true,
+    privileged: true,
+    system_ext_specific: true,
+    // The manifest's <uses-library required="false"> tags, in the same order, as the build's
+    // uses-library check requires.
+    optional_uses_libs: [
+        "androidx.window.extensions",
+        "androidx.window.sidecar",
+    ],
+    // What it replaces: Pixel Launcher (vendor/gms's NexusLauncherRelease) and AOSP's
+    // Launcher3QuickStep (build/make's handheld_system_ext.mk), the two launchers the build
+    // installs, and packages/apps/Launcher3's other launcher modules, which no product installs
+    // today, so no second Home app ever ships. NexusLauncherRelease's own overrides (Launcher3,
+    // QuickSearchBox and the rest) still apply: make collects every listed module's overrides
+    // before it removes the overridden ones (build/make core/main.mk).
+    overrides: [
+        "NexusLauncherRelease",
+        "Launcher3QuickStep",
+        "Launcher3",
+        "Launcher3Go",
+        "Launcher3QuickStepGo",
+    ],
+    required: [
+        "privapp-permissions-dev.launcher.expressive.l3.xml",
+        "hiddenapi-dev.launcher.expressive.l3.xml",
+        "preinstalled-packages-dev.launcher.expressive.l3.xml",
+        "ExpressiveLauncherFrameworkOverlay",
+        "ExpressiveLauncherSetupWizardOverlay",
+    ],
+}
+
+prebuilt_etc {
+    name: "privapp-permissions-dev.launcher.expressive.l3.xml",
+    src: "privapp-permissions-dev.launcher.expressive.l3.xml",
+    sub_dir: "permissions",
+    system_ext_specific: true,
+}
+
+prebuilt_etc {
+    name: "hiddenapi-dev.launcher.expressive.l3.xml",
+    src: "hiddenapi-dev.launcher.expressive.l3.xml",
+    sub_dir: "sysconfig",
+    system_ext_specific: true,
+}
+
+// The phone's own users get it (SYSTEM and FULL), not work profiles, clones or the private
+// space, as Pixel Launcher
+prebuilt_etc {
+    name: "preinstalled-packages-dev.launcher.expressive.l3.xml",
+    src: "preinstalled-packages-dev.launcher.expressive.l3.xml",
+    sub_dir: "sysconfig",
+    system_ext_specific: true,
+}
+
+// The framework's side (overlay/framework/res/values/config.xml): Expressive Launcher is the
+// Recents app (SystemUI binds its quickstep service for gestures and Overview, and the
+// platform grants it the "recents" permissions), gets notification access by default (dots),
+// is one of Evolution X's launchers, and stays enabled on a managed phone. The two Pixel
+// Launcher overlays go with Pixel Launcher.
+runtime_resource_overlay {
+    name: "ExpressiveLauncherFrameworkOverlay",
+    manifest: "overlay/framework/AndroidManifest.xml",
+    resource_dirs: ["overlay/framework/res"],
+    system_ext_specific: true,
+    overrides: [
+        "PixelLauncherNoGestureHintOverlay",
+        "PixelLauncherOverlayCustom",
+    ],
+}
+
+// Pixel's setup wizard ends on Expressive Launcher's gesture tutorial page, not Pixel
+// Launcher's, and knows it as the launcher.
+runtime_resource_overlay {
+    name: "ExpressiveLauncherSetupWizardOverlay",
+    manifest: "overlay/setupwizard/AndroidManifest.xml",
+    resource_dirs: ["overlay/setupwizard/res"],
+    system_ext_specific: true,
+}

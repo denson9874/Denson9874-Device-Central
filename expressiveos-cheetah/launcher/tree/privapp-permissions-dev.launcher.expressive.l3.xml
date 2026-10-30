@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Expressive Launcher (/system_ext/priv-app/ExpressiveLauncher): every privileged permission
+     it asks for (launcher.conf EL_PRIVAPP_PERMS). Pixel Launcher, which it replaces, is granted
+     all nine too (vendor/gms privapp-permissions-google-se.xml). Without a line here a
+     privileged system app stops the boot under ro.control_privapp_permissions=enforce; the
+     build sets "log" today (vendor/lineage config/common.mk), which only logs it. -->
+<permissions>
+    <privapp-permissions package="dev.launcher.expressive.l3">
+        <!-- Suggested apps (Lawnchair's usage-stats ranker) -->
+        <permission name="android.permission.PACKAGE_USAGE_STATS" />
+        <!-- Recents and gestures (quickstep); the Recents app also gets these by "recents" -->
+        <permission name="android.permission.BROADCAST_CLOSE_SYSTEM_DIALOGS" />
+        <permission name="android.permission.CONTROL_REMOTE_APP_TRANSITION_ANIMATIONS" />
+        <permission name="android.permission.START_TASKS_FROM_RECENTS" />
+        <permission name="android.permission.STATUS_BAR" />
+        <permission name="android.permission.STOP_APP_SWITCHES" />
+        <permission name="android.permission.ALLOW_SLIPPERY_TOUCHES" />
+        <!-- Status bar icon hiding, taskbar education, layout import (Settings.Secure) -->
+        <permission name="android.permission.WRITE_SECURE_SETTINGS" />
+        <!-- Private space in the app drawer -->
+        <permission name="android.permission.ACCESS_HIDDEN_PROFILES_FULL" />
+    </privapp-permissions>
+</permissions>

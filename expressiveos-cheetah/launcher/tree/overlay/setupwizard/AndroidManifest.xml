@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Where Pixel's setup wizard goes when it ends, on /system_ext so it wins over
+     vendor/pixel-style's PixelSetupWizardOverlayExpressive (/product, priority 220). The setup
+     wizard declares no overlayable, so no targetName. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.expressiveos.overlay.launcher.setupwizard">
+    <overlay android:targetPackage="com.google.android.pixel.setupwizard"
+        android:isStatic="true"
+        android:priority="100" />
+</manifest>
