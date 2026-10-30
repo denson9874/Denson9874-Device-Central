@@ -1,0 +1,50 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Fri, 30 Oct 2026 12:00:00 +0000
+Subject: [PATCH 02/11] husky: set ExpressiveOS's maintainer
+
+ExpressiveOS is its own ROM, built on Evolution X: Settings > About names
+its maintainer on the Android version screen. LineageOS's husky tree
+has no maintainer string, so Settings would show none. Add Evolution X's
+Settings overlay (overlay-evolution, in DEVICE_PACKAGE_OVERLAYS) naming
+ExpressiveOS's maintainer.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ lineage_husky.mk                                         | 3 +++
+ .../apps/Settings/res/values/evolution_strings.xml       | 9 +++++++++
+ 2 files changed, 12 insertions(+)
+ create mode 100644 overlay-evolution/packages/apps/Settings/res/values/evolution_strings.xml
+
+diff --git a/lineage_husky.mk b/lineage_husky.mk
+index f24af12..a47f850 100644
+--- a/lineage_husky.mk
++++ b/lineage_husky.mk
+@@ -19,6 +19,9 @@ PRODUCT_SYSTEM_BRAND := google
+ PRODUCT_SYSTEM_MANUFACTURER := Google
+ PRODUCT_SYSTEM_NAME := generic_system_google
+ 
++# Evolution X Overlays
++DEVICE_PACKAGE_OVERLAYS += $(DEVICE_PATH)/overlay-evolution
++
+ # Boot animation
+ TARGET_SCREEN_HEIGHT := 2992
+ TARGET_SCREEN_WIDTH := 1344
+diff --git a/overlay-evolution/packages/apps/Settings/res/values/evolution_strings.xml b/overlay-evolution/packages/apps/Settings/res/values/evolution_strings.xml
+new file mode 100644
+index 0000000..4b3c195
+--- /dev/null
++++ b/overlay-evolution/packages/apps/Settings/res/values/evolution_strings.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     Copyright (C) 2019-2026 The Evolution X Project
++     SPDX-License-Identifier: Apache-2.0
++-->
++<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
++    <!-- Android version screen, build maintainer -->
++    <string name="build_maintainer_summary" translatable="false">Daryl Denson</string>
++</resources>
+-- 
+2.43.0
+

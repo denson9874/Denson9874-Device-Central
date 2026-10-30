@@ -1,0 +1,33 @@
+From b188635a501afe2a4db1316d4633249adb23ffa6 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <daryldenson0405@gmail.com>
+Date: Mon, 19 Oct 2026 01:28:07 +0200
+Subject: [PATCH] gms: don't install nowplaying.xml on the Pixel 11 series
+
+The CD1A.261005.003 update added product/etc/sysconfig/nowplaying.xml, which
+stock Pixel 11 firmware doesn't ship. Its allow-association entries give
+com.google.android.as.oss (Private Compute Services) an allow-list for the
+first time, naming only Now Playing, so PCS refuses every other association,
+including Android System Intelligence. ASI downloads the Now Playing song
+database through PCS, so Now Playing stays at "Setting up Now Playing" and
+can't be turned on. Without the file the association rules match stock again.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ product/blobs/product_blobs.mk | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/product/blobs/product_blobs.mk b/product/blobs/product_blobs.mk
+index 368bc88..09af6e9 100644
+--- a/product/blobs/product_blobs.mk
++++ b/product/blobs/product_blobs.mk
+@@ -79,7 +79,6 @@ PRODUCT_PACKAGES += \
+     google \
+     nexus \
+     nga \
+-    nowplaying \
+     nowplaying_app_26q1 \
+     pixel_2017-initial-package-stopped-states \
+     pixel_experience_2017 \
+-- 
+2.43.0
+

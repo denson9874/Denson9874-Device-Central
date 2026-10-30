@@ -2,7 +2,9 @@
 # vendor/extra/product.mk, which apply-wallpapers.sh sets up. vendor/lineage/config/common.mk
 # inherits vendor/extra/product.mk on its line 2, before anything else, so the overlay below
 # comes ahead of vendor/lineage/overlay/common in PRODUCT_PACKAGE_OVERLAYS and wins over it.
-ifeq ($(TARGET_PRODUCT),lineage_cheetah)
+# Every ExpressiveOS phone (devices/<device>.conf) ships it: the system scales and crops the
+# 1440x3120 PNG to each screen (README.md, "On the other phones").
+ifneq ($(filter lineage_cheetah lineage_husky lineage_kodiak lineage_grizzly lineage_cubs lineage_yogi,$(TARGET_PRODUCT)),)
 
 # The first-boot wallpaper. WallpaperManager.openRawDefaultWallpaper() reads
 # ro.config.wallpaper before the CMF path and before framework-res's default_wallpaper

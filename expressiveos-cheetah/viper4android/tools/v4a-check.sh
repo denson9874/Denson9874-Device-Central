@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # ViPER4Android RE checks for ExpressiveOS cheetah. Each check prints PASS, FAIL or
 # INFO; all of them run, the exit status is 1 if any FAILed, and the last line is
-# V4A_CHECK=OK or V4A_CHECK=FAIL.
+# V4A_CHECK=OK or V4A_CHECK=FAIL. Only for a phone with EOS_V4A=1 in its devices/<device>.conf
+# (EOS_DEVICE, cheetah unless set; today cheetah alone): tree and device read the phone's
+# device tree, vendor repo and name from there (cheetah: device/google/pantah,
+# vendor/google/cheetah), and gs201 stays, since the driver needs gs201's HIDL effect HAL.
 #
 #   v4a-check.sh tree <top>
 #       Before the build (apply-v4a.sh runs it): Evolution X's ViPER loader is still in
@@ -11,8 +14,8 @@
 #       writes leads out of the tree.
 #   v4a-check.sh out <product_out> [host_out]
 #       After the build, before packing (the ExpressiveOS OTA script runs it):
-#       what landed in out/target/product/cheetah. host_out (out/host/linux-x86) is
-#       only used for apksigner.
+#       what landed in the product out it's given (out/target/product/<device>).
+#       host_out (out/host/linux-x86) is only used for apksigner.
 #   v4a-check.sh device
 #       On a phone over adb (ANDROID_SERIAL picks one). Read-only. Run it soon after a
 #       boot, while logcat still holds the boot. Whether libeffects loaded the driver comes from
@@ -61,11 +64,18 @@ elf_arm64() {   # ELF, 64-bit class, machine AArch64 (183)
     [[ "$(od -An -tx1 -N5 -- "$1" 2>/dev/null | tr -d ' \n')" = 7f454c4602 \
         && "$(od -An -tu2 -j18 -N2 -- "$1" 2>/dev/null | tr -d ' \n')" = 183 ]]
 }
+eos_device() {   # sets EOS_DEVICE, EOS_DEVICE_TREE and EOS_VENDOR_DIR as ../../lib.sh reads them (devices/<device>.conf)
+    local v
+    v=$(source "$kit/../lib.sh" && printf '%s %s %s' "$EOS_DEVICE" "$EOS_DEVICE_TREE" "$EOS_VENDOR_DIR") || return 1
+    read -r EOS_DEVICE EOS_DEVICE_TREE EOS_VENDOR_DIR <<<"$v"
+    [[ -n $EOS_DEVICE && -n $EOS_DEVICE_TREE && -n $EOS_VENDOR_DIR ]]
+}
 
 mode=${1:-}; shift || true
 case "$mode" in
 tree)
     [[ $# = 1 && -d "$1" ]] || usage
+    eos_device
     top="$(cd "$1" && pwd -P)"
     echo "== ViPER4Android RE tree checks: $top"
     if [[ "$top" = */evolution ]]; then bad "$top is the Evolution X tree; this kit is for the ExpressiveOS tree only"; finish; fi
@@ -84,7 +94,9 @@ tree)
     [[ $ok = 0 ]] || pass "vendor/extra and frameworks/av are this tree's own (no symlink out of it or into ~/evolution)"
     fx="$top/frameworks/av/media/libeffects/factory/EffectsFactory.c"
     ecpp="$top/frameworks/av/services/audioflinger/Effects.cpp"
-    gs201="$top/device/google/gs201" pantah="$top/device/google/pantah" vgc="$top/vendor/google/cheetah"
+    # gs201's HIDL effect HAL is what the driver needs; the phone's own device tree and vendor
+    # repo are its devices/<device>.conf's (cheetah: device/google/pantah, vendor/google/cheetah)
+    gs201="$top/device/google/gs201" pantah="$top/$EOS_DEVICE_TREE" vgc="$top/$EOS_VENDOR_DIR"
     for d in "$gs201" "$pantah" "$vgc"; do [[ -d "$d" ]] || bad "missing ${d#"$top"/}"; done
 
     # The driver only loads through Evolution X's loader (frameworks_av 468ace0): its path,
@@ -115,14 +127,14 @@ tree)
     fi
     hits=$(aidl_effect "$gs201" "$pantah" "$vgc/proprietary/vendor/etc/vintf" "$vgc"/*.mk "$vgc"/*.bp)
     if [[ -z "$hits" ]]; then
-        pass "no AIDL effect HAL (android.hardware.audio.effect IFactory) in gs201, pantah or cheetah's vendor VINTF"
+        pass "no AIDL effect HAL (android.hardware.audio.effect IFactory) in gs201, ${pantah##*/} or $EOS_DEVICE's vendor VINTF"
     else
         bad "AIDL effect HAL markers (the non-AIDL driver won't work; see README.md 'Risks'):"$'\n'"$hits"
     fi
     # One registration only: Evolution X's loader, not audio_effects.xml
     ae="$vgc/proprietary/vendor/etc/audio_effects.xml"
     if [[ ! -f "$ae" ]]; then
-        bad "missing ${ae#"$top"/} (the only effects config cheetah ships)"
+        bad "missing ${ae#"$top"/} (the only effects config $EOS_DEVICE ships)"
     elif grep -qiE 'v4a|90380da3' "$ae"; then
         bad "${ae#"$top"/} registers ViPER; with the built-in loader it would be registered twice"
     else
@@ -139,7 +151,7 @@ tree)
         pass "no packages/apps/ViPER4AndroidFX"
     fi
     hits=$(grep -rIl --exclude-dir=.git TARGET_INCLUDE_VIPERFX -- "$gs201" "$pantah" "$vgc"/*.mk 2>/dev/null || true)
-    if [[ -z "$hits" ]]; then pass "no TARGET_INCLUDE_VIPERFX in the cheetah trees"; else bad "TARGET_INCLUDE_VIPERFX set in: $hits"; fi
+    if [[ -z "$hits" ]]; then pass "no TARGET_INCLUDE_VIPERFX in the $EOS_DEVICE trees"; else bad "TARGET_INCLUDE_VIPERFX set in: $hits"; fi
     # This kit's frameworks/av patches
     for p in "$kit"/patches/frameworks_av/*.patch; do
         s=$(subject_of "$p")
@@ -305,6 +317,7 @@ out)
 
 device)
     [[ $# = 0 ]] || usage
+    eos_device
     command -v adb >/dev/null || { bad "adb is not installed"; finish; }
     state=$(adb get-state 2>/dev/null || true)
     [[ "$state" = device ]] || { bad "no phone over adb (adb get-state: ${state:-nothing}; several devices? set ANDROID_SERIAL)"; finish; }
@@ -314,7 +327,7 @@ device)
     denied() { [[ "$1" = *'Permission denied'* ]]; }
     echo "== ViPER4Android RE on-device checks: $(a getprop ro.build.fingerprint)"
     dev=$(a getprop ro.product.device)
-    [[ "$dev" = cheetah ]] && pass "device is cheetah" || bad "device is ${dev:-unknown}, not cheetah"
+    [[ "$dev" = "$EOS_DEVICE" ]] && pass "device is $EOS_DEVICE" || bad "device is ${dev:-unknown}, not $EOS_DEVICE"
     l=$(a2 ls -lZ /vendor/lib64/soundfx/libv4a_re.so)
     if denied "$l"; then
         info "adb shell may not read /vendor/lib64/soundfx/libv4a_re.so here (a user build): its label and sha256 aren't checked (the effects dump shows whether it loaded)"
