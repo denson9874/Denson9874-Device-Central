@@ -466,7 +466,7 @@ device)
     n=$(grep -cE 'Process: com\.android\.systemui(,|:| |$)' "$T/log" || true)
     [[ "${n:-0}" = 0 ]] && pass "SystemUI hasn't crashed since logcat began" || bad "SystemUI crashed $n time(s): adb logcat -b crash"
     # A launcher whose quickstep was built against another Android's WindowManager Shell can't
-    # unparcel Shell's one-way calls (QA 5.0.4's IRecentsAnimationRunner: README.md, "Status").
+    # unparcel Shell's one-way calls (QA 5.0.4's IRecentsAnimationRunner, before 5.0.5: README.md, "Status").
     # That crashes nothing: Binder logs it in the launcher's process and the gesture just fails,
     # so look for those lines (logcat's threadtime format: the pid is the third field).
     pids=$(a pidof "$EL_PACKAGE")
