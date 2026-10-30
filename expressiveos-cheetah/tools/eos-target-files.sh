@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Check the target-files zip an ExpressiveOS cheetah build keeps with its OTA package
-# (patches/vendor_lineage/0003; tf_zip in lib.sh). Every incremental OTA from this build
-# will start from it, so it has to be exactly this build's. eos-verify.sh runs it; the
-# last line is TF_CHECK=OK or TF_CHECK=FAIL.
+# Check the target-files zip an ExpressiveOS build keeps with its OTA package
+# (patches/vendor_lineage/0003; tf_zip in lib.sh), for the phone EOS_DEVICE names (cheetah
+# unless set; its out/ is EOS_PRODUCT_OUT). Every incremental OTA from this build will start
+# from it, so it has to be exactly this build's. eos-verify.sh runs it; the last line is
+# TF_CHECK=OK or TF_CHECK=FAIL.
 #
 #   eos-target-files.sh <package> [top]      # default ~/expressiveos
 #
@@ -10,13 +11,17 @@
 #      (ro.evolution.build.version), its ab_partitions.txt is the build's, and its
 #      misc_info.txt names the tree's own release key (what an incremental is signed with);
 #   2. it holds an image (IMAGES/ or RADIO/) of every partition the package's payload writes;
-#   3. its init_boot carries out/'s KernelSU Next ramdisk (pass 2's);
+#   3. its init_boot carries out/'s KernelSU Next ramdisk (pass 2's), on a phone with
+#      KernelSU Next (EOS_KSU=lkm); on the others a WARNING says when its ramdisk isn't out/'s;
 #   4. for incrementals: the images of the dynamic partitions (system, vendor, product...:
 #      misc_info.txt's dynamic_partition_list, what an incremental patches block by block)
 #      are the fastboot zip's (out/'s) byte for byte: patches/device_google_gs201/0006 has
-#      target-files take the built ones. If not, a WARNING names them: an incremental OTA
-#      from this build couldn't patch them on phones installed from the fastboot zip, and
-#      eos-pack.sh --release refuses the build (the fastboot zip itself is still fine).
+#      target-files take the built ones (COPY_IMAGES_FOR_TARGET_FILES_ZIP; another phone's
+#      device tree needs the same), and an image the device tree takes prebuilt (the Pixel
+#      11s' stock vendor, vendor_dlkm and system_dlkm) is copied into target-files as it is.
+#      If not, a WARNING names them: an incremental OTA from this build couldn't patch them
+#      on phones installed from the fastboot zip, and eos-pack.sh --release refuses the
+#      build (the fastboot zip itself is still fine).
 #      The other images it flashes (boot, init_boot, vendor_boot, dtbo, vbmeta...) are made
 #      again in target-files with other AVB salts, so a note lists them: an incremental
 #      writes those whole (ota_from_target_files --full_ota_partitions).
@@ -35,7 +40,7 @@ source "$(dirname -- "$(readlink -f -- "$0")")/../lib.sh"
 ota=$(realpath -e -- "$1") || fail "no package $1"
 eos_top "${2:-}"
 cd "$top"
-O=out/target/product/cheetah
+O=$EOS_PRODUCT_OUT
 H=out/host/linux-x86/bin
 [[ -x $H/unpack_bootimg ]] || fail "no $H/unpack_bootimg (m evolution builds it)"
 tf=$(tf_zip)
@@ -87,8 +92,16 @@ for i in init_boot vbmeta vbmeta_system vbmeta_vendor; do
 done
 ramdisk() { "$H/unpack_bootimg" --boot_img "$1" --out "$2" > /dev/null || fail "can't unpack $1"; }
 ramdisk "$T/img/init_boot.img" "$T/ib-tf"; ramdisk "$O/init_boot.img" "$T/ib-out"
-cmp -s -- "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk" || fail "its init_boot ramdisk isn't out/'s (pass 2's KernelSU Next one)"
-echo "OK: its init_boot carries out/'s KernelSU Next ramdisk"
+if [[ $EOS_KSU = lkm ]]; then
+    cmp -s -- "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk" || fail "its init_boot ramdisk isn't out/'s (pass 2's KernelSU Next one)"
+    echo "OK: its init_boot carries out/'s KernelSU Next ramdisk"
+# No KernelSU Next on this phone (EOS_KSU=none): init_boot is the build's own, which
+# target-files packs again from the same ramdisk files rather than taking it as built
+elif cmp -s -- "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk"; then
+    echo "OK: its init_boot carries out/'s ramdisk (no KernelSU Next on $EOS_DEVICE)"
+else
+    echo "WARNING: its init_boot ramdisk isn't out/'s: phones updated by OTA would get another init_boot ramdisk than the fastboot zip's (compare the two with unpack_bootimg)"
+fi
 
 echo "== incremental base"
 # An incremental OTA reads its source blocks from the phone and update_engine refuses any
@@ -108,6 +121,12 @@ while IFS= read -r line; do
     [[ -f $O/$img ]] && flashed+=("${img%.img}")
 done < "$O/fastboot-info.txt"
 (( ${#flashed[@]} > 0 )) || fail "$O/fastboot-info.txt flashes no image"
+# A Pixel 11's fastboot zip flashes its stock vendor_kernel_boot too, which the build's
+# fastboot-info.txt doesn't name (EOS_FLASH_VKB=1: eos-pack.sh adds the line)
+if [[ $EOS_FLASH_VKB = 1 && " ${flashed[*]} " != *" vendor_kernel_boot "* ]]; then
+    [[ -f $O/vendor_kernel_boot.img ]] || fail "no $O/vendor_kernel_boot.img, which the fastboot zip flashes (EOS_FLASH_VKB=1)"
+    flashed+=(vendor_kernel_boot)
+fi
 same() {   # same <partition>: its target-files image (IMAGES/ or RADIO/) is out/'s, byte for byte
     local e a
     if has "IMAGES/$1.img"; then e=IMAGES/$1.img; elif has "RADIO/$1.img"; then e=RADIO/$1.img; else return 1; fi

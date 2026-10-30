@@ -1,20 +1,21 @@
 #!/usr/bin/env bash
-# Release checks for an ExpressiveOS cheetah build with KernelSU Next, for the kit's
-# verify and pack scripts. Stops at the first problem; the last line is KSU_CHECK=OK or
-# KSU_CHECK=FAIL.
+# Release checks for an ExpressiveOS build with KernelSU Next (a phone with EOS_KSU=lkm;
+# EOS_DEVICE, cheetah unless set), for the kit's verify and pack scripts. Stops at the first
+# problem; the last line is KSU_CHECK=OK or KSU_CHECK=FAIL.
 #
 #   ksu-check.sh manager [top]
 #       the manager is in the build as fetch-ksu.sh downloaded it: ksu.conf's APK byte
 #       for byte (so it keeps the signature the kernel trusts), the APK's four arm64
 #       libs next to it, equal to the APK's own, and libksud.so executable (0755,
-#       root) in the build's fs_config, or the manager can't run it. The first-boot
-#       setup is the kit's (tree/eos-ksu-firstboot.rc, tree/ksu-firstboot.sh), the Zygisk
+#       root) in the build's fs_config (EOS_PRODUCT_OUT's), or the manager can't run it.
+#       The first-boot setup is the kit's (tree/eos-ksu-firstboot.rc, tree/ksu-firstboot.sh), the Zygisk
 #       provider is ksu.conf's zip byte for byte and no KernelSU Next risk rule stops its
 #       install, and the susfs guard module libksud.so loads is built for the kernel's
-#       struct module, like kernelsu.ko (a mismatch crashes every boot with susfs on).
+#       struct module, like kernelsu.ko (a mismatch crashes every boot with susfs on), the
+#       phone's KMI (EOS_KMI).
 #   ksu-check.sh images <dir> [top]
 #       <dir> holds a full set of the build's images (a fastboot zip unpacked, or
-#       out/target/product/cheetah): init_boot carries ExpressiveOS's kernelsu.ko, built
+#       out/target/product/<device>): init_boot carries ExpressiveOS's kernelsu.ko, built
 #       for the same struct module as vendor_kernel_boot's modules, with the init.rc lines
 #       the first-boot setup relies on (ksud in the ksu domain), the whole AVB chain
 #       verifies, and vbmeta is signed by the tree's own AVB key and nobody else's
@@ -55,12 +56,15 @@ kernel_modules() {   # kernel_modules <vendor_kernel_boot.img> <dir>: its module
 case "$mode" in
 manager)
     [[ $# -le 2 ]] || fail "$usage"
+    [[ $EOS_KSU = lkm ]] || fail "KernelSU Next is off for $EOS_DEVICE (EOS_KSU=$EOS_KSU, devices/$EOS_DEVICE.conf): its build has no manager to check"
     eos_top "${2:-}"
-    O=$top/out/target/product/cheetah
+    O=$top/$EOS_PRODUCT_OUT
     H=$top/out/host/linux-x86/bin
     d=$O/product/app/KernelSUNext
     apk=$d/KernelSUNext.apk
-    [[ -f "$apk" ]] || fail "the KernelSU Next manager isn't in the build (apply-ksu.sh, patches/device_google_pantah/0101)"
+    # The device tree patch that adds it: cheetah's in ../patches/, another phone's in devices/<device>/ksu-patches/
+    if [[ $EOS_DEVICE = cheetah ]]; then p0101=patches/device_google_pantah/0101; else p0101="devices/$EOS_DEVICE/ksu-patches/*/0101"; fi
+    [[ -f "$apk" ]] || fail "the KernelSU Next manager isn't in the build (apply-ksu.sh, $p0101)"
     [[ "$(sha256sum -- "$apk" | cut -d' ' -f1)" = "$(get manager_sha256)" ]] \
         || fail "$apk isn't ksu.conf's manager APK byte for byte: the build changed it (re-signed, or stripped)"
     want=$(get manager_cert_sha256)
@@ -82,7 +86,7 @@ manager)
     for f in "$O"/{system,product}/etc/fs_config_files; do
         [[ -f "$f" ]] || continue
         e=$(python3 -I "$here/tools/fs-config.py" "$f" "$lib/libksud.so") \
-            || fail "${f#"$O"/} has no entry for $lib/libksud.so (TARGET_FS_CONFIG_GEN += device/google/pantah/ksu/config.fs missing?)"
+            || fail "${f#"$O"/} has no entry for $lib/libksud.so (TARGET_FS_CONFIG_GEN += $EOS_DEVICE_TREE/ksu/config.fs missing?)"
         [[ "$e" = "755 0 0 0x0" ]] || fail "${f#"$O"/} gives $lib/libksud.so '$e' (mode uid gid caps), want '755 0 0 0x0'"
     done
     # And the image builder's own lookup agrees
@@ -106,7 +110,7 @@ manager)
         || { grep '^FAIL' "$T/zygisk.log" >&2; fail "the Zygisk provider wouldn't install (tools/zygisk-zip.py)"; }
     echo "OK: the first-boot setup is the kit's, and the Zygisk provider is NeoZygisk $(get zygisk_version) as pinned, installable"
     # ksud loads the guard module itself (susfs load, and auto-load at every post-fs-data)
-    kmi=$(get kmi)
+    kmi=$EOS_KMI
     python3 -I "$here/tools/ko-info.py" embedded "$d/lib/arm64/libksud.so" susfs_guard_lkm "${kmi#*-}." "$T/guard.ko" > "$T/guard.log" 2>&1 \
         || { cat "$T/guard.log" >&2; fail "can't find libksud.so's susfs guard module for $kmi"; }
     [[ -f $O/vendor_kernel_boot.img ]] || fail "no vendor_kernel_boot.img in $O"

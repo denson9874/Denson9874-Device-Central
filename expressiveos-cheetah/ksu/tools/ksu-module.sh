@@ -3,13 +3,15 @@
 # checked out, plus kernel-patches/*.patch (the kernel crowns the manager
 # preinstalled in /product/app), compiled against the GKI source build_kernel
 # synced, with that tree's own clang and pahole. cheetah-ksu.sh puts it in init_boot in
-# place of the module built into ksud, and checks it matches boot.img's kernel. The last
-# line is KSU_MODULE_EXIT=0 or KSU_MODULE_EXIT=1.
+# place of the module built into ksud, and checks it matches boot.img's kernel. Only for a
+# phone whose kernel is built from that source (EOS_KERNEL=gs-6.1: cheetah, husky); the
+# phone's KMI is its EOS_KMI. The last line is KSU_MODULE_EXIT=0 or KSU_MODULE_EXIT=1.
 #
-#   ksu-module.sh [top]   # after build_kernel; default ~/expressiveos; writes out/ksu/kernelsu.ko
+#   ksu-module.sh [top]   # after build_kernel; default ~/expressiveos; writes EOS_KSU_OUT's
+#                         # kernelsu.ko (out/ksu/ for cheetah, out/ksu-<device>/ for another phone)
 #
 #   KSU_KERNEL_TREE=<dir>   the Kleaf tree build_kernel synced, inside the tree
-#                           (default out-kernel/google/gs-6.1)
+#                           (default out-kernel/google/gs-6.1, husky's too)
 set -euo pipefail
 done=0
 # Quiet while run_locked's marker is there: the run waiting for the locks prints it then
@@ -18,12 +20,13 @@ here="$(cd "$(dirname -- "$(readlink -f -- "$0")")/.." && pwd)"
 # shellcheck source=../../lib.sh
 source "$here/../lib.sh"
 [[ $# -le 1 ]] || fail "usage: ksu-module.sh [top]"
+[[ $EOS_KERNEL != prebuilt ]] || fail "$EOS_DEVICE's kernel is its tree's prebuilt boot image (EOS_KERNEL=prebuilt, devices/$EOS_DEVICE.conf): there's no kernel source to build kernelsu.ko against"
 eos_top "${1:-}"
 # Run alone, this runs again under eos_lock (the locks eos-images.sh holds) and exits with it
 run_locked KSU_MODULE_EXIT=1 "$0" "$top"
 cd "$top"
 get() { sed -n "s/^$1=//p" "$here/ksu.conf" | head -1; }
-version=$(get version); kmi=$(get kmi)
+version=$(get version); kmi=$EOS_KMI
 # What a kernel module build needs from the host, beyond the tree's own clang
 for c in make bc flex bison perl strings; do
     command -v "$c" >/dev/null || fail "$c isn't installed (a kernel module build needs bc, bison, flex, libelf-dev, libssl-dev, make and perl)"
@@ -50,7 +53,7 @@ clang=$top/$tree/prebuilts/clang/host/linux-x86/clang-$clang_version/bin
 pahole=$top/$tree/prebuilts/kernel-build-tools/linux-x86/bin/pahole
 [[ -x "$pahole" ]] || fail "no $tree/prebuilts/kernel-build-tools/linux-x86/bin/pahole (the GKI's own; build_kernel syncs it)"
 
-K=$top/out/ksu; B=$K/kbuild; M=$K/ksn
+K=$top/$EOS_KSU_OUT; B=$K/kbuild; M=$K/ksn
 in_top "$K"
 mkdir -p -- "$K"; rm -rf -- "${M:?}" "${B:?}"; rm -f -- "$K/kernelsu.ko" "$K/kernelsu.ko.info"
 # A copy with its git history: the module's version is 30000 + the commit count,

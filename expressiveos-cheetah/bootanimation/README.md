@@ -33,12 +33,35 @@ How Evolution X plays it (`frameworks/base` `cnb`, `cmds/bootanimation/BootAnima
 - `c` parts always finish. The looping part's textures stay in GPU memory until the animation
   exits: 34 frames x 5.7 MB = about 194 MB.
 
+## On the other phones
+
+Every ExpressiveOS phone ships this same zip: `bootanimation.mk` sets it for `lineage_cheetah`,
+`lineage_husky`, `lineage_kodiak`, `lineage_grizzly`, `lineage_cubs` and `lineage_yogi`. It was drawn
+for cheetah's screen (a 1440x3120 panel that boots in FHD+, 1080x2340, where the canvas spans the full
+width), and `BootAnimation.cpp` never scales it: the 1080x1320 canvas is drawn at its own pixel size
+in the middle of whatever mode a phone boots in, on the same black. On the other screens (their
+trees' `TARGET_SCREEN_WIDTH`x`TARGET_SCREEN_HEIGHT`) that is cosmetic only:
+
+- A wider or denser mode shows the logo and wordmark smaller, with more black around them: husky and
+  kodiak (1344x2992) booting at full width have the canvas across about 80% of it, grizzly
+  (1280x2856) about 84%.
+- cubs (1080x2424) and yogi's outer screen (1080x2342) are 1080 px wide, like cheetah's FHD+ mode.
+  yogi's inner screen is close to square: the canvas sits in its middle with black on every side.
+- A mode narrower than 1080 px cuts off the canvas's sides, which are black: the mark is 456 px wide,
+  the wordmark 740 and the last ripple about 950 across, so only a much narrower mode would clip any
+  of them.
+
+No phone gets a canvas of its own: that would take a render for each size, each with its own sha256
+in `bootanim.conf` (`../tools/eos-verify.sh` checks this one on every phone).
+
 ## Files
 
 - `bootanimation.zip`: the build input, 29 MB. Its sha256 is pinned in `bootanim.conf`.
-- `bootanimation.mk`: sets `TARGET_BOOTANIMATION` for `lineage_cheetah`.
+- `bootanimation.mk`: sets `TARGET_BOOTANIMATION` for every ExpressiveOS phone's product
+  (above).
 - `apply-bootanim.sh [top]`: puts both into `vendor/extra/bootanimation` in the ExpressiveOS
-  tree (default `~/expressiveos`), checks the zip against `bootanim.conf`, and adds
+  tree (default `~/expressiveos`), checks the zip against `bootanim.conf`, refuses a phone whose
+  `lineage_<device>.mk` turns Evolution X's other styles on (below), and adds
   `$(call inherit-product, vendor/extra/bootanimation/bootanimation.mk)` to
   `vendor/extra/product.mk`. Running it again changes nothing; its last line is
   `BOOTANIM_APPLY=OK` or `BOOTANIM_APPLY=FAIL`.
@@ -60,7 +83,12 @@ isn't a repo project, so `repo sync` leaves it alone.
 Evolution X's 12 other styles (about 190 MiB) must stay out of `/product/media`. `vendor/extra` can't
 turn them off, because `common.mk` sets `TARGET_INCLUDE_BOOT_ANIMATIONS ?= true` before it inherits our
 file, so `../patches/device_google_pantah/0010` sets it to false in `lineage_cheetah.mk`, and
-`../tools/eos-images.sh` also exports `TARGET_INCLUDE_BOOT_ANIMATIONS=false`.
+`../tools/eos-images.sh` also exports `TARGET_INCLUDE_BOOT_ANIMATIONS=false`. Each other phone's
+`lineage_<device>.mk`, in its `EOS_DEVICE_TREE`, does the same: husky's from
+`../devices/husky/patches/device_google_shusky/` ("husky: ship only ExpressiveOS's boot animation"),
+the Pixel 11s' from a commit on their own trees, which started with `TARGET_INCLUDE_BOOT_ANIMATIONS :=
+true`. The export wins over `?= true` but never over a `:=` in the device tree, so `apply-bootanim.sh`
+fails before the build when the phone's `lineage_<device>.mk` sets it to anything but `false`.
 
 `../tools/eos-verify.sh` checks both after every build. By hand:
 

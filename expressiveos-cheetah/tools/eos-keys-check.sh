@@ -197,7 +197,9 @@ tree)
     ;;
 vars)
     # gs201 signs vbmeta and chains vbmeta_system, vbmeta_vendor, boot and init_boot with
-    # AVB_CUSTOM_KEY_PATH (keys.mk); a key path set for any other partition would chain it too
+    # AVB_CUSTOM_KEY_PATH (keys.mk), and so do zuma (husky) and the Pixel 11 device trees
+    # (their BoardConfig.mk; EOS_LUNCH picks the phone); a key path set for any other
+    # partition would chain it too
     extra="PVMFW VENDOR_BOOT VENDOR_KERNEL_BOOT DTBO SYSTEM SYSTEM_EXT PRODUCT VENDOR SYSTEM_DLKM VENDOR_DLKM ODM ODM_DLKM RECOVERY"
     extra_vars=()
     for p in $extra; do extra_vars+=("BOARD_AVB_${p}_KEY_PATH"); done
@@ -241,7 +243,7 @@ out|vbmeta)
         signed_by_us "$img" "$img"
         pin "the AVB public key" "$avb" EOS_AVB_PUBKEY_SHA1
     else
-        O=$top/out/target/product/cheetah
+        O=$top/$EOS_PRODUCT_OUT
         [[ -d "$O" ]] || fail "no $O: build first"
         # Recovery and the Updater only take packages signed by a certificate in otacerts.
         # Evolution X's config/common.mk adds LineageOS's release certificate to recovery's

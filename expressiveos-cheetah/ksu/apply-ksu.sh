@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# Put ExpressiveOS's KernelSU Next pieces into its cheetah tree (idempotent: a second
-# run changes nothing):
-#   1. patches/device_google_pantah/0101-0102 as local commits in device/google/pantah:
-#      the manager in PRODUCT_PACKAGES with libksud.so executable (0101), and init_boot
-#      from CHEETAH_KSU_INIT_BOOT (0102). They sit on the tree's own pantah patches
-#      (../apply.sh, run by ../prepare.sh), which must be in first;
+# Put ExpressiveOS's KernelSU Next pieces into its tree for a phone (EOS_DEVICE, cheetah
+# unless set; idempotent: a second run changes nothing):
+#   1. the phone's KernelSU Next device tree patches as local commits: cheetah's
+#      patches/device_google_pantah/0101-0102 in device/google/pantah, another phone's
+#      ../devices/<device>/ksu-patches/<project>/ (husky: device_google_shusky 0101-0102).
+#      The manager in PRODUCT_PACKAGES with libksud.so executable (0101), and init_boot
+#      from CHEETAH_KSU_INIT_BOOT, EOS_KSU_INIT_BOOT on the other phones (0102). They sit on
+#      the tree's own device tree patches (../apply.sh, run by ../prepare.sh), which must be
+#      in first;
 #   2. vendor/extra/ksu: the manager APK fetch-ksu.sh downloaded (its SHA-256 and signer
 #      checked again here), the source's LICENSE, the APK's four arm64 libs, the first-boot
 #      setup (tree/eos-ksu-firstboot.rc, tree/ksu-firstboot.sh), the Zygisk provider zip
@@ -13,7 +16,8 @@
 #      without its files.
 # Run it on every build (repo sync drops local commits). Never on the Evolution X or
 # DerpFest tree: their users aren't rooted. Nothing is written through a symlink that
-# leads out of the tree.
+# leads out of the tree. A phone without KernelSU Next (EOS_KSU=none) has nothing here:
+# eos-images.sh doesn't run it, and run anyway it says so and changes nothing.
 #
 #   apply-ksu.sh [top]      # default ~/expressiveos
 set -euo pipefail
@@ -29,8 +33,21 @@ here="$(cd "$(dirname -- "$(readlink -f -- "$0")")" && pwd)"
 # shellcheck source=../lib.sh
 source "$here/../lib.sh"
 [[ $# -le 1 ]] || fail "usage: apply-ksu.sh [top]"
+if [[ $EOS_KSU = none ]]; then
+    echo "KernelSU Next is off for $EOS_DEVICE (EOS_KSU=none, devices/$EOS_DEVICE.conf): nothing to apply"
+    done=1
+    echo "APPLY_KSU_OK skipped for this device"
+    exit 0
+fi
 eos_top "${1:-}"
-pantah="$top/device/google/pantah"
+dt="$top/$EOS_DEVICE_TREE"
+# The phone's KernelSU Next device tree patches: cheetah's are in this folder (patches/), another
+# phone's in devices/<device>/ksu-patches/, one folder per project, as ../patches/ is laid out
+if [[ $EOS_DEVICE = cheetah ]]; then
+    kdirs=("$here"/patches/device_google_pantah/)
+else
+    kdirs=("$kit/devices/$EOS_DEVICE"/ksu-patches/*/)
+fi
 dest="$top/vendor/extra/ksu"
 for p in vendor/extra vendor/extra/ksu vendor/extra/ksu/lib vendor/extra/ksu/lib/arm64; do in_top "$top/$p"; done
 get() { sed -n "s/^$1=//p" "$here/ksu.conf" | head -1; }
@@ -38,12 +55,26 @@ version=$(get version)
 echo "== KernelSU Next $version -> $top"
 
 # 1. Tree patches
-project_ok "$pantah"
-! has_subject "$pantah" "cheetah: preinstall the KernelSU Next manager" \
-    || fail "device/google/pantah has the old manager commit (no native libs); drop it with: (cd $top && repo sync -d device/google/pantah), then run prepare.sh and this again"
-want=$(subject_of "$(echo "$kit"/patches/device_google_pantah/0002-*.patch)")
-has_subject "$pantah" "$want" || fail "device/google/pantah lacks the tree's own patches ('$want'); run prepare.sh first"
-am_patches "$pantah" device_google_pantah "$here"/patches/device_google_pantah/*.patch
+project_ok "$dt"
+if [[ $EOS_DEVICE = cheetah ]]; then
+    ! has_subject "$dt" "cheetah: preinstall the KernelSU Next manager" \
+        || fail "device/google/pantah has the old manager commit (no native libs); drop it with: (cd $top && repo sync -d device/google/pantah), then run prepare.sh and this again"
+    want=$(subject_of "$(echo "$kit"/patches/device_google_pantah/0002-*.patch)")
+else
+    # apply.sh checks the same feed commit in the device tree
+    want="$EOS_DEVICE: get updates from denson9874/expressiveos_ota"
+fi
+has_subject "$dt" "$want" || fail "$EOS_DEVICE_TREE lacks the tree's own patches ('$want'); run prepare.sh first"
+n=0
+for dir in "${kdirs[@]}"; do
+    [[ -d $dir ]] || continue
+    patches=("$dir"*.patch)
+    [[ -e "${patches[0]}" ]] || continue
+    p=$(patch_project "$dir")              # e.g. device/google/pantah
+    am_patches "$top/$p" "$(basename "$dir")" "${patches[@]}"
+    n=$((n + ${#patches[@]}))
+done
+(( n > 0 )) || fail "devices/$EOS_DEVICE/ksu-patches/ has no patches: a phone with EOS_KSU=lkm needs its device tree to install the manager and ship the KernelSU Next init_boot (as cheetah's patches/device_google_pantah/0101-0102 do)"
 
 # 2. The manager, checked again: the kernel trusts only this exact upstream signature
 dl=~/android-dt/ksu/$version
@@ -80,6 +111,12 @@ lsplt=$zdir/src/loader/src/external/lsplt
 [[ "$(sed -n 's/^ZYGISK_CODE=\([0-9]*\).*/\1/p' "$here/tree/ksu-firstboot.sh")" = "$(get zygisk_version_code)" ]] \
     || fail "tree/ksu-firstboot.sh's ZYGISK_CODE isn't ksu.conf's zygisk_version_code ($(get zygisk_version_code))"
 [[ "$(get zygisk_module_id)" = zygisksu ]] || fail "tree/ksu-firstboot.sh looks for NeoZygisk as zygisksu, ksu.conf says $(get zygisk_module_id)"
+# ...and turns susfs auto-load on for the one KMI it names (KMI=). The same script ships on every
+# phone with KernelSU Next (cheetah and husky share android14-6.1); a phone on another KMI needs
+# it changed for that phone. It's in the ROM, so it's checked here, not edited per phone in place
+fbkmi=$(sed -n 's/^KMI=//p' "$here/tree/ksu-firstboot.sh")
+[[ "$fbkmi" = "$EOS_KMI" ]] \
+    || fail "tree/ksu-firstboot.sh turns susfs auto-load on for KMI ${fbkmi:-(none)}, but $EOS_DEVICE's kernel is $EOS_KMI (devices/$EOS_DEVICE.conf)"
 cp -- "$zip" "$stage/zygisk-provider.zip"
 {
     printf '%s\n' \
@@ -139,7 +176,7 @@ else
         || fail "can't stage Android.mk in $dest"
     echo "staged: vendor/extra/ksu/Android.mk (last)"
 fi
-grep -qxF 'TARGET_FS_CONFIG_GEN += device/google/pantah/ksu/config.fs' "$pantah/cheetah/BoardConfig.mk" \
-    || fail "cheetah/BoardConfig.mk doesn't use ksu/config.fs: libksud.so would ship without its exec bit"
+grep -qxF "TARGET_FS_CONFIG_GEN += $EOS_DEVICE_TREE/ksu/config.fs" "$top/$EOS_BOARDCONFIG" \
+    || fail "${EOS_BOARDCONFIG#"$EOS_DEVICE_TREE"/} doesn't use ksu/config.fs: libksud.so would ship without its exec bit"
 done=1
 echo "APPLY_KSU_OK KernelSU Next $version"
