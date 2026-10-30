@@ -101,14 +101,14 @@ apk="$cache/$EL_FILE"
 [[ "$(size "$apk")" = "$EL_SIZE" ]] || fail "cached $apk is $(size "$apk") bytes, launcher.conf wants $EL_SIZE"
 
 # What the pins say it is, asking for nothing more. apk-info.py reads the APK's binary
-# manifest and v2 signing block itself.
+# manifest and APK Signature Scheme block itself.
 info=$(python3 -I "$apkinfo" "$apk") || fail "can't read $apk"
 field() { sed -n "s/^$1 //p" <<<"$info"; }
 [[ "$(field package)" = "$EL_PACKAGE" ]] || fail "package is $(field package), launcher.conf wants $EL_PACKAGE"
 [[ "$(field versionName)" = "$EL_VERSION" ]] || fail "versionName is $(field versionName), launcher.conf wants $EL_VERSION"
 [[ "$(field versionCode)" = "$EL_VERSION_CODE" ]] || fail "versionCode is $(field versionCode), launcher.conf wants $EL_VERSION_CODE"
 [[ "$(field cert)" = "$EL_CERT_SHA256" ]] || fail "signed by $(field cert), launcher.conf wants $EL_CERT_SHA256"
-echo "OK: $(field package) $(field versionName) ($(field versionCode)), v2 signer $(field cert)"
+echo "OK: $(field package) $(field versionName) ($(field versionCode)), signer $(field cert)"
 perms=$(field uses-permission | paste -sd' ') perms23=$(field uses-permission-sdk-23 | paste -sd' ')
 [[ -z "$perms23" && "$perms" = "$EL_PERMS" ]] \
     || fail "permissions changed: has [$perms${perms23:+ (sdk-23) $perms23}], launcher.conf wants [$EL_PERMS]. A new privileged one must go into tree/privapp-permissions-$EL_PACKAGE.xml and EL_PRIVAPP_PERMS on purpose, then update EL_PERMS (README.md, Pins)"
