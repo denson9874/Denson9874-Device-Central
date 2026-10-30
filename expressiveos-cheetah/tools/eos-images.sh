@@ -75,8 +75,8 @@ trap 'rc=$?; rm -rf -- "$work"; [[ $done = 1 ]] || { echo "BUILD_EXIT=1"; exit $
 step "prepare.sh" 'PREPARE_OK.*' "$kit/prepare.sh" "$top"
 step "keys: tree" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" tree "$top"
 step "keys: build variables" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vars "$top"
-# KernelSU Next and ViPER4Android only where devices/<device>.conf turns them on: there's no
-# android16-6.12 KernelSU Next module yet, and ViPER4Android needs gs201's HIDL effect HAL
+# KernelSU Next and ViPER4Android only where devices/<device>.conf turns them on:
+# ViPER4Android needs gs201's HIDL effect HAL
 if [[ $EOS_KSU = lkm ]]; then
     step "KernelSU Next downloads" 'FETCH_KSU_OK.*' "$kit/ksu/fetch-ksu.sh"
     step "KernelSU Next" 'APPLY_KSU_OK.*' "$kit/ksu/apply-ksu.sh" "$top"
@@ -167,6 +167,11 @@ fi
     echo "kit: $(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")$([[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || echo " (with local changes)")"
     if [[ $EOS_KSU = lkm ]]; then
         echo "KernelSU Next: $(sed -n 's/^version=//p' "$kit/ksu/ksu.conf") $(sed -n 's/^src_commit=//p' "$kit/ksu/ksu.conf")"
+        # No kernel source in the tree: kernelsu.ko is built against the DDK's (ksu/ddk.conf)
+        if [[ $EOS_KERNEL = prebuilt ]]; then
+            ddk() { sed -n "s/^${EOS_KMI}_$1=//p" "$kit/ksu/ddk.conf"; }
+            echo "kernelsu.ko built with KernelSU Next's DDK for $EOS_KMI: $(ddk image)@$(ddk digest) ($(ddk tag))"
+        fi
         echo "NeoZygisk (product/etc/eos/zygisk-provider.zip): $(sed -n 's/^zygisk_version=//p' "$kit/ksu/ksu.conf") $(sed -n 's/^zygisk_src_commit=//p' "$kit/ksu/ksu.conf"), LSPlt $(sed -n 's/^zygisk_lsplt_commit=//p' "$kit/ksu/ksu.conf")"
     else
         echo "KernelSU Next: none (EOS_KSU=$EOS_KSU)"

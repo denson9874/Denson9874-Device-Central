@@ -2,20 +2,21 @@
 # The make part of an ExpressiveOS build of a phone (EOS_DEVICE, cheetah unless set;
 # devices/<device>.conf). tools/eos-images.sh runs it after prepare.sh, the key checks and
 # the kits; run alone, it builds what the tree already has. With KernelSU Next (EOS_KSU=lkm:
-# cheetah, husky): lunch, build_kernel, our kernelsu.ko (ksu-module.sh), then two passes:
+# every phone): lunch, build_kernel (a phone with Google's prebuilt kernel has none to build),
+# our kernelsu.ko (ksu-module.sh), then two passes:
 # pass 1 builds only the images cheetah-ksu.sh reads (boot, init_boot and
 # vendor_kernel_boot, whose ramdisk holds the first-stage modules) with the stock
 # init_boot, cheetah-ksu.sh patches that init_boot, and pass 2 builds everything with
 # CHEETAH_KSU_INIT_BOOT (patches/device_google_pantah/0102; EOS_KSU_INIT_BOOT on the other
 # phones, their devices/<device>/ksu-patches/ 0102). Pass 2 must ship the patched init_boot
 # (ksu-check.sh images) and keep its target-files zip (tf_zip in lib.sh). Without KernelSU
-# Next (EOS_KSU=none: the Pixel 11s): lunch and one make pass, which must ship the stock
+# Next (EOS_KSU=none): lunch and one make pass, which must ship the stock
 # init_boot and keep its target-files zip too. Every phone gets EOS_PRODUCT_OUT's
 # ab_partitions.txt. The last line is MAKE_EXIT=0 or MAKE_EXIT=1.
 #
 #   ksu-images.sh [top]                  # default ~/expressiveos; lunch target EOS_LUNCH (devices/<device>.conf)
-#   KERNEL_ONLY=1 ksu-images.sh [top]    # stop after build_kernel and kernelsu.ko (nothing to
-#                                        # build for a phone with a prebuilt kernel)
+#   KERNEL_ONLY=1 ksu-images.sh [top]    # stop after build_kernel and kernelsu.ko (only
+#                                        # kernelsu.ko for a phone with a prebuilt kernel)
 #   EOS_INSTALLCLEAN=1 ksu-images.sh     # start with m installclean (a modules= compile check
 #                                        # asks the next full build for it itself)
 #
@@ -71,7 +72,13 @@ if [[ $EOS_KERNEL = gs-6.1 ]]; then
     # Before lunch, which runs build_kernel
     kernel_pinned
 elif [[ "${KERNEL_ONLY:-0}" = 1 ]]; then
-    echo "KERNEL_ONLY=1: $EOS_DEVICE builds no kernel (EOS_KERNEL=$EOS_KERNEL: its tree's prebuilt boot image) and no kernelsu.ko (EOS_KSU=$EOS_KSU): nothing to build"
+    # No kernel to build (EOS_KERNEL=prebuilt), and kernelsu.ko builds with the DDK, without lunch
+    if [[ $EOS_KSU = lkm ]]; then
+        "$here/tools/ksu-module.sh" "$top" || fail "ksu-module.sh failed"
+        echo "KERNEL_ONLY=1: $EOS_DEVICE builds no kernel (EOS_KERNEL=$EOS_KERNEL: its tree's prebuilt boot image), only kernelsu.ko"
+    else
+        echo "KERNEL_ONLY=1: $EOS_DEVICE builds no kernel (EOS_KERNEL=$EOS_KERNEL: its tree's prebuilt boot image) and no kernelsu.ko (EOS_KSU=$EOS_KSU): nothing to build"
+    fi
     done=1; echo "MAKE_EXIT=0"; exit 0
 fi
 export EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
@@ -114,7 +121,7 @@ else
     [[ -n $pb && -f $pb ]] && pbsha=$(sha256sum -- "$pb" | cut -d' ' -f1)
     echo "<manifest><!-- $EOS_DEVICE: no kernel built from source (EOS_KERNEL=$EOS_KERNEL). The kernel is the tree's prebuilt boot image${pb:+ $pb}${pbsha:+ (sha256 $pbsha)}, Google's stock $EOS_KMI GKI. --></manifest>" \
         > "$EOS_STATE/kernel-manifest.xml" || fail "can't write $EOS_STATE/kernel-manifest.xml"
-    echo "OK: $EOS_DEVICE's kernel is its tree's prebuilt boot image${pb:+ ($pb)}; nothing kernel-related to build"
+    echo "OK: $EOS_DEVICE's kernel is its tree's prebuilt boot image${pb:+ ($pb)}: no kernel to build"
 fi
 if [[ $EOS_KSU = lkm ]]; then
     "$here/tools/ksu-module.sh" "$top" || fail "ksu-module.sh failed"

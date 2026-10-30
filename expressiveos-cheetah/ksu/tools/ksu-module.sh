@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # Build ExpressiveOS's own kernelsu.ko: the KernelSU Next source fetch-ksu.sh
 # checked out, plus kernel-patches/*.patch (the kernel crowns the manager
-# preinstalled in /product/app), compiled against the GKI source build_kernel
-# synced, with that tree's own clang and pahole. cheetah-ksu.sh puts it in init_boot in
-# place of the module built into ksud, and checks it matches boot.img's kernel. Only for a
-# phone whose kernel is built from that source (EOS_KERNEL=gs-6.1: cheetah, husky); the
-# phone's KMI is its EOS_KMI. The last line is KSU_MODULE_EXIT=0 or KSU_MODULE_EXIT=1.
+# preinstalled in /product/app), compiled for the phone's kernel. cheetah-ksu.sh puts it in
+# init_boot in place of the module built into ksud, and checks it fits boot.img's kernel.
+#   EOS_KERNEL=gs-6.1 (cheetah, husky): against the GKI source build_kernel synced, with that
+#     tree's own clang and pahole.
+#   EOS_KERNEL=prebuilt (the Pixel 11s): Google's GKI comes prebuilt, with no source in the
+#     tree, so against the DDK KernelSU Next's own CI builds its modules with (ddk.conf, for
+#     the phone's EOS_KMI): tools/ksu-ddk.sh fetches it into ~/android-dt/ddk/<kmi> once and
+#     builds there.
+# The last line is KSU_MODULE_EXIT=0 or KSU_MODULE_EXIT=1.
 #
-#   ksu-module.sh [top]   # after build_kernel; default ~/expressiveos; writes EOS_KSU_OUT's
+#   ksu-module.sh [top]   # after build_kernel (gs-6.1); default ~/expressiveos; writes EOS_KSU_OUT's
 #                         # kernelsu.ko (out/ksu/ for cheetah, out/ksu-<device>/ for another phone)
 #
 #   KSU_KERNEL_TREE=<dir>   the Kleaf tree build_kernel synced, inside the tree
@@ -20,7 +24,6 @@ here="$(cd "$(dirname -- "$(readlink -f -- "$0")")/.." && pwd)"
 # shellcheck source=../../lib.sh
 source "$here/../lib.sh"
 [[ $# -le 1 ]] || fail "usage: ksu-module.sh [top]"
-[[ $EOS_KERNEL != prebuilt ]] || fail "$EOS_DEVICE's kernel is its tree's prebuilt boot image (EOS_KERNEL=prebuilt, devices/$EOS_DEVICE.conf): there's no kernel source to build kernelsu.ko against"
 eos_top "${1:-}"
 # Run alone, this runs again under eos_lock (the locks eos-images.sh holds) and exits with it
 run_locked KSU_MODULE_EXIT=1 "$0" "$top"
@@ -37,47 +40,59 @@ done
 src=$HOME/android-dt/ksu/$version/src
 [[ -d "$src/.git" ]] || fail "no KernelSU Next source in $src (run fetch-ksu.sh)"
 [[ "$(git -C "$src" rev-parse HEAD)" = "$(get src_commit)" ]] || fail "$src isn't at ksu.conf's src_commit (run fetch-ksu.sh)"
-tree=${KSU_KERNEL_TREE:-out-kernel/google/gs-6.1}
-in_top "$top/$tree"
-kernel=$top/$tree/common/gki
-[[ -f "$kernel/Makefile" ]] || fail "no GKI source in $kernel (run build_kernel first)"
-kv=$(sed -n 's/^VERSION = //p;s/^PATCHLEVEL = //p' "$kernel/Makefile" | paste -sd.)
-[[ "$kv" = "${kmi#*-}" ]] || fail "$kernel is Linux $kv, not $kmi"
-clang_version=$(sed -n 's/^CLANG_VERSION=//p' "$kernel/build.config.constants")
-clang=$top/$tree/prebuilts/clang/host/linux-x86/clang-$clang_version/bin
-[[ -x "$clang/clang" ]] || fail "no clang-$clang_version in $tree/prebuilts (the GKI's own compiler)"
-# ...and its own pahole: pahole's version decides CONFIG_DEBUG_INFO_BTF_MODULES, which
-# changes struct module. Built without it, the module's struct module is 64 bytes short of
-# the kernel's, 6.1 loads it anyway (it has no symbol versions), and the kernel crashes at
-# boot: the first build did that (2026-10-26). The server has no pahole of its own.
-pahole=$top/$tree/prebuilts/kernel-build-tools/linux-x86/bin/pahole
-[[ -x "$pahole" ]] || fail "no $tree/prebuilts/kernel-build-tools/linux-x86/bin/pahole (the GKI's own; build_kernel syncs it)"
-
 K=$top/$EOS_KSU_OUT; B=$K/kbuild; M=$K/ksn
 in_top "$K"
-mkdir -p -- "$K"; rm -rf -- "${M:?}" "${B:?}"; rm -f -- "$K/kernelsu.ko" "$K/kernelsu.ko.info"
 # A copy with its git history: the module's version is 30000 + the commit count,
 # which must equal the manager's (33355 for v3.4.2), so the patches aren't committed
-cp -a -- "$src" "$M"
-for p in "$here"/kernel-patches/*.patch; do
-    git -C "$M" apply "$p" || fail "${p##*/} doesn't apply to KernelSU Next $version (regenerate it)"
-    echo "OK: applied ${p##*/}"
-done
-mk() { PATH=$clang:$PATH make -C "$1" ARCH=arm64 LLVM=1 LLVM_IAS=1 PAHOLE="$pahole" "${@:2}"; }
+copy_src() {
+    mkdir -p -- "$K"; rm -rf -- "${M:?}" "${B:?}"; rm -f -- "$K/kernelsu.ko" "$K/kernelsu.ko.info"
+    cp -a -- "$src" "$M"
+    for p in "$here"/kernel-patches/*.patch; do
+        git -C "$M" apply "$p" || fail "${p##*/} doesn't apply to KernelSU Next $version (regenerate it)"
+        echo "OK: applied ${p##*/}"
+    done
+}
 log=$K/kbuild.log
-mk "$kernel" O="$B" gki_defconfig > "$log" 2>&1 || { tail -20 "$log" >&2; fail "gki_defconfig"; }
-# cheetah-ksu.sh compares the whole config with the kernel's; this catches pahole early
-pv=$(sed -n 's/^CONFIG_PAHOLE_VERSION=//p' "$B/.config")
-[[ "$pv" =~ ^[1-9][0-9]*$ ]] || fail "gki_defconfig found no pahole (CONFIG_PAHOLE_VERSION=${pv:-unset}): $pahole --version doesn't run?"
-mk "$kernel" O="$B" -j"$(nproc)" modules_prepare >> "$log" 2>&1 || { tail -20 "$log" >&2; fail "modules_prepare"; }
-# KernelSU includes SELinux's private headers; flask.h is generated by a full kernel build
-mkdir -p -- "$B/security/selinux"
-"$B/scripts/selinux/genheaders/genheaders" "$B/security/selinux/flask.h" "$B/security/selinux/av_permissions.h"
-mk "$B" M="$M/kernel" CONFIG_KSU=m -j"$(nproc)" modules >> "$log" 2>&1 || { tail -20 "$log" >&2; fail "kernelsu.ko didn't build (log: $log)"; }
+if [[ $EOS_KERNEL = prebuilt ]]; then
+    # No kernel source: KernelSU Next's DDK for the phone's KMI, outside the tree like the
+    # other downloads, kept for the next build (one per KMI; a new ddk.conf pin replaces it)
+    ddk=$HOME/android-dt/ddk/$kmi
+    "$here/tools/ksu-ddk.sh" fetch "$kmi" "$ddk" || fail "can't fetch ddk.conf's DDK for $kmi"
+    copy_src
+    "$here/tools/ksu-ddk.sh" build "$kmi" "$ddk" "$M" "$K" || fail "kernelsu.ko didn't build with the DDK (log: $log)"
+else
+    tree=${KSU_KERNEL_TREE:-out-kernel/google/gs-6.1}
+    in_top "$top/$tree"
+    kernel=$top/$tree/common/gki
+    [[ -f "$kernel/Makefile" ]] || fail "no GKI source in $kernel (run build_kernel first)"
+    kv=$(sed -n 's/^VERSION = //p;s/^PATCHLEVEL = //p' "$kernel/Makefile" | paste -sd.)
+    [[ "$kv" = "${kmi#*-}" ]] || fail "$kernel is Linux $kv, not $kmi"
+    clang_version=$(sed -n 's/^CLANG_VERSION=//p' "$kernel/build.config.constants")
+    clang=$top/$tree/prebuilts/clang/host/linux-x86/clang-$clang_version/bin
+    [[ -x "$clang/clang" ]] || fail "no clang-$clang_version in $tree/prebuilts (the GKI's own compiler)"
+    # ...and its own pahole: pahole's version decides CONFIG_DEBUG_INFO_BTF_MODULES, which
+    # changes struct module. Built without it, the module's struct module is 64 bytes short of
+    # the kernel's, 6.1 loads it anyway (it has no symbol versions), and the kernel crashes at
+    # boot: the first build did that (2026-10-26). The server has no pahole of its own.
+    pahole=$top/$tree/prebuilts/kernel-build-tools/linux-x86/bin/pahole
+    [[ -x "$pahole" ]] || fail "no $tree/prebuilts/kernel-build-tools/linux-x86/bin/pahole (the GKI's own; build_kernel syncs it)"
+
+    copy_src
+    mk() { PATH=$clang:$PATH make -C "$1" ARCH=arm64 LLVM=1 LLVM_IAS=1 PAHOLE="$pahole" "${@:2}"; }
+    mk "$kernel" O="$B" gki_defconfig > "$log" 2>&1 || { tail -20 "$log" >&2; fail "gki_defconfig"; }
+    # cheetah-ksu.sh compares the whole config with the kernel's; this catches pahole early
+    pv=$(sed -n 's/^CONFIG_PAHOLE_VERSION=//p' "$B/.config")
+    [[ "$pv" =~ ^[1-9][0-9]*$ ]] || fail "gki_defconfig found no pahole (CONFIG_PAHOLE_VERSION=${pv:-unset}): $pahole --version doesn't run?"
+    mk "$kernel" O="$B" -j"$(nproc)" modules_prepare >> "$log" 2>&1 || { tail -20 "$log" >&2; fail "modules_prepare"; }
+    # KernelSU includes SELinux's private headers; flask.h is generated by a full kernel build
+    mkdir -p -- "$B/security/selinux"
+    "$B/scripts/selinux/genheaders/genheaders" "$B/security/selinux/flask.h" "$B/security/selinux/av_permissions.h"
+    mk "$B" M="$M/kernel" CONFIG_KSU=m -j"$(nproc)" modules >> "$log" 2>&1 || { tail -20 "$log" >&2; fail "kernelsu.ko didn't build (log: $log)"; }
+    # Debug info would make it ~6 MB, too big for the 8 MB init_boot with a ramdisk
+    "$clang/llvm-strip" --strip-debug -o "$K/kernelsu.ko" "$M/kernel/kernelsu.ko"
+fi
 want=$((30000 + $(git -C "$src" rev-list --count HEAD)))
 grep -x -- "-- KernelSU-Next version: $want" "$log" >/dev/null || fail "kernelsu.ko isn't version $want (see $log)"
-# Debug info would make it ~6 MB, too big for the 8 MB init_boot with a ramdisk
-"$clang/llvm-strip" --strip-debug -o "$K/kernelsu.ko" "$M/kernel/kernelsu.ko"
 # Not grep -q: an early exit would kill strings with SIGPIPE under pipefail
 strings "$K/kernelsu.ko" | grep -x /product/app/KernelSUNext/KernelSUNext.apk >/dev/null || fail "kernelsu.ko lacks the /product/app patch"
 vermagic=$(strings "$K/kernelsu.ko" | sed -n 's/^vermagic=//p')

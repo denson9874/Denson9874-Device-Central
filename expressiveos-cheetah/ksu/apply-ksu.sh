@@ -111,12 +111,13 @@ lsplt=$zdir/src/loader/src/external/lsplt
 [[ "$(sed -n 's/^ZYGISK_CODE=\([0-9]*\).*/\1/p' "$here/tree/ksu-firstboot.sh")" = "$(get zygisk_version_code)" ]] \
     || fail "tree/ksu-firstboot.sh's ZYGISK_CODE isn't ksu.conf's zygisk_version_code ($(get zygisk_version_code))"
 [[ "$(get zygisk_module_id)" = zygisksu ]] || fail "tree/ksu-firstboot.sh looks for NeoZygisk as zygisksu, ksu.conf says $(get zygisk_module_id)"
-# ...and turns susfs auto-load on for the one KMI it names (KMI=). The same script ships on every
-# phone with KernelSU Next (cheetah and husky share android14-6.1); a phone on another KMI needs
-# it changed for that phone. It's in the ROM, so it's checked here, not edited per phone in place
-fbkmi=$(sed -n 's/^KMI=//p' "$here/tree/ksu-firstboot.sh")
-[[ "$fbkmi" = "$EOS_KMI" ]] \
-    || fail "tree/ksu-firstboot.sh turns susfs auto-load on for KMI ${fbkmi:-(none)}, but $EOS_DEVICE's kernel is $EOS_KMI (devices/$EOS_DEVICE.conf)"
+# ...and turns susfs auto-load on for the running kernel's KMI when it's one of those it names
+# (KMIS=). The same script ships on every phone with KernelSU Next (cheetah and husky on
+# android14-6.1, the Pixel 11s on android16-6.12); it's in the ROM, so it's checked here, not
+# edited per phone in place
+fbkmis=$(sed -n 's/^KMIS="\([^"]*\)".*/\1/p' "$here/tree/ksu-firstboot.sh")
+[[ " $fbkmis " == *" $EOS_KMI "* ]] \
+    || fail "tree/ksu-firstboot.sh turns susfs auto-load on for ${fbkmis:-no KMI}, not $EOS_DEVICE's kernel, $EOS_KMI (devices/$EOS_DEVICE.conf): add it to KMIS"
 cp -- "$zip" "$stage/zygisk-provider.zip"
 {
     printf '%s\n' \
