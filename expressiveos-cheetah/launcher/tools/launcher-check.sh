@@ -427,7 +427,8 @@ device)
     r=$(a cmd overlay lookup android android:string/config_defaultListenerAccessPackages)
     [[ "$r" = "$want_listeners" ]] && pass "config_defaultListenerAccessPackages is the kit's (Expressive Launcher in Pixel Launcher's place)" \
         || bad "config_defaultListenerAccessPackages is '${r:-unreadable}', not the kit's"
-    r=$(a cmd overlay lookup android android:array/config_launcherPackages | tr -d '[]' | tr ', ' '\n\n' | sed '/^$/d' | paste -sd:)
+    # (paste's - operand: macOS's paste needs it; device mode runs on a Mac)
+    r=$(a cmd overlay lookup android android:array/config_launcherPackages | tr -d '[]' | tr ', ' '\n\n' | sed '/^$/d' | paste -sd: -)
     if [[ ":$r:" = *":$EL_PACKAGE:"* && ":$r:" != *":$PIXEL:"* ]]; then pass "config_launcherPackages (Evolution X's launchers) is $r"
     elif [[ -z "$r" ]]; then info "cmd overlay lookup can't print config_launcherPackages here (an array): $FW_OVERLAY's values above say it's applied"
     else bad "config_launcherPackages is '$r': Expressive Launcher isn't in Pixel Launcher's place"; fi
@@ -454,7 +455,7 @@ device)
     # The privileged permissions, granted at install
     miss=()
     for p in $EL_PRIVAPP_PERMS; do grep -qF "$p: granted=true" "$T/pkg" || miss+=("$p"); done
-    [[ ${#miss[@]} = 0 ]] && pass "all $(wc -w <<<"$EL_PRIVAPP_PERMS") privileged permissions are granted" \
+    [[ ${#miss[@]} = 0 ]] && pass "all $(wc -w <<<"$EL_PRIVAPP_PERMS" | tr -d ' ') privileged permissions are granted" \
         || bad "privileged permissions not granted: ${miss[*]}"
     adb logcat -b all -d 2>/dev/null | tr -d '\r' > "$T/log" || true
     hits=$(grep -F "$EL_PACKAGE" "$T/log" | grep -iF 'not in privapp-permissions allowlist' | tail -3 || true)
