@@ -130,6 +130,48 @@ for l in "$eos"/out/target/product/*/product/app/KernelSUNext/lib/arm64/libksud.
     break
 done
 
+h "KernelSU Next's own 6.12 builds: its CI's DDK recipe (open-source workflow files, whole)"
+if [[ -d $src ]]; then
+    for f in .github/workflows/build-lkm.yml .github/workflows/ddk-lkm-ksu.yml .github/workflows/ddk-lkm-susfs.yml scripts/prepare-ddk-x64.sh; do
+        [[ -f $src/$f ]] || continue
+        echo "---- $f"
+        grep -vE '^\s*$' "$src/$f" | cut -c1-220 | head -200
+    done
+fi
+echo "-- the android16-6.12 kernelsu.ko ksud embeds (what boot-patch --kmi android16-6.12 uses without -m)"
+if [[ -f $k ]] && out=$(python3 -I "$kit/ksu/tools/ko-info.py" embedded "$k" kernelsu 6.12. "$work/ksu612.ko" 2>&1); then
+    echo "found: $out"
+    python3 -I "$kit/ksu/tools/ko-info.py" this-module "$work/ksu612.ko" 2> /dev/null | awk '{print "its struct module: " $1 " bytes"}'
+    echo "sha256 $(sha256sum < "$work/ksu612.ko" | cut -c1-16), $(stat -c %s "$work/ksu612.ko") bytes, __versions sections: $(readelf -S "$work/ksu612.ko" 2> /dev/null | grep -c '__versions')"
+    strings "$work/ksu612.ko" | grep -m3 -E '^(name|vermagic|srcversion)=' || true
+    strings "$work/ksu612.ko" | grep -c 'product/app' | sed 's/^/mentions of product\/app: /'
+else
+    echo "none found in ${k#"$HOME"/}: $(tail -1 <<<"${out:-}" | cut -c1-160)"
+fi
+
+h "the DDK image KernelSU Next builds its modules in (ghcr.io/ylarod/ddk-min): tags for android16-6.12"
+tok=$(timeout 60 curl -fsS "https://ghcr.io/token?scope=repository:ylarod/ddk-min:pull" 2> /dev/null | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["token"])' 2> /dev/null || true)
+if [[ -n $tok ]]; then
+    timeout 60 curl -fsS -H "Authorization: Bearer $tok" "https://ghcr.io/v2/ylarod/ddk-min/tags/list?n=1000" 2> /dev/null \
+        | python3 -I -c 'import json,sys; t=json.load(sys.stdin).get("tags",[]); print(len(t), "tags"); [print(x) for x in t if "6.12" in x]' 2> /dev/null | tail -20 \
+        || echo "can't list its tags"
+    rel=$(grep -hoE "ddk_release:[^#]*default: *['\"]?[A-Za-z0-9._-]+" "$src"/.github/workflows/*.yml 2> /dev/null | grep -oE "[A-Za-z0-9._-]+$" | head -1)
+    rel=${rel:-$(grep -hoE "ddk_release: *['\"]?[A-Za-z0-9._-]+" "$src"/.github/workflows/build-lkm.yml 2> /dev/null | grep -oE "[A-Za-z0-9._-]+$" | head -1)}
+    echo "the CI's ddk_release: ${rel:-?}"
+    if [[ -n $rel ]]; then
+        timeout 60 curl -fsS -H "Authorization: Bearer $tok" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.list.v2+json' \
+            "https://ghcr.io/v2/ylarod/ddk-min/manifests/android16-6.12-$rel" -D "$work/hdr" -o "$work/man.json" 2> /dev/null \
+            && { grep -i '^docker-content-digest' "$work/hdr" | tr -d '\r'
+                 python3 -I -c 'import json,sys; m=json.load(open(sys.argv[1])); print(m.get("mediaType")); [print("platform", x.get("platform"), x["digest"]) for x in m.get("manifests",[])]; [print("layer", x["size"], x["digest"]) for x in m.get("layers",[])]' "$work/man.json"; } \
+            || echo "no manifest for android16-6.12-$rel"
+    fi
+else
+    echo "no anonymous pull token from ghcr.io"
+fi
+for c in docker podman skopeo crane umoci; do p=$(command -v "$c" 2> /dev/null || true); echo "$c: ${p:-not installed}"; done
+[[ -f /usr/include/elfutils/libdw.h ]] && echo "libdw-dev: installed (gendwarfksyms can build)" || echo "libdw-dev: not installed"
+
 h "host tools a 6.12 module build may use (the server's own; Google's prebuilts are preferred)"
 for c in rustc bindgen pahole clang make bc flex bison lz4 git-lfs repo; do
     p=$(command -v "$c" 2> /dev/null || true)
