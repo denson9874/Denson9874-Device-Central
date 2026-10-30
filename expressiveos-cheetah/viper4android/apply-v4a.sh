@@ -34,15 +34,10 @@ source "$here/v4a.conf" || fail "can't read $here/v4a.conf"
 arg=${1:-$HOME/expressiveos}
 [[ $# -le 1 ]] || fail "usage: apply-v4a.sh [top]"
 # Only for a phone whose devices/<device>.conf has EOS_V4A=1 (EOS_DEVICE, cheetah unless set;
-# lib.sh reads it). For the others this leaves the tree alone: what a cheetah run staged in
-# vendor/extra stays, and tree/viper4android.mk adds nothing to their products
+# lib.sh reads it). For the others this leaves the tree as it is (below, after the checks on
+# where it writes), but for tree/viper4android.mk, which adds nothing to their products
 read -r v4a_dev v4a_on <<<"$(source "$here/../lib.sh" && printf '%s %s' "$EOS_DEVICE" "$EOS_V4A")"
 [[ -n ${v4a_dev:-} && ${v4a_on:-} =~ ^[01]$ ]] || fail "can't read this phone's EOS_V4A (lib.sh, devices/<device>.conf)"
-if [[ $v4a_on = 0 ]]; then
-    done=1
-    echo "V4A_APPLY=OK skipped (ViPER4Android is off for $v4a_dev)"
-    exit 0
-fi
 not_evo() {
     [[ "${1%/}" != */evolution && "${1%/}" != evolution && "${1%/}" != */derpfest && "${1%/}" != derpfest ]] \
         || fail "$arg is the Evolution X or DerpFest tree ($1); ViPER4Android RE is for the ExpressiveOS tree only"
@@ -72,6 +67,20 @@ in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top and not 
     [[ -z "$derp" || ( "$r" != "$derp" && "$r" != "$derp"/* ) ]] || fail "${1#"$top"/} leads into the DerpFest tree ($r)"
 }
 for p in vendor/extra vendor/extra/viper4android vendor/extra/product.mk frameworks/av; do in_top "$top/$p"; done
+if [[ $v4a_on = 0 ]]; then
+    # An older kit staged viper4android.mk for every product: refresh that one file (the
+    # guarded one, ViPER4Android for the EOS_V4A=1 products only), or this phone's build would
+    # install it (eos-images.sh's identity check refuses that)
+    f=$top/vendor/extra/viper4android/viper4android.mk
+    if [[ -f $f ]] && ! cmp -s -- "$here/tree/viper4android.mk" "$f"; then
+        t=$top/vendor/extra/viper4android/.viper4android.mk.tmp
+        { cp -- "$here/tree/viper4android.mk" "$t" && chmod 0644 "$t" && mv -f -- "$t" "$f"; } || fail "can't update $f"
+        echo "staged: vendor/extra/viper4android/viper4android.mk (ViPER4Android for the EOS_V4A=1 products only)"
+    fi
+    done=1
+    echo "V4A_APPLY=OK skipped (ViPER4Android is off for $v4a_dev)"
+    exit 0
+fi
 gd=$(git -C "$av" rev-parse --absolute-git-dir) && gd=$(realpath -- "$gd") || fail "can't find frameworks/av's git folder"
 [[ -z "$evo" || ( "$gd" != "$evo" && "$gd" != "$evo"/* ) ]] || fail "frameworks/av's git folder is in the Evolution X tree ($gd)"
 [[ -z "$derp" || ( "$gd" != "$derp" && "$gd" != "$derp"/* ) ]] || fail "frameworks/av's git folder is in the DerpFest tree ($gd)"

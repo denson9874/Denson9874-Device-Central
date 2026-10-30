@@ -43,9 +43,11 @@ source "$(dirname -- "$(readlink -f -- "$0")")/lib.sh"
 [[ $# -le 1 ]] || fail "usage: apply.sh [top]"
 eos_top "${1:-}"
 
-# The kit itself never points at Evolution X's feed
-bad=$(grep -l -- evolution_ota "$kit"/patches/*/*.patch "$kit"/ksu/patches/*/*.patch "$kit"/devices/*/patches/*/*.patch \
-    "$kit"/devices/*/ksu-patches/*/*.patch 2>/dev/null || true)
+# The kit itself never points at Evolution X's feed. The other phones' patches may name it on
+# the lines they take out (a tree that read it), never on a line they add
+bad=$( { grep -l -- evolution_ota "$kit"/patches/*/*.patch
+         grep -lE -- '^\+.*evolution_ota' "$kit"/ksu/patches/*/*.patch "$kit"/devices/*/patches/*/*.patch \
+             "$kit"/devices/*/ksu-patches/*/*.patch 2>/dev/null; } || true)
 [[ -z "$bad" ]] || fail "kit patches mention evolution_ota, Evolution X's feed: $bad"
 
 # The shared patches/ (cheetah's among them), then this phone's own. ksu/ and viper4android/
@@ -72,7 +74,10 @@ for s in "$EOS_DEVICE: set ExpressiveOS's maintainer" "$EOS_DEVICE: get updates 
 done
 # ...and its Updater overlay's feed is ExpressiveOS's in the files too (a tree can carry Evolution
 # X's feed from its first commit, under no subject); eos-verify.sh checks the built overlay again
-bad=$(grep -rlE --include='*.xml' '<string name="updater_server_url"[^<]*>[^<]*evolution_ota' -- "$dt" 2>/dev/null || true)
+# This phone's overlay only: the tree can hold its siblings' too (pantah's panther, shusky's shiba)
+mapfile -t ovl < <(find "$dt" -path "$dt/.git" -prune -o -type d -name "$EOS_UPDATER_OVERLAY" -print)
+(( ${#ovl[@]} )) || fail "$EOS_DEVICE_TREE has no $EOS_UPDATER_OVERLAY (devices/$EOS_DEVICE.conf's EOS_UPDATER_OVERLAY)"
+bad=$(grep -rlE --include='*.xml' '<string name="updater_server_url"[^<]*>[^<]*evolution_ota' -- "${ovl[@]}" 2>/dev/null || true)
 [[ -z "$bad" ]] || fail "$EOS_DEVICE_TREE's Updater still reads Evolution X's feed: ${bad//"$top"\//}"
 done=1
 echo "APPLY_OK"

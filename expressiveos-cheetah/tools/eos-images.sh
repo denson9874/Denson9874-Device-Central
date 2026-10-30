@@ -85,6 +85,9 @@ if [[ $EOS_V4A = 1 ]]; then
     step "ViPER4Android" 'V4A_APPLY=OK.*' "$kit/viper4android/apply-v4a.sh" "$top"
 else
     echo "== ViPER4Android: off for $EOS_DEVICE (EOS_V4A=$EOS_V4A, devices/$EOS_DEVICE.conf)"
+    # It stages nothing then, but brings an older kit's viper4android.mk (every product's) up
+    # to the one that adds ViPER4Android to the EOS_V4A=1 phones only
+    step "ViPER4Android's makefile" 'V4A_APPLY=OK.*' "$kit/viper4android/apply-v4a.sh" "$top"
 fi
 step "boot animation" 'BOOTANIM_APPLY=OK.*' "$kit/bootanimation/apply-bootanim.sh" "$top"
 step "wallpapers" 'WALLPAPERS_APPLY=OK.*' "$kit/wallpapers/apply-wallpapers.sh" "$top"
@@ -137,6 +140,11 @@ done < <(kit_patch_dirs)
 # (prepare.sh has the device tree's extract-images.sh make it from the factory image zip)
 google=()
 if [[ $EOS_FIRMWARE_MODE = images ]]; then
+    # kodiak's, grizzly's and cubs' BoardConfig.mk take Espada's kernel (and its
+    # vendor_kernel_boot) whenever vendor/google/espada-kernel is in the tree: ExpressiveOS
+    # ships Google's stock GKI, which only SHA256SUMS records
+    [[ ! -e vendor/google/espada-kernel ]] \
+        || fail "vendor/google/espada-kernel is in the tree: the Pixel 11 trees would build with its kernel, not Google's stock one. Move it out of $top"
     project_ok "$top/$EOS_VENDOR_DIR"
     head=$(git -C "$EOS_VENDOR_DIR" rev-parse HEAD) || fail "can't read $EOS_VENDOR_DIR's HEAD"
     imgs=vendor/google/$EOS_DEVICE-images

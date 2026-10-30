@@ -255,14 +255,17 @@ on:
           kernel-only (build_kernel and kernelsu.ko, no pack), kernel-sync (sync the
           kernel source to its pins again), clean (once a phone's pack ends PACK=OK,
           remove its out/target/product/<phone> and print what that freed; never
-          cheetah's), try=<path>@<commit> (any number: build that commit of one of
+          cheetah's; that candidate can then go to testers only: to release it, build
+          again without clean and test that zip), try=<path>@<commit> (any number: build that commit of one of
           ExpressiveOS's own projects, e.g. a branch before it's merged; it must have
           the project's pinned commit under it, and stays checked out until a build
-          without try=), modules=<module>,<module>,... (lunch and m on just those
+          that doesn't name it: name every tried project each time; the build and its
+          check/ candidate record it), modules=<module>,<module>,... (lunch and m on just those
           modules, a compile check: nothing packed; with try= or alone). try= and
           modules= are for one phone. expressiveos-pack (optional): device=<phone>, testers
           (eos-pack.sh --testers: check/'s untested candidate to SourceForge's
-          expressiveos/<phone>/testers; only when Daryl says so). build-explain
+          expressiveos/<phone>/testers; only when Daryl says so), try-ok (testers may
+          send a candidate built with try=). build-explain
           (required): tree, product, then up to two products to compare, e.g.
           'evolution lineage_yogi lineage_cubs'. release-checks (optional): devices,
           e.g. 'kodiak cheetah' (default: all six). expressiveos-update (required):
@@ -1011,11 +1014,17 @@ jobs:
           else
             echo "not set up yet"
           fi
+          for d in $devs; do
+            if [[ $d = cheetah ]]; then st=$top/out/eos; else st=$top/out/eos-$d; fi
+            for f in "$st/try.txt" ~/releases/expressiveos-"$d"/check/try.txt; do
+              if [[ -s $f ]]; then echo "== $d: ${f/#"$HOME"/\~}: built with try= commits that aren't in the manifest"; sed 's/^/  /' "$f"; fi
+            done
+          done
           if [[ -s $jobs/try.txt ]]; then
-            echo "== try=: checked out in the tree until a build without try= (~/expressiveos-jobs/try.txt)"
-            while read -r p c; do
+            echo "== try=: checked out in the tree until a build that doesn't name them (~/expressiveos-jobs/try.txt)"
+            while read -r p c rest; do
               [[ -n $p ]] || continue
-              echo "$p: tried ${c:0:12}, HEAD $(git -C "$top/$p" rev-parse --short=12 HEAD 2>/dev/null || echo "?")"
+              echo "$p: tried ${c:0:12}${rest:+ (may still be at ${rest:0:12})}, HEAD $(git -C "$top/$p" rev-parse --short=12 HEAD 2>/dev/null || echo "?")"
             done < "$jobs/try.txt"
           fi
           echo "== keys: $(find "$top/vendor/evolution-priv/keys" -maxdepth 1 -name '*.pk8' 2>/dev/null | wc -l) .pk8 files in expressiveos/vendor/evolution-priv/keys"
@@ -1231,13 +1240,14 @@ jobs:
           phone() {   # phone <name>: fail unless the kit has devices/<name>.conf
             [[ $1 =~ ^[a-z0-9]+$ && $known == *" $1 "* ]] || fail "'$1' isn't one of tree_ref's phones (expressiveos-cheetah/devices/*.conf):${known% }"
           }
-          envs=() dev= devs=() free_out=0 testers=0 tries=() mods=
+          envs=() dev= devs=() free_out=0 testers=0 tries=() mods= tryok=0
           for o in ${opts[@]+"${opts[@]}"}; do
             case "$ACTION:$o" in
               expressiveos-build:kernel-only) envs+=(KERNEL_ONLY=1) ;;
               expressiveos-build:kernel-sync) envs+=(EOS_KERNEL_SYNC=1) ;;
               expressiveos-build:clean) free_out=1 ;;
               expressiveos-pack:testers) testers=1 ;;
+              expressiveos-pack:try-ok) tryok=1 ;;
               expressiveos-build:try=*)
                 t=${o#try=}
                 [[ $t =~ ^[A-Za-z0-9_][A-Za-z0-9._-]*(/[A-Za-z0-9_][A-Za-z0-9._-]*)*@[0-9a-f]{40}$ && /${t%@*}/ != */../* ]] \
@@ -1248,7 +1258,16 @@ jobs:
                 [[ -z $mods ]] || fail "query names modules= twice"
                 [[ ${o#modules=} =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*(,[A-Za-z0-9_][A-Za-z0-9_.-]*)*$ ]] \
                   || fail "modules= is module names with commas between them, e.g. modules=Settings,Evolver"
-                mods=${o#modules=} ;;
+                mods=${o#modules=}
+                # Modules, never a build goal: clean and clobber would remove out/ (check/'s builds' source),
+                # and the packaging goals would make an OTA package without the kit's passes
+                IFS=, read -r -a ms <<< "$mods"
+                for m in "${ms[@]}"; do
+                  case $m in
+                    clean|clobber|installclean|dataclean|nuke|dist|droid|droidcore|evolution|bacon|otapackage|target-files-package|*clean|*image|*images|*package)
+                      fail "modules=$m is a build goal, not a module" ;;
+                  esac
+                done ;;
               expressiveos-build:device=*|expressiveos-pack:device=*)
                 [[ -z $dev && ${#devs[@]} = 0 ]] || fail "query names the phone twice ($o)"
                 dev=${o#device=}; phone "$dev" ;;
@@ -1262,7 +1281,7 @@ jobs:
                   [[ $seen != *" $d "* ]] || fail "devices= names $d twice"
                   seen+="$d "
                 done ;;
-              *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, clean, try=<path>@<commit>, modules=<module>,...; expressiveos-pack takes device=<phone>, testers)" ;;
+              *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, clean, try=<path>@<commit>, modules=<module>,...; expressiveos-pack takes device=<phone>, testers, try-ok)" ;;
             esac
           done
           if (( ${#tries[@]} )) || [[ -n $mods ]]; then
@@ -1366,45 +1385,67 @@ jobs:
             # try=<path>@<commit>: a commit of one of ExpressiveOS's own projects (remote
             # expressiveos in its manifest) that the manifest doesn't pin yet, such as a branch to
             # build before it's merged. It must have the project's pinned commit under it, as
-            # lib.sh's pins_check wants. It stays checked out for this build and any after it
-            # (expressiveos-pack packs that build) until a build without try= puts the project
-            # back on the manifest's commit. try.txt names them ("<path> <commit>" lines), written
+            # lib.sh's pins_check wants. It stays checked out until a build that doesn't name it
+            # in try= (name every tried project each time) puts it back on the manifest's commit.
+            # try.txt names them ("<path> <commit> [<commit it may still be at>]" lines), written
             # before anything is checked out, so a run that stops half way is undone by the next.
+            # The build records them too (try.txt in its out/eos folder, then beside its check/
+            # candidate), so a pack or a testers upload says it holds unmerged commits.
             tf=$jobs/try.txt
+            tm=$(bash -c 'source "$1/lib.sh" && eos_top "" && printf "%s\n%s\n" "$top" "$EOS_MANIFEST_BRANCH"' _ "$kit") \
+              || fail "no ExpressiveOS tree (above): run expressiveos-setup"
+            { read -r top; read -r br; } <<< "$tm"
+            [[ -d $top && -n $br ]] || fail "can't find the tree or its manifest branch ($tm)"
             if (( ${#tries[@]} )) || [[ -s $tf ]]; then
-              tm=$(bash -c 'source "$1/lib.sh" && eos_top "" && m=$(tree_manifest) && printf "%s\n%s\n%s\n" "$top" "$m" "$EOS_MANIFEST_BRANCH"' _ "$kit") \
+              mf=$(bash -c 'source "$1/lib.sh" && eos_top "" && tree_manifest' _ "$kit") \
                 || fail "the tree isn't on ExpressiveOS's manifest (above): run expressiveos-setup"
-              { read -r top; read -r mf; read -r br; } <<< "$tm"
-              [[ -d $top && -f $mf && -n $br ]] || fail "can't find the tree, its manifest or its branch ($tm)"
-              want=" "
-              for t in ${tries[@]+"${tries[@]}"}; do want+="${t%@*} "; done
-              # First, back on the manifest's commit: each project an earlier try= moved that
-              # this build doesn't name (expressiveos-setup's repo sync puts them back too)
-              if [[ -s $tf ]]; then
-                while read -r p c; do
-                  [[ -n $p && $want != *" $p "* ]] || continue
-                  d=$top/$p
-                  pin=$(git -C "$d" rev-parse -q --verify "refs/remotes/m/$br^{commit}") || fail "$p has no m/$br: run expressiveos-setup"
-                  h=$(git -C "$d" rev-parse HEAD) || fail "can't read $p's HEAD"
-                  if [[ $h = "$pin" ]]; then echo "try: $p is on the manifest's ${pin:0:12} already"; continue; fi
-                  [[ $h = "$c" ]] || fail "$p is at ${h:0:12}, neither the manifest's ${pin:0:12} nor the tried ${c:0:12}: run expressiveos-setup"
-                  [[ -z "$(git -C "$d" status --porcelain --untracked-files=no)" ]] || fail "$p has changes (git -C $d status): run expressiveos-setup"
-                  git -C "$d" -c advice.detachedHead=false checkout -q --detach "$pin" || fail "can't put $p back on ${pin:0:12}"
-                  echo "try: $p back on the manifest's ${pin:0:12} (it was at the tried ${c:0:12})" | tee -a "$GITHUB_STEP_SUMMARY"
-                done < "$tf"
-              fi
-              # Then each try=: checked and fetched first, try.txt written, then checked out
-              lines=()
-              for t in ${tries[@]+"${tries[@]}"}; do
-                p=${t%@*} c=${t#*@}
-                d=$top/$p
-                info=$(python3 -c '
+              [[ -f $mf ]] || fail "can't find the tree's manifest ($mf)"
+              # A project's entry in the tree's manifest: "<remote> <name> <revision>", or nothing
+              entry() {
+                python3 -c '
           import sys, xml.etree.ElementTree as ET
           for e in ET.parse(sys.argv[1]).getroot().iter("project"):
               if (e.get("path") or e.get("name")) == sys.argv[2]:
                   print(e.get("remote") or "-", e.get("name"), e.get("revision") or "-")
                   break
-          ' "$mf" "$p") || fail "can't read $mf"
+          ' "$mf" "$1"
+              }
+              # The commits try.txt says a project may be at: its line's, after the path
+              tried() { if [[ -s $tf ]]; then awk -v p="$1" '$1 == p { for (i = 2; i <= NF; i++) print $i; exit }' "$tf"; fi; }
+              at_tried() {   # at_tried <path> <commit>: try.txt names <commit> for <path>
+                local x
+                while read -r x; do [[ $x != "$2" ]] || return 0; done < <(tried "$1")
+                return 1
+              }
+              want=" "
+              for t in ${tries[@]+"${tries[@]}"}; do want+="${t%@*} "; done
+              # First, back on the manifest's commit: each project an earlier try= moved that
+              # this build doesn't name (expressiveos-setup's repo sync puts them back too)
+              if [[ -s $tf ]]; then
+                while read -r p rest; do
+                  [[ -n $p && $want != *" $p "* ]] || continue
+                  d=$top/$p
+                  # Gone from the tree (repo sync removes a project the manifest dropped): nothing to put back
+                  if [[ -z "$(entry "$p")" || ! -d $d ]]; then echo "try: $p isn't in the tree's manifest any more; dropped from try.txt"; continue; fi
+                  pin=$(git -C "$d" rev-parse -q --verify "refs/remotes/m/$br^{commit}") || fail "$p has no m/$br: run expressiveos-setup"
+                  h=$(git -C "$d" rev-parse HEAD) || fail "can't read $p's HEAD"
+                  if [[ $h = "$pin" ]]; then echo "try: $p is on the manifest's ${pin:0:12} already"; continue; fi
+                  at_tried "$p" "$h" || fail "$p is at ${h:0:12}, neither the manifest's ${pin:0:12} nor a commit try.txt names: run expressiveos-setup"
+                  [[ -z "$(git -C "$d" status --porcelain --untracked-files=no)" ]] || fail "$p has changes (git -C $d status): run expressiveos-setup"
+                  git -C "$d" -c advice.detachedHead=false checkout -q --detach "$pin" || fail "can't put $p back on ${pin:0:12}"
+                  if (( ${#tries[@]} )); then
+                    echo "::warning::try: $p back on the manifest's ${pin:0:12}: this build doesn't name it in try= (it was at the tried ${h:0:12})"
+                  fi
+                  echo "try: $p back on the manifest's ${pin:0:12} (it was at the tried ${h:0:12})" >> "$GITHUB_STEP_SUMMARY"
+                done < "$tf"
+              fi
+              # Then each try=: checked and fetched first, try.txt written (with the commit each
+              # project is at now, until it's moved), then checked out, then try.txt as it ends
+              lines=() mid=()
+              for t in ${tries[@]+"${tries[@]}"}; do
+                p=${t%@*} c=${t#*@}
+                d=$top/$p
+                info=$(entry "$p") || fail "can't read $mf"
                 [[ -n $info ]] || fail "try=: ExpressiveOS's manifest has no project at $p"
                 read -r rem name rev <<< "$info"
                 [[ $rem = expressiveos ]] || fail "try=: $p isn't one of ExpressiveOS's own repos (its remote is $rem): only those take try="
@@ -1416,27 +1457,28 @@ jobs:
                 pin=$(git -C "$d" rev-parse -q --verify "refs/remotes/m/$br^{commit}") || fail "$p has no m/$br: run expressiveos-setup"
                 [[ $pin = "$rev" ]] || fail "$p was synced to ${pin:0:12}, not the manifest's ${rev:0:12}: run expressiveos-setup"
                 h=$(git -C "$d" rev-parse HEAD) || fail "can't read $p's HEAD"
-                prev=
-                if [[ -s $tf ]]; then prev=$(awk -v p="$p" '$1 == p { print $2; exit }' "$tf"); fi
-                [[ $h = "$pin" || ( -n $prev && $h = "$prev" ) ]] \
-                  || fail "$p is at ${h:0:12}, not the manifest's ${pin:0:12}${prev:+ or the tried ${prev:0:12}}: run expressiveos-setup"
+                [[ $h = "$pin" ]] || at_tried "$p" "$h" \
+                  || fail "$p is at ${h:0:12}, neither the manifest's ${pin:0:12} nor a commit try.txt names: run expressiveos-setup"
                 [[ -z "$(git -C "$d" status --porcelain --untracked-files=no)" ]] || fail "$p has changes (git -C $d status): run expressiveos-setup"
                 timeout 900 git -C "$d" fetch -q --no-tags expressiveos "$c" || fail "can't fetch $c from $url: is it pushed?"
                 git -C "$d" cat-file -e "$c^{commit}" || fail "$c isn't a commit in $p"
                 git -C "$d" merge-base --is-ancestor "$pin" "$c" \
                   || fail "$c doesn't have the manifest's ${pin:0:12} under it: base the branch on $p's expressiveos branch at that commit or later"
                 lines+=("$p $c")
+                if [[ $h = "$pin" || $h = "$c" ]]; then mid+=("$p $c"); else mid+=("$p $c $h"); fi
               done
               if (( ${#lines[@]} )); then
-                printf '%s\n' "${lines[@]}" > "$tf.new" && mv -f -- "$tf.new" "$tf" || fail "can't write $tf"
+                printf '%s\n' "${mid[@]}" > "$tf.new" && mv -f -- "$tf.new" "$tf" || fail "can't write $tf"
                 for l in "${lines[@]}"; do
                   read -r p c <<< "$l"
                   d=$top/$p
                   pin=$(git -C "$d" rev-parse "refs/remotes/m/$br^{commit}")
                   git -C "$d" -c advice.detachedHead=false checkout -q --detach "$c" || fail "can't check out $c in $p (try.txt names it: the next build puts it back)"
                   echo "try: $p at ${c:0:12}, $(git -C "$d" rev-list --count "$pin..$c") commit(s) on the manifest's ${pin:0:12}" | tee -a "$GITHUB_STEP_SUMMARY"
-                  git -C "$d" log --format='  %h %s' "$pin..$c" | head -n 30 | cut -c1-160 | tee -a "$GITHUB_STEP_SUMMARY"
+                  # git stops at 30 itself: a head cutting a long log short would end the step (SIGPIPE, pipefail)
+                  git -C "$d" log -n 30 --format='  %h %s' "$pin..$c" | cut -c1-160 | tee -a "$GITHUB_STEP_SUMMARY"
                 done
+                printf '%s\n' "${lines[@]}" > "$tf.new" && mv -f -- "$tf.new" "$tf" || fail "can't write $tf"
               else
                 rm -f -- "$tf"
                 echo "try: none; every project is on the manifest's commits"
@@ -1457,6 +1499,9 @@ jobs:
           # envsetup.sh set for another tree
           clean=(env -i HOME="$HOME" USER="$(id -un)" LOGNAME="$(id -un)" SHELL=/bin/bash LANG=C.UTF-8
                  TERM=screen PATH="$HOME/bin:$PATH" ${ident[@]+"${ident[@]}"})
+          # A phone's build records (lib.sh's EOS_STATE, cheetah's out/eos) and its check/ folder
+          state_of() { if [[ $1 = cheetah ]]; then echo "$HOME/expressiveos/out/eos"; else echo "$HOME/expressiveos/out/eos-$1"; fi; }
+          check_of() { echo "$HOME/releases/expressiveos-$1/check"; }
           launch() {   # launch <name> <command>: run it in tmux session eos-<name>, outside this job, logged to ~/expressiveos-jobs/<name>.log
             local s=eos-$1 job=$jobs/$1.sh log=$jobs/$1.log q
             printf -v q '%q ' "${clean[@]}"
@@ -1532,6 +1577,10 @@ jobs:
               log=~/expressiveos-build-$d.log
               [[ $d != cheetah ]] || log=~/expressiveos-build.log
               echo "== $d ($n of $#): eos-images.sh, $(date -u '+%F %T') UTC"
+              # No try= here (the runner refuses it with devices= and clean): this build's record says so
+              st=$HOME/expressiveos/out/eos-$d
+              [[ $d != cheetah ]] || st=$HOME/expressiveos/out/eos
+              rm -f -- "$st/try.txt"
               rc=0
               env EOS_DEVICE="$d" "${envs[@]}" "$kit/tools/eos-images.sh" || rc=$?
               if (( rc )); then
@@ -1552,6 +1601,7 @@ jobs:
               elif [[ $clean = 1 ]]; then
                   if free_out "$d"; then c=", out/target/product/$d removed"; else c=", out/target/product/$d kept (WARNING above)"; fi
               fi
+              rm -f -- "$HOME/releases/expressiveos-$d/check/try.txt"
               echo "DEVICE $d: BUILD_EXIT=0, PACK=OK$c"
           done
           if (( konly )); then echo "OK: kernels built: $*"; else echo "OK: built and packed: $*"; fi
@@ -1571,7 +1621,10 @@ jobs:
           # expressiveos-build modules=: lunch and m on those modules alone, a compile check (of a
           # try= branch, say), written by the runner and run in the eos-build session. The tree,
           # lunch and locks are a build's (ksu/tools/ksu-images.sh); nothing is signed, packed or
-          # recorded, and build.ok stays as it was. The last line is MODULES_EXIT=0 or MODULES_EXIT=1.
+          # recorded. m installs the modules into the product out, which then no longer matches the
+          # last full build, so its build.ok and target-files.ok go first: that build can't be
+          # packed or verified again, and the next pack needs eos-images.sh. The last line is
+          # MODULES_EXIT=0 or MODULES_EXIT=1.
           #   build-modules.sh <kit> <module>...
           set -o pipefail
           done=0
@@ -1596,6 +1649,10 @@ jobs:
           source build/envsetup.sh >/dev/null || fail "build/envsetup.sh failed"
           lunch "$EOS_LUNCH" || fail "lunch $EOS_LUNCH failed"
           [[ "$(cd "$(gettop)" && pwd -P)" = "$top" ]] || fail "lunch picked the tree $(gettop), not $top"
+          # out/eos with a kit from before EOS_STATE (cheetah's only)
+          st=${EOS_STATE:-out/eos}
+          rm -f -- "$st/build.ok" "$st/target-files.ok" || fail "can't remove $st/build.ok"
+          echo "note: $st/build.ok and target-files.ok removed: the product out won't match the last full build, so packing needs eos-images.sh again"
           echo "== m $*, $(date -u '+%F %T') UTC"
           if ! m -j"$(nproc)" "$@"; then
               # soong_ui keeps the failed build's output in out/error.log
@@ -1609,17 +1666,40 @@ jobs:
               elif (( ${#devs[@]} )); then
                 launch build "bash $(printf %q "$jobs/build-devices.sh") $(printf %q "$kit") $free_out ${e}-- ${devs[*]}"
               else
-                pack=" && $kit/tools/eos-pack.sh"
+                # The build's own record of try= (its try.txt beside build.ok), and once it's
+                # packed, the candidate's (check/try.txt), so a later pack or testers upload of
+                # it says it holds unmerged commits whatever the tree holds by then
+                ph=${dev:-cheetah}
+                st=$(state_of "$ph") ck=$(check_of "$ph")
+                if [[ -s $jobs/try.txt ]]; then
+                  rec="mkdir -p -- $(printf %q "$st") && cp -- $(printf %q "$jobs/try.txt") $(printf %q "$st/try.txt")"
+                else
+                  rec="rm -f -- $(printf %q "$st/try.txt")"
+                fi
+                mirror=" && { if [[ -f $(printf %q "$st/try.txt") ]]; then cp -- $(printf %q "$st/try.txt") $(printf %q "$ck/try.txt"); else rm -f -- $(printf %q "$ck/try.txt"); fi; }"
+                pack=" && $kit/tools/eos-pack.sh$mirror"
                 [[ " ${envs[*]-} " != *" KERNEL_ONLY=1 "* ]] || pack=
-                launch build "env ${e}$kit/tools/eos-images.sh$pack"
+                launch build "$rec && env ${e}$kit/tools/eos-images.sh$pack"
               fi ;;
             # testers: eos-pack.sh --testers (check/'s candidate to SourceForge's testers folder,
             # no device-ok), only when Daryl says so. --release and --upload aren't run from here
             expressiveos-pack)
-              if [[ -s $jobs/try.txt ]]; then
-                { echo "note: the tree has try= commits checked out (~/expressiveos-jobs/try.txt), so the newest build may have them:"; sed 's/^/  /' "$jobs/try.txt"; } | tee -a "$GITHUB_STEP_SUMMARY"
+              ph=${dev:-cheetah}
+              st=$(state_of "$ph") ck=$(check_of "$ph")
+              t= mirror=
+              if [[ $testers = 1 ]]; then
+                # testers sends check/'s candidate: one built with try= goes only when asked (try-ok)
+                if [[ -f $ck/try.txt ]]; then
+                  { echo "check/'s $ph candidate was built with try= commits that aren't in ExpressiveOS's manifest:"; sed 's/^/  /' "$ck/try.txt"; } | tee -a "$GITHUB_STEP_SUMMARY"
+                  [[ $tryok = 1 ]] || fail "not sending a candidate with unmerged commits to testers: merge them and build again, or add try-ok to the query"
+                fi
+                t=" --testers"
+              else
+                if [[ -f $st/try.txt ]]; then
+                  { echo "note: the $ph build in out/ was built with try= commits that aren't in ExpressiveOS's manifest:"; sed 's/^/  /' "$st/try.txt"; } | tee -a "$GITHUB_STEP_SUMMARY"
+                fi
+                # The candidate's record, as for a build (above)
+                mirror=" && { if [[ -f $(printf %q "$st/try.txt") ]]; then cp -- $(printf %q "$st/try.txt") $(printf %q "$ck/try.txt"); else rm -f -- $(printf %q "$ck/try.txt"); fi; }"
               fi
-              t=
-              [[ $testers = 0 ]] || t=" --testers"
-              launch pack "$kit/tools/eos-pack.sh$t" ;;
+              launch pack "$kit/tools/eos-pack.sh$t$mirror" ;;
           esac
