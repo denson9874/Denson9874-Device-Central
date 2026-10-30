@@ -1,0 +1,33 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Fri, 30 Oct 2026 12:00:00 +0000
+Subject: [PATCH 11/11] husky: ship only ExpressiveOS's boot animation
+
+ExpressiveOS has its own boot animation. Leave out Evolution X's other
+styles, which would otherwise take about 190 MiB of /product and let
+users switch away from it. Same as cheetah's.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ lineage_husky.mk | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/lineage_husky.mk b/lineage_husky.mk
+index a47f850..a526b44 100644
+--- a/lineage_husky.mk
++++ b/lineage_husky.mk
+@@ -23,6 +23,11 @@ PRODUCT_SYSTEM_NAME := generic_system_google
+ DEVICE_PACKAGE_OVERLAYS += $(DEVICE_PATH)/overlay-evolution
+ 
+ # Boot animation
++# Only ExpressiveOS's own animation (vendor/extra/bootanimation), not Evolution X's
++# other styles (about 190 MiB in /product/media). Product config reads this file
++# before the ones it inherits, so this wins over vendor/lineage's common.mk default
++# (?= true) for every build of this tree.
++TARGET_INCLUDE_BOOT_ANIMATIONS := false
+ TARGET_SCREEN_HEIGHT := 2992
+ TARGET_SCREEN_WIDTH := 1344
+ 
+-- 
+2.43.0
+
