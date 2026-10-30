@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Expressive Launcher in Pixel Launcher's place in the framework's config, on system_ext:
+     the platform applies static overlays partition by partition and system_ext's last, so
+     these values win over every product overlay (Pixel's in vendor/pixel-style, and
+     vendor/lineage/overlay/common, which the build turns into a product overlay).
+     Each list is the one the build uses today with Expressive Launcher in Pixel Launcher's
+     place, or added at the end where Pixel Launcher isn't in it; tools/launcher-check.sh
+     tree checks they still are (README.md, "Framework config"). -->
+<resources>
+    <!-- The Recents app: SystemUI binds its quickstep service (gestures, Overview, taskbar),
+         Settings offers gesture navigation, and the platform grants it the permissions
+         marked "recents". Pixel's: PixelConfigOverlayCommon. -->
+    <string name="config_recentsComponentName" translatable="false">dev.launcher.expressive.l3/com.android.quickstep.RecentsActivity</string>
+
+    <!-- Notification access by default (notification dots). Pixel's: PixelConfigOverlay2019
+         (priority 6, the highest of the five that set it). -->
+    <string name="config_defaultListenerAccessPackages" translatable="false">dev.launcher.expressive.l3:com.google.android.setupwizard:com.google.android.apps.pixelmigrate:com.google.android.as:com.google.android.projection.gearhead:com.google.android.apps.dreamliner:com.google.pixel.exo:com.google.android.odad</string>
+
+    <!-- Evolution X's launchers (frameworks/base evolution_arrays.xml): the task and
+         permission checks PixelPropsUtils lets them skip, as Pixel Launcher did. -->
+    <string-array name="config_launcherPackages" translatable="false">
+        <item>dev.launcher.expressive.l3</item>
+        <item>com.android.launcher3</item>
+    </string-array>
+
+    <!-- The apps a fully managed (work) phone's provisioning keeps: Expressive Launcher's Home
+         activity is also in the app drawer (Pixel Launcher's isn't), so without it here
+         provisioning would disable it. vendor/lineage/overlay/common's list, which wins today. -->
+    <string-array name="vendor_required_apps_managed_device" translatable="false">
+        <item>com.android.vending</item>
+        <item>com.google.android.gms</item>
+        <item>com.google.android.contacts</item>
+        <item>com.android.contacts</item>
+        <item>com.google.android.googlequicksearchbox</item>
+        <item>com.google.android.launcher</item>
+        <item>com.android.launcher3</item>
+        <item>com.google.android.dialer</item>
+        <item>com.android.dialer</item>
+        <item>com.google.android.apps.messaging</item>
+        <item>com.android.messaging</item>
+        <item>com.google.android.setupwizard</item>
+        <item>org.lineageos.setupwizard</item>
+        <item>dev.launcher.expressive.l3</item>
+    </string-array>
+
+    <!-- The same for a managed user. vendor/lineage/overlay/common's list. -->
+    <string-array name="vendor_required_apps_managed_user" translatable="false">
+        <item>com.android.vending</item>
+        <item>com.google.android.gms</item>
+        <item>com.google.android.contacts</item>
+        <item>com.android.contacts</item>
+        <item>com.google.android.googlequicksearchbox</item>
+        <item>com.google.android.launcher</item>
+        <item>com.android.launcher3</item>
+        <item>com.google.android.dialer</item>
+        <item>com.android.dialer</item>
+        <item>com.google.android.apps.messaging</item>
+        <item>com.android.messaging</item>
+        <item>dev.launcher.expressive.l3</item>
+    </string-array>
+</resources>

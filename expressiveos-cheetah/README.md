@@ -11,8 +11,9 @@ ExpressiveOS is its own ROM, built on Evolution X (cnb) like any standard custom
 - a clean install only: updates from other ROMs, Evolution X included, never install on it;
 - KernelSU Next with susfs and NeoZygisk switched on at first boot (both active after one restart)
   ([`ksu/`](ksu/README.md)), ViPER4Android RE ([`viper4android/`](viper4android/README.md)), its
-  own boot animation ([`bootanimation/`](bootanimation/README.md)) and its own wallpaper, Bloom, on a
-  clean install's first screen ([`wallpapers/`](wallpapers/README.md)).
+  own boot animation ([`bootanimation/`](bootanimation/README.md)), its own wallpaper, Bloom, on a
+  clean install's first screen ([`wallpapers/`](wallpapers/README.md)), and Daryl's Expressive
+  Launcher as the Home and Recents app in Pixel Launcher's place ([`launcher/`](launcher/README.md)).
 
 That's ExpressiveOS on cheetah, the kit's first phone and the one every script builds unless told
 otherwise. husky (Pixel 8 Pro) and the four Pixel 11s build from the same kit and tree, with their own
@@ -84,7 +85,7 @@ Never `evolution-cheetah/apply.sh` or its pantah 0001/0002: they point the Updat
 3. **The tree:** `~/expressiveos-cheetah/setup.sh` (the first sync downloads a few hundred GB).
 4. **The keys**, by hand, once (next section).
 5. **KernelSU Next:** `~/expressiveos-cheetah/ksu/fetch-ksu.sh`, again after every change to
-   `ksu/ksu.conf`. ViPER4Android fetches its own files during the build.
+   `ksu/ksu.conf`. ViPER4Android and Expressive Launcher fetch their own files during the build.
 
 Or from the runner (`.github/workflows/kodiak-build.yml`, with `tree_ref` the branch to install the kit
 from), without a shell on the server:
@@ -228,7 +229,8 @@ package's sha256, which `eos-pack.sh` needs),
 `target-files.ok` (the sha256 of the target-files zip it was made from, which `m evolution` leaves in
 `obj/PACKAGING/target_files_intermediates/`),
 `manifest.xml` (the tree's `repo manifest -r`), `kernel-manifest.xml` (the kernel's) and `sources.txt`
-(the kit's commit, the KernelSU Next source, and each patched project's upstream revision and HEAD).
+(the kit's commit, the KernelSU Next and Expressive Launcher sources, and each patched project's
+upstream revision and HEAD).
 They're the record of what the build was made from, for the GPL source offer.
 
 `eos-verify.sh` checks, without a phone: the package (the build's own, A/B, for cheetah), the identity
@@ -239,7 +241,8 @@ signed with the pinned OTA key, `delta_generator` refuses AOSP's test key for it
 recovery's update_engine_sideload carry the signature and downgrade checks), the payload (every
 partition plus the nine firmware images, its init_boot is out/'s KernelSU Next one, its boot, init_boot,
 vbmeta and vbmeta_system are ExpressiveOS's, patch levels), KernelSU Next and the stock init_boot,
-ViPER4Android, the boot animation, the wallpaper, the branding (`tools/brand-check.py`: no app, framework string or
+ViPER4Android, Expressive Launcher (the only launcher, with its overlays and licences), the boot animation, the
+wallpaper, the branding (`tools/brand-check.py`: no app, framework string or
 tombstone header names Evolution X, apart from the few links it lists on purpose), the firmware and the
 fastboot files, and the target-files zip (`tools/eos-target-files.sh`: the package's, with out/'s KernelSU
 Next init_boot, and a WARNING if a dynamic partition image the fastboot zip flashes, system, vendor,
@@ -419,7 +422,8 @@ cheetah's, as below; another phone's run the same with its own folders and board
 2. Back up the phone. Then a clean install: unlock the bootloader, flash the latest stock firmware,
    then `fastboot -w update <name>-fastboot.zip`.
 3. Test on the phone: it boots, the KernelSU Next manager shows "Working", ViPER4Android's driver loads
-   (`viper4android/tools/v4a-check.sh device`), the boot animation plays, the phone starts on Bloom
+   (`viper4android/tools/v4a-check.sh device`), Expressive Launcher is Home and Recents with gestures
+   working (`launcher/tools/launcher-check.sh device`), the boot animation plays, the phone starts on Bloom
    with blue system colours, the Updater shows
    ExpressiveOS 1.0 and no updates, and Play Integrity.
 4. Write `check/<name>-fastboot.zip.device-ok` with the line `sha256 <the zip's sha256>` (the pack
@@ -450,7 +454,8 @@ The Updater feed stays `{"response": []}` until the OTA publish script exists (b
 (Pixel 11 Pro XL), grizzly (Pixel 11 Pro), cubs (Pixel 11) and yogi (Pixel 11 Pro Fold). Each has a
 `devices/<device>.conf` holding what differs between them: lunch target, model, release and upload
 folders, device tree, vendor and firmware sources, kernel, and the KernelSU Next and ViPER4Android
-switches ([`devices/`](devices/README.md) lists the keys). The keys, feed, manifest and version stay
+switches ([`devices/`](devices/README.md) lists the keys; the boot animation, the wallpaper and Expressive
+Launcher go on every phone, with no switch). The keys, feed, manifest and version stay
 `eos.conf`'s, one set for all of them, and so does the tree, `~/expressiveos`. cheetah's records stay
 where they always were; another phone keeps its own beside them:
 

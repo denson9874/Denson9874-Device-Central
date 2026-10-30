@@ -8,7 +8,8 @@
 #   3. the kits: ksu/fetch-ksu.sh (checks what it downloaded before, fetches only what's new
 #      in ksu.conf, and KernelSU Next's current risk rules when GitHub answers) and
 #      apply-ksu.sh on a phone with EOS_KSU=lkm, viper4android/apply-v4a.sh on one with
-#      EOS_V4A=1, bootanimation/apply-bootanim.sh, wallpapers/apply-wallpapers.sh;
+#      EOS_V4A=1, bootanimation/apply-bootanim.sh, wallpapers/apply-wallpapers.sh,
+#      launcher/apply-launcher.sh (Expressive Launcher in Pixel Launcher's place);
 #   4. the name and version the build will carry (dumpvars), and a record of its sources
 #      in EOS_STATE (out/eos/ for cheetah, out/eos-<device>/ for the others: the tree's repo
 #      manifest -r, each patched project's upstream revision, the kit's commit, and the
@@ -92,21 +93,25 @@ else
 fi
 step "boot animation" 'BOOTANIM_APPLY=OK.*' "$kit/bootanimation/apply-bootanim.sh" "$top"
 step "wallpapers" 'WALLPAPERS_APPLY=OK.*' "$kit/wallpapers/apply-wallpapers.sh" "$top"
+# Expressive Launcher in Pixel Launcher's place, on every phone
+step "Expressive Launcher" 'LAUNCHER_APPLY=OK.*' "$kit/launcher/apply-launcher.sh" "$top"
 
 echo "== identity"
-# A phone with KernelSU Next or ViPER4Android off mustn't get them from the one tree all the
-# phones share: what an earlier cheetah build put there (vendor/extra) is still in it
-pk=()
-[[ $EOS_KSU = lkm && $EOS_V4A = 1 ]] || pk=(PRODUCT_PACKAGES)
-vars=$(dump_vars LINEAGE_VERSION EVO_VERSION EVO_BUILD_TYPE TARGET_DEVICE TARGET_BUILD_VARIANT "${pk[@]}") || fail "dumpvars failed"
+vars=$(dump_vars LINEAGE_VERSION EVO_VERSION EVO_BUILD_TYPE TARGET_DEVICE TARGET_BUILD_VARIANT PRODUCT_PACKAGES) || fail "dumpvars failed"
 name=$(var_of "$vars" LINEAGE_VERSION)
 [[ "$name" =~ ^ExpressiveOS-17\.[0-9]+-[0-9]{8}-$EOS_DEVICE-${EOS_VERSION//./\\.}-$EOS_BUILD_TYPE$ ]] \
     || fail "the build would be named '$name', not ExpressiveOS-17.x-<date>-$EOS_DEVICE-$EOS_VERSION-$EOS_BUILD_TYPE (patches/vendor_lineage/0001)"
 for kv in "EVO_VERSION=$EOS_VERSION" "EVO_BUILD_TYPE=$EOS_BUILD_TYPE" "TARGET_DEVICE=$EOS_DEVICE" "TARGET_BUILD_VARIANT=${EOS_LUNCH##*-}"; do
     [[ "$(var_of "$vars" "${kv%%=*}")" = "${kv#*=}" ]] || fail "${kv%%=*} is '$(var_of "$vars" "${kv%%=*}")', want '${kv#*=}'"
 done
-if (( ${#pk[@]} )); then
-    pkgs=" $(var_of "$vars" PRODUCT_PACKAGES) "
+pkgs=" $(var_of "$vars" PRODUCT_PACKAGES) "
+# Every phone gets Expressive Launcher (launcher/launcher.mk), which overrides Pixel Launcher
+[[ $pkgs = *" ExpressiveLauncher "* ]] \
+    || fail "$EOS_LUNCH doesn't install ExpressiveLauncher: launcher/launcher.mk's product list must name ${EOS_LUNCH%%-*}"
+echo "OK: $EOS_LUNCH installs ExpressiveLauncher, in Pixel Launcher's place"
+# A phone with KernelSU Next or ViPER4Android off mustn't get them from the one tree all the
+# phones share: what an earlier cheetah build put there (vendor/extra) is still in it
+if [[ $EOS_KSU != lkm || $EOS_V4A != 1 ]]; then
     [[ $EOS_KSU = lkm || $pkgs != *" KernelSUNext "* ]] \
         || fail "$EOS_LUNCH would install KernelSUNext, but devices/$EOS_DEVICE.conf has EOS_KSU=$EOS_KSU: its device tree mustn't add the KernelSU Next manager"
     for m in ViPER4Android libv4a_re; do
@@ -166,6 +171,8 @@ fi
     else
         echo "KernelSU Next: none (EOS_KSU=$EOS_KSU)"
     fi
+    # GPL-3.0-or-later code ships in it (launcher/README.md, "Licence and credits")
+    echo "Expressive Launcher: $(sed -n 's/^EL_VERSION=//p' "$kit/launcher/launcher.conf") ($(sed -n 's/^EL_VERSION_CODE=//p' "$kit/launcher/launcher.conf")), source $(sed -n 's/^EL_SRC=//p' "$kit/launcher/launcher.conf") $(sed -n 's/^EL_COMMIT=//p' "$kit/launcher/launcher.conf")"
     echo "Patched projects: upstream revision (repo's m/$EOS_MANIFEST_BRANCH), then HEAD with the kit's commits"
     printf '%s\n' "${projects[@]}" | sort -u
     if (( ${#google[@]} )); then

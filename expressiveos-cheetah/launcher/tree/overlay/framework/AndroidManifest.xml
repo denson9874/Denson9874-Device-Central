@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Expressive Launcher's settings in the framework. A static overlay on /system_ext: the
+     platform orders static overlays by partition first (system, vendor, odm, oem, product,
+     system_ext: OverlayConfig), so it wins over every Pixel and Evolution X overlay on
+     /product, whatever their priority, PixelConfigOverlayCommon's Pixel Launcher values
+     among them. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.expressiveos.overlay.launcher.android">
+    <overlay android:targetPackage="android"
+        android:isStatic="true"
+        android:priority="100" />
+</manifest>
