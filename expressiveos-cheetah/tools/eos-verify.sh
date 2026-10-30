@@ -369,6 +369,33 @@ awk '/^ *resource 0x/ { on = /array\/theming_defaults/ } on' "$T/rro.txt" > "$T/
     || fail "framework-res's theming_defaults isn't *|TONAL_SPOT|home_wallpaper (wallpapers/overlay), so the theme won't follow the wallpaper: $(tr -s ' \n' ' ' < "$T/td.txt" | head -c 300)"
 echo "OK: $WALLPAPER_DEFAULT is the first-boot wallpaper and the theme follows the wallpaper"
 
+echo "== one APK per package"
+# PackageManager keeps one APK per package name at boot and skips the others, so an app the
+# product overrides mustn't ship beside the one that overrides it: m leaves a module it
+# installed by hand, or in a modules= compile check, in the product out (Settings beside
+# SettingsGoogle), and the images take what's there
+(cd "$O" && find system system_ext product vendor odm -maxdepth 4 -type f -name '*.apk' \
+    \( -path '*/app/*' -o -path '*/priv-app/*' -o -path '*/overlay/*' \) -print 2>/dev/null | sort > "$T/apks.txt") || true
+[[ -s $T/apks.txt ]] || fail "no APKs in $O's app, priv-app and overlay folders"
+: > "$T/pkgs.txt"
+n=0
+while IFS= read -r a; do
+    if p=$("$H/aapt2" dump packagename "$O/$a" 2>/dev/null) && [[ -n $p ]]; then
+        printf '%s %s\n' "$p" "$a" >> "$T/pkgs.txt"
+    else
+        echo "note: aapt2 can't read $a's package name"
+    fi
+    n=$((n + 1))
+done < "$T/apks.txt"
+dups=$(cut -d' ' -f1 "$T/pkgs.txt" | sort | uniq -d)
+if [[ -n $dups ]]; then
+    for d in $dups; do
+        echo "FAIL: $d is in $(awk -v d="$d" '$1 == d { printf "%s ", $2 }' "$T/pkgs.txt")" >&2
+    done
+    fail "more than one APK for a package (above): an app the product overrides is in $O. Build again with installclean (the runner's expressiveos-build query)"
+fi
+echo "OK: $n APKs in app, priv-app and overlay, one per package"
+
 echo "== branding"
 checked "the build still shows Evolution X somewhere (patches/: Settings, Evolver, Updater...)" 'BRAND_CHECK=OK' \
     python3 -I "$kit/tools/brand-check.py" "$top/$O"

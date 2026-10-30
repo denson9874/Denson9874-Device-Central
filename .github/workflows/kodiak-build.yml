@@ -253,7 +253,8 @@ on:
           default cheetah) or devices=<phone>,<phone>,... (each in turn in one tmux
           session, eos-images.sh then eos-pack.sh, stopping at the first failure),
           kernel-only (build_kernel and kernelsu.ko, no pack), kernel-sync (sync the
-          kernel source to its pins again), clean (once a phone's pack ends PACK=OK,
+          kernel source to its pins again), installclean (m installclean before the
+          build, which a build after modules= does anyway), clean (once a phone's pack ends PACK=OK,
           remove its out/target/product/<phone> and print what that freed; never
           cheetah's; that candidate can then go to testers only: to release it, build
           again without clean and test that zip), try=<path>@<commit> (any number: build that commit of one of
@@ -261,7 +262,8 @@ on:
           the project's pinned commit under it, and stays checked out until a build
           that doesn't name it: name every tried project each time; the build and its
           check/ candidate record it), modules=<module>,<module>,... (lunch and m on just those
-          modules, a compile check: nothing packed; with try= or alone). try= and
+          modules, a compile check: nothing packed; with try= or alone; the phone's next
+          build starts with m installclean). try= and
           modules= are for one phone. expressiveos-pack (optional): device=<phone>, testers
           (eos-pack.sh --testers: check/'s untested candidate to SourceForge's
           expressiveos/<phone>/testers; only when Daryl says so), try-ok (testers may
@@ -1245,6 +1247,7 @@ jobs:
             case "$ACTION:$o" in
               expressiveos-build:kernel-only) envs+=(KERNEL_ONLY=1) ;;
               expressiveos-build:kernel-sync) envs+=(EOS_KERNEL_SYNC=1) ;;
+              expressiveos-build:installclean) envs+=(EOS_INSTALLCLEAN=1) ;;
               expressiveos-build:clean) free_out=1 ;;
               expressiveos-pack:testers) testers=1 ;;
               expressiveos-pack:try-ok) tryok=1 ;;
@@ -1281,14 +1284,17 @@ jobs:
                   [[ $seen != *" $d "* ]] || fail "devices= names $d twice"
                   seen+="$d "
                 done ;;
-              *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, clean, try=<path>@<commit>, modules=<module>,...; expressiveos-pack takes device=<phone>, testers, try-ok)" ;;
+              *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, installclean, clean, try=<path>@<commit>, modules=<module>,...; expressiveos-pack takes device=<phone>, testers, try-ok)" ;;
             esac
           done
           if (( ${#tries[@]} )) || [[ -n $mods ]]; then
             (( ${#devs[@]} == 0 && free_out == 0 )) || fail "try= and modules= are for one phone (device=, cheetah unless named), not with devices= or clean"
           fi
           if [[ -n $mods ]]; then
-            (( ${#envs[@]} == 0 )) || fail "modules= runs m on those modules alone: not with kernel-only or kernel-sync"
+            (( ${#envs[@]} == 0 )) || fail "modules= runs m on those modules alone: not with kernel-only, kernel-sync or installclean"
+          fi
+          if [[ " ${envs[*]-} " == *" EOS_INSTALLCLEAN=1 "* && " ${envs[*]-} " == *" KERNEL_ONLY=1 "* ]]; then
+            fail "installclean is for builds that make images, not kernel-only"
           fi
           if [[ $free_out = 1 ]]; then
             [[ " ${envs[*]-} " != *" KERNEL_ONLY=1 "* ]] || fail "clean is for builds that are packed, not kernel-only"
@@ -1623,8 +1629,11 @@ jobs:
           # lunch and locks are a build's (ksu/tools/ksu-images.sh); nothing is signed, packed or
           # recorded. m installs the modules into the product out, which then no longer matches the
           # last full build, so its build.ok and target-files.ok go first: that build can't be
-          # packed or verified again, and the next pack needs eos-images.sh. The last line is
-          # MODULES_EXIT=0 or MODULES_EXIT=1.
+          # packed or verified again, and the next pack needs eos-images.sh. A module the product
+          # doesn't install (Settings, which SettingsGoogle overrides) would stay in the product
+          # out and go into the next build's images, so <state>/installclean marks it: that
+          # build starts with m installclean (ksu-images.sh). The last line is MODULES_EXIT=0 or
+          # MODULES_EXIT=1.
           #   build-modules.sh <kit> <module>...
           set -o pipefail
           done=0
@@ -1653,6 +1662,9 @@ jobs:
           st=${EOS_STATE:-out/eos}
           rm -f -- "$st/build.ok" "$st/target-files.ok" || fail "can't remove $st/build.ok"
           echo "note: $st/build.ok and target-files.ok removed: the product out won't match the last full build, so packing needs eos-images.sh again"
+          # Before m: an m that fails or is stopped half way may have installed some of them
+          mkdir -p -- "$st" && touch -- "$st/installclean" || fail "can't write $st/installclean"
+          echo "note: $st/installclean written: the next full build starts with m installclean, so these modules' installs don't reach its images"
           echo "== m $*, $(date -u '+%F %T') UTC"
           if ! m -j"$(nproc)" "$@"; then
               # soong_ui keeps the failed build's output in out/error.log

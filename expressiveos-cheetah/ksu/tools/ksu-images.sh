@@ -79,6 +79,19 @@ source build/envsetup.sh >/dev/null || fail "build/envsetup.sh failed"
 lunch "$EOS_LUNCH" || fail "lunch $EOS_LUNCH failed"
 [[ "$(cd "$(gettop)" && pwd -P)" = "$top" ]] || fail "lunch picked the tree $(gettop), not $top"
 [[ "$(get_build_var PRODUCT_OUT)" = "$O" ]] || fail "PRODUCT_OUT is $(get_build_var PRODUCT_OUT), not $O"
+# The images are made from what's in the product out, and m never takes away what the product
+# doesn't install: a modules= compile check (the runner's build-modules.sh) can leave a module
+# there that the product overrides (Settings, beside SettingsGoogle). It writes
+# <EOS_STATE>/installclean, and then (or with EOS_INSTALLCLEAN=1) the build starts from m
+# installclean: the product out's partitions, images and packaging go, the intermediates stay.
+# First, as it also removes android-info.txt and the like; a kernel-only run leaves it for later
+ic=$EOS_STATE/installclean
+if [[ "${KERNEL_ONLY:-0}" != 1 && ( "${EOS_INSTALLCLEAN:-0}" = 1 || -e $ic ) ]]; then
+    if [[ -e $ic ]]; then why="a modules= compile check installed into $O since the last build"; else why="EOS_INSTALLCLEAN=1"; fi
+    echo "== m installclean ($why)"
+    m installclean || fail "m installclean failed"
+    rm -f -- "$ic" || fail "can't remove $ic"
+fi
 kt=out-kernel/google/gs-6.1
 mkdir -p -- "$O" "$EOS_STATE"
 # The build's AB_OTA_PARTITIONS, for the OTA script's payload check

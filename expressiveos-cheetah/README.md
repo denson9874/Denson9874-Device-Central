@@ -474,7 +474,10 @@ only, since a release repacks from `out/`; to release it, build again without `c
 zip); `expressiveos-pack` with `device=<phone>`. `try=<path>@<commit>` builds an unmerged commit of
 one of ExpressiveOS's own projects (it stays checked out until a build without `try=`), and
 `modules=<module>,...` is a compile check of just those modules (it removes the last build's
-`build.ok`: pack needs a full build after it). The phones share the tree, so they build one after another, never at once (each
+`build.ok`: pack needs a full build after it, and that build starts with `m installclean`, since
+`m` would leave a module the product doesn't install, like Settings beside SettingsGoogle, for the
+images to take; `installclean` asks any build for it, and `eos-verify.sh` refuses two APKs with one
+package name). The phones share the tree, so they build one after another, never at once (each
 build holds `~/.expressiveos.lock`).
 
 - **husky** builds like cheetah: LineageOS's husky, shusky and zuma trees with TheMuppets' blobs (its
