@@ -1526,6 +1526,11 @@ jobs:
             sleep 15
             if ! tmux has-session -t "=$s" 2>/dev/null; then
               tail -n 30 "$log" 2>/dev/null || true
+              # A short job (a setup with little to sync) can end inside the 15 s: that's done, not failed
+              if [[ $(grep -a '^SESSION_EXIT=' "$log" 2>/dev/null | tail -n 1) = SESSION_EXIT=0 ]]; then
+                echo "$s finished within 15 s, SESSION_EXIT=0 (its log is above), kit $TREE_REF@${sha:0:7}" | tee -a "$GITHUB_STEP_SUMMARY"
+                return 0
+              fi
               fail "$s ended at once (its log is above)"
             fi
             tail -n 5 "$log" || true
