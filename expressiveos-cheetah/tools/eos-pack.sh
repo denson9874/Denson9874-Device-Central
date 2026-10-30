@@ -71,7 +71,7 @@ fi
 
 # ExpressiveOS's own release folder, never Evolution X's: ~/releases/expressiveos-*/ and
 # its check/, as named, with no symlink anywhere on the way. Checked before anything is made
-[[ "$EOS_RELEASES" =~ ^releases/expressiveos-[a-z0-9-]+$ ]] || fail "eos.conf's EOS_RELEASES ($EOS_RELEASES) isn't releases/expressiveos-<something>"
+[[ "$EOS_RELEASES" =~ ^releases/expressiveos-[a-z0-9-]+$ ]] || fail "devices/$EOS_DEVICE.conf's EOS_RELEASES ($EOS_RELEASES) isn't releases/expressiveos-<something>"
 DEST=$HOME/$EOS_RELEASES; CHECK=$DEST/check
 want=$(cd ~ && pwd -P)/$EOS_RELEASES
 dirs=("$DEST" "$CHECK" "$DEST/target-files")
@@ -82,12 +82,12 @@ for f in "${dirs[@]}"; do
 done
 mkdir -p -- "$CHECK"
 # And its own SourceForge folder, never Evolution X's cheetah/17
-[[ "$EOS_SF_DIR" == /home/frs/project/*/expressiveos/* ]] || fail "eos.conf's EOS_SF_DIR ($EOS_SF_DIR) isn't an expressiveos/ folder"
+[[ "$EOS_SF_DIR" == /home/frs/project/*/expressiveos/* ]] || fail "devices/$EOS_DEVICE.conf's EOS_SF_DIR ($EOS_SF_DIR) isn't an expressiveos/ folder"
 # And its own R2 prefix for the target-files, never Evolution X's cheetah/17
 R2TF=
 if [[ -n "${EOS_R2_REMOTE:-}" ]]; then
     [[ "$EOS_R2_REMOTE" =~ ^[A-Za-z0-9_-]+:[a-z0-9][a-z0-9-]*$ ]] || fail "eos.conf's EOS_R2_REMOTE ($EOS_R2_REMOTE) isn't <rclone remote>:<bucket>"
-    [[ "$EOS_R2_PREFIX" =~ ^expressiveos/[a-z0-9-]+/$ ]] || fail "eos.conf's EOS_R2_PREFIX ($EOS_R2_PREFIX) isn't expressiveos/<device>/"
+    [[ "$EOS_R2_PREFIX" =~ ^expressiveos/[a-z0-9-]+/$ ]] || fail "devices/$EOS_DEVICE.conf's EOS_R2_PREFIX ($EOS_R2_PREFIX) isn't expressiveos/<device>/"
     R2TF=$EOS_R2_REMOTE/${EOS_R2_PREFIX}target-files
 fi
 
@@ -145,6 +145,11 @@ if [[ "$mode" = --testers ]]; then
         || fail "the candidate was packed with ExpressiveOS's keys '$(po keys)', not pinned in eos.conf (KEYS_CHECK=OK) as testers' builds need (README.md, \"Keys\"): pin them, then run eos-pack.sh again"
     [[ "$(po incremental-base)" = OK ]] \
         || fail "the fastboot zip's images aren't its target-files' ($PO: incremental-base '$(po incremental-base)'): no incremental OTA could update phones installed from it"
+    # ...and its signer is the AVB key eos.conf pins today (keys restored or rotated since the pack)
+    unzip -p -- "$CHECK/$NAME" vbmeta.img > "$T/vbmeta.img" 2> /dev/null || fail "can't read $NAME's vbmeta.img"
+    "$kit/tools/eos-keys-check.sh" vbmeta "$T/vbmeta.img" "$top" > "$T/keys.log" 2>&1 || true
+    [[ "$(tail -1 "$T/keys.log")" = KEYS_CHECK=OK ]] \
+        || { grep -E '^(FAIL|UNPINNED)' "$T/keys.log" >&2 || tail -3 "$T/keys.log" >&2; fail "$NAME's vbmeta isn't signed with the AVB key eos.conf pins now"; }
     # This phone's, as its check/ folder is
     unzip -p -- "$CHECK/$NAME" android-info.txt > "$T/android-info.txt" 2> /dev/null || fail "can't read $NAME's android-info.txt"
     { [[ "$(grep -cE '^(require )?board=' "$T/android-info.txt")" = 1 ]] && grep -qx "require board=$EOS_BOARD" "$T/android-info.txt"; } \
@@ -313,6 +318,15 @@ else
 fi
 
 if [[ -z "$mode" ]]; then
+    # What --testers needs to know of this candidate once out/ may be gone: the release
+    # gates' keys check (UNPINNED is fine for a candidate) and incremental base, as they
+    # stand now, for this zip. Read before check/ changes, and never this run's failure:
+    # --testers takes OK only
+    "$kit/tools/eos-keys-check.sh" out "$top" > "$T/keys.log" 2>&1 || true
+    keys=$(tail -1 "$T/keys.log" | sed -n 's/^KEYS_CHECK=\(OK\|UNPINNED\)$/\1/p')
+    keys=${keys:-FAIL}
+    ib=NO
+    if grep -q '^OK: incremental base:' "$EOS_STATE/verify.log"; then ib=OK; fi
     # A check isn't a release: one candidate in check/, replaced each time
     if ! cmp -s -- "$T/$NAME" "$CHECK/$NAME" 2>/dev/null; then
         find "$CHECK" -maxdepth 1 -type f \( -name '*-fastboot.zip' -o -name '*.sha256' -o -name '*.img' \
@@ -336,14 +350,6 @@ if [[ -z "$mode" ]]; then
     fi
     (cd "$CHECK" && sha256sum -- "$TFN" > "$TFN.sha256")
     [[ "$(cut -d' ' -f1 "$CHECK/$TFN.sha256")" = "$tfsha" ]] || fail "$CHECK/$TFN isn't a whole copy of $tf"
-    # What --testers needs to know of this candidate once out/ may be gone: the release
-    # gates' keys check (UNPINNED is fine for a candidate) and incremental base, as they
-    # stand now, for this zip
-    "$kit/tools/eos-keys-check.sh" out "$top" > "$T/keys.log" 2>&1 || true
-    keys=$(tail -1 "$T/keys.log" | sed -n 's/^KEYS_CHECK=\(OK\|UNPINNED\)$/\1/p')
-    [[ -n $keys ]] || { grep -E '^FAIL' "$T/keys.log" >&2 || tail -3 "$T/keys.log" >&2; fail "eos-keys-check.sh out failed"; }
-    ib=NO
-    if grep -q '^OK: incremental base:' "$EOS_STATE/verify.log"; then ib=OK; fi
     # A copy the runner installed (rsync, no .git) names the commit it came from
     kv=$(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")
     [[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || kv+=" (with local changes)"

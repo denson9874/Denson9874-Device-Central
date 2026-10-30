@@ -35,7 +35,14 @@ EOS_DEVICE=${EOS_DEVICE:-cheetah}
 [[ $EOS_DEVICE =~ ^[a-z0-9]+$ && -f $kit/devices/$EOS_DEVICE.conf ]] \
     || fail "EOS_DEVICE '$EOS_DEVICE' isn't one of the kit's devices: $(cd "$kit/devices" 2>/dev/null && printf '%s ' *.conf | sed 's/\.conf//g')"
 export EOS_DEVICE
+# eos.conf's own values of the keys cheetah's file restates, which must agree (sources/update.py
+# reads eos.conf's EOS_LUNCH); then none of the device keys from the caller's environment
+_eosc="$EOS_LUNCH|$EOS_RELEASES|$EOS_SF_DIR|$EOS_R2_PREFIX"
+for _k in $EOS_DEVICE_KEYS; do unset "$_k"; done
 device_conf "$kit/devices/$EOS_DEVICE.conf"
+[[ $EOS_DEVICE != cheetah || $_eosc = "$EOS_LUNCH|$EOS_RELEASES|$EOS_SF_DIR|$EOS_R2_PREFIX" ]] \
+    || fail "eos.conf and devices/cheetah.conf disagree on EOS_LUNCH, EOS_RELEASES, EOS_SF_DIR or EOS_R2_PREFIX: change both"
+unset _eosc
 for _k in $EOS_DEVICE_KEYS; do
     [[ -n ${!_k:-} || $_k = EOS_SCONE_PATCH ]] || fail "devices/$EOS_DEVICE.conf doesn't set $_k"
 done

@@ -230,14 +230,55 @@ mkdir -- "$T/x"
 "$H/ota_extractor" -payload "$ota" -payload_offset "$off" -output_dir "$T/x" -partitions "${AVB// /,}" > "$T/x.log" 2>&1 \
     || { tail -3 "$T/x.log" >&2; fail "couldn't extract $AVB from the payload"; }
 ramdisk() { "$H/unpack_bootimg" --boot_img "$1" --out "$2" > /dev/null || fail "can't unpack $1"; }
+cpio_same() {   # cpio_same <ramdisk> <ramdisk>: the same entries (name, mode, owner, device, bytes), whatever their times, order or compression
+    python3 - "$1" "$2" <<'PY'
+import subprocess, sys
+def entries(path):
+    raw = None
+    for cmd in (["lz4", "-dc", path], ["gzip", "-dc", path]):
+        try:
+            r = subprocess.run(cmd, capture_output=True)
+        except OSError:
+            continue
+        if r.returncode == 0 and r.stdout:
+            raw = r.stdout
+            break
+    if raw is None:
+        sys.exit(f"can't decompress {path}")
+    out, i = {}, 0
+    while i + 110 <= len(raw):
+        if raw[i:i + 6] not in (b"070701", b"070702"):
+            sys.exit(f"{path}: not a newc cpio at byte {i}")
+        f = [int(raw[i + 6 + 8 * k:i + 14 + 8 * k], 16) for k in range(13)]
+        mode, uid, gid, size, rmaj, rmin, nsz = f[1], f[2], f[3], f[6], f[9], f[10], f[11]
+        n = i + 110
+        name = raw[n:n + nsz - 1].decode("utf-8", "surrogateescape")
+        d = (n + nsz + 3) & ~3
+        if name == "TRAILER!!!":
+            break
+        out[name] = (mode, uid, gid, rmaj, rmin, raw[d:d + size])
+        i = (d + size + 3) & ~3
+    return out
+a, b = entries(sys.argv[1]), entries(sys.argv[2])
+bad = sorted(n for n in set(a) | set(b) if a.get(n) != b.get(n))
+for n in bad[:20]:
+    print(f"  differs: {n} ({'only one side' if n not in a or n not in b else 'mode, owner or bytes'})", file=sys.stderr)
+sys.exit(1 if bad else 0)
+PY
+}
 ramdisk "$T/x/init_boot.img" "$T/ib-ota"; ramdisk "$O/init_boot.img" "$T/ib-out"
 # With EOS_KSU=none out/'s init_boot is the build's own, which the KernelSU section checks is stock
 if [[ $EOS_KSU = lkm ]]; then
     cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk" || fail "the payload's init_boot ramdisk isn't out/'s (KernelSU Next) one"
     echo "OK: the payload's init_boot carries out/'s KernelSU Next ramdisk"
-else
-    cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk" || fail "the payload's init_boot ramdisk isn't out/'s one"
+elif cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk"; then
     echo "OK: the payload's init_boot carries out/'s ramdisk (no KernelSU: EOS_KSU=none)"
+else
+    # target-files packs the build's own ramdisk again (mkbootfs with its fs_config), so the
+    # bytes may differ while every file, mode, owner and device node is the same: compare those
+    cpio_same "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk" \
+        || fail "the payload's init_boot ramdisk has other files than out/'s (above)"
+    echo "OK: the payload's init_boot ramdisk holds out/'s files, packed again (no KernelSU: EOS_KSU=none)"
 fi
 checked "the payload's vbmeta isn't ExpressiveOS's" 'KEYS_CHECK=(OK|UNPINNED)' \
     "$kit/tools/eos-keys-check.sh" vbmeta "$T/x/vbmeta.img" "$top"

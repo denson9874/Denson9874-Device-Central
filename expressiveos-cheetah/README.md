@@ -469,8 +469,12 @@ EOS_DEVICE=husky ~/expressiveos-cheetah/tools/eos-pack.sh
 
 From the runner: `expressiveos-build` with query `device=kodiak`, or `devices=husky,kodiak,...` for each
 in turn in the one `eos-build` session, stopping at the first that fails (`clean` then removes each
-packed phone's `out/target/product/<device>`, never cheetah's); `expressiveos-pack` with
-`device=<phone>`. The phones share the tree, so they build one after another, never at once (each
+packed phone's `out/target/product/<device>`, never cheetah's: that candidate can then go to testers
+only, since a release repacks from `out/`; to release it, build again without `clean` and test that
+zip); `expressiveos-pack` with `device=<phone>`. `try=<path>@<commit>` builds an unmerged commit of
+one of ExpressiveOS's own projects (it stays checked out until a build without `try=`), and
+`modules=<module>,...` is a compile check of just those modules (it removes the last build's
+`build.ok`: pack needs a full build after it). The phones share the tree, so they build one after another, never at once (each
 build holds `~/.expressiveos.lock`).
 
 - **husky** builds like cheetah: LineageOS's husky, shusky and zuma trees with TheMuppets' blobs (its
