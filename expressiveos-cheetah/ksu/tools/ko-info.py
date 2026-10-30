@@ -13,9 +13,10 @@ struct module is 1,088 bytes. Run it with python3 -I.
       checks that <ko> is built for the struct module that every module under <dir> (the
       build's own, made with the kernel's config) shares; prints "<bytes> <modules>"
   ko-info.py embedded <file> <module name> <kernel release prefix> <out.ko>
-      writes out the kernel module <file> carries inside it, DEFLATE-compressed, whose
+      writes out the arm64 kernel module <file> carries inside it, DEFLATE-compressed, whose
       .modinfo names <module name> and whose vermagic starts with <kernel release prefix>:
       libksud.so's susfs guard module, which ksud loads by itself (susfs load or auto-load),
+      or one of the modules the host ksud carries (it has an x86_64 build of each too),
       found the way rust-embed stores its assets; prints "<bytes> <vermagic>"
   ko-info.py config <kernel Image>
       prints the .config built into an uncompressed kernel image (CONFIG_IKCONFIG)
@@ -74,8 +75,11 @@ def modinfo(d):
     return dict(f.split(b'=', 1) for f in d[offset:offset + size].split(b'\0') if b'=' in f)
 
 
+EM_AARCH64 = 183
+
+
 def embedded(path, name, release):
-    """The kernel module stored DEFLATE-compressed (raw, as include-flate does) in a file."""
+    """The arm64 kernel module stored DEFLATE-compressed (raw, as include-flate does) in a file."""
     with open(path, 'rb') as f:
         d = f.read()
     found = []
@@ -86,13 +90,15 @@ def embedded(path, name, release):
             if not zlib.decompressobj(-15).decompress(d[o:o + 512], 64).startswith(b'\x7fELF'):
                 continue
             ko = zlib.decompressobj(-15).decompress(d[o:])
+            if struct.unpack_from('<H', ko, 0x12)[0] != EM_AARCH64:
+                continue
             info = modinfo(ko)
         except (zlib.error, ValueError, struct.error):
             continue
         if info.get(b'name') == name.encode() and info.get(b'vermagic', b'').startswith(release.encode()):
             found.append((ko, info[b'vermagic'].decode('ascii', 'replace')))
     if len(found) != 1:
-        raise ValueError('%s carries %d kernel modules named %s for %s*, want 1' % (path, len(found), name, release))
+        raise ValueError('%s carries %d arm64 kernel modules named %s for %s*, want 1' % (path, len(found), name, release))
     return found[0]
 
 
