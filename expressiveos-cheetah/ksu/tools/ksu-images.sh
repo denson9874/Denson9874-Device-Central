@@ -16,6 +16,8 @@
 #   ksu-images.sh [top]                  # default ~/expressiveos; lunch target EOS_LUNCH (devices/<device>.conf)
 #   KERNEL_ONLY=1 ksu-images.sh [top]    # stop after build_kernel and kernelsu.ko (nothing to
 #                                        # build for a phone with a prebuilt kernel)
+#   EOS_INSTALLCLEAN=1 ksu-images.sh     # start with m installclean (a modules= compile check
+#                                        # asks the next full build for it itself)
 #
 # The kernel (EOS_KERNEL=gs-6.1) source is pins/kernel.xml's (kernel_pinned in lib.sh): synced
 # to those commits when out-kernel/ has none yet or EOS_KERNEL_SYNC=1, checked against them
@@ -79,6 +81,21 @@ source build/envsetup.sh >/dev/null || fail "build/envsetup.sh failed"
 lunch "$EOS_LUNCH" || fail "lunch $EOS_LUNCH failed"
 [[ "$(cd "$(gettop)" && pwd -P)" = "$top" ]] || fail "lunch picked the tree $(gettop), not $top"
 [[ "$(get_build_var PRODUCT_OUT)" = "$O" ]] || fail "PRODUCT_OUT is $(get_build_var PRODUCT_OUT), not $O"
+# m never takes away what the product doesn't install: a modules= compile check (the runner's
+# build-modules.sh) can leave a module the product overrides in the product out (Settings,
+# beside SettingsGoogle). The partition images take only the product's own file list, but
+# eos-verify.sh reads the product out and the target-files zip copies all of it. So
+# build-modules.sh writes <EOS_STATE>/installclean, and then (or with EOS_INSTALLCLEAN=1) the
+# build starts from m installclean: the product out's partitions, images and packaging go, the
+# intermediates stay. Before this script writes anything to $O; a kernel-only run leaves the
+# marker for the next full build
+ic=$EOS_STATE/installclean
+if [[ "${KERNEL_ONLY:-0}" != 1 && ( "${EOS_INSTALLCLEAN:-0}" = 1 || -e $ic ) ]]; then
+    if [[ -e $ic ]]; then why="a modules= compile check installed into $O since the last build"; else why="EOS_INSTALLCLEAN=1"; fi
+    echo "== m installclean ($why)"
+    m installclean || fail "m installclean failed"
+    rm -f -- "$ic" || fail "can't remove $ic"
+fi
 kt=out-kernel/google/gs-6.1
 mkdir -p -- "$O" "$EOS_STATE"
 # The build's AB_OTA_PARTITIONS, for the OTA script's payload check
