@@ -5,7 +5,7 @@
      vendor/lineage/overlay/common, which the build turns into a product overlay).
      Each list is the one the build uses today with Expressive Launcher in Pixel Launcher's
      place, or added at the end where Pixel Launcher isn't in it; tools/launcher-check.sh
-     tree checks they still are (README.md, "Framework config"). -->
+     tree checks they still are (the kit's launcher/README.md, "Framework config"). -->
 <resources>
     <!-- The Recents app: SystemUI binds its quickstep service (gestures, Overview, taskbar),
          Settings offers gesture navigation, and the platform grants it the permissions
