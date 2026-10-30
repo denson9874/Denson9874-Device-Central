@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- From stock system_ext/etc/sysconfig/preinstalled-packages-tuscany.xml -->
+<config>
+    <!--  Face enroll Activity (SettingsGoogleFutureFaceEnroll) -->
+    <install-in-user-type package="com.google.android.settings.future.biometrics.faceenroll">
+        <install-in user-type="FULL" />
+        <install-in user-type="android.os.usertype.profile.MANAGED" />
+        <install-in user-type="android.os.usertype.profile.PRIVATE" />
+    </install-in-user-type>
+</config>

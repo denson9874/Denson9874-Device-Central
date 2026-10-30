@@ -1,0 +1,75 @@
+From f01239807c811edb7abde9fea49d918cec8617b3 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 23:37:39 +0200
+Subject: [PATCH] LMOFreeform: follow the display group's power state
+
+The freeform display never implemented requestDisplayStateLocked, so its
+DisplayDeviceInfo kept the default STATE_ON while the phone slept.
+Telephony's DeviceStateMonitor treats any display that is on as a screen
+that is on, so with a floating window open the modem stayed in its
+screen-on reporting mode (all indications, no low-data-expected hint) and
+kept waking the AP on mobile data. Seen on an emulator: screen off with a
+floating window, mIsScreenOn=true and an unsolicited filter of 127;
+without one, false and 32.
+
+Track and report the requested state as VirtualDisplayAdapter does.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../display/LMOFreeformDisplayAdapter.java    | 26 +++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/freeform-server/src/main/java/com/android/server/display/LMOFreeformDisplayAdapter.java b/freeform-server/src/main/java/com/android/server/display/LMOFreeformDisplayAdapter.java
+index 634865f..09e1646 100644
+--- a/freeform-server/src/main/java/com/android/server/display/LMOFreeformDisplayAdapter.java
++++ b/freeform-server/src/main/java/com/android/server/display/LMOFreeformDisplayAdapter.java
+@@ -155,6 +155,9 @@ public class LMOFreeformDisplayAdapter extends DisplayAdapter {
+         protected final IBinder mAppToken;
+ 
+         private int mPendingChanges;
++        // Follows the display group's power state (requestDisplayStateLocked). Starts on:
++        // a freeform window is only opened from an awake screen.
++        private int mDisplayState = Display.STATE_ON;
+ 
+         FreeformDisplayDevice(IBinder displayToken, String uniqueId,
+                               int width, int height, int density,
+@@ -205,6 +208,28 @@ public class LMOFreeformDisplayAdapter extends DisplayAdapter {
+             }
+         }
+ 
++        @Override
++        public Runnable requestDisplayStateLocked(int state, float brightnessState,
++                float sdrBrightnessState, DisplayOffloadSessionImpl displayOffloadSession) {
++            // As VirtualDisplayAdapter does. Without this the display kept reporting
++            // STATE_ON while the phone slept, and anything that checks whether any display
++            // is on (telephony's DeviceStateMonitor) kept the modem in its screen-on mode.
++            if (state != mDisplayState) {
++                Slog.d(TAG, "Changing state of freeform display " + mName + " from "
++                        + Display.stateToString(mDisplayState) + " to "
++                        + Display.stateToString(state));
++                mDisplayState = state;
++                mInfo = null;
++                sendDisplayDeviceEventLocked(this, DISPLAY_DEVICE_EVENT_CHANGED);
++                if (state == Display.STATE_OFF) {
++                    mCallback.dispatchDisplayPaused();
++                } else {
++                    mCallback.dispatchDisplayResumed();
++                }
++            }
++            return null;
++        }
++
+         @Override
+         public boolean hasStableUniqueId() {
+             return false;
+@@ -266,6 +291,7 @@ public class LMOFreeformDisplayAdapter extends DisplayAdapter {
+                 }
+                 mInfo.type = Display.TYPE_OVERLAY;
+                 mInfo.touch = DisplayDeviceInfo.TOUCH_VIRTUAL;
++                mInfo.state = mDisplayState;
+                 // The display is trusted since it is created by system.
+                 mInfo.flags |= FLAG_TRUSTED;
+                 mInfo.displayShape = DisplayShape.createDefaultDisplayShape(mInfo.width, mInfo.height, false);
+-- 
+2.43.0
+

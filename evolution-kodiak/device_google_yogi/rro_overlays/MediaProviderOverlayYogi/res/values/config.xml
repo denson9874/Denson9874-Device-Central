@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SPDX-FileCopyrightText: The LineageOS Project
+    SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- From stock MediaProviderOverlay (CD1A.261005.003), which targets Google's
+         MediaProvider module: Google Photos as the photo picker's cloud provider. -->
+    <string name="config_default_cloud_media_provider_package" translatable="false">com.google.android.apps.photos</string>
+    <string name="config_default_cloud_provider_authority" translatable="false">com.google.android.apps.photos.cloudpicker</string>
+</resources>

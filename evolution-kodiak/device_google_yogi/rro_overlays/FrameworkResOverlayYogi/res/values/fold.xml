@@ -77,4 +77,15 @@
         <item>2:2</item>
         <item>3:0:0</item>
     </string-array>
+
+    <!-- Device state to posture (WindowManager, Jetpack FoldingFeature, tabletop), from
+         stock's framework-res product RRO (CD1A.261005.003). -->
+    <string-array name="config_device_state_postures" translatable="false">
+        <item>0:1</item>
+        <item>1:2</item>
+        <item>2:3</item>
+        <item>3:1</item>
+        <item>4:1000</item>
+        <item>5:1</item>
+    </string-array>
 </resources>
