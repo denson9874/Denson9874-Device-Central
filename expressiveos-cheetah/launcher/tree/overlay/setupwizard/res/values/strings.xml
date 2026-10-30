@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The last page of Expressive Launcher's gesture tutorial (AllSetActivity), as Pixel's
+         was Pixel Launcher's: "<package>/<action>". Pixel Launcher isn't in the build. The
+         setup wizard's own default and vendor/pixel-style's PixelSetupWizardOverlayExpressive
+         both name Pixel Launcher's. -->
+    <string name="exit_to_action_in_initial_setup" translatable="false">dev.launcher.expressive.l3/com.android.quickstep.action.GESTURE_ONBOARDING_ALL_SET</string>
+
+    <!-- The launcher the setup wizard knows of (its own default is Pixel Launcher). -->
+    <string name="launcher_package" translatable="false">dev.launcher.expressive.l3</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Expressive Launcher's Recents and gestures are Launcher3's quickstep code, built against
+     the platform's @hide APIs (window manager, activity tasks, SystemUI's shared library), with
+     no hidden-API bypass of its own. As a system app on this list it has no hidden-API
+     restrictions, as Pixel Launcher has (vendor/gms google-hiddenapi-package-whitelist.xml). -->
+<config>
+    <hidden-api-whitelisted-app package="dev.launcher.expressive.l3" />
+</config>

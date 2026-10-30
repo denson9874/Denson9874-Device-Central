@@ -26,8 +26,10 @@
 #      init_boot kept for users who want no root (no kernelsu.ko, signed with the tree's
 #      key); EOS_KSU=none: out/'s init_boot is that stock one;
 #   6. ViPER4Android (v4a-check.sh out; with EOS_V4A=0, none of its files shipped), the
-#      boot animation (bootanim.conf's zip, no other styles) and the wallpaper
-#      (wallpapers.conf's default on ro.config.wallpaper, the theme from the wallpaper);
+#      boot animation (bootanim.conf's zip, no other styles), the wallpaper
+#      (wallpapers.conf's default on ro.config.wallpaper, the theme from the wallpaper) and
+#      Expressive Launcher (launcher-check.sh out: the pinned APK and its overlays, no
+#      Pixel Launcher and no other Home app);
 #   7. branding: no app, framework string or crash report header names Evolution X
 #      (brand-check.py), apart from the few links it lists on purpose;
 #   8. firmware (EOS_RADIO_MK) and the fastboot files the pack script reads (super_empty.img
@@ -368,6 +370,9 @@ awk '/^ *resource 0x/ { on = /array\/theming_defaults/ } on' "$T/rro.txt" > "$T/
 { grep -qF '*|TONAL_SPOT|home_wallpaper' "$T/td.txt" && ! grep -qiF '#0049c7' "$T/td.txt"; } \
     || fail "framework-res's theming_defaults isn't *|TONAL_SPOT|home_wallpaper (wallpapers/overlay), so the theme won't follow the wallpaper: $(tr -s ' \n' ' ' < "$T/td.txt" | head -c 300)"
 echo "OK: $WALLPAPER_DEFAULT is the first-boot wallpaper and the theme follows the wallpaper"
+
+echo "== Expressive Launcher"
+checked "Expressive Launcher" 'LAUNCHER_CHECK=OK' "$kit/launcher/tools/launcher-check.sh" out "$top/$O" "$top/out/host/linux-x86"
 
 echo "== one APK per package"
 # PackageManager keeps one APK per package name at boot and skips the others. m leaves a
