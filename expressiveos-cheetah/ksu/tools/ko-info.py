@@ -12,6 +12,10 @@ struct module is 1,088 bytes. Run it with python3 -I.
   ko-info.py same-struct <ko> <dir>
       checks that <ko> is built for the struct module that every module under <dir> (the
       build's own, made with the kernel's config) shares; prints "<bytes> <modules>"
+  ko-info.py like <ko> <reference ko>
+      checks that <ko> is built as <reference ko> is (the module ksud carries for the KMI,
+      which KernelSU Next builds in the same DDK): the same struct module, vermagic and
+      kernel symbols; prints "<bytes> <symbols>"
   ko-info.py embedded <file> <module name> <kernel release prefix> <out.ko>
       writes out the arm64 kernel module <file> carries inside it, DEFLATE-compressed, whose
       .modinfo names <module name> and whose vermagic starts with <kernel release prefix>:
@@ -38,7 +42,7 @@ import zlib
 # differences besides the pahole ones that broke the module.
 IGNORED = {
     'CC_VERSION_TEXT', 'CLANG_VERSION', 'GCC_VERSION', 'LD_VERSION', 'LLD_VERSION', 'AS_VERSION',
-    'PAHOLE_VERSION', 'RUSTC_VERSION', 'RUSTC_LLVM_VERSION', 'BINDGEN_VERSION',
+    'PAHOLE_VERSION', 'RUSTC_VERSION', 'RUSTC_VERSION_TEXT', 'RUSTC_LLVM_VERSION', 'BINDGEN_VERSION',
     'CC_CAN_LINK', 'CC_CAN_LINK_STATIC', 'UAPI_HEADER_TEST',
     'TRIM_UNUSED_KSYMS', 'UNUSED_KSYMS_WHITELIST',
 }
@@ -102,6 +106,38 @@ def embedded(path, name, release):
     return found[0]
 
 
+def undefined(d):
+    """The kernel symbols a module needs: the named undefined symbols of its .symtab."""
+    s = sections(d)
+    if '.symtab' not in s or '.strtab' not in s:
+        raise ValueError('no .symtab or .strtab section')
+    (so, ss), (to, ts) = s['.symtab'], s['.strtab']
+    out = set()
+    for o in range(so, so + ss - 23, 24):
+        name, _, _, shndx = struct.unpack_from('<IBBH', d, o)
+        if name and shndx == 0 and name < ts:
+            start = to + name
+            out.add(d[start:d.find(b'\0', start)].decode('ascii', 'replace'))
+    return out
+
+
+def like(ko, ref):
+    have, want = {}, {}
+    for path, out in ((ko, have), (ref, want)):
+        with open(path, 'rb') as f:
+            d = f.read()
+        out['struct module'] = sections(d).get('.gnu.linkonce.this_module', (0, 0))[1]
+        out['vermagic'] = modinfo(d).get(b'vermagic', b'').decode('ascii', 'replace')
+        out['symbols'] = undefined(d)
+    for k in ('struct module', 'vermagic'):
+        if not have[k] or have[k] != want[k]:
+            raise ValueError('%s: %s is %r, %s\'s is %r' % (k, ko, have[k], ref, want[k]))
+    extra = sorted(have['symbols'] - want['symbols'])
+    if extra:
+        raise ValueError('%s needs %d kernel symbols %s doesn\'t: %s' % (ko, len(extra), ref, ' '.join(extra[:20])))
+    return have['struct module'], len(have['symbols'])
+
+
 def same_struct(ko, top):
     sizes = {}
     for root, _, files in os.walk(top):
@@ -155,6 +191,8 @@ def main():
                 print(this_module(ko), ko)
         elif len(args) == 3 and args[0] == 'same-struct':
             print('%d %d' % same_struct(args[1], args[2]))
+        elif len(args) == 3 and args[0] == 'like':
+            print('%d %d' % like(args[1], args[2]))
         elif len(args) == 5 and args[0] == 'embedded':
             ko, vermagic = embedded(args[1], args[2], args[3])
             with open(args[4], 'wb') as f:

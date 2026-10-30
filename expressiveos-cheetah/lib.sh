@@ -62,7 +62,10 @@ _e EOS_FIRMWARE_MODE "cache blobs images"; _e EOS_KERNEL "gs-6.1 prebuilt"; _e E
 _e EOS_V4A "0 1"; _e EOS_SUPER_EMPTY "out factory"; _e EOS_FLASH_VKB "0 1"; _e EOS_SYSUI_ODEX "0 1"
 _e EOS_KMI "android14-6.1 android16-6.12"
 unset -f _e
-[[ $EOS_KSU = none || $EOS_KERNEL = gs-6.1 ]] || fail "devices/$EOS_DEVICE.conf: KernelSU Next (EOS_KSU=lkm) is built only against the gs-6.1 kernel source so far"
+# KernelSU Next on Google's prebuilt kernel: kernelsu.ko builds against the DDK for its KMI
+if [[ $EOS_KSU = lkm && $EOS_KERNEL = prebuilt ]] && ! grep -q "^${EOS_KMI}_digest=" "$kit/ksu/ddk.conf"; then
+    fail "devices/$EOS_DEVICE.conf: KernelSU Next (EOS_KSU=lkm) on a prebuilt $EOS_KMI kernel needs its DDK in ksu/ddk.conf"
+fi
 # Where a device's build keeps its own records: cheetah's are where they always were, so its
 # builds, packs and logs don't move; the other phones' sit beside them in the one tree
 EOS_PRODUCT_OUT=out/target/product/$EOS_DEVICE

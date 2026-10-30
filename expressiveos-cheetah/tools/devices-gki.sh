@@ -247,6 +247,7 @@ if nice -n 19 bash "$here_kit/ksu/tools/ksu-ddk.sh" fetch "$K" "$ddk"; then
             echo "-- undefined symbols: ours vs ksud's own 6.12 module (< only ours, > only theirs)"
             diff <(readelf -sW "$ko" | awk '$7 == "UND" && $8 != "" {print $8}' | sort -u) \
                  <(readelf -sW "$ko612" | awk '$7 == "UND" && $8 != "" {print $8}' | sort -u) | grep '^[<>]' | head -20
+            echo "ko-info.py like (what cheetah-ksu.sh checks): $(koinfo like "$ko" "$ko612" 2>&1)"
         fi
         echo "-- against the stock kodiak kernel"
         vkb=$(find "$eos/vendor/google/kodiak-images" "$evo/vendor/google/kodiak-images" -maxdepth 3 -name vendor_kernel_boot.img 2> /dev/null | head -1)
@@ -257,7 +258,7 @@ if nice -n 19 bash "$here_kit/ksu/tools/ksu-ddk.sh" fetch "$K" "$ddk"; then
                 (cd "$big/vkm" && { lz4 -dc "$rd" 2> /dev/null || gzip -dc "$rd"; } | cpio -id --quiet --no-absolute-filenames 'lib/modules/*.ko')
             done
             echo "same-struct vs ${vkb#"$HOME"/}: $(koinfo same-struct "$ko" "$big/vkm" 2>&1)"
-            km=$(find "$big/vkm" -name '*.ko' | head -1)
+            km=$(find "$big/vkm" -name '*.ko' -print -quit)
             echo "a stock module's vermagic: $(strings "$km" | grep -m1 '^vermagic=')"
         else
             echo "no stock kodiak vendor_kernel_boot.img to compare with"
