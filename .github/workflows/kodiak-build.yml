@@ -263,7 +263,7 @@ on:
           that doesn't name it: name every tried project each time; the build and its
           check/ candidate record it), modules=<module>,<module>,... (lunch and m on just those
           modules, a compile check: nothing packed; with try= or alone; the phone's next
-          build starts with m installclean). try= and
+          full build starts with m installclean). try= and
           modules= are for one phone. expressiveos-pack (optional): device=<phone>, testers
           (eos-pack.sh --testers: check/'s untested candidate to SourceForge's
           expressiveos/<phone>/testers; only when Daryl says so), try-ok (testers may
@@ -1036,6 +1036,10 @@ jobs:
           for d in $devs; do
             if [[ $d = cheetah ]]; then st=out/eos l=build; else st=out/eos-$d l="build, $d"; [[ -d $top/$st ]] || continue; fi
             echo "== $l: $(cat "$top/$st/build.ok" 2>/dev/null || echo "no complete build ($st/build.ok)")"
+            # Written by a modules= compile check, removed by the m installclean it asks for
+            if [[ -e $top/$st/installclean ]]; then
+              echo "   $st/installclean: the next full build starts with m installclean"
+            fi
             # expressiveos-build's clean removes a packed phone's product out (never cheetah's)
             if [[ -f $top/$st/build.ok && ! -d $top/out/target/product/$d ]]; then
               echo "   out/target/product/$d is gone (clean?): check/ has its candidate; eos-pack.sh can't pack this build again"
@@ -1543,7 +1547,7 @@ jobs:
           # server), a phone's product out, out/target/product/<device>, is removed once its pack
           # ended PACK=OK (check/ keeps the candidate and its target-files); never cheetah's.
           #   build-devices.sh <kit> <clean: 0 or 1> [NAME=value]... -- <device>...
-          # The NAME=value pairs (KERNEL_ONLY=1, EOS_KERNEL_SYNC=1) are eos-images.sh's, as for one
+          # The NAME=value pairs (KERNEL_ONLY=1, EOS_KERNEL_SYNC=1, EOS_INSTALLCLEAN=1) are eos-images.sh's, as for one
           # phone; with KERNEL_ONLY=1 nothing is packed.
           kit=$1 clean=$2
           shift 2
@@ -1631,8 +1635,9 @@ jobs:
           # last full build, so its build.ok and target-files.ok go first: that build can't be
           # packed or verified again, and the next pack needs eos-images.sh. A module the product
           # doesn't install (Settings, which SettingsGoogle overrides) would stay in the product
-          # out and go into the next build's images, so <state>/installclean marks it: that
-          # build starts with m installclean (ksu-images.sh). The last line is MODULES_EXIT=0 or
+          # out, which eos-verify.sh reads and the next target-files zip copies (the images take
+          # only the build's file list), so <state>/installclean marks it: the next full build
+          # starts with m installclean (ksu-images.sh). The last line is MODULES_EXIT=0 or
           # MODULES_EXIT=1.
           #   build-modules.sh <kit> <module>...
           set -o pipefail
@@ -1664,7 +1669,7 @@ jobs:
           echo "note: $st/build.ok and target-files.ok removed: the product out won't match the last full build, so packing needs eos-images.sh again"
           # Before m: an m that fails or is stopped half way may have installed some of them
           mkdir -p -- "$st" && touch -- "$st/installclean" || fail "can't write $st/installclean"
-          echo "note: $st/installclean written: the next full build starts with m installclean, so these modules' installs don't reach its images"
+          echo "note: $st/installclean written: the next full build starts with m installclean, so these modules' installs don't stay in its out/ or target-files zip"
           echo "== m $*, $(date -u '+%F %T') UTC"
           if ! m -j"$(nproc)" "$@"; then
               # soong_ui keeps the failed build's output in out/error.log

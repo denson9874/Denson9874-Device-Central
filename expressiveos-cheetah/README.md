@@ -159,6 +159,8 @@ before is kept as `.1`); the last line is `BUILD_EXIT=0` or `BUILD_EXIT=1`.
 - `KERNEL_ONLY=1`: stop after `build_kernel` and `kernelsu.ko`.
 - `EOS_KERNEL_SYNC=1`: sync the kernel source to `pins/kernel.xml` again. Otherwise only the first
   build syncs it, and later ones check it's still on the pins.
+- `EOS_INSTALLCLEAN=1`: start the make with `m installclean` (the runner's `installclean`). A
+  `modules=` compile check asks the next full build for it itself; a kernel-only run skips it.
 
 ## Sources
 
@@ -475,9 +477,10 @@ zip); `expressiveos-pack` with `device=<phone>`. `try=<path>@<commit>` builds an
 one of ExpressiveOS's own projects (it stays checked out until a build without `try=`), and
 `modules=<module>,...` is a compile check of just those modules (it removes the last build's
 `build.ok`: pack needs a full build after it, and that build starts with `m installclean`, since
-`m` would leave a module the product doesn't install, like Settings beside SettingsGoogle, for the
-images to take; `installclean` asks any build for it, and `eos-verify.sh` refuses two APKs with one
-package name). The phones share the tree, so they build one after another, never at once (each
+`m` would leave a module the product doesn't install, like Settings beside SettingsGoogle, in `out/`
+and the target-files zip, though not in the images, which take only the build's file list;
+`installclean` asks any build that makes images for it, and `eos-verify.sh` refuses two APKs with
+one package name). The phones share the tree, so they build one after another, never at once (each
 build holds `~/.expressiveos.lock`).
 
 - **husky** builds like cheetah: LineageOS's husky, shusky and zuma trees with TheMuppets' blobs (its

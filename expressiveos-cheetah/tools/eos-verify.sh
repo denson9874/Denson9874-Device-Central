@@ -370,10 +370,11 @@ awk '/^ *resource 0x/ { on = /array\/theming_defaults/ } on' "$T/rro.txt" > "$T/
 echo "OK: $WALLPAPER_DEFAULT is the first-boot wallpaper and the theme follows the wallpaper"
 
 echo "== one APK per package"
-# PackageManager keeps one APK per package name at boot and skips the others, so an app the
-# product overrides mustn't ship beside the one that overrides it: m leaves a module it
-# installed by hand, or in a modules= compile check, in the product out (Settings beside
-# SettingsGoogle), and the images take what's there
+# PackageManager keeps one APK per package name at boot and skips the others. m leaves a
+# module it installed by hand, or in a modules= compile check, in the product out even when
+# the product overrides it (Settings beside SettingsGoogle). The partition images take only
+# the product's own file list, but this script's checks read the product out and the
+# target-files zip copies all of it, so it mustn't be there
 (cd "$O" && find system system_ext product vendor odm -maxdepth 4 -type f -name '*.apk' \
     \( -path '*/app/*' -o -path '*/priv-app/*' -o -path '*/overlay/*' \) -print 2>/dev/null | sort > "$T/apks.txt") || true
 [[ -s $T/apks.txt ]] || fail "no APKs in $O's app, priv-app and overlay folders"
@@ -394,7 +395,8 @@ if [[ -n $dups ]]; then
     done
     fail "more than one APK for a package (above): an app the product overrides is in $O. Build again with installclean (the runner's expressiveos-build query)"
 fi
-echo "OK: $n APKs in app, priv-app and overlay, one per package"
+r=$(wc -l < "$T/pkgs.txt")
+echo "OK: one APK per package among the $r of $n APKs in app, priv-app and overlay that aapt2 read"
 
 echo "== branding"
 checked "the build still shows Evolution X somewhere (patches/: Settings, Evolver, Updater...)" 'BRAND_CHECK=OK' \
