@@ -1,0 +1,39 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <daryldenson0405@gmail.com>
+Date: Tue, 20 Oct 2026 18:45:00 +0200
+Subject: [PATCH 03/10] husky: keep app odex on /system, not system_other
+
+BoardConfigMainlineCommon.mk turns on BOARD_USES_SYSTEM_OTHER_ODEX, which
+moves the odex/vdex of every preopted app (SystemUIGoogle, SettingsGoogle,
+LineageParts, ...) into system_other.img. Google's factory images flash that
+image to the inactive slot and cppreopts copies it in on first boot; an
+Evolution X zip or OTA never writes it, so those apps start every update
+with no AOT code and SystemUI gestures hitch until background dexopt runs
+(idle and charging, often overnight).
+
+Build them into /system instead. This adds ~183 MB to the system
+partitions, well inside the 8.5 GB super.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ husky/BoardConfig.mk | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/husky/BoardConfig.mk b/husky/BoardConfig.mk
+index 5fcac28..f7c77e9 100644
+--- a/husky/BoardConfig.mk
++++ b/husky/BoardConfig.mk
+@@ -22,3 +22,10 @@ SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += \
+ include $(DEVICE_PATH)/BoardConfigCommon.mk
+ 
+ include $(VENDOR_PATH)/BoardConfigVendor.mk
++
++# Keep app odex on /system rather than system_other. Only a factory flash
++# writes system_other to the inactive slot; zip and OTA installs never do, so
++# SystemUIGoogle, SettingsGoogle and the other preopted priv-apps lose their
++# AOT code after every update and run interpreted/JIT until background
++# dexopt catches up (~183 MB, well inside super).
++BOARD_USES_SYSTEM_OTHER_ODEX :=
+-- 
+2.43.0
+

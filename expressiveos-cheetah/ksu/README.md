@@ -7,6 +7,27 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
 (`evolution-cheetah/`), which stays unrooted: every script here refuses
 `~/evolution` and `~/derpfest`.
 
+## Other phones
+
+The same kit roots every phone with `EOS_KSU=lkm` in its `../devices/<device>.conf` (`EOS_DEVICE`,
+cheetah unless set): cheetah and husky (Pixel 8 Pro), which share the gs-6.1 kernel source, the GKI
+`boot.img` and its `struct module`, so one `ksu.conf`, `ksud` and `kernelsu.ko` build. What differs
+comes from the device file: the product folder (`EOS_PRODUCT_OUT`), the KMI (`EOS_KMI`, which must be
+`ksu.conf`'s `kmi`), and where a build's records go (`out/eos` and `out/ksu` for cheetah, as always;
+`out/eos-<device>` and `out/ksu-<device>` for the others). A phone's KernelSU Next device tree
+patches are `../devices/<device>/ksu-patches/<project>/` (husky's `device_google_shusky` 0101-0102,
+whose init_boot variable is `EOS_KSU_INIT_BOOT`); cheetah's stay in `patches/device_google_pantah/`
+with `CHEETAH_KSU_INIT_BOOT`. `tools/cheetah-ksu.sh` keeps its name for all of them.
+`tree/ksu-firstboot.sh` ships unchanged on every one and turns susfs auto-load on for the KMI it
+names (android14-6.1): `apply-ksu.sh` refuses a phone whose `EOS_KMI` differs.
+
+The Pixel 11s (kodiak, grizzly, cubs, yogi: `EOS_KSU=none`, `EOS_KERNEL=prebuilt`, Google's
+android16-6.12 GKI) get no KernelSU Next yet. `../tools/eos-images.sh` skips `fetch-ksu.sh` and
+`apply-ksu.sh` (run anyway, it ends `APPLY_KSU_OK skipped for this device`); `tools/ksu-images.sh`
+runs lunch and one `m evolution`, builds no kernel or module (its `kernel-manifest.xml` only says
+the kernel is the tree's prebuilt boot image) and checks the shipped init_boot is stock;
+`cheetah-ksu.sh`, `ksu-module.sh` and `ksu-check.sh manager` refuse to run.
+
 ## How it works
 
 - **LKM over Google's kernel.** The kernel stays Google's signed GKI (android14-6.1). Our own
@@ -94,8 +115,9 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
   `device/google/`, hence `vendor/extra`, which `repo sync` leaves alone. `Android.mk` is removed
   first and written last, so make never sees it without its files.
 - **Two make passes** (`tools/ksu-images.sh [top]`, which `../tools/eos-images.sh` runs; the lunch
-  target is `EOS_LUNCH` in `../eos.conf`): lunch, `build_kernel`, `ksu-module.sh`, pass 1 with a stock
-  init_boot (only `bootimage initbootimage vendorkernelbootimage`, the images `cheetah-ksu.sh` reads:
+  target is `EOS_LUNCH` in `../devices/<device>.conf`): lunch, `build_kernel`, `ksu-module.sh`,
+  pass 1 with a stock init_boot (only `bootimage initbootimage vendorkernelbootimage`, the images
+  `cheetah-ksu.sh` reads:
   pass 2's init_boot changes the board config, so it builds and packages everything anyway), then
   `tools/cheetah-ksu.sh` checks `boot.img`'s kernel is the KMI in `ksu.conf` and our
   module's sublevel, patches that init_boot with

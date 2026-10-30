@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SPDX-FileCopyrightText: The LineageOS Project
+    SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- From stock SystemUIGoogle__kodiak__auto_generated_rro_product (CD1A.261005.003).
+         The AOSP defaults (0) hide the high skin-temperature notification and the USB
+         port overheat alarm. -->
+    <integer name="config_showTemperatureWarning">1</integer>
+    <integer name="config_showUsbPortAlarm">1</integer>
+
+    <!-- Also from stock: Pixel's screenshot editors and Quick Share copy, which we ship
+         (CreativeAssistant, MarkupGoogle_v2, GMS), and the icon animation haptic. -->
+    <string name="config_preferredScreenshotEditor" translatable="false">com.google.android.apps.pixel.creativeassistant/com.google.android.apps.pixel.creativeassistant.ExternalEditActivity</string>
+    <string name="config_screenshotEditor" translatable="false">com.google.android.markup/com.google.android.markup.AnnotateActivity</string>
+    <string name="config_remoteCopyPackage" translatable="false">com.google.android.gms/.nearby.sharing.RemoteCopyShareSheetActivity</string>
+    <bool name="config_vibrateOnIconAnimation">true</bool>
+</resources>

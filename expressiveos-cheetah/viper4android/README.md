@@ -6,7 +6,8 @@ effect driver in `/vendor/lib64/soundfx`. Nothing is rebuilt or re-signed. Credi
 sources go with every release.
 
 This folder is only the ViPER4Android part of the ExpressiveOS kit. It works on the ExpressiveOS tree
-(`~/expressiveos`), which builds only cheetah. **None of it applies to the Evolution X tree**
+(`~/expressiveos`), and only for a phone whose `../devices/<device>.conf` has `EOS_V4A=1`: cheetah
+alone ("Other phones", below). **None of it applies to the Evolution X tree**
 (`~/evolution`, which also builds kodiak and husky): `apply-v4a.sh` refuses any tree whose path ends
 in `/evolution` or that is `~/evolution`, and any `vendor/extra` or `frameworks/av` that leads out of
 the tree or into `~/evolution` through a symlink; `tools/v4a-check.sh tree` fails on the same.
@@ -50,11 +51,32 @@ Why it is put together this way:
   `vendor/lineage` (manifest `snippets/evolution.xml:146`), and its `config/common.mk` line 2 (`cnb`
   e717ec3), so `vendor/lineage/config/common.mk`, is
   `$(call inherit-product-if-exists, vendor/extra/product.mk)`, for every product in the tree
-  (`lineage_cheetah.mk` inherits `vendor/lineage/config/common_full_phone.mk`, which leads there). In the ExpressiveOS tree that is only cheetah, and `vendor/extra` isn't a repo
+  (`lineage_cheetah.mk` inherits `vendor/lineage/config/common_full_phone.mk`, which leads there). In the ExpressiveOS tree that is every phone it builds, and `vendor/extra` isn't a repo
   project, so `repo sync` leaves it alone. `tree/viper4android.mk` adds the namespace and the two
-  packages.
+  packages, for `lineage_cheetah` only.
 - **No sepolicy.** The library gets `vendor_file` from the generic `/vendor(/.*)?` rule, has no
   TEXTREL or writable-executable segment, and the HIDL path needs no binder service.
+
+## Other phones
+
+The ExpressiveOS tree builds every phone in `../devices/` (`EOS_DEVICE`, cheetah unless set), and
+`vendor/extra/product.mk` is read for all of them, so after one cheetah run every product inherits
+`viper4android.mk`. Only cheetah has `EOS_V4A=1`: the non-AIDL driver needs gs201's HIDL effect HAL,
+husky's effect HAL is AIDL, and the Pixel 11s' stock vendor images have no HIDL one. So:
+
+- `tree/viper4android.mk` adds its namespace and packages only when `TARGET_PRODUCT` is
+  `lineage_cheetah`. The other products get nothing from it, whatever a cheetah run staged in
+  `vendor/extra` (`../tools/eos-images.sh` checks their `PRODUCT_PACKAGES` before building, and
+  `../tools/eos-verify.sh` that none of the files shipped).
+- `apply-v4a.sh` for a phone with `EOS_V4A=0` touches nothing and ends with
+  `V4A_APPLY=OK skipped (ViPER4Android is off for <device>)` (`eos-images.sh` doesn't run it then).
+- `tools/v4a-check.sh` is only for an `EOS_V4A=1` phone. `tree` checks gs201 and the phone's own
+  `EOS_DEVICE_TREE` and `EOS_VENDOR_DIR`, `device` wants the phone's own `ro.product.device`, and
+  `out` checks the product out it's given; for cheetah that's device/google/pantah,
+  vendor/google/cheetah and cheetah, as always.
+- A phone with gs201's HIDL effect HAL may be added: `EOS_V4A=1` in its devices file, its
+  `lineage_<device>` in `viper4android.mk`'s filter, then the `out` and `device` checks on its first
+  build (everything above was established on cheetah).
 
 ## Files
 
