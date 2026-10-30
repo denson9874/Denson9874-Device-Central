@@ -28,6 +28,7 @@
 #   KERNEL_ONLY=1 eos-images.sh [top]    # steps 1-4, then build_kernel and kernelsu.ko only
 #   EOS_KERNEL_SYNC=1 eos-images.sh      # sync the kernel source to pins/kernel.xml again
 #                                        # (otherwise only the first build syncs it)
+#   EOS_INSTALLCLEAN=1 eos-images.sh     # start the make with m installclean (ksu-images.sh)
 set -o pipefail
 self=$(readlink -f -- "$0")
 # Until the build's own trap below, a failure ends with the status line too, except while
