@@ -31,7 +31,7 @@ arg=${1:-$HOME/expressiveos}
 not_other "$arg"
 PATH=$HOME/bin:$PATH
 command -v repo >/dev/null || fail "repo isn't installed"
-git lfs version >/dev/null 2>&1 || fail "git-lfs isn't installed (vendor/google/cheetah and vendor/gms need it)"
+git lfs version >/dev/null 2>&1 || fail "git-lfs isn't installed (vendor/google/cheetah, vendor/google/husky and vendor/gms need it)"
 # Not during an ExpressiveOS build (eos-images.sh holds this lock for its whole run).
 # EOS_HOLDS_LOCK=1: run under eos_lock, which holds it already (checked, not taken on trust)
 if [[ "${EOS_HOLDS_LOCK:-}" = 1 ]]; then
@@ -165,7 +165,8 @@ while IFS= read -r -d '' a; do
         done
     done < "$a"
 done < <(find "$top/.repo" -path '*/objects/info/alternates' -print0 2>/dev/null)
-for f in build/make/core/Makefile vendor/lineage/config/common.mk device/google/pantah/device-cheetah.mk; do
+# cheetah's, and the phone this run is for (EOS_DEVICE): a manifest without its projects stops here
+for f in build/make/core/Makefile vendor/lineage/config/common.mk device/google/pantah/device-cheetah.mk "$EOS_SENTINEL"; do
     [[ -f "$top/$f" ]] || fail "$f is missing after the sync"
     [[ "$(stat -c %h -- "$top/$f")" = 1 ]] || fail "$f has other hard links: is $top a hardlinked copy of another tree? Set it up again from scratch"
 done
