@@ -227,6 +227,11 @@ if nice -n 19 bash "$here_kit/ksu/tools/ksu-ddk.sh" fetch "$K" "$ddk"; then
     "$ddk/clang/clang-r536225/bin/clang" --version 2>&1 | head -1
     "$ddk/rust/rust-1.82.0/bin/rustc" --version 2>&1 | head -1
     echo "rust/bin: $(find "$ddk/rust/rust-1.82.0/bin" -maxdepth 1 -printf '%f ' 2> /dev/null)"
+    echo "-- BTF: the kernels' MODULE_ALLOW_BTF_MISMATCH, and the sections of ksud's own 6.12 module"
+    grep -hE '^(# )?CONFIG_MODULE_ALLOW_BTF_MISMATCH[= ]' "$work/stock.config" | sed 's/^/stock: /'
+    grep -hE '^(# )?CONFIG_MODULE_ALLOW_BTF_MISMATCH[= ]' "$kd/.config" | sed 's/^/DDK: /'
+    [[ -s $ko612 ]] && echo "ksud's: $(readelf -SW "$ko612" | grep -oE '\.(BTF[._a-z]*|modinfo|gnu\.linkonce\.this_module|__versions)' | sort -u | tr '\n' ' ')"
+    grep -rnE -i 'btf' "$src/userspace/ksuinit/src" 2> /dev/null | sed "s#^$src/##" | cut -c1-160 | head -8
     echo "-- the build"
     cp -a "$src" "$big/ksn"
     for p in "$here_kit"/ksu/kernel-patches/*.patch; do git -C "$big/ksn" apply "$p" && echo "OK: applied ${p##*/}"; done
