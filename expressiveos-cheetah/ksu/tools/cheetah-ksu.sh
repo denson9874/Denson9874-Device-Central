@@ -52,7 +52,8 @@ ksud=$HOME/android-dt/ksu/$version/ksud
 [[ -x "$ksud" ]] || fail "no $ksud (run $here/fetch-ksu.sh)"
 [[ "$(sha256sum -- "$ksud" | cut -d' ' -f1)" = "$(get ksud_sha256)" ]] || fail "$ksud isn't ksu.conf's ksud_sha256 (run fetch-ksu.sh)"
 ko=$K/kernelsu.ko
-[[ -s $ko ]] || fail "no $ko (run $here/tools/ksu-module.sh)"
+# ksu-module.sh writes kernelsu.ko.info only once every check of the module has passed
+[[ -s $ko && -s $ko.info ]] || fail "no $ko, or no $ko.info: ksu-module.sh didn't finish (run $here/tools/ksu-module.sh)"
 [[ -f $O/init_boot.img && -f $O/boot.img ]] || fail "no init_boot.img or boot.img in $O"
 T=$(mktemp -d "${TMPDIR:-/tmp}/cheetah-ksu.XXXXXX")
 ramdisk() {   # ramdisk <boot image> <dir>: unpack init, init.real and kernelsu.ko from its ramdisk into <dir>
@@ -125,7 +126,7 @@ if [[ $EOS_KERNEL = prebuilt ]]; then
     r=$(python3 -I "$here/tools/ko-info.py" like "$ko" "$T/ksud.ko") \
         || fail "$ko isn't built as ksud's own kernelsu.ko for $kmi (tools/ksu-module.sh, ddk.conf)"
     echo "OK: $ko is built as ksud's own module for $kmi (struct module ${r% *} bytes, vermagic, ${r#* } kernel symbols)"
-    if ! python3 -I "$here/tools/ko-info.py" config-diff "$k" "$K/kbuild/.config" > "$T/config.diff"; then
+    if ! python3 -I "$here/tools/ko-info.py" config-diff "$k" "$K/kbuild/.config" > "$T/config.diff" 2>&1; then
         echo "NOTE: the DDK's config and boot.img's kernel differ in $(wc -l < "$T/config.diff") options (as for ksud's own module):"
         sed 's/^/NOTE:   /' "$T/config.diff"
     fi

@@ -5,7 +5,8 @@
 # every phone): lunch, build_kernel (a phone with Google's prebuilt kernel has none to build),
 # our kernelsu.ko (ksu-module.sh), then two passes:
 # pass 1 builds only the images cheetah-ksu.sh reads (boot, init_boot and
-# vendor_kernel_boot, whose ramdisk holds the first-stage modules) with the stock
+# vendor_kernel_boot, whose ramdisk holds the first-stage modules; on a phone with a prebuilt
+# kernel that's the factory image's, a radio file copied into the product out) with the stock
 # init_boot, cheetah-ksu.sh patches that init_boot, and pass 2 builds everything with
 # CHEETAH_KSU_INIT_BOOT (patches/device_google_pantah/0102; EOS_KSU_INIT_BOOT on the other
 # phones, their devices/<device>/ksu-patches/ 0102). Pass 2 must ship the patched init_boot
@@ -146,7 +147,11 @@ if [[ $EOS_KSU = lkm ]]; then
     # Only what cheetah-ksu.sh reads, not all of evolution: CHEETAH_KSU_INIT_BOOT changes the
     # board config, so pass 2 runs Soong and Kati again and packages everything anyway. A full
     # pass 1 only added a second packaging run and an OTA zip (about 5 minutes) to throw away.
-    m -j"$(nproc)" bootimage initbootimage vendorkernelbootimage || fail "make pass 1 failed"
+    # A prebuilt kernel's vendor_kernel_boot is a radio file (its tree's -images Android.mk),
+    # which no image goal copies in: asked for by its path, it is, and is the current one
+    vkb=()
+    [[ $EOS_KERNEL != prebuilt ]] || vkb=("$O/vendor_kernel_boot.img")
+    m -j"$(nproc)" bootimage initbootimage vendorkernelbootimage "${vkb[@]}" || fail "make pass 1 failed"
     "$here/tools/cheetah-ksu.sh" "$top" || fail "cheetah-ksu.sh failed"
     export "$EOS_KSU_INIT_BOOT_VAR=$K/init_boot-ksu.img"
     echo "== make pass 2 (KernelSU Next init_boot)"

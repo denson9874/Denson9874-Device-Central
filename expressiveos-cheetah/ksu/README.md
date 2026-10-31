@@ -19,7 +19,9 @@ cheetah, as always; `out/eos-<device>` and `out/ksu-<device>` for the others). A
 Next device tree patches are `../devices/<device>/ksu-patches/<project>/` (husky's
 `device_google_shusky` 0101-0102, each Pixel 11's `device_google_<device>` 0101-0102, whose init_boot
 variable is `EOS_KSU_INIT_BOOT`); cheetah's stay in `patches/device_google_pantah/` with
-`CHEETAH_KSU_INIT_BOOT`. `tools/cheetah-ksu.sh` keeps its name for all of them.
+`CHEETAH_KSU_INIT_BOOT`. The Pixel 11 trees are ExpressiveOS's own repos, so their two are
+commits on each fork's `expressiveos` branch, at the commit the manifest pins, which `apply-ksu.sh`
+only checks for (by subject): a kit patch is never applied to an own repo. `tools/cheetah-ksu.sh` keeps its name for all of them.
 `tree/ksu-firstboot.sh` ships unchanged on every one and turns susfs auto-load on for the running
 kernel's KMI when it's one of those it names (`KMIS`: android14-6.1, android16-6.12): `apply-ksu.sh`
 refuses a phone whose `EOS_KMI` isn't one.
@@ -69,8 +71,8 @@ symbols as `ksud`'s own module.
   `ksu` domain those lines use, so only `ksud` writes `ksud`'s state:
   - at post-fs-data, `ksud install` when `/data/adb/ksud` is missing or an OTA changed the ROM's
     `libksud.so` (never just because `/data/adb/ksud` differs: that is a manager update the user
-    took). On a new `/data` only (no `packages.xml` yet), `susfs autoload enable --kmi
-    android14-6.1`; `ksud`'s own post-fs-data loads susfs from the second boot on (the first had no
+    took). On a new `/data` only (no `packages.xml` yet), `susfs autoload enable --kmi <the
+    running kernel's KMI>` (android14-6.1, android16-6.12 on the Pixel 11s); `ksud`'s own post-fs-data loads susfs from the second boot on (the first had no
     `ksud` yet to do it), honouring the user's switch and KernelSU safe mode;
   - at boot_completed, on a new `/data` only, `ksud module install` of the provider zip, unless a
     Zygisk is already there (one the user installed, a NeoZygisk they updated, or one turned off)
@@ -131,7 +133,8 @@ symbols as `ksud`'s own module.
   first and written last, so make never sees it without its files.
 - **Two make passes** (`tools/ksu-images.sh [top]`, which `../tools/eos-images.sh` runs; the lunch
   target is `EOS_LUNCH` in `../devices/<device>.conf`): lunch, `build_kernel`, `ksu-module.sh`,
-  pass 1 with a stock init_boot (only `bootimage initbootimage vendorkernelbootimage`, the images
+  pass 1 with a stock init_boot (only `bootimage initbootimage vendorkernelbootimage`, and on a
+  Pixel 11 its factory `vendor_kernel_boot.img` by path, as it's a radio file there: the images
   `cheetah-ksu.sh` reads:
   pass 2's init_boot changes the board config, so it builds and packages everything anyway), then
   `tools/cheetah-ksu.sh` checks `boot.img`'s kernel is the phone's KMI (`ksu.conf`'s, or one
