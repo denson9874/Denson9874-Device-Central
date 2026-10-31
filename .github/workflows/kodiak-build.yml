@@ -50,12 +50,19 @@
 # lines that may hold a secret hidden, plus what the build speed changes rely on (Evolution
 # X's build_kernel, ccache's settings, the shell startup files' ccache lines, the crontab).
 #
-# server-cleanup-list (read-only) and server-cleanup free disk for that tree:
+# server-usage is read-only too: where the disk goes in more detail than expressiveos-host
+# (expressiveos-cheetah/tools/server-usage.sh): each tree's source and build output per
+# product, the release folders, firmware, caches, logs and big files outside the trees.
+#
+# server-cleanup-list (read-only) and server-cleanup free disk on the server:
 # expressiveos-cheetah/tools/server-cleanup.sh lists or removes the seven groups
-# of files it names (local copies of released and test builds, unpacked factory
-# zips, the emulator's output), by exact path; the image zips the pack scripts
-# read stay. server-cleanup removes only the groups in query, which Daryl approves,
-# and only while the tree lock is free (it holds it while it removes).
+# of files it names (its second round, 2026-10-31: scratch and an old cache, build
+# output no build uses any more or that Daryl lets go, an untested candidate, a
+# reference download), by exact path; the image zips the pack scripts read, the
+# product output the next builds start from and the candidates in use stay.
+# server-cleanup removes only the groups in query, which Daryl approves, and only
+# while the tree lock is free (it holds it while it removes); build output only
+# while nothing builds.
 #
 # The other expressiveos-* actions run the ExpressiveOS cheetah build in its own tree,
 # ~/expressiveos (expressiveos-cheetah/README.md), with tree_ref's kit installed as
@@ -178,7 +185,8 @@ on:
           product's next build redoes the framework steps (see query).
           routine-scripts: read-only: how the server's routine scripts differ
           from this ref's (query: names of scripts in ~ to print whole).
-          server-cleanup-list: read-only: what
+          server-usage: read-only: where the disk goes, per tree, product,
+          release folder, cache and big file. server-cleanup-list: read-only: what
           server-cleanup.sh's groups hold now. server-cleanup: permanently remove
           the groups in query. expressiveos-status: read-only: the ExpressiveOS
           sessions, logs, keys and every phone's build. expressiveos-setup: install tree_ref's
@@ -223,6 +231,7 @@ on:
           - build-speed
           - build-explain
           - routine-scripts
+          - server-usage
           - server-cleanup-list
           - server-cleanup
           - expressiveos-status
@@ -317,7 +326,7 @@ jobs:
           # expressiveos-update (the same, and pushes to GitHub)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-usage|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -330,7 +339,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins|expressiveos-devices)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-usage|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins|expressiveos-devices)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -951,6 +960,19 @@ jobs:
         run: |
           read -r -a q <<< "$QUERY"
           bash tools/build_speed/build-explain.sh "${q[@]}"
+
+      # Read-only, so it runs beside a build too (du at low priority)
+      - name: Check out the server usage script
+        if: inputs.action == 'server-usage'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: expressiveos-cheetah/tools
+          fetch-depth: 1
+
+      - name: Server usage
+        if: inputs.action == 'server-usage'
+        run: bash expressiveos-cheetah/tools/server-usage.sh
 
       # The script removes only while it holds the tree lock (no routine or build
       # starts meanwhile), and skips the emulator's build output while a build runs.
