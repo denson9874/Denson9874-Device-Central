@@ -54,12 +54,15 @@
 # (expressiveos-cheetah/tools/server-usage.sh): each tree's source and build output per
 # product, the release folders, firmware, caches, logs and big files outside the trees.
 #
-# server-cleanup-list (read-only) and server-cleanup free disk for that tree:
+# server-cleanup-list (read-only) and server-cleanup free disk on the server:
 # expressiveos-cheetah/tools/server-cleanup.sh lists or removes the seven groups
-# of files it names (local copies of released and test builds, unpacked factory
-# zips, the emulator's output), by exact path; the image zips the pack scripts
-# read stay. server-cleanup removes only the groups in query, which Daryl approves,
-# and only while the tree lock is free (it holds it while it removes).
+# of files it names (its second round, 2026-10-31: scratch and an old cache, build
+# output no build uses any more or that Daryl lets go, an untested candidate, a
+# reference download), by exact path; the image zips the pack scripts read, the
+# product output the next builds start from and the candidates in use stay.
+# server-cleanup removes only the groups in query, which Daryl approves, and only
+# while the tree lock is free (it holds it while it removes); build output only
+# while nothing builds.
 #
 # The other expressiveos-* actions run the ExpressiveOS cheetah build in its own tree,
 # ~/expressiveos (expressiveos-cheetah/README.md), with tree_ref's kit installed as
