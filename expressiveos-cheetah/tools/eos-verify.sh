@@ -26,7 +26,9 @@
 #      init_boot kept for users who want no root (no kernelsu.ko, signed with the tree's
 #      key); EOS_KSU=none: out/'s init_boot is that stock one;
 #   6. ViPER4Android (v4a-check.sh out; with EOS_V4A=0, none of its files shipped), the
-#      boot animation (bootanim.conf's zip, no other styles), the wallpaper
+#      boot animation (bootanim.conf's zips, the everyday one and the holiday one with its
+#      /metadata hint rc, a BootAnimation that reads the hint and its SELinux label, and no
+#      other styles), the wallpaper
 #      (wallpapers.conf's default on ro.config.wallpaper, the theme from the wallpaper) and
 #      Expressive Launcher (launcher-check.sh out: the pinned APK and its overlays, no
 #      Pixel Launcher and no other Home app);
@@ -349,9 +351,28 @@ fi
 source "$kit/bootanimation/bootanim.conf"
 ba=$O/product/media/bootanimation.zip
 [[ -f $ba && "$(sha256sum -- "$ba" | cut -d' ' -f1)" = "$BOOTANIM_ZIP_SHA256" ]] || fail "$ba isn't bootanim.conf's boot animation"
-extra=$(find "$O/product/media" -maxdepth 1 -name 'bootanimation_*.zip' -printf '%f ')
+# The holiday zip and the init rc that copies its name and colours to /metadata ship together:
+# bootanim starts before /data, so without the rc no boot picks the zip, and the rc alone names
+# a zip that isn't there (bootanimation/README.md, "Holiday boot animations")
+hz=$O/product/media/bootanimation_holiday.zip hint=$O/product/etc/init/expressiveos-bootanim-hint.rc
+[[ -f $hz || -f $hint ]] || fail "no holiday boot animation ($hz) or its /metadata hint ($hint): bootanimation.mk isn't the kit's"
+[[ -f $hint ]] || fail "$hz shipped without its /metadata hint ($hint): no boot would pick it"
+[[ -f $hz ]] || fail "$hint shipped without the holiday boot animation it names ($hz)"
+[[ "$(sha256sum -- "$hz" | cut -d' ' -f1)" = "$BOOTANIM_HOLIDAY_ZIP_SHA256" ]] || fail "$hz isn't bootanim.conf's holiday boot animation"
+cmp -s -- "$hint" "$kit/bootanimation/expressiveos-bootanim-hint.rc" || fail "$hint isn't the kit's bootanimation/expressiveos-bootanim-hint.rc"
+# The hint only works while BootAnimation reads it (frameworks/base; BootAnimation.cpp is built
+# into libbootanimation_preapex.so) and device/lineage/sepolicy labels it for bootanim. A rebase
+# that drops either change leaves every holiday boot playing the everyday animation, and nothing
+# else would say so
+grep -qaF /metadata/bootanim -- "$O"/system/bin/bootanimation "$O"/system/lib64/libbootanimation*.so 2>/dev/null \
+    || fail "$O/system/lib64/libbootanimation_preapex.so doesn't read /metadata/bootanim (frameworks/base's cmds/bootanimation): holiday boots would play the everyday animation"
+grep -qF u:object_r:bootanim_metadata_file:s0 "$O/system_ext/etc/selinux/system_ext_file_contexts" 2>/dev/null \
+    || fail "$O/system_ext/etc/selinux/system_ext_file_contexts doesn't label /metadata/bootanim bootanim_metadata_file (device/lineage/sepolicy): bootanim can't read the hint, so holiday boots would play the everyday animation"
+grep -qF '(allow bootanim bootanim_metadata_file (file ' "$O/system_ext/etc/selinux/system_ext_sepolicy.cil" 2>/dev/null \
+    || fail "$O/system_ext/etc/selinux/system_ext_sepolicy.cil doesn't let bootanim read bootanim_metadata_file (device/lineage/sepolicy's bootanim.te): holiday boots would play the everyday animation"
+extra=$(find "$O/product/media" -maxdepth 1 -name 'bootanimation_*.zip' ! -name bootanimation_holiday.zip -printf '%f ')
 [[ -z "$extra" ]] || fail "Evolution X's other boot animation styles shipped: $extra(TARGET_INCLUDE_BOOT_ANIMATIONS)"
-echo "OK: ExpressiveOS's boot animation, no other styles"
+echo "OK: ExpressiveOS's boot animation and its holiday copy, with the /metadata hint that BootAnimation reads; no other styles"
 # shellcheck source=../wallpapers/wallpapers.conf
 source "$kit/wallpapers/wallpapers.conf"
 wpd=$O$WALLPAPER_DEFAULT_PATH dvar="WALLPAPER_${WALLPAPER_DEFAULT#expressiveos_}"; dvar="${dvar^^}_SHA256"
