@@ -5,7 +5,8 @@
 # expressiveos-devices action runs it (.github/workflows/kodiak-build.yml).
 #
 # It changes nothing: no repo or git command that writes (GIT_OPTIONAL_LOCKS=0), no build,
-# scratch files only under a mktemp folder it removes. It prints names, sizes, commit SHAs,
+# scratch files only under a mktemp folder it removes (query gki's trial also unpacks about 12G
+# in a scratch folder in ~ it removes, only with 80G free: devices-gki.sh). It prints names, sizes, commit SHAs,
 # version strings, build-file lines (makefile variables, board names) and counts, never the
 # contents of a proprietary file. It may run beside a build; du runs at low priority.
 set -uo pipefail
@@ -39,6 +40,18 @@ koinfo() { python3 -I "$kit/ksu/tools/ko-info.py" "$@"; }
 if [[ ${1:-} = more ]]; then
     # shellcheck source=devices-more.sh
     source "$(dirname -- "$(readlink -f -- "$0")")/devices-more.sh"
+    exit 0
+fi
+# Query "gki": what a kernelsu.ko for the Pixel 11s' stock android16-6.12 kernel needs (devices-gki.sh)
+if [[ ${1:-} = gki ]]; then
+    # shellcheck source=devices-gki.sh
+    source "$(dirname -- "$(readlink -f -- "$0")")/devices-gki.sh"
+    exit 0
+fi
+# Query "ramdisk": out/'s, target-files' and the OTA payload's init_boot ramdisks side by side (devices-ramdisk.sh)
+if [[ ${1:-} = ramdisk ]]; then
+    # shellcheck source=devices-ramdisk.sh
+    source "$(dirname -- "$(readlink -f -- "$0")")/devices-ramdisk.sh"
     exit 0
 fi
 

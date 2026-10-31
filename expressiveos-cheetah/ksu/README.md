@@ -11,26 +11,42 @@ keys, names and OTA feed are the kit's own. **None of it applies to the Evolutio
 
 The same kit roots every phone with `EOS_KSU=lkm` in its `../devices/<device>.conf` (`EOS_DEVICE`,
 cheetah unless set): cheetah and husky (Pixel 8 Pro), which share the gs-6.1 kernel source, the GKI
-`boot.img` and its `struct module`, so one `ksu.conf`, `ksud` and `kernelsu.ko` build. What differs
-comes from the device file: the product folder (`EOS_PRODUCT_OUT`), the KMI (`EOS_KMI`, which must be
-`ksu.conf`'s `kmi`), and where a build's records go (`out/eos` and `out/ksu` for cheetah, as always;
-`out/eos-<device>` and `out/ksu-<device>` for the others). A phone's KernelSU Next device tree
-patches are `../devices/<device>/ksu-patches/<project>/` (husky's `device_google_shusky` 0101-0102,
-whose init_boot variable is `EOS_KSU_INIT_BOOT`); cheetah's stay in `patches/device_google_pantah/`
-with `CHEETAH_KSU_INIT_BOOT`. `tools/cheetah-ksu.sh` keeps its name for all of them.
-`tree/ksu-firstboot.sh` ships unchanged on every one and turns susfs auto-load on for the KMI it
-names (android14-6.1): `apply-ksu.sh` refuses a phone whose `EOS_KMI` differs.
+`boot.img` and its `struct module`, so one `kernelsu.ko` build, and the Pixel 11s (kodiak, grizzly,
+cubs, yogi; below). Every phone shares `ksu.conf`'s `ksud`, manager, source and Zygisk provider. What
+differs comes from the device file: the product folder (`EOS_PRODUCT_OUT`), the kernel
+(`EOS_KERNEL`) and its KMI (`EOS_KMI`), and where a build's records go (`out/eos` and `out/ksu` for
+cheetah, as always; `out/eos-<device>` and `out/ksu-<device>` for the others). A phone's KernelSU
+Next device tree patches are `../devices/<device>/ksu-patches/<project>/` (husky's
+`device_google_shusky` 0101-0102, each Pixel 11's `device_google_<device>` 0101-0102, whose init_boot
+variable is `EOS_KSU_INIT_BOOT`); cheetah's stay in `patches/device_google_pantah/` with
+`CHEETAH_KSU_INIT_BOOT`. The Pixel 11 trees are ExpressiveOS's own repos, so their two are
+commits on each fork's `expressiveos` branch, at the commit the manifest pins, which `apply-ksu.sh`
+only checks for (by subject): a kit patch is never applied to an own repo. `tools/cheetah-ksu.sh` keeps its name for all of them.
+`tree/ksu-firstboot.sh` ships unchanged on every one and turns susfs auto-load on for the running
+kernel's KMI when it's one of those it names (`KMIS`: android14-6.1, android16-6.12): `apply-ksu.sh`
+refuses a phone whose `EOS_KMI` isn't one.
 
-The Pixel 11s (kodiak, grizzly, cubs, yogi: `EOS_KSU=none`, `EOS_KERNEL=prebuilt`, Google's
-android16-6.12 GKI) get no KernelSU Next yet. `../tools/eos-images.sh` skips `fetch-ksu.sh` and
-`apply-ksu.sh` (run anyway, it ends `APPLY_KSU_OK skipped for this device`); `tools/ksu-images.sh`
-runs lunch and one `m evolution`, builds no kernel or module (its `kernel-manifest.xml` only says
-the kernel is the tree's prebuilt boot image) and checks the shipped init_boot is stock;
-`cheetah-ksu.sh`, `ksu-module.sh` and `ksu-check.sh manager` refuse to run.
+**The Pixel 11s** (`EOS_KERNEL=prebuilt`: Google's android16-6.12 GKI as the factory image has it,
+with no kernel source in the tree; asked by Daryl, 2026-10-30). Their `kernelsu.ko` is built against
+the DDK KernelSU Next's own CI builds its modules in, pinned by digest in `ddk.conf`:
+`tools/ksu-ddk.sh` fetches the image without docker into `~/android-dt/ddk/<kmi>` (about 7 GB, once
+per pin) and builds there, without a BTF section (the DDK's `vmlinux` isn't the phone's). The DDK is
+a later android16-6.12 than the phone's (6.12.76 against 6.12.69), which the kernel doesn't compare
+for a module with symbol versions (Google's own vendor modules come from other GKI builds too), and
+its config isn't Google's build's to the option, so `cheetah-ksu.sh` checks the module differently
+from cheetah's: the vermagic flags and `struct module` of the phone's first-stage modules, and the
+module `ksud` itself carries for the KMI (the one KernelSU Next ships to every phone on it):
+the same `struct module`, vermagic and kernel symbols (`tools/ko-info.py like`); the config
+differences are printed as notes. Each Pixel 11 tree asks the build system to make init_boot
+(`PRODUCT_BUILD_INIT_BOOT_IMAGE`), which wins over a prebuilt one, so its 0102 does that only while
+`EOS_KSU_INIT_BOOT` is unset. Trial build on the server, 2026-10-30: KernelSU Next 33355, the
+kodiak kernel's 1,600-byte `struct module` (as its 198 first-stage modules), the same 227 kernel
+symbols as `ksud`'s own module.
 
 ## How it works
 
-- **LKM over Google's kernel.** The kernel stays Google's signed GKI (android14-6.1). Our own
+- **LKM over Google's kernel.** The kernel stays Google's signed GKI (android14-6.1, android16-6.12 on
+  the Pixel 11s). Our own
   `kernelsu.ko` and `ksuinit` go into `init_boot`'s ramdisk, as the manager's own "patch a file"
   does. susfs is KernelSU Next's `susfs_guard_lkm.ko`, which `ksud` loads at boot when SUSFS
   auto-load is on. **It is on from a new phone's first boot** (Daryl, 2026-10-27; first-boot setup,
@@ -55,8 +71,8 @@ the kernel is the tree's prebuilt boot image) and checks the shipped init_boot i
   `ksu` domain those lines use, so only `ksud` writes `ksud`'s state:
   - at post-fs-data, `ksud install` when `/data/adb/ksud` is missing or an OTA changed the ROM's
     `libksud.so` (never just because `/data/adb/ksud` differs: that is a manager update the user
-    took). On a new `/data` only (no `packages.xml` yet), `susfs autoload enable --kmi
-    android14-6.1`; `ksud`'s own post-fs-data loads susfs from the second boot on (the first had no
+    took). On a new `/data` only (no `packages.xml` yet), `susfs autoload enable --kmi <the
+    running kernel's KMI>` (android14-6.1, android16-6.12 on the Pixel 11s); `ksud`'s own post-fs-data loads susfs from the second boot on (the first had no
     `ksud` yet to do it), honouring the user's switch and KernelSU safe mode;
   - at boot_completed, on a new `/data` only, `ksud module install` of the provider zip, unless a
     Zygisk is already there (one the user installed, a NeoZygisk they updated, or one turned off)
@@ -81,7 +97,8 @@ the kernel is the tree's prebuilt boot image) and checks the shipped init_boot i
   `kernel-patches/0001` adds a fallback: when the `/data/app` search finds nobody, the kernel checks
   `/product/app/KernelSUNext/KernelSUNext.apk` and crowns it only if its signature passes the same
   `is_manager_apk()` check and `com.rifsxd.ksunext` is in `packages.list`. The script builds the
-  module from the pinned source against the GKI source `build_kernel` synced
+  module (on cheetah and husky; the Pixel 11s build it with the DDK, above) from the pinned source
+  against the GKI source `build_kernel` synced
   (`out-kernel/google/gs-6.1/common/gki`, the tag Google's prebuilt GKI comes from) with that tree's
   own clang (`CLANG_VERSION` in `build.config.constants`) and pahole
   (`prebuilts/kernel-build-tools/linux-x86/bin/pahole`, v1.23 like Google's): `gki_defconfig`,
@@ -116,12 +133,13 @@ the kernel is the tree's prebuilt boot image) and checks the shipped init_boot i
   first and written last, so make never sees it without its files.
 - **Two make passes** (`tools/ksu-images.sh [top]`, which `../tools/eos-images.sh` runs; the lunch
   target is `EOS_LUNCH` in `../devices/<device>.conf`): lunch, `build_kernel`, `ksu-module.sh`,
-  pass 1 with a stock init_boot (only `bootimage initbootimage vendorkernelbootimage`, the images
+  pass 1 with a stock init_boot (only `bootimage initbootimage vendorkernelbootimage`, and on a
+  Pixel 11 its factory `vendor_kernel_boot.img` by path, as it's a radio file there: the images
   `cheetah-ksu.sh` reads:
   pass 2's init_boot changes the board config, so it builds and packages everything anyway), then
-  `tools/cheetah-ksu.sh` checks `boot.img`'s kernel is the KMI in `ksu.conf` and our
-  module's sublevel, patches that init_boot with
-  `ksud boot-patch --kmi android14-6.1 -m out/ksu/kernelsu.ko` into
+  `tools/cheetah-ksu.sh` checks `boot.img`'s kernel is the phone's KMI (`ksu.conf`'s, or one
+  `ddk.conf` has) and our module against it, patches that init_boot with
+  `ksud boot-patch --kmi <EOS_KMI> -m out/ksu/kernelsu.ko` into
   `out/ksu/init_boot-ksu.img` (the unpatched one stays as `out/ksu/init_boot-stock.img`) and checks
   the patched ramdisk (ksuinit as `init`, this build's `init` as `init.real`, our `kernelsu.ko`); pass 2
   runs with `CHEETAH_KSU_INIT_BOOT`. Both passes share `BUILD_DATETIME` and `BUILD_NUMBER`, and

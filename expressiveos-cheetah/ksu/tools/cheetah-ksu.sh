@@ -8,9 +8,11 @@
 # ksu-images.sh then builds again with
 # CHEETAH_KSU_INIT_BOOT=out/ksu/init_boot-ksu.img (patches/device_google_pantah/0102; another
 # phone's EOS_KSU_INIT_BOOT=out/ksu-<device>/init_boot-ksu.img, its ksu-patches' 0102),
-# so the images and the OTA ship it. The KMI is the phone's (EOS_KMI), which must be
-# ksu.conf's: ksud and kernelsu.ko are pinned for that one. The last line is KSU_EXIT=0 or
-# KSU_EXIT=1.
+# so the images and the OTA ship it. The KMI is the phone's (EOS_KMI): with the kernel built
+# from source (EOS_KERNEL=gs-6.1) it must be ksu.conf's, which kernelsu.ko is pinned for; with
+# Google's prebuilt GKI (EOS_KERNEL=prebuilt, the Pixel 11s) ddk.conf must have a DDK for it, and
+# kernelsu.ko must be built as the module ksud itself carries for that KMI. The last line is
+# KSU_EXIT=0 or KSU_EXIT=1.
 #
 #   cheetah-ksu.sh [top]   # default ~/expressiveos; writes EOS_KSU_OUT's init_boot-{ksu,stock}.img
 #                          # (out/ksu/ for cheetah, out/ksu-<device>/ for another phone)
@@ -41,12 +43,17 @@ in_top "$top/$K"
 unpack() { if [[ -x $H/unpack_bootimg ]]; then "$H/unpack_bootimg" "$@"; else python3 -I system/tools/mkbootimg/unpack_bootimg.py "$@"; fi; }
 get() { sed -n "s/^$1=//p" "$here/ksu.conf" | head -1; }
 version=$(get version); kmi=$EOS_KMI
-[[ "$(get kmi)" = "$kmi" ]] || fail "ksu.conf's kmi is $(get kmi), but $EOS_DEVICE's kernel is $kmi (devices/$EOS_DEVICE.conf): KernelSU Next is pinned for one KMI"
+if [[ $EOS_KERNEL = prebuilt ]]; then
+    grep -q "^${kmi}_digest=" "$here/ddk.conf" || fail "ksu/ddk.conf has no DDK for $EOS_DEVICE's kernel, $kmi (devices/$EOS_DEVICE.conf)"
+else
+    [[ "$(get kmi)" = "$kmi" ]] || fail "ksu.conf's kmi is $(get kmi), but $EOS_DEVICE's kernel is $kmi (devices/$EOS_DEVICE.conf): its kernelsu.ko is built for that one"
+fi
 ksud=$HOME/android-dt/ksu/$version/ksud
 [[ -x "$ksud" ]] || fail "no $ksud (run $here/fetch-ksu.sh)"
 [[ "$(sha256sum -- "$ksud" | cut -d' ' -f1)" = "$(get ksud_sha256)" ]] || fail "$ksud isn't ksu.conf's ksud_sha256 (run fetch-ksu.sh)"
 ko=$K/kernelsu.ko
-[[ -s $ko ]] || fail "no $ko (run $here/tools/ksu-module.sh)"
+# ksu-module.sh writes kernelsu.ko.info only once every check of the module has passed
+[[ -s $ko && -s $ko.info ]] || fail "no $ko, or no $ko.info: ksu-module.sh didn't finish (run $here/tools/ksu-module.sh)"
 [[ -f $O/init_boot.img && -f $O/boot.img ]] || fail "no init_boot.img or boot.img in $O"
 T=$(mktemp -d "${TMPDIR:-/tmp}/cheetah-ksu.XXXXXX")
 ramdisk() {   # ramdisk <boot image> <dir>: unpack init, init.real and kernelsu.ko from its ramdisk into <dir>
@@ -63,17 +70,22 @@ ramdisk() {   # ramdisk <boot image> <dir>: unpack init, init.real and kernelsu.
 # kernelsu.ko only loads into the KMI it was built for: check boot.img's kernel
 unpack --boot_img "$O/boot.img" --out "$T/boot" >/dev/null || fail "can't unpack $O/boot.img"
 k=$T/boot/kernel
-[[ "$(head -c4 "$k" | od -An -tx1 | tr -d ' ')" != 02214c18 ]] || { lz4 -dc "$k" > "$T/Image"; k=$T/Image; }
+case $(head -c4 "$k" | od -An -tx1 | tr -d ' ') in
+    02214c18) lz4 -dc "$k" > "$T/Image"; k=$T/Image ;;
+    1f8b*) gzip -dc "$k" > "$T/Image"; k=$T/Image ;;
+esac
 # awk, not grep -m1: an early exit would kill strings with SIGPIPE under pipefail
 uname=$(strings "$k" | awk '/^Linux version / && !f { print; f = 1 }')
 [[ -n "$uname" ]] || fail "no Linux version string in boot.img's kernel"
 grep -Eq "^Linux version ${kmi#*-}\.[0-9]+-${kmi%%-*}-" <<<"$uname" || fail "boot.img is '$uname', not $kmi"
 echo "OK: boot.img kernel is $kmi (${uname:14:60})"
-# ...and our module must be built from the same sublevel, e.g. 6.1.145
-sub=$(grep -Eo "^Linux version ${kmi#*-}\.[0-9]+" <<<"$uname"); sub=${sub#Linux version }
 vermagic=$(strings "$ko" | sed -n 's/^vermagic=//p')
-[[ "$vermagic" == "$sub"[-\ ]* ]] || fail "$ko is built for '$vermagic', boot.img's kernel is $sub (build_kernel synced another GKI?)"
-echo "OK: $ko matches ($vermagic)"
+if [[ $EOS_KERNEL != prebuilt ]]; then
+    # ...and our module must be built from the same sublevel, e.g. 6.1.145
+    sub=$(grep -Eo "^Linux version ${kmi#*-}\.[0-9]+" <<<"$uname"); sub=${sub#Linux version }
+    [[ "$vermagic" == "$sub"[-\ ]* ]] || fail "$ko is built for '$vermagic', boot.img's kernel is $sub (build_kernel synced another GKI?)"
+    echo "OK: $ko matches ($vermagic)"
+fi
 # ...and for its struct module, with its config. kernelsu.ko has no symbol versions, so 6.1
 # loads one built for another struct module and crashes reading past it: the first build
 # did, its module built without pahole (2026-10-26). The first-stage modules in this build
@@ -96,9 +108,33 @@ fi
 r=$(python3 -I "$here/tools/ko-info.py" same-struct "$ko" "$mods") \
     || fail "$ko doesn't fit this kernel's struct module (tools/ksu-module.sh)"
 echo "OK: $ko is built for the kernel's struct module (${r% *} bytes, as its ${r#* } first-stage modules)"
-python3 -I "$here/tools/ko-info.py" config-diff "$k" "$K/kbuild/.config" > "$T/config.diff" \
-    || { cat "$T/config.diff" >&2; fail "$K/kbuild/.config isn't boot.img's kernel config (tools/ksu-module.sh)"; }
-echo "OK: $ko was built with boot.img's kernel config"
+if [[ $EOS_KERNEL = prebuilt ]]; then
+    # Built in the DDK, from its own GKI source: the sublevel and build in the release differ
+    # from the phone's (6.12.76-4k against 6.12.69-android16-6-g...-4k), which the kernel
+    # doesn't compare for a module with symbol versions (as Google's own vendor modules, built
+    # from other GKI builds, load), and ksuinit replaces anyway. The rest must be the kernel's
+    km=$(find "$mods" -name '*.ko' -print -quit)
+    stock=$(strings "$km" | sed -n 's/^vermagic=//p')
+    [[ $vermagic == "${kmi#*-}".* && "${vermagic#* }" = "${stock#* }" ]] \
+        || fail "$ko is built for '$vermagic', this kernel's modules for '$stock'"
+    echo "OK: $ko matches ($vermagic; this kernel's ${km##*/}: $stock)"
+    # The DDK's config isn't Google's build's to the option (a later source, a config Google
+    # changed since): built as the module ksud carries for this KMI, which KernelSU Next ships
+    # to every phone on it, ours loads where that one does
+    python3 -I "$here/tools/ko-info.py" embedded "$ksud" kernelsu "${kmi#*-}." "$T/ksud.ko" > /dev/null \
+        || fail "$ksud carries no arm64 kernelsu.ko for $kmi"
+    r=$(python3 -I "$here/tools/ko-info.py" like "$ko" "$T/ksud.ko") \
+        || fail "$ko isn't built as ksud's own kernelsu.ko for $kmi (tools/ksu-module.sh, ddk.conf)"
+    echo "OK: $ko is built as ksud's own module for $kmi (struct module ${r% *} bytes, vermagic, ${r#* } kernel symbols)"
+    if ! python3 -I "$here/tools/ko-info.py" config-diff "$k" "$K/kbuild/.config" > "$T/config.diff" 2>&1; then
+        echo "NOTE: the DDK's config and boot.img's kernel differ in $(wc -l < "$T/config.diff") options (as for ksud's own module):"
+        sed 's/^/NOTE:   /' "$T/config.diff"
+    fi
+else
+    python3 -I "$here/tools/ko-info.py" config-diff "$k" "$K/kbuild/.config" > "$T/config.diff" \
+        || { cat "$T/config.diff" >&2; fail "$K/kbuild/.config isn't boot.img's kernel config (tools/ksu-module.sh)"; }
+    echo "OK: $ko was built with boot.img's kernel config"
+fi
 
 # The input must be this build's own init_boot, never one a previous run patched
 ramdisk "$O/init_boot.img" "$T/stock"

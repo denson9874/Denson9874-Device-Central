@@ -1,0 +1,69 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Fri, 30 Oct 2026 12:00:00 +0000
+Subject: [PATCH 101/102] kodiak: preinstall the KernelSU Next manager with its
+ native libs
+
+ExpressiveOS ships KernelSU Next in init_boot; the manager is where the
+user grants root, installs modules and turns on susfs. The module lives in
+vendor/extra/ksu: Android.mk files aren't allowed under device/google/,
+and Soong's android_app_import can't install an app's JNI libs. That
+module installs the APK untouched (the kernel only trusts its upstream v2
+signature) and its arm64 libs in /product/app/KernelSUNext/lib/arm64,
+because Android never unpacks native libs for a system app it hasn't
+updated. config.fs makes libksud.so executable: the manager runs it as a
+program. Same as cheetah's and husky's.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Csz3tZY7m4dy7t6hausAkK
+---
+ BoardConfig.mk | 3 +++
+ device.mk      | 7 +++++++
+ ksu/config.fs  | 9 +++++++++
+ 3 files changed, 19 insertions(+)
+ create mode 100644 ksu/config.fs
+
+diff --git a/BoardConfig.mk b/BoardConfig.mk
+index ecec477..30f8aa9 100644
+--- a/BoardConfig.mk
++++ b/BoardConfig.mk
+@@ -241,3 +241,6 @@ include $(IMAGES_PATH)/BoardConfigImages.mk
+ # priv-apps lose their AOT code after every update and run interpreted/JIT
+ # until background dexopt catches up (~180 MB, well inside super).
+ BOARD_USES_SYSTEM_OTHER_ODEX :=
++
++# KernelSU Next manager (ExpressiveOS only): libksud.so is a program
++TARGET_FS_CONFIG_GEN += device/google/kodiak/ksu/config.fs
+diff --git a/device.mk b/device.mk
+index 32066db..725870e 100644
+--- a/device.mk
++++ b/device.mk
+@@ -156,3 +156,10 @@ $(call inherit-product, vendor/google/kodiak/kodiak-vendor.mk)
+ # Face unlock enrollment app's user types, from stock preinstalled-packages-tuscany.xml
+ PRODUCT_COPY_FILES += \
+     device/google/kodiak/configs/sysconfig/preinstalled-packages-faceenroll.xml:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/sysconfig/preinstalled-packages-faceenroll.xml
++
++# KernelSU Next manager, byte for byte as upstream signed it, with its arm64 libs
++# (vendor/extra/ksu, which ExpressiveOS's expressiveos-cheetah/ksu/apply-ksu.sh
++# stages). A normal, unprivileged app: no app gets root until the user grants it
++# there.
++PRODUCT_PACKAGES += \
++    KernelSUNext
+diff --git a/ksu/config.fs b/ksu/config.fs
+new file mode 100644
+index 0000000..b0d8183
+--- /dev/null
++++ b/ksu/config.fs
+@@ -0,0 +1,9 @@
++# KernelSU Next manager (ExpressiveOS). Android never unpacks native libs for a
++# system app it hasn't updated, so the build installs the manager's libs in its
++# nativeLibraryDir, and the manager runs libksud.so from there as a program.
++# Files on /product are 0644 unless listed here.
++[product/app/KernelSUNext/lib/arm64/libksud.so]
++mode: 0755
++user: AID_ROOT
++group: AID_ROOT
++caps: 0
+-- 
+2.43.0
+

@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# ExpressiveOS (cheetah): KernelSU Next's setup on a new phone, so root, susfs and Zygisk work
+# ExpressiveOS: KernelSU Next's setup on a new phone, so root, susfs and Zygisk work
 # without opening the manager first (Daryl, 2026-10-27: susfs auto-load on, a Zygisk provider
 # preinstalled). Installed as /product/etc/eos/ksu-firstboot.sh (0644); eos-ksu-firstboot.rc
 # runs it with /system/bin/sh, as root, in the ksu domain.
@@ -25,7 +25,9 @@ KSUD=/product/app/KernelSUNext/lib/arm64/libksud.so
 LIBADBROOT=/product/app/KernelSUNext/lib/arm64/libadbroot.so
 ZIP=/product/etc/eos/zygisk-provider.zip
 ZYGISK_CODE=289              # the zip's versionCode (ksu.conf's zygisk_version_code; apply-ksu.sh checks)
-KMI=android14-6.1
+KMIS="android14-6.1 android16-6.12"   # those ExpressiveOS ships KernelSU Next for (apply-ksu.sh checks)
+# The running kernel's KMI, as ksud names it: 6.12.69-android16-6-g...-4k is android16-6.12
+r=$(uname -r); v=${r%%-*}; a=${r#*-}; KMI=${a%%-*}-${v%.*}
 S=/data/adb/eos              # this script's state, outside ksud's own folders
 
 [ -x "$KSUD" ] || exit 0
@@ -71,9 +73,15 @@ post-fs-data)
         if "$KSUD" install --libadbroot "$LIBADBROOT"; then echo "$rom" > "$S/ksud.sha256"; log ksud installed
         else log ksud "install failed"; fi
     fi
-    if [ -e "$S/pending" ] && ! over susfs && try susfs; then
-        if "$KSUD" susfs autoload enable --kmi "$KMI"; then : > "$S/susfs.done"; log susfs "auto-load on"
-        else log susfs "autoload enable failed (try $(tries susfs) of 3)"; fi
+    if [ -e "$S/pending" ] && ! over susfs; then
+        case " $KMIS " in
+        *" $KMI "*)
+            if try susfs; then
+                if "$KSUD" susfs autoload enable --kmi "$KMI"; then : > "$S/susfs.done"; log susfs "auto-load on ($KMI)"
+                else log susfs "autoload enable failed for $KMI (try $(tries susfs) of 3)"; fi
+            fi ;;
+        *) : > "$S/susfs.done"; log susfs "kernel $r isn't on a KMI this build has susfs for ($KMIS): left off" ;;
+        esac
     fi
     ;;
 boot-completed)
