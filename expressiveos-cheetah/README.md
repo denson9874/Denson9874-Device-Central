@@ -42,7 +42,7 @@ holding the lock the Evolution X routines take (`~/.evolution-tree.lock`). The o
 | `tools/eos-target-files.sh` | Checks the target-files zip kept with the build (`eos-verify.sh` runs it) |
 | `tools/eos-pack.sh` | The fastboot zip, the release gate, the SourceForge upload and testers' uploads |
 | `tools/server-cleanup.sh` | Frees disk on the build server (runner actions `server-cleanup-list` and `server-cleanup`) |
-| `lib.sh`, `tools/payload.py`, `tools/payload-sig.py` | Shared guards and helpers; `payload-sig.py` checks a payload's signatures without update_engine's code |
+| `lib.sh`, `tools/payload.py`, `tools/payload-sig.py`, `tools/cpio-same.py` | Shared guards and helpers; `payload-sig.py` checks a payload's signatures without update_engine's code; `cpio-same.py` compares two ramdisks file by file |
 
 Tree patches (`apply.sh`). In a project that's one of ExpressiveOS's own repos (Sources, below) each is a
 commit there already, and `apply.sh` only checks that commit is the patch's change; a new patch for such a

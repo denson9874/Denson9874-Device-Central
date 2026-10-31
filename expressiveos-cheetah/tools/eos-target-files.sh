@@ -12,7 +12,8 @@
 #      misc_info.txt names the tree's own release key (what an incremental is signed with);
 #   2. it holds an image (IMAGES/ or RADIO/) of every partition the package's payload writes;
 #   3. its init_boot carries out/'s KernelSU Next ramdisk (pass 2's), on a phone with
-#      KernelSU Next (EOS_KSU=lkm); on the others a WARNING says when its ramdisk isn't out/'s;
+#      KernelSU Next (EOS_KSU=lkm); on the others a WARNING says when its ramdisk holds other
+#      files than out/'s (its dev nodes' permission bits aside: tools/cpio-same.py);
 #   4. for incrementals: the images of the dynamic partitions (system, vendor, product...:
 #      misc_info.txt's dynamic_partition_list, what an incremental patches block by block)
 #      are the fastboot zip's (out/'s) byte for byte: patches/device_google_gs201/0006 has
@@ -99,6 +100,11 @@ if [[ $EOS_KSU = lkm ]]; then
 # target-files packs again from the same ramdisk files rather than taking it as built
 elif cmp -s -- "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk"; then
     echo "OK: its init_boot carries out/'s ramdisk (no KernelSU Next on $EOS_DEVICE)"
+# The same files, modes and owners, packed again; its dev nodes may get other permission bits
+# (cpio-same.py says why that doesn't matter)
+elif nodes=$(python3 -I "$kit/tools/cpio-same.py" "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk" 2> /dev/null); then
+    echo "OK: its init_boot ramdisk holds out/'s files, packed again (no KernelSU Next on $EOS_DEVICE)"
+    [[ -z $nodes ]] || echo "NOTE: its dev nodes have other permission bits than out/'s: $(awk '{printf "%s%s %s (out/ %s)", (NR > 1 ? ", " : ""), $1, $2, $3}' <<<"$nodes")"
 else
     echo "WARNING: its init_boot ramdisk isn't out/'s: phones updated by OTA would get another init_boot ramdisk than the fastboot zip's (compare the two with unpack_bootimg)"
 fi
