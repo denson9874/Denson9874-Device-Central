@@ -225,7 +225,8 @@ sidecars() { # each checksum file beside $1, once (name.sha256 for a .zip too)
     [[ $1 == *.zip ]] && c+=("${1%.zip}.sha256")
     for f in "${c[@]}"; do [[ -f "$f" && ! -L "$f" ]] && echo "$f"; done; return 0
 }
-size_of() { nice -n 19 ionice -c2 -n7 du -s -B1 --apparent-size -- "$@" 2>/dev/null | awk '{s += $1} END {print s + 0}'; }
+# du's total even if it can't read part of a folder (that stops nothing; the sum is then low)
+size_of() { { nice -n 19 ionice -c2 -n7 du -s -B1 --apparent-size -- "$@" 2>/dev/null || true; } | awk '{s += $1} END {print s + 0}'; }
 human() { numfmt --to=iec --suffix=B "$1"; }
 
 # Nothing on the keep list may be a target, or inside one, or hold one
@@ -245,7 +246,14 @@ done
 if [[ ",$groups," == *,1,* ]] && command -v ccache >/dev/null; then
     ccdir=$(ccache --get-config cache_dir 2>/dev/null || ccache -k cache_dir 2>/dev/null || true)
     [[ -n $ccdir ]] || fail "can't read ccache's cache_dir; not touching ~/.cache/ccache (nothing was removed)"
-    [[ "$(realpath -m -- "$ccdir")" != "$home/.cache/ccache" ]] || fail "ccache's cache_dir is ~/.cache/ccache, in use (nothing was removed)"
+    ccdir=$(realpath -m -- "$ccdir") old=$home/.cache/ccache
+    [[ "$ccdir" != "$old" && "$ccdir" != "$old"/* && "$old" != "$ccdir"/* ]] \
+        || fail "ccache's cache_dir is $ccdir, which is, holds or sits in ~/.cache/ccache (nothing was removed)"
+fi
+# ... and nothing may have written to it this past week (ccache 4 touches an entry on every hit)
+if [[ ",$groups," == *,1,* && -d $home/.cache/ccache ]]; then
+    [[ -z "$(find "$home/.cache/ccache" -xdev -type f -mtime -7 -print -quit 2>/dev/null)" ]] \
+        || fail "$home/.cache/ccache has files changed in the last 7 days, so something still uses it (nothing was removed)"
 fi
 
 build_running() { pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' >/dev/null; }
@@ -305,6 +313,11 @@ for n in "${chosen[@]}"; do
             echo "folder   $(human "$s")  $t"
             if [[ "$mode" = list && $n =~ ^[167]$ ]]; then
                 find "$T" -mindepth 1 -maxdepth 1 -printf '           %y %s %P\n' | sort -k3 | numfmt --invalid=ignore --to=iec --field=2 | head -20 || true
+            fi
+            if [[ "$mode" = list ]]; then
+                # A build's zips (a release, an OTA, images) left in it: is each one uploaded?
+                find "$T" -xdev -maxdepth 4 -type f -name '*.zip' -size +100M -printf '           zip %TY-%Tm-%Td %TH:%TM %s %P\n' 2>/dev/null \
+                    | sort -k5 | numfmt --invalid=ignore --to=iec --field=4 | head -30 || true
             fi
         else
             mapfile -t side < <(sidecars "$T")
