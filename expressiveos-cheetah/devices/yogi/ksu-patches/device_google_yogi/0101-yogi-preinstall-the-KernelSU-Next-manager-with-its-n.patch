@@ -15,6 +15,7 @@ updated. config.fs makes libksud.so executable: the manager runs it as a
 program. Same as cheetah's and husky's.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Csz3tZY7m4dy7t6hausAkK
 ---
  BoardConfig.mk | 3 +++
  device.mk      | 7 +++++++
