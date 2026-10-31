@@ -9,6 +9,8 @@ R2 doesn't charge for downloads, and a file is downloadable as soon as its uploa
 |---|---|
 | `<dev>/17/<EvolutionX zip>` | `evolution-kodiak/tools/p11-ota.sh <dev> --upload` |
 | `derpfest/<dev>/<DerpFest zip>` | `derpfest-husky/tools/derp-ota.sh <dev> --upload` |
+| `expressiveos/<dev>/target-files/<target-files zip>` | `expressiveos-cheetah/tools/eos-pack.sh --upload` |
+| `expressiveos/keybox.xml` | `expressiveos-cheetah/tools/eos-keybox.py upload <keybox.xml>` |
 
 The scripts still upload every release to SourceForge for manual downloads (the XDA and Telegram links). The mirror keeps
 only each device's current and previous build: the scripts delete older ones after publishing the Updater JSON.

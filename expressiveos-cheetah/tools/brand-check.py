@@ -25,10 +25,6 @@ import zipfile
 PATTERNS = ["Evolution X", "EvolutionX", "Evolution-X", "evolution-x.org", "Evo Egg", "The Evolver"]
 # Text kept on purpose. Each entry: (regex over the whole string found, why)
 ALLOW = [
-    (r"https://gitea\.com/Evolution-X/keybox/raw/branch/main/keybox\.xml",
-     "the Evolver's keybox download (works as before; its summary names no one)"),
-    (r"https://git\.evolution-x\.org/EvoX/keybox/raw/branch/main/keybox\.xml",
-     "services.jar AxSpoofManager's keybox fetch, not shown"),
     (r"https://raw\.githubusercontent\.com/Evolution-X/www_gitres/main/devices/images/%s\.webp",
      "Settings' hardware info: the phone's photo"),
     (r"https://raw\.githubusercontent\.com/Evolution-X/vendor_themes/cnb/themes_v2\.json",
@@ -51,6 +47,18 @@ JARS = ["system/framework/framework.jar", "system/framework/services.jar"]
 out = sys.argv[1] if len(sys.argv) == 2 else sys.exit(__doc__)
 bad = 0
 kept = {}
+
+eos_conf = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "eos.conf")
+keybox_url = ""
+with open(eos_conf, encoding="utf-8") as _f:
+    for _line in _f:
+        if _line.startswith("EOS_KEYBOX_URL="):
+            keybox_url = _line.split("=", 1)[1].strip().strip("\"'")
+if not keybox_url.startswith("https://"):
+    sys.exit(f"FAIL: eos.conf EOS_KEYBOX_URL missing or invalid: {keybox_url!r}\nBRAND_CHECK=FAIL")
+keybox_url_bytes = keybox_url.encode("utf-8")
+settings_has_keybox_url = False
+services_has_keybox_url = False
 
 
 def strings_around(data, needle, enc):
@@ -105,7 +113,11 @@ for apk in sorted(apks):
         full = name in REBRANDED
         if e in ("resources.arsc", "AndroidManifest.xml") or (full and (
                 (e.startswith("res/") and e.endswith(".xml")) or re.fullmatch(r"classes\d*\.dex", e))):
-            scan(f"{rel}!{e}", z.read(e))
+            blob = z.read(e)
+            scan(f"{rel}!{e}", blob)
+            if name in ("SettingsGoogle", "Settings") and re.fullmatch(r"classes\d*\.dex", e):
+                if keybox_url_bytes in blob:
+                    settings_has_keybox_url = True
             n += 1
 for jar in JARS:
     p = os.path.join(out, jar)
@@ -116,8 +128,18 @@ for jar in JARS:
     z = zipfile.ZipFile(p)
     for e in z.namelist():
         if re.fullmatch(r"classes\d*\.dex", e):
-            scan(f"{jar}!{e}", z.read(e))
+            blob = z.read(e)
+            scan(f"{jar}!{e}", blob)
+            if jar == "system/framework/services.jar" and keybox_url_bytes in blob:
+                services_has_keybox_url = True
             n += 1
+
+if not services_has_keybox_url:
+    bad += 1
+    print(f"FAIL: system/framework/services.jar does not contain EOS_KEYBOX_URL ({keybox_url})")
+if not settings_has_keybox_url:
+    bad += 1
+    print(f"FAIL: Settings/SettingsGoogle does not contain EOS_KEYBOX_URL ({keybox_url})")
 
 
 def apex_payload(path):

@@ -37,6 +37,7 @@ holding the lock the Evolution X routines take (`~/.evolution-tree.lock`). The o
 | `sources/` | Where ExpressiveOS's own sources came from: `eos-1.0-base/` (the 1.0 builds' sources), `org-fork.sh` (the forks in the ExpressiveOS GitHub organization) and `own-manifest.py` (ExpressiveOS's manifest); `update-check.sh`, `update.sh` and `update.py`, the monthly update (see below), and `tests/`, its tests; `updates/<id>/`, each update's own files |
 | `prepare.sh`, `apply.sh`, `patches/` | Git LFS files, the kit's tree patches (below), the phone's firmware (cheetah's: the newest cached, `update-firmware.sh`) |
 | `tools/eos-keys-check.sh` | The key guard: ExpressiveOS's own keys, never Evolution X's, DerpFest's or the AOSP test keys |
+| `tools/eos-keybox.py` | Checks an attestation `keybox.xml` against Google's live roots and CRL, checks `EOS_KEYBOX_URL`, and uploads to R2 |
 | `tools/eos-images.sh` | The build, start to finish |
 | `tools/eos-verify.sh` | Checks a finished build offline |
 | `tools/eos-target-files.sh` | Checks the target-files zip kept with the build (`eos-verify.sh` runs it) |
