@@ -16,6 +16,8 @@
 #   6  ExpressiveOS's husky candidate in check/ (testers-only, Oct 30)             ~13 GB
 #   7  the reeky LineageOS kodiak reference: ~/android-dt/ref/reeky, ~/android-dt/reeky
 #                                                                                   ~22 GB
+# Done 2026-10-31 17:06 UTC with Daryl's OK: groups 1, 2 and 4 (195 GB, so 3 went with 4;
+# 317 GB free after). 5, 6 and 7 wait on the six-Pixel work and need his OK.
 # Exact paths only, never a pattern, and deleting is permanent, so `delete` runs only the
 # groups Daryl approved, and only while it holds the tree lock the routines and builds take
 # (and ExpressiveOS's lock for groups 5 and 6), so nothing is removed from under a routine,
