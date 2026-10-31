@@ -6,15 +6,24 @@
 #    NoClassDefFoundError, NoSuchMethodError, NoSuchFieldError;
 #  - uses that resolve but can't link: a static member used as an instance one or the other
 #    way round, the wrong invoke kind, a private, package-private or (outside a subclass)
-#    protected platform member or class, a write to a final field, new-instance of an
-#    abstract class, an APK class that extends a final, non-public or interface platform
-#    type or overrides a final method: IncompatibleClassChangeError, IllegalAccessError,
-#    InstantiationError;
+#    protected platform member or class, a method of Object's an interface lacks (not public,
+#    or static) called on one, a write to a final field, new-instance of an abstract class,
+#    invoke-super of a method that is abstract, or whose defaults conflict, where the call
+#    lands, an APK class that gets conflicting defaults of a platform interface's:
+#    IncompatibleClassChangeError, IllegalAccessError, InstantiationError, AbstractMethodError;
+#    an APK class that extends a final, interface or out-of-reach (package-private, of another
+#    runtime package) type, implements a class or an out-of-reach interface, overrides a final
+#    method it can reach, implements an interface's method with a non-public one, or is its own
+#    supertype through others (classes in two dexes that extend or implement each other) or
+#    implements itself, that type the platform's or the APK's own (ART checks both alike): it
+#    and its subclasses can't load, each use of them throws that error (VerifyError,
+#    LinkageError, ClassCircularityError, IncompatibleClassChangeError, IllegalAccessError);
 #  - classes the APK defines that the platform defines too. The platform's copy is the one
 #    that loads, so what the APK's code uses on it is looked up on the platform's copy;
 #  - abstract methods of platform classes and interfaces that a concrete APK class doesn't
 #    implement: an AbstractMethodError when the platform calls one (a method an Android 17
-#    AIDL interface added, on an APK class built against 16's).
+#    AIDL interface added, or a default a subinterface declared abstract again, on an APK
+#    class built against 16's).
 # Each is a crash only if the code runs: an SDK check or a catch may keep it from running, so
 # the list is for review, not a verdict. Expressive Launcher 5.0.5 reached a phone with one
 # (KeyButtonRipple's android.companion.virtualdevice.flags.Flags, 2026-10-30).
@@ -31,32 +40,63 @@
 #       used by the APK's code and found neither on the class, its superclasses nor their
 #       interfaces, one of which is a platform class
 #     link-error <class, or class->member> <why>
+#       (supertype cycle: the first by name of the classes on the cycle, an in line for each APK one)
 #     shadowed <class> <platform file> apk-only=<n>
 #       apk-only: methods and fields the APK's copy has and the platform's lacks
 #     unimplemented <platform type>-><name><proto>
 #       abstract there, and implemented nowhere in the chain of the concrete APK classes
-#       listed under it (or only by a non-public method, which the line says)
+#       listed under it: no class method, and no default ART would pick (an interface's
+#       abstract declaration masks the defaults of the interfaces it extends)
 #     unreadable-code <APK method>
 #     Under each entry: "  from <APK method>" for each method whose code uses it, "  super of
 #     <APK class>" or "  interface of <APK class>" for a class an APK class extends or
-#     implements (that class can't load), "  in <APK class>" for an override or
-#     unimplemented. A from line ends with [caught: <types>] when the use sits in a try block
-#     of that method whose handlers catch the error it would throw (any: a catch-all), and
-#     [reads SDK_INT] when the method reads Build.VERSION.SDK_INT (an SDK check may keep it
-#     from running; a guard in a caller, or an SDK check moved into a helper, isn't seen).
+#     implements (that class can't load), "  in <APK class>" for an override, a class that
+#     can't link (a cycle's too), conflicting defaults or unimplemented. A from line ends with
+#     [caught: <type>] when the use sits in a try block of that method whose first handler for
+#     the error it would throw (IllegalAccessError, where an access check ART makes before it
+#     fails too; LinkageError for a class that can't load or link, whose error varies) keeps it
+#     (any: a catch-all): every path from the handler returns, or goes back to the method's own
+#     code, and drops the error on the way (it is followed in the register move-exception wrote
+#     and in move-object copies of it, until each is written over, or none left is one the
+#     method ever throws, hands on or copies). A path that throws it keeps nothing, as in
+#     finally and synchronized blocks, or where the method's own code throws it after the
+#     handler (Okio's use {}): the try block around that throw is looked at instead (around
+#     another exception the handler throws, only a handler of anything, and that can't be told
+#     with a typed handler before it; another one the method's own code throws is its own).
+#     While a register holds it, what an instruction in a try block throws is followed into that
+#     try's handlers too, for a throw or a hand-on of the error only (a catch in the handler
+#     that throws it, a later try whose handler throws a saved copy): what else an instruction
+#     in the handler throws isn't followed. [caught?: <type>] (can't tell) when only some paths
+#     keep it, a typed handler comes before it for a class that can't load or link (that may
+#     be of the error's own type), or a path hands the error on any other way (as a call's
+#     argument, so Log.e(.., e), Kotlin's runCatching { }.getOrThrow() and try-with-resources'
+#     addSuppressed too, into a field or an array, as a return value), or the handler's code
+#     can't be followed (a payload, an unused opcode, a walk of over 512 steps, handlers nested
+#     64 deep).
+#     [reads SDK_INT] when the method reads Build.VERSION.SDK_INT (an SDK check may keep it from
+#     running; a guard in a caller, or an SDK check moved into a helper, isn't seen).
 #     APK names go through the mapping when one is given (a | b: more than one fits).
-#     summary <n> missing classes, <n> methods, <n> fields, <n> link errors (<n> of these
-#       caught everywhere), <n> shadowed, <n> unimplemented; <n> platform classes from <n>
-#       files, <n> platform dexes unreadable; <n> APK methods read, <n> unreadable
+#     summary <n> missing classes, <n> methods, <n> fields, <n> link errors, <n> shadowed, <n>
+#       unimplemented; <n> missing or link-error entries caught everywhere; <n> platform classes
+#       from <n> files, <n> platform dexes unreadable; <n> APK methods read, <n> unreadable
+#       (caught everywhere: every line under the entry is a from line marked [caught: ...])
 #   Notes (a file it can't read, a classesN.dex ART never opens, a mapping that doesn't
 #   match) go to stderr; exit 2 when a platform dex can't be read.
 #   Platform files are searched in the order given, first definition wins, as on the boot
 #   classpath. Members are looked up as ART resolves them: a method on the class, its
-#   superclasses, then their interfaces (an interface's: its superinterfaces, then Object); a
-#   field on the class, its interfaces, then its superclass. A use whose class chain runs into
-#   a missing class is listed under that class. Code in shadowed classes never runs, so it
-#   isn't read. APK and platform classes are in different runtime packages (different class
-#   loaders), whatever their package names.
+#   superclasses up to the first that declares it (if that one is private, or package-private
+#   in another runtime package, an interface method copied into a class below it wins), then
+#   their interfaces' virtual methods (an interface's: its own methods, its superinterfaces'
+#   virtual ones, the most general first, then Object's public instance ones; the class named
+#   is access-checked only when the declaring class is out of reach), after the invoke kind is
+#   checked against the class; a field on the class, its interfaces, then its superclass. A
+#   use whose class chain (its interfaces' superclasses too) runs into a missing class is
+#   listed under that class, one of a class that can't link (or whose supertype can't: the
+#   superclass's error first, then the interfaces') under that link error, whatever it uses on
+#   it (ART throws the class's error first). Code in shadowed classes never runs, so it isn't
+#   read; nor are access errors listed for the code of an APK class whose chain runs into a
+#   missing class or a cycle. APK and platform classes are in different runtime packages
+#   (different class loaders), whatever their package names.
 import json, re, struct, sys, zipfile
 
 NO_INDEX = 0xffffffff
@@ -75,6 +115,17 @@ for lo, hi, n in ((0x02, 0x02, 2), (0x03, 0x03, 3), (0x05, 0x05, 2), (0x06, 0x06
                   (0x44, 0x6d, 2), (0x6e, 0x72, 3), (0x74, 0x78, 3), (0x90, 0xaf, 2), (0xd0, 0xe2, 2),
                   (0xfa, 0xfb, 4), (0xfc, 0xfd, 3), (0xfe, 0xff, 2)):
     WIDTH[lo:hi + 1] = [n] * (hi - lo + 1)
+# The register each opcode writes: vAA, vA ("a"), vAAAA ("a16"), none ("": check-cast leaves the
+# reference as it was), None: unused. WIDE: those that write a wide pair, so the next register too
+DEST = ["aa"] * 256
+for w, ops in (("a", [0x01, 0x04, 0x07, 0x12, 0x20, 0x21, 0x23, *range(0x52, 0x59), *range(0x7b, 0x90), *range(0xb0, 0xd8)]),
+               ("a16", [0x03, 0x06, 0x09]),
+               ("", [0x00, *range(0x0e, 0x12), 0x1d, 0x1e, 0x1f, *range(0x24, 0x2d), *range(0x32, 0x3e), *range(0x4b, 0x52),
+                     *range(0x59, 0x60), *range(0x67, 0x73), *range(0x74, 0x79), *range(0xfa, 0xfe)]),
+               (None, [*range(0x3e, 0x44), 0x73, 0x79, 0x7a, *range(0xe3, 0xfa)])):
+    for op in ops: DEST[op] = w
+WIDE = {0x04, 0x05, 0x06, 0x0b, *range(0x16, 0x1a), 0x45, 0x53, 0x61, 0x7d, 0x7e, 0x80, 0x81, 0x83, 0x86, 0x88, 0x89, 0x8b,
+        *range(0x9b, 0xa6), *range(0xab, 0xb0), *range(0xbb, 0xc6), *range(0xcb, 0xd0)}
 # What the 16-bit index in an instruction's second unit names (t type, f field, m method,
 # h method handle, p proto, c call site) and how the instruction uses it
 OPS = {0x22: ("t", "new"), 0xfa: ("m", "poly"), 0xfb: ("m", "poly"), 0xfc: ("c", ""), 0xfd: ("c", ""),
@@ -96,8 +147,14 @@ CATCHES = {"class": LINKAGE | {"Ljava/lang/NoClassDefFoundError;"},
            "field": ICCE | {"Ljava/lang/NoSuchFieldError;"},
            "icce": ICCE,
            "access": ICCE | {"Ljava/lang/IllegalAccessError;"},
-           "instantiation": ICCE | {"Ljava/lang/InstantiationError;"}}
-NOGUARD = frozenset()
+           "instantiation": ICCE | {"Ljava/lang/InstantiationError;"},
+           "ame": ICCE | {"Ljava/lang/AbstractMethodError;"},
+           "linkage": LINKAGE,   # a class that can't load or link: VerifyError, ClassCircularityError, ... (it varies)
+           "any": {"Ljava/lang/Throwable;", "*"}}   # an exception of a type not known
+NOGUARD = ()
+class Paths(tuple):   # a handler's paths (Dex.uses' fate): equal only to itself, so a guard hashes without walking them
+    __slots__ = ()
+    __hash__, __eq__, __ne__ = object.__hash__, object.__eq__, object.__ne__
 
 def die(msg):
     sys.exit("dex-refs: " + msg)
@@ -246,52 +303,140 @@ class Dex:
             return o
         if t >= 0x1e: return o                          # null, boolean
         v = int.from_bytes(d[o:o + arg + 1], "little"); o += arg + 1
-        if t == 0x15: out += [("t", "type", x) for x in self.proto_types[v]]
+        if t == 0x15: out += [("t", "proto", x) for x in self.proto_types[v]]   # a method type: no access check
         elif t == 0x16: out += handles[v]
         elif t == 0x18: out.append(("t", "type", self.types[v]))
         elif t in (0x19, 0x1b): out.append(("f", "ref", self.fields[v]))
         elif t == 0x1a: out.append(("m", "ref", self.methods[v]))
         return o
     def uses(self, off):
-        """What a code item's instructions use, as (kind, use, value, the handler types of the
-        try block around it), and whether they decoded to exactly the code's length (a wrong
-        opcode width would leave the walk off the end)."""
+        """What a code item's instructions use, as (kind, use, value, the guard: the handlers of
+        the try block around it, in order, as (type, fate)), and whether they decoded to exactly
+        the code's length (a wrong opcode width would leave the walk off the end)."""
         d, o = self.d, self.data + off
         (nt,) = struct.unpack_from("<H", d, o + 6)
         (n,) = struct.unpack_from("<I", d, o + 12)
         u = struct.unpack_from("<%dH" % n, d, o + 16)
-        tries = []     # (start, end, handler types); dex try ranges don't overlap
+        tries = []     # (start, end, [(handler type, "*" for a catch-all, and address)]); try ranges don't overlap
         if nt:
             to = o + 16 + 2 * n + 2 * (n % 2)
             hl = to + 8 * nt
             for i in range(nt):
                 start, count, ho = struct.unpack_from("<IHH", d, to + 8 * i)
                 size, p = sleb(d, hl + ho)
-                caught = []
+                hs = []
                 for _ in range(abs(size)):
-                    t, p = uleb(d, p); _, p = uleb(d, p)
-                    caught.append(self.types[t])
-                if size <= 0: caught.append("*")
-                tries.append((start, start + count, frozenset(caught)))
-        out, pc = [], 0
+                    t, p = uleb(d, p); a, p = uleb(d, p)
+                    hs.append((self.types[t], a))
+                if size <= 0: hs.append(("*", uleb(d, p)[0]))
+                tries.append((start, start + count, hs))
+        hands = [[]] * n   # pc -> the handlers of the try block around it, mapped once (the first in the table, if they overlap)
+        for s, e, hs in reversed(tries): hands[s:e] = [hs] * len(range(s, min(e, n)))
+        def s32(i): return ((u[i] | u[i + 1] << 16) ^ 1 << 31) - (1 << 31)
+        def nexts(pc):   # where normal flow goes after pc ([] after a return or throw); None: can't follow it
+            x = u[pc]; op = x & 0xff
+            if x in (0x100, 0x200, 0x300) or pc + WIDTH[op] > n: return None   # a payload, or off the end
+            if op == 0x27 or 0x0e <= op <= 0x11: return []
+            if op == 0x28: return [pc + ((x >> 8) ^ 0x80) - 0x80]                         # goto
+            if op == 0x29: return [pc + (u[pc + 1] ^ 0x8000) - 0x8000]                    # goto/16
+            if op == 0x2a: return [pc + s32(pc + 1)]                                      # goto/32
+            out = [pc + WIDTH[op]]
+            if 0x32 <= op <= 0x3d: out.append(pc + (u[pc + 1] ^ 0x8000) - 0x8000)       # if-*
+            elif op in (0x2b, 0x2c):                                                      # a switch: its payload's targets
+                p = pc + s32(pc + 1)
+                if not 0 <= p < n - 1 or u[p] != (0x100 if op == 0x2b else 0x200): return None
+                k = u[p + 1]; t = p + (4 if op == 0x2b else 2 + 2 * k)
+                if t + 2 * k > n: return None
+                out += [pc + s32(t + 2 * i) for i in range(k)]
+            return out
+        normal, todo = set(), [0] if nt else []   # what the method's own code reaches from its start
+        while todo:
+            pc = todo.pop()
+            if pc in normal or not 0 <= pc < n: continue
+            normal.add(pc); todo += nexts(pc) or []
+        def passed(pc):   # the registers pc hands on: a call's or a new array's, a value it stores, or returns
+            x = u[pc]; op = x & 0xff
+            if op in (0x24, 0xfa, 0xfc) or 0x6e <= op <= 0x72:   # {vC, vD, vE, vF, vG}
+                k = x >> 12
+                return [(u[pc + 2] >> 4 * i) & 0xf for i in range(min(k, 4))] + [(x >> 8) & 0xf] * (k == 5)
+            if op in (0x25, 0xfb, 0xfd) or 0x74 <= op <= 0x78: return range(u[pc + 2], u[pc + 2] + (x >> 8))   # {vCCCC ..}
+            if 0x59 <= op <= 0x5f: return [(x >> 8) & 0xf]   # iput vA
+            if 0x0f <= op <= 0x11 or 0x4b <= op <= 0x51 or 0x67 <= op <= 0x6d: return [x >> 8]   # return, aput, sput vAA
+            return ()
+        def source(pc):   # the register a move-object copies from, else None
+            x = u[pc]; op = x & 0xff
+            return x >> 12 if op == 0x07 else u[pc + 1] if op == 0x08 else u[pc + 2] if op == 0x09 else None
+        def ends(a):
+            # The throws on the handler at a's paths (pc, whether of what it caught) and whether a path
+            # keeps it; None: can't tell. Each path follows the registers that hold it (move-exception's,
+            # and move-object copies of one; any other write to one drops it, a wide one the next too)
+            # through the handler and, while one of them is held, the method's own code. A throw of one
+            # passes it on; another throw is, in the handler, another exception, in the method's own code
+            # its own (that path keeps it). A path that hands one on anywhere else (a call, a field, an
+            # array, a return) can't be told, nor code that can't be followed or a walk that runs long.
+            # While one is held, what an instruction in a try block throws takes them to the try's
+            # handlers: those paths (nested) count only where they throw or hand one on (what else an
+            # instruction in the handler throws isn't followed)
+            x = u[a] if a < n else 0
+            todo = [(a + 1, frozenset([x >> 8]), False)] if x & 0xff == 0x0d else [(a, frozenset(), False)]   # move-exception vAA
+            seen, throws, keeps = set(), set(), False
+            while todo:
+                pc, regs, nested = todo.pop()
+                if pc in normal and regs.isdisjoint(held): keeps = keeps or not nested; continue   # back in its own code, nothing lets it out
+                if (pc, regs, nested) in seen: continue
+                if not 0 <= pc < n or len(seen) >= 512: return None
+                seen.add((pc, regs, nested))
+                if not regs.isdisjoint(held): todo += [(h, regs, True) for _, h in hands[pc]]
+                x, nx = u[pc], nexts(pc); op = x & 0xff
+                if nx is None or DEST[op] is None or regs and not regs.isdisjoint(passed(pc)): return None
+                if op == 0x27:
+                    if x >> 8 in regs or pc not in normal and not nested: throws.add((pc, x >> 8 in regs))
+                    else: keeps = keeps or not nested
+                elif not nx: keeps = keeps or not nested
+                else:
+                    if DEST[op]:
+                        to = (x >> 8) & 0xf if DEST[op] == "a" else x >> 8 if DEST[op] == "aa" else u[pc + 1]
+                        regs = regs | {to} if source(pc) in regs else regs - {to, to + 1} if op in WIDE else regs - {to}
+                    todo += [(p, regs, nested) for p in nx]
+            return throws, keeps
+        fates = {}
+        def fate(a, busy):
+            # What the handler at a does with what it catches, path by path: True, keeps it (returns,
+            # loops or rejoins the method's own code); else (the guard around the throw, whether it
+            # throws what it caught): passes it on (finally, synchronized) or throws another exception
+            # (no guard: none around the throw, or a cycle). None: can't tell, or 64 handlers deep
+            if a in busy: return Paths(((NOGUARD, True),))
+            if len(busy) >= 64: return None
+            if a not in fates:
+                r = ends(a)
+                fates[a] = None if r is None else Paths(((True,) if r[1] or not r[0] else ()) + tuple(dict.fromkeys(
+                    (guard(pc, busy | {a}), same) for pc, same in sorted(r[0]))))
+            return fates[a]
+        def guard(pc, busy=frozenset()):
+            return tuple((t, fate(a, busy)) for t, a in hands[pc]) or NOGUARD
+        # held: the registers anything in the method throws, hands on or copies from (an unused opcode:
+        # any its unit names); what another holds goes nowhere. out: (pc, kind, use, value)
+        out, held, pc = [], set(), 0
         while pc < n:
             x = u[pc]; op = x & 0xff
             if x == 0x100: pc += 4 + 2 * u[pc + 1]; continue                  # packed-switch data
             if x == 0x200: pc += 2 + 4 * u[pc + 1]; continue                  # sparse-switch data
             if x == 0x300:                                                    # fill-array data
                 pc += 4 + (u[pc + 1] * (u[pc + 2] | u[pc + 3] << 16) + 1) // 2; continue
+            if nt and pc + WIDTH[op] <= n:   # (no handler: nothing to walk)
+                held.update(passed(pc), [x >> 8] * (op == 0x27), [source(pc)],
+                            [x >> 8, x >> 8 & 0xf, x >> 12] * (DEST[op] is None))
             if op in OPS:
-                g = next((g for a, b, g in tries if a <= pc < b), NOGUARD)
                 (k, use), i = OPS[op], u[pc + 1]
-                if k == "t": out.append((k, use, self.types[i], g))
-                elif k == "f": out.append((k, use, self.fields[i], g))
+                if k == "t": out.append((pc, k, use, self.types[i]))
+                elif k == "f": out.append((pc, k, use, self.fields[i]))
                 elif k == "m":
-                    out.append((k, use, self.methods[i], g))
-                    if use == "poly": out += [("t", "type", t, g) for t in self.proto_types[u[pc + 3]]]
-                elif k == "p": out += [("t", "type", t, g) for t in self.proto_types[i]]
-                else: out += [x + (g,) for x in self.links()[0 if k == "h" else 1][i]]
+                    out.append((pc, k, use, self.methods[i]))
+                    if use == "poly": out += [(pc, "t", "proto", t) for t in self.proto_types[u[pc + 3]]]
+                elif k == "p": out += [(pc, "t", "proto", t) for t in self.proto_types[i]]
+                else: out += [(pc,) + y for y in self.links()[0 if k == "h" else 1][i]]
             pc += WIDTH[op]
-        return out, pc == n
+        return [(k, use, v, guard(at)) for at, k, use, v in out], pc == n   # the guards once held is whole
 
 def dexes(path):
     """Every dex in an APK, jar or bare dex file that ART opens, why any of them couldn't be
@@ -428,16 +573,37 @@ def main(argv):
     def elem(t):   # the class an array or class type names, or None for a primitive
         t = t.lstrip("[")
         return t if t.startswith("L") else None
+    def ups(c):   # c's supertypes the APK defines
+        return [s for s in [known[c].sup] + known[c].ifaces if s in apk and s not in plat]
+    def above(c):   # the APK classes c extends or implements, through others too
+        out, todo = set(), ups(c)
+        while todo:
+            s = todo.pop()
+            if s not in out: out.add(s); todo += ups(s)
+        return out
+    # Supertype cycles (classes in two dexes that extend or implement each other, or an interface that
+    # implements itself): ART throws ClassCircularityError loading any of them. cyc: a class on one -> its
+    # entry, named by the first of the classes on a cycle with it (the same whichever way in)
+    cyc = {}
+    for c in apk:
+        if c in plat or c in cyc: continue
+        up = above(c)
+        if c in up:
+            ring = sorted(o for o in up if c in above(o))
+            for o in ring: cyc[o] = (ring[0], "supertype cycle")
     chains = {}
     def chain(c):
         """Where ART looks for a method of c: c, its superclasses, then their interfaces (for an
-        interface: itself, its superinterfaces, then Object); None and the gap if one is missing."""
+        interface: itself, its superinterfaces, then Object); None and the gap if one is missing,
+        or a supertype of one of the interfaces; None and a class of it (a known one) if it runs
+        into a cycle of supertypes."""
         if c not in chains: chains[c] = chain1(c)
         return chains[c]
     def chain1(c):
         sups, cur = [], c
         while cur:
-            if cur not in known or cur in sups: return None, cur   # missing (or a cycle: can't load)
+            if cur not in known: return None, cur   # missing
+            if cur in sups: return None, min(sups[sups.index(cur):])   # a cycle (the same class whichever way in)
             sups.append(cur); cur = known[cur].sup
         ifs, queue = [], [i for s in sups for i in known[s].ifaces]
         while queue:
@@ -445,58 +611,111 @@ def main(argv):
             if i in ifs or i in sups: continue
             if i not in known: return None, i
             ifs.append(i); queue += known[i].ifaces
+        # An interface loads only if its superclass does too (Object, unless malformed; anything,
+        # for a class listed as an interface)
+        seen, up, more = set(sups + ifs), [known[i].sup for i in ifs], []
+        while up:
+            s = up.pop()
+            if s is None or s in seen: continue
+            if s not in known: return None, s
+            seen.add(s); more.append(s); up += [known[s].sup] + known[s].ifaces
+        ring = next((cyc[o][0] for o in sups + ifs + more if o in cyc), None)   # through an interface too
+        if ring: return None, ring
         if known[c].flags & ACC_INTERFACE: return [c] + ifs + sups[1:], None
         return sups + ifs, None
-    def find_method(order, key):   # the first declaration in that order: (class, access flags)
-        for o in order:
-            k = known[o]
-            f = k.dm.get(key, k.vm.get(key))
-            if f is not None: return o, f
-        return None
-    def find_field(c, key, seen):  # the class, its interfaces, then its superclass, as the JLS
-        if c is None or c in seen or c not in known: return None
-        seen.add(c); k = known[c]
-        if key in k.fields: return c, k.fields[key]
-        for i in k.ifaces + [k.sup]:
-            r = find_field(i, key, seen)
-            if r: return r
-        return None
-    def outers(c):   # c and the classes it's nested in (Outer$Inner)
-        out, b = [c], c[:-1]
-        while "$" in b.rpartition("/")[2][1:]:
-            b = b[:b.rindex("$")]; out.append(b + ";")
+    def same_pkg(a, b):   # same runtime package: same loader (platform or APK) and same package name
+        return (a in plat) == (b in plat) and a.rpartition("/")[0] == b.rpartition("/")[0]
+    def supers(c):   # c and its superclasses, c's chain whole (a class listed as an interface isn't one)
+        out = []
+        while c: out.append(c); c = known[c].sup
         return out
-    def extends(x, d):   # x, or a class x is nested in, has d as a superclass
-        for o in outers(x):
-            seen = set()
-            while o in known and o not in seen:
-                if o == d: return True
-                seen.add(o); o = known[o].sup
+    def iftable(c):   # c's superinterfaces as ART's iftable lists them: each after those it extends (a stack: chains run deep)
+        out, seen, todo = [], set(), [(c, iter(known[c].ifaces))]
+        while todo:
+            i = next(todo[-1][1], None)
+            if i is None:
+                i = todo.pop()[0]
+                if todo: out.append(i)
+            elif i not in seen: seen.add(i); todo.append((i, iter(known[i].ifaces)))
+        return out
+    def find_method(c, order, key):   # what ART resolves c->key to (FindClassMethod, FindInterfaceMethod): (class, flags)
+        k = known[c]
+        f = k.dm.get(key, k.vm.get(key))
+        if f is not None: return c, f
+        if k.flags & ACC_INTERFACE:   # superinterfaces' virtual methods (no statics, privates) in iftable order, the
+            # most general first (the declarer decides the class access check), then Object's public instance ones
+            for o in iftable(c) + supers(c)[1:]:
+                ko = known[o]
+                f = ko.vm.get(key) if ko.flags & ACC_INTERFACE else ko.dm.get(key, ko.vm.get(key))
+                if f is not None and (ko.flags & ACC_INTERFACE or f & ACC_PUBLIC and not f & ACC_STATIC): return o, f
+            return None
+        below, unin = [c], None
+        for o in supers(c)[1:]:   # superclasses: the first declaration, if c inherits it
+            f = known[o].dm.get(key, known[o].vm.get(key))
+            if f is None: below.append(o); continue
+            if f & (ACC_PUBLIC | ACC_PROTECTED) or not f & ACC_PRIVATE and all(same_pkg(b, o) for b in below): return o, f
+            unin = o, f; break
+        # else an interface's virtual method copied into a class below that one (its interfaces' copies sit in it)
+        skip = set(chain(unin[0])[0] or ()) if unin else ()
+        for o in order:
+            if known[o].flags & ACC_INTERFACE and o not in skip and key in known[o].vm: return o, known[o].vm[key]
+        return unin
+    def most_specific(ifs, key):   # the interfaces of ifs declaring key that no other declarer extends (ART's default pick)
+        decl = [o for o in ifs if key in known[o].vm]   # (one whose own chain is broken extends nothing)
+        return [o for o in decl if not any(j != o and o in (chain(j)[0] or ()) for j in decl)]
+    def super_target(caller, c, key):
+        # What invoke-super c->key in caller runs on ART: (class, access flags, the defaults it conflicts
+        # with: ART's conflict method, which throws), or None
+        if known[c].flags & ACC_INTERFACE:   # the interface's own method, else a superinterface's default
+            if key in known[c].vm: return c, known[c].vm[key], []
+            order = chain(c)[0][1:]
+        else:   # the caller's superclass's vtable entry: a class's method, else an interface's copied into one
+            order = chain(known[caller].sup)[0] if caller in known and known[caller].sup in known else None
+            if not order or c not in order: return None
+            for o in order:
+                if not known[o].flags & ACC_INTERFACE and key in known[o].vm: return o, known[o].vm[key], []
+        top = most_specific([o for o in order if known[o].flags & ACC_INTERFACE], key)
+        dflt = sorted((o for o in top if not known[o].vm[key] & ACC_ABSTRACT), key=lambda o: (o not in plat, o))
+        if dflt: return dflt[0], known[dflt[0]].vm[key], dflt[1:]   # two or more conflict; platform ones first
+        return (top[0], known[top[0]].vm[key], []) if top else None
+    def find_field(c, key):  # the class, its interfaces, then its superclass, as the JLS (depth first, a stack)
+        todo, seen = [c], set()
+        while todo:
+            c = todo.pop()
+            if c is None or c in seen or c not in known: continue
+            seen.add(c); k = known[c]
+            if key in k.fields: return c, k.fields[key]
+            todo += reversed(k.ifaces + [k.sup])
+        return None
+    def extends(x, d):   # x has d as a superclass (ART lets no nested class use its outer class's protected access)
+        if d == OBJECT: return True
+        seen = set()
+        while x in known and x not in seen:
+            if x == d: return True
+            seen.add(x); x = known[x].sup
         return False
     def no_access(d, f, caller):   # why a platform member of d with access flags f is out of the APK caller's reach
         if f & ACC_PUBLIC: return None
         if f & ACC_PRIVATE: return "private"
         if f & ACC_PROTECTED: return None if extends(caller, d) else "protected, and the caller isn't a subclass"
         return "package-private"
-    def misuse(use, c, d, f, key):   # why invoke-<use> can't call the method of d with flags f, found from c
+    def misuse(use, f, key):   # why invoke-<use> can't call a method with flags f
         static = f & ACC_STATIC
         direct = static or f & (ACC_PRIVATE | ACC_CONSTRUCTOR) or key[0] in ("<init>", "<clinit>")
-        c_iface = known[c].flags & ACC_INTERFACE
         if use == "static": return None if static else "not static, called with invoke-static"
         if use in ("ref", "poly"): return None
         if static: return "static, called with invoke-%s" % use
         if use == "direct": return None if direct else "virtual, called with invoke-direct"
         if use == "virtual":
-            if c in plat and c_iface: return "on an interface, called with invoke-virtual"
             return "private or a constructor, called with invoke-virtual" if direct else None
         if use == "interface":
-            if c in plat and not c_iface: return "on a class, called with invoke-interface"
             return "private or a constructor, called with invoke-interface" if direct else None
         if use == "super": return "a constructor, called with invoke-super" if key[0] == "<init>" else None
         return None   # instance (a method handle): only static matters
 
     # What each method of the APK's code uses, and who uses it
-    used, sdk, read_n, unread = {}, set(), 0, []   # used: (kind, use, value) -> {(method, handler types)}
+    # used: (kind, use, value) -> {(method, guard): None}, in code order (so what's settled first is the same every run)
+    used, sdk, read_n, unread = {}, set(), 0, []
     for x in app:
         for cname, mn, mp, off in x.code:
             if cname in plat or apk.get(cname) is None: continue
@@ -508,13 +727,40 @@ def main(argv):
             if ok: read_n += 1
             else: unread.append(who)
             for k, use, v, g in us:
-                used.setdefault((k, use, v), set()).add((who, g))
+                used.setdefault((k, use, v), {})[who, g] = None
                 if k == "f" and v in SDK_INT: sdk.add(who)
 
+    catchers = {}   # (guard, error) -> its answer; (guard, error, depth) -> one that met the depth limit, for that depth only
+    def catcher(guard, err, depth=0):
+        # The type of the handler that keeps the error, whether it does (None: on some paths only) and whether the
+        # depth limit was met below (asked from less deep, it may get further): once per handler, not per path to it
+        r = catchers.get((guard, err)) or catchers.get((guard, err, depth))
+        if r is None:
+            r = catcher1(guard, err, depth)
+            catchers[(guard, err, depth) if r[2] else (guard, err)] = r
+        return r
+    def catcher1(guard, err, depth):
+        # No typed handler before it (that might catch another exception first, or the error of a class that can't
+        # link, whose type varies)
+        first = True
+        for t, fate in guard:
+            if t not in CATCHES[err]:
+                first = first and err not in ("any", "linkage"); continue
+            if fate is None: return t, None, False
+            if depth >= 64: return t, None, True   # (handlers nested 64 deep, however settled)
+            # Each of the handler's paths settled apart: another exception it throws is caught for sure
+            # only by a handler of anything, and only if no typed handler comes before it (that one might
+            # catch it first, and throw it or the error on)
+            rs = [(t, True, False) if p is True else catcher(p[0], err if p[1] else "any", depth + 1) for p in fate]
+            ks = {k for _, k, _ in rs}
+            keeps = ks.pop() if len(ks) == 1 else None
+            return (next((x for x, k, _ in rs if k is not False), t), keeps if keeps is False or first else None,
+                    any(c for _, _, c in rs))
+        return None, False, False
     def from_line(who, guard, err):
         line = "from " + shown(who)
-        caught = sorted("any" if g == "*" else g for g in guard & CATCHES[err])
-        if caught: line += " [caught: %s]" % " ".join(caught)
+        t, keeps, _ = catcher(guard, err)
+        if keeps is not False: line += " [caught%s: %s]" % ("" if keeps else "?", "any" if t == "*" else t)
         return line + (" [reads SDK_INT]" if who in sdk else "")
     def shown(s):  # an APK name or member through the mapping
         if not mapping: return s
@@ -528,10 +774,103 @@ def main(argv):
         if not fit: return holder + "->" + name + proto
         return " | ".join(sorted("%s->%s%s" % (h or holder, n, proto) for h, n, _ in fit))
     missing, mm, mf, link = {}, {}, {}, {}   # class / member / (target, why) -> lines under it
-    def add(into, key, whos, err):
-        into.setdefault(key, set()).update(from_line(w, g, err) for w, g in whos)
+    def add(into, key, whos, err, iae=()):   # (no entry when no use is left; one in iae fails an access check ART makes first)
+        for w, g in whos: into.setdefault(key, set()).add(from_line(w, g, "access" if w in iae else err))
+    def loads(whos):   # the uses whose caller can load, for access checks (one that can't has its missing supertype, or cycle, listed)
+        return [(w, g) for w, g in whos if not chain(w.partition("->")[0])[1]]
     def member(v, k):
         return "%s->%s%s" % v if k == "m" else "%s->%s:%s" % v
+    # What keeps an APK class from linking, first: a use of one that can't is listed under why, not under what it uses
+    cant = {}   # APK class -> the link errors of its own (supertypes, overrides, implementations), in the order found
+    def bar(c, key, line):
+        link.setdefault(key, set()).add(line); cant.setdefault(c, []).append(key)
+    for c in apk.values():   # supertypes and overrides, the platform's or the APK's (ART checks both alike)
+        if c.name in plat: continue
+        line = "super of " + shown(c.name)
+        if c.sup and c.sup not in known: missing.setdefault(c.sup, set()).add(line)
+        elif c.sup:
+            s = known[c.sup].flags
+            if s & ACC_INTERFACE: bar(c.name, (c.sup, "an interface, extended as a class"), line)
+            elif s & ACC_FINAL: bar(c.name, (c.sup, "final, extended"), line)
+            if not s & ACC_PUBLIC and not same_pkg(c.name, c.sup): bar(c.name, (c.sup, "package-private class, extended"), line)
+        for i in c.ifaces:
+            line = "interface of " + shown(c.name)
+            if i not in known: missing.setdefault(i, set()).add(line)
+            else:
+                s = known[i].flags
+                if not s & ACC_INTERFACE: bar(c.name, (i, "a class, implemented as an interface"), line)
+                if not s & ACC_PUBLIC and not same_pkg(c.name, i): bar(c.name, (i, "package-private interface, implemented"), line)
+        cur, seen = c.sup, {c.name}
+        while cur in known and cur not in seen:   # overriding a final method it can reach (up to a cycle)
+            seen.add(cur)
+            for key, f in known[cur].vm.items():
+                if key in c.vm and f & ACC_FINAL and (f & (ACC_PUBLIC | ACC_PROTECTED) or not f & ACC_PRIVATE and same_pkg(c.name, cur)):
+                    bar(c.name, ("%s->%s%s" % ((cur,) + key), "final, overridden"), "in " + shown(c.name))
+            cur = known[cur].sup
+        if c.name in cyc: link.setdefault(cyc[c.name], set()).add("in " + shown(c.name))
+
+    unimpl = {}    # (platform type, name, proto) -> concrete APK classes that lack it
+    for c in apk.values():
+        if c.name in plat or c.flags & ACC_INTERFACE: continue
+        order, _ = chain(c.name)
+        if order is None or not any(o in plat for o in order): continue
+        # The vtable as ART links it, root class first: a method overrides a slot with its name
+        # and proto only when it can (public or protected, or package-private in the same runtime
+        # package), else it takes a new slot; an abstract redeclaration re-abstracts the slot. A
+        # slot left abstract is owed to the platform class that declared it abstract, even when an
+        # APK class declares it abstract again
+        sups = [o for o in order if not known[o].flags & ACC_INTERFACE]
+        slots = {}   # (name, proto) -> [[declarer, flags, platform class owed], ...] in vtable order
+        for k in reversed(sups):
+            for m, f in known[k].vm.items():
+                hit, owed = False, k if k in plat and f & ACC_ABSTRACT else None
+                for s in slots.get(m, ()):
+                    if s[1] & (ACC_PUBLIC | ACC_PROTECTED) or same_pkg(s[0], k):
+                        s[:], hit = [k, f, owed or (s[2] if f & ACC_ABSTRACT else None)], True
+                if not hit: slots.setdefault(m, []).append([k, f, owed])
+        ifs = [o for o in order if known[o].flags & ACC_INTERFACE]
+        # A non-public method implementing an interface's method fails the class's link
+        # (IllegalAccessError), abstract class or not: ART looks at the last match in the vtable
+        # for an interface the class takes on, at the class's own methods for one its superclass has
+        inherited = set(chain(c.sup)[0]) if c.sup else set()
+        for o in ifs:
+            for m in known[o].vm:
+                g = c.vm.get(m) if o in inherited else slots[m][-1][1] if m in slots else None
+                if g is not None and not g & (ACC_ABSTRACT | ACC_PUBLIC):
+                    bar(c.name, ("%s->%s%s" % ((o,) + m), "implemented by a non-public method"), "in " + shown(c.name))
+        if c.flags & ACC_ABSTRACT: continue
+        for m, ss in slots.items():
+            for o, f, owed in ss:
+                if owed: unimpl.setdefault((owed,) + m, set()).add(shown(c.name))
+        # A platform interface's method with no class method for it (the last matching vtable
+        # method, as ART searches it, is abstract or missing): ART takes the default among the most
+        # specific declarations (no other declarer extends theirs), so an abstract redeclaration
+        # masks the defaults above it; with none it's abstract, with two or more they conflict
+        for m in {m for o in ifs if o in plat for m in known[o].vm}:
+            impl = slots.get(m)
+            if impl and not impl[-1][1] & ACC_ABSTRACT: continue
+            dflt = sorted((o for o in most_specific(ifs, m) if not known[o].vm[m] & ACC_ABSTRACT),
+                          key=lambda o: (o not in plat, o))   # platform ones first
+            if len(dflt) > 1 and dflt[0] in plat:
+                link.setdefault(("%s->%s%s" % ((dflt[0],) + m), "default conflicts with " + ", ".join(map(shown, dflt[1:]))),
+                                set()).add("in " + shown(c.name))
+            elif not dflt:
+                for o in ifs:
+                    if o in plat and known[o].vm.get(m, 0) & ACC_ABSTRACT:
+                        unimpl.setdefault((o,) + m, set()).add(shown(c.name))
+    failed = {}   # APK class -> the link error it can't load with: a supertype's (superclass first), else its own; or None
+    def fails(c):   # (a stack: chains run deep; a supertype on a cycle with the class gives the cycle's, unwalked)
+        if c not in apk or c in plat: return None
+        todo = [c] if c not in failed else []
+        while todo:
+            x = todo[-1]; ring = cyc.get(x)
+            up = [(s, ring if ring and cyc.get(s) == ring else None) for s in ups(x)]
+            if x not in failed:
+                failed[x] = None; todo += [s for s, r in reversed(up) if not r and s not in failed]; continue
+            todo.pop()
+            failed[x] = next((r or failed[s] for s, r in up if r or failed[s]), None) or cant.get(x, [None])[0]
+        return failed[c]
+
     for (k, use, v), whos in used.items():
         c = elem(v) if k == "t" else v[0]
         if c is None: continue   # a primitive
@@ -539,27 +878,60 @@ def main(argv):
             c, k = elem(c), "t"
             if c is None: continue
         order, g = chain(c)
-        if g:
-            add(missing, g, whos, "class"); continue
-        if c in plat and not known[c].flags & ACC_PUBLIC:
-            add(link, (c, "package-private class"), whos, "access")
+        # A class that can't load or link throws why on each use, whatever is used on it (ART keeps the error, throws it
+        # again): VerifyError, ClassCircularityError, ..., so only LinkageError's handlers count; with a missing supertype
+        # too, whichever ART meets first
+        broke = fails(c) or ((g, "supertype cycle") if g in known else None)
+        if g and g not in known:
+            add(missing, g, whos, "linkage" if broke else "class"); continue
+        if broke:
+            add(link, broke, whos, "linkage"); continue
+        hidden = c in plat and not known[c].flags & ACC_PUBLIC
+        if hidden and k == "t" and use in ("type", "new"):
+            add(link, (c, "package-private class"), loads(whos), "access")
         if k == "t":
-            if use == "new" and c in plat and known[c].flags & (ACC_ABSTRACT | ACC_INTERFACE):
+            if use == "new" and c in plat and known[c].flags & (ACC_ABSTRACT | ACC_INTERFACE):   # (ART checks access first)
                 add(link, (c, "new-instance of an interface" if known[c].flags & ACC_INTERFACE else
-                           "new-instance of an abstract class"), whos, "instantiation")
+                           "new-instance of an abstract class"), whos, "access" if hidden else "instantiation")
             continue
         # Only what the platform owes: a chain with no platform class in it is the APK's own business
         if not any(o in plat for o in order) or use == "poly": continue
         if k == "m":
-            found = find_method(order, v[1:])
+            # ART checks the invoke kind against the class before it looks for the method
+            kind = None if c not in plat else known[c].flags & ACC_INTERFACE
+            if kind is not None and use == ("virtual" if kind else "interface"):
+                add(link, (member(v, k), "on an interface, called with invoke-virtual" if kind else
+                           "on a class, called with invoke-interface"), whos, "icce"); continue
+            found = find_method(c, order, v[1:])
             if found is None:
-                add(mm, v, whos, "method"); continue
+                # ART then looks it up as a class method (FindIncompatibleMethod): on an interface, that
+                # finds Object's that the interface lookup passed over: IncompatibleClassChangeError
+                obj = supers(c)[1:] if known[c].flags & ACC_INTERFACE else []
+                f = next((known[o].dm.get(v[1:], known[o].vm.get(v[1:])) for o in obj
+                          if v[1:] in known[o].dm or v[1:] in known[o].vm), None)
+                if f is None: add(mm, v, whos, "method")
+                else: add(link, (member(v, k), "Object's, %s, called on an interface"
+                                 % ("static" if f & ACC_STATIC else "not public")), whos, "icce")
+                continue
             d, f = found
+            # ART checks access (the class named, as below, then the method) before the method's kind and
+            # where invoke-super lands: a use that fails it throws IllegalAccessError instead
+            iae = {w for w, _ in whos if d in plat and (hidden and not known[d].flags & ACC_PUBLIC or
+                                                        no_access(d, f, w.partition("->")[0]))}
+            why = d in plat and misuse(use, f, v[1:])
+            if why: add(link, (member(v, k), why), whos, "icce", iae); continue
+            if use == "super":   # where the call lands, whoever declares what it resolved to
+                for w, gd in whos:
+                    t = super_target(w.partition("->")[0], c, v[1:])
+                    if not t or t[0] not in plat: continue
+                    if t[2]:   # IncompatibleClassChangeError
+                        add(link, ("%s->%s%s" % ((t[0],) + v[1:]), "default conflicts with %s, called with invoke-super"
+                                   % ", ".join(map(shown, t[2]))), [(w, gd)], "icce", iae)
+                    elif t[1] & ACC_ABSTRACT:   # AbstractMethodError
+                        add(link, ("%s->%s%s" % ((t[0],) + v[1:]), "abstract, called with invoke-super"), [(w, gd)], "ame", iae)
             if d not in plat: continue
-            why = misuse(use, c, d, f, v[1:])
-            if why: add(link, (member(v, k), why), whos, "icce"); continue
         else:
-            found = find_field(c, v[1:], set())
+            found = find_field(c, v[1:])
             if found is None:
                 add(mf, v, whos, "field"); continue
             d, f = found
@@ -568,76 +940,18 @@ def main(argv):
                 add(link, (member(v, k), ("static, used by " if f & ACC_STATIC else "an instance field, used by ") + use),
                     whos, "icce"); continue
             if use in ("iput", "sput") and f & ACC_FINAL:
-                add(link, (member(v, k), "final, written by " + use), whos, "access")
-        for w, gd in whos:
+                add(link, (member(v, k), "final, written by " + use), loads(whos), "access")
+        if hidden and not known[d].flags & ACC_PUBLIC:   # ART checks the class named only when the declarer is out of reach
+            add(link, (c, "package-private class"), loads(whos), "access")
+        for w, gd in loads(whos):
             why = no_access(d, f, w.partition("->")[0])
             if why: add(link, (member(v, k), why), [(w, gd)], "access")
-
-    for c in apk.values():   # supertypes and overrides
-        if c.name in plat: continue
-        line = "super of " + shown(c.name)
-        if c.sup and c.sup not in known: missing.setdefault(c.sup, set()).add(line)
-        elif c.sup in plat:
-            s = known[c.sup].flags
-            if s & ACC_INTERFACE: link.setdefault((c.sup, "an interface, extended as a class"), set()).add(line)
-            elif s & ACC_FINAL: link.setdefault((c.sup, "final, extended"), set()).add(line)
-            if not s & ACC_PUBLIC: link.setdefault((c.sup, "package-private class, extended"), set()).add(line)
-        for i in c.ifaces:
-            line = "interface of " + shown(c.name)
-            if i not in known: missing.setdefault(i, set()).add(line)
-            elif i in plat:
-                s = known[i].flags
-                if not s & ACC_INTERFACE: link.setdefault((i, "a class, implemented as an interface"), set()).add(line)
-                if not s & ACC_PUBLIC: link.setdefault((i, "package-private interface, implemented"), set()).add(line)
-        cur, seen = c.sup, set()
-        while cur in known and cur not in seen:   # overriding a final platform method
-            seen.add(cur)
-            if cur in plat:
-                for key, f in known[cur].vm.items():
-                    if key in c.vm and f & ACC_FINAL and f & (ACC_PUBLIC | ACC_PROTECTED):
-                        link.setdefault(("%s->%s%s" % ((cur,) + key), "final, overridden"), set()).add("in " + shown(c.name))
-            cur = known[cur].sup
 
     named = set()
     for x in app:
         for t in x.types:
             e = elem(t)
             if e and e not in known and e not in missing: named.add(e)
-
-    unimpl = {}    # (platform type, name, proto) -> concrete APK classes that lack it
-    def same_pkg(a, b):   # same runtime package: same loader (platform or APK) and same package name
-        return (a in plat) == (b in plat) and a.rpartition("/")[0] == b.rpartition("/")[0]
-    for c in apk.values():
-        if c.name in plat or c.flags & (ACC_INTERFACE | ACC_ABSTRACT): continue
-        order, _ = chain(c.name)
-        if order is None or not any(o in plat for o in order): continue
-        # The vtable as ART links it, root class first: a method overrides a slot with its name
-        # and proto only when it can (public or protected, or package-private in the same runtime
-        # package), else it takes a new slot; an abstract redeclaration re-abstracts the slot
-        sups = [o for o in order if not known[o].flags & ACC_INTERFACE]
-        slots = {}   # (name, proto) -> [[declarer, flags], ...] in vtable order
-        for k in reversed(sups):
-            for m, f in known[k].vm.items():
-                hit = False
-                for s in slots.get(m, ()):
-                    if s[1] & (ACC_PUBLIC | ACC_PROTECTED) or same_pkg(s[0], k): s[0], s[1], hit = k, f, True
-                if not hit: slots.setdefault(m, []).append([k, f])
-        for m, ss in slots.items():
-            for o, f in ss:
-                if f & ACC_ABSTRACT and o in plat: unimpl.setdefault((o,) + m, set()).add(shown(c.name))
-        ifs = [o for o in order if known[o].flags & ACC_INTERFACE]
-        for o in ifs:
-            if o not in plat: continue
-            for m, f in known[o].vm.items():
-                if not f & ACC_ABSTRACT: continue
-                impl = slots.get(m)
-                if impl:   # the last matching vtable method, as ART searches it
-                    _, g = impl[-1]
-                    if g & ACC_ABSTRACT: unimpl.setdefault((o,) + m, set()).add(shown(c.name))
-                    elif not g & ACC_PUBLIC:
-                        unimpl.setdefault((o,) + m, set()).add(shown(c.name) + " (only a non-public method: IllegalAccessError)")
-                elif not any(m in known[j].vm and not known[j].vm[m] & ACC_ABSTRACT for j in ifs):
-                    unimpl.setdefault((o,) + m, set()).add(shown(c.name))
 
     def under(lines):
         for line in sorted(lines): print("  " + line)
@@ -660,10 +974,10 @@ def main(argv):
     for w in sorted(unread): print("unreadable-code %s" % shown(w))
     caught = sum(1 for lines in list(missing.values()) + list(mm.values()) + list(mf.values()) + list(link.values())
                  if lines and all("[caught: " in line for line in lines))
-    print("summary %d missing classes, %d methods, %d fields, %d link errors (%d of these caught everywhere), "
-          "%d shadowed, %d unimplemented; %d platform classes from %d files, %d platform dexes unreadable; "
-          "%d APK methods read, %d unreadable"
-          % (len(named | set(missing)), len(mm), len(mf), len(link), caught, len(shadowed), len(unimpl),
+    print("summary %d missing classes, %d methods, %d fields, %d link errors, %d shadowed, %d unimplemented; "
+          "%d missing or link-error entries caught everywhere; %d platform classes from %d files, "
+          "%d platform dexes unreadable; %d APK methods read, %d unreadable"
+          % (len(named | set(missing)), len(mm), len(mf), len(link), len(shadowed), len(unimpl), caught,
              len(plat), files, len(bad), read_n, len(unread)))
     if bad: sys.exit(2)
 
