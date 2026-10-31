@@ -5,10 +5,92 @@ import type { Transport } from "./client.ts";
 
 export const FASTBOOT_FILTER: USBDeviceFilter = { classCode: 0xff, subclassCode: 0x42, protocolCode: 0x03 };
 
+/**
+ * What kind of USB failure: "access" when the computer won't let the browser open the phone (a
+ * missing driver or permission, which waiting won't fix), "in-use" when another program or tab
+ * holds it.
+ */
+export type UsbErrorKind = "access" | "in-use" | "other";
+
 export class UsbError extends Error {
-	constructor(message: string) {
+	constructor(
+		message: string,
+		readonly kind: UsbErrorKind = "other",
+	) {
 		super(message);
 		this.name = "UsbError";
+	}
+}
+
+/** The Google USB Driver's page. The page shows it as a link beside an "access" failure on Windows. */
+export const USB_DRIVER_URL = "https://developer.android.com/studio/run/win-usb";
+
+export type HostOs = "windows" | "linux" | "android" | "chromeos" | "mac" | "other";
+
+/** The system the browser runs on, for advice that depends on it. */
+export function hostOs(nav: { userAgent?: string; userAgentData?: { platform?: string } } | undefined = typeof navigator === "undefined" ? undefined : navigator): HostOs {
+	const p = `${nav?.userAgentData?.platform ?? ""} ${nav?.userAgent ?? ""}`;
+	if (/Windows/i.test(p)) return "windows";
+	if (/Android/i.test(p)) return "android";
+	if (/CrOS|Chrome ?OS/i.test(p)) return "chromeos";
+	if (/mac ?OS|Macintosh/i.test(p)) return "mac";
+	if (/Linux|X11/i.test(p)) return "linux";
+	return "other";
+}
+
+/**
+ * Why the browser couldn't use the phone, and what to do. Chrome rejects open() with a
+ * SecurityError ("Access denied.") when the system won't hand it the device: on Linux the device
+ * node isn't writable without a udev rule, and on Windows the phone isn't bound to WinUSB without
+ * the Google USB Driver. When another program or tab holds the phone, open() works and
+ * claimInterface() fails instead, with a NetworkError ("Unable to claim interface.").
+ */
+export function openFailure(stage: "open" | "configure" | "claim" | "alternate", e: unknown, os: HostOs = hostOs()): UsbError {
+	const msg = e instanceof Error ? e.message : String(e);
+	const said = msg ? ` The browser said: ${msg}` : "";
+	const name = e instanceof DOMException || e instanceof Error ? e.name : "";
+	if (stage === "open" && name === "SecurityError") {
+		switch (os) {
+			case "windows":
+				return new UsbError(
+					`Windows isn't letting the browser use the phone. Install the Google USB Driver for the phone in Fastboot Mode, then unplug the phone, plug it back in and connect again.${said}`,
+					"access",
+				);
+			case "linux":
+				return new UsbError(
+					"Linux isn't letting the browser use the phone. Add a udev rule for Google's USB vendor id 18d1, for example by installing the android-udev-rules package (android-sdk-platform-tools-common on Debian and Ubuntu), " +
+						'or by putting the line SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", TAG+="uaccess" in /etc/udev/rules.d/51-android.rules and running sudo udevadm control --reload-rules. ' +
+						`Then unplug the phone, plug it back in and connect again. With the Chromium snap, also run sudo snap connect chromium:raw-usb.${said}`,
+					"access",
+				);
+			case "android":
+				return new UsbError(`Android didn't let Chrome use the phone. Unplug it, plug it back in and connect again, and allow Chrome to use it when Android asks.${said}`, "access");
+			default:
+				return new UsbError(
+					`This computer didn't let the browser open the phone. Another program may be using it, or the browser may not be allowed to use it. Close other programs that use the phone, then unplug it, plug it back in and connect again.${said}`,
+					"access",
+				);
+		}
+	}
+	if ((stage === "claim" || stage === "configure") && name === "NetworkError") {
+		return new UsbError(
+			`The phone is in use by another program. Close any adb or fastboot running on this computer, and any other tab using the phone, then connect again.${said}`,
+			"in-use",
+		);
+	}
+	return new UsbError(`Couldn't open the phone.${said}`);
+}
+
+// Phones this page left part way through a command (see Transport.abandon)
+const unsettled = new WeakSet<USBDevice>();
+
+/** A USB reset where the platform has one (Chrome on Windows doesn't). */
+async function tryReset(device: USBDevice): Promise<boolean> {
+	try {
+		await device.reset();
+		return true;
+	} catch {
+		return false;
 	}
 }
 
@@ -59,20 +141,27 @@ export class UsbTransport implements Transport {
 	static async open(device: USBDevice): Promise<UsbTransport> {
 		const fb = findFastbootInterface(device);
 		if (!fb) throw new UsbError("This USB device isn't a phone in fastboot mode");
+		let stage: Parameters<typeof openFailure>[0] = "open";
 		try {
 			if (!device.opened) await device.open();
-			if (device.configuration?.configurationValue !== fb.configuration) await device.selectConfiguration(fb.configuration);
+			// The last session stopped part way through a command, so the phone may still want the
+			// rest of a download or hold a late reply. Only a USB reset brings it back to waiting for
+			// a command (fastboot.js resets on every connect). A reset drops the configuration.
+			const reset = unsettled.delete(device) && (await tryReset(device));
+			stage = "configure";
+			if (reset || device.configuration?.configurationValue !== fb.configuration) await device.selectConfiguration(fb.configuration);
+			stage = "claim";
 			await device.claimInterface(fb.interfaceNumber);
+			stage = "alternate";
 			if (fb.alternate !== 0) await device.selectAlternateInterface(fb.interfaceNumber, fb.alternate);
 		} catch (e) {
-			const msg = e instanceof Error ? e.message : String(e);
-			throw new UsbError(
-				/access|denied|busy|claim/i.test(msg)
-					? `The phone is in use by another program (close any adb or fastboot running on this computer, and other tabs using it): ${msg}`
-					: `Couldn't open the phone: ${msg}`,
-			);
+			throw openFailure(stage, e);
 		}
 		return new UsbTransport(device, fb);
+	}
+
+	abandon(): void {
+		unsettled.add(this.device);
 	}
 
 	get serial(): string {

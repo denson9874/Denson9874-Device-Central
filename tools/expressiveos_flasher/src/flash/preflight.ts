@@ -14,8 +14,13 @@ export interface PhoneReport {
 	baseband: string | null;
 	/** android-info.txt's requirements, each checked. */
 	requirements: RequirementResult[];
-	/** android-info.txt lines that couldn't be read. */
+	/**
+	 * android-info.txt lines that couldn't be read. As in fastboot, they're a warning and don't
+	 * stop the install (they aren't among reportProblems' problems).
+	 */
 	requirementErrors: string[];
+	/** Whether there was an android-info.txt to check. */
+	androidInfo: boolean;
 }
 
 export async function inspectPhone(phone: Phone, androidInfo: string | null): Promise<PhoneReport> {
@@ -32,7 +37,60 @@ export async function inspectPhone(phone: Phone, androidInfo: string | null): Pr
 		baseband: await g("version-baseband"),
 		requirements: await checkRequirements(parsed.requirements, g),
 		requirementErrors: parsed.errors,
+		androidInfo: androidInfo !== null,
 	};
+}
+
+/** Why a phone can't take a build. */
+export type Problem =
+	/** It's another model. */
+	| { kind: "product"; product: string | null }
+	/**
+	 * Asked for its model, it answered something that isn't one: what a phone still holding the
+	 * reply to an earlier command gives (Chrome on Windows can't reset it).
+	 */
+	| { kind: "unexpected"; product: string | null }
+	/** The build's zip has no android-info.txt to check it against. */
+	| { kind: "no-android-info" }
+	/** A line of android-info.txt it doesn't meet. */
+	| { kind: "requirement"; result: RequirementResult }
+	/** Its bootloader is locked. */
+	| { kind: "locked" };
+
+// What the bootloader and fastbootd answer to the other variables this page reads
+const NOT_A_PRODUCT = new Set(["yes", "no", "raw", "ext4", "f2fs", "super", "none", "snapshotted", "merging"]);
+
+/**
+ * Whether the phone's answer for "product" looks like a codename (cheetah, sdm845_64), and not the
+ * answer to another variable: yes or no, a slot letter, a size, a serial number or a version.
+ */
+export function plausibleProduct(product: string | null): boolean {
+	return !!product && /^[a-z][a-z0-9_]+$/.test(product) && !NOT_A_PRODUCT.has(product);
+}
+
+/**
+ * What in this report stops the phone taking a build for `codename` (the bootloader lock aside).
+ * Lines of android-info.txt that can't be read aren't among them: fastboot only warns of those.
+ */
+export function reportProblems(r: PhoneReport, codename: string): Problem[] {
+	if (!plausibleProduct(r.product)) return [{ kind: "unexpected", product: r.product }];
+	if (r.product !== codename) return [{ kind: "product", product: r.product }];
+	if (!r.androidInfo) return [{ kind: "no-android-info" }];
+	return r.requirements.filter((x) => !x.ok && !x.skipped).map((result): Problem => ({ kind: "requirement", result }));
+}
+
+/**
+ * Reads the phone again right before an install and checks it against the android-info.txt of
+ * the zip about to be written, as AOSP's flashall does (CheckRequirements, before set_active).
+ * Nothing may be written unless this comes back empty. A line that can't be read doesn't count,
+ * as in CheckRequirements.
+ */
+export async function checkBeforeInstall(phone: Phone, androidInfo: string | null, codename: string): Promise<Problem[]> {
+	const report = await inspectPhone(phone, androidInfo);
+	const out = reportProblems(report, codename);
+	// After an unexpected answer, what it says about its lock can't be trusted either
+	if (report.unlocked === false && !out.some((p) => p.kind === "unexpected")) out.push({ kind: "locked" });
+	return out;
 }
 
 /** The board a zip is for, from its "require board=" line. */

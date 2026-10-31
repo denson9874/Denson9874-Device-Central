@@ -29,10 +29,11 @@ stderr and exits with status 1.
 - If `<name>-init_boot-stock.img` is beside the zip, it must match its own `.sha256` and be a boot image (`ANDROID!`).
   The flasher then offers KernelSU Next or no root (`"root": "kernelsu-next"`). With no stock image the release is
   listed as one without KernelSU Next (`"root": null`). A stock image's `.sha256` without the image itself is a failure,
-  and so is a release R2 already holds with a stock image (it would be relisted without root).
+  and so is a release that R2 already holds with a stock image in the same channel (it would be relisted without root).
 - The zip is stored, as `eos-pack.sh` makes it with `zip -0`. It holds `fastboot-info.txt`, `android-info.txt`,
   `init_boot.img`, `vbmeta.img` and `super_empty.img`. Its `android-info.txt` says `require board=<device>` and has no
-  other board or product line.
+  other board or product line, and every other line that isn't blank is a requirement fastboot can read (fastboot
+  skips a line it can't, and the flasher only warns about one).
 
 ## Where it writes in R2
 
@@ -40,13 +41,17 @@ It writes these paths and nothing else:
 
 | Key | What |
 |---|---|
-| `expressiveos/<device>/flasher/<file>` and `<file>.sha256` | the zip, and the stock init_boot if there is one |
-| `expressiveos/<device>/flasher.json` | the manifest the flasher reads |
+| `expressiveos/<device>/flasher/<file>` and `<file>.sha256` | a release's zip, and its stock init_boot if there is one |
+| `expressiveos/<device>/flasher/testers/<file>` and `<file>.sha256` | the same for a testers build (`--testers`) |
+| `expressiveos/<device>/flasher.json` | the manifest the flasher reads, which lists both channels |
 
-- **Names are never overwritten.** If R2 already holds a file under a name with the same sha256, the upload is skipped,
-  so running it again is safe, and the release keeps its place in the manifest. If the sha256 differs, the run fails
-  before anything is uploaded. Testers' builds and releases share `flasher/`, while `eos-pack.sh` gives a build `-rN`
-  only for names taken in its own folders: a release named as an earlier testers build can't be published.
+Each channel has its own folder. The Worker serves `flasher/<file>` as `/dl/<device>/<file>` and `flasher/testers/<file>`
+as `/dl/<device>/testers/<file>`. A testers build and a release can have the same name, as `eos-pack.sh` keeps names
+unique only within its own folders, and both are published and listed.
+
+- **Names are never overwritten.** The run looks only in its own channel's folder. If that folder already holds a file
+  under the name with the same sha256, the upload is skipped, so running it again is safe, and the release keeps its
+  place in the manifest. If the sha256 differs, the run fails before anything is uploaded.
 - **The `.sha256` goes up before its file.** That claims the name first, and a run cut short during a long upload can
   simply be run again. It is checked in R2 before the file goes up.
 - **What goes up is what was hashed.** The stock image and each `.sha256` go up from the run's own copies. The zip goes
@@ -55,8 +60,8 @@ It writes these paths and nothing else:
 - **The manifest is never silently replaced.** If `flasher.json` exists but isn't a valid manifest, the run fails and
   writes nothing.
 - **Dropped releases stay in R2.** The manifest lists only the newest `--keep` releases of each channel (2 by default),
-  sorted by date, then `-rN`, then publish time. Files of releases it no longer lists are printed as
-  `no longer listed: <remote path>` and left in place.
+  sorted by date, then publish time, then `-rN`. Files of releases it no longer lists are printed as
+  `no longer listed: <remote path>`, a path in their own channel's folder, and left in place.
 - **The manifest is read back.** After the upload, the script reads `flasher.json` back and checks that it lists the new
   release.
 - **`--dry-run` writes nothing.** It runs every local check and every read of R2 (a missing bucket fails), then prints
@@ -84,8 +89,9 @@ It writes these paths and nothing else:
 }
 ```
 
-`channel` is `release` or, with `--testers`, `testers`. `initBootStock` and `root` are both `null` for a build without
-KernelSU Next. `requirements` holds the non-empty lines of the zip's `android-info.txt`.
+`channel` is `release` or, with `--testers`, `testers`. A name is listed at most once in each channel, so it can be in
+both. `initBootStock` and `root` are both `null` for a build without KernelSU Next. `requirements` holds the non-empty
+lines of the zip's `android-info.txt`.
 
 ## Tests
 

@@ -12,12 +12,14 @@ The zip must hold what a clean flash needs, for this phone only (android-info.tx
 board=<device>' and no other board/product line, as eos-pack.sh writes it).
 
 R2 (tools/ota_mirror/README.md for the rclone remote), nothing else ever written:
-  <remote>/expressiveos/<device>/flasher/<file> and <file>.sha256   (each published file)
-  <remote>/expressiveos/<device>/flasher.json                       (the manifest)
-A published name is never overwritten with another file: a name R2 already holds with the
-same sha256 is left as it is (a re-run), with another one the run fails. What goes to R2 is
-what was hashed: the stock init_boot and each .sha256 from this run's private copies, the
-zip from the file itself, which must not change from its hashing to the end of its upload.
+  <remote>/expressiveos/<device>/flasher/<file> and <file>.sha256          (a release's files)
+  <remote>/expressiveos/<device>/flasher/testers/<file> and <file>.sha256  (a --testers build's)
+  <remote>/expressiveos/<device>/flasher.json                              (the manifest, both channels)
+Each channel has its own folder, so a testers build and a release may have the same name. A
+published name is never overwritten with another file: a name the run's channel folder already
+holds with the same sha256 is left as it is (a re-run), with another one the run fails. What goes
+to R2 is what was hashed: the stock init_boot and each .sha256 from this run's private copies,
+the zip from the file itself, which must not change from its hashing to the end of its upload.
 The manifest lists each channel's newest --keep releases (2 unless set); the files of
 releases it no longer lists are printed as "no longer listed: <remote path>" and left in R2.
 One run per device at a time (~/.expressiveos-flasher-<device>.lock).
@@ -47,6 +49,9 @@ DEFAULT_REMOTE = "r2:denson9874-ota"
 DEFAULT_RCLONE = "~/bin/rclone"
 DEFAULT_KEEP = 2
 CHANNELS = ("release", "testers")
+# Each channel's folder in expressiveos/<device>/, as the Worker serves them: /dl/<device>/<file>
+# from flasher/, /dl/<device>/testers/<file> from flasher/testers/
+CHANNEL_DIRS = {"release": "flasher", "testers": "flasher/testers"}
 ROOT_KSUN = "kernelsu-next"
 # What `fastboot update` and the flasher need from the zip
 REQUIRED_ENTRIES = ("fastboot-info.txt", "android-info.txt", "init_boot.img", "vbmeta.img", "super_empty.img")
@@ -65,6 +70,9 @@ ANY_DEVICE_RE = re.compile(r"ExpressiveOS-\d+\.\d+-\d{8}-([a-z0-9]+)-[0-9][0-9.]
 SHA_LINE_RE = re.compile(r"([0-9a-f]{64})  ([^\n\r]+)", re.ASCII)
 # android-info.txt lines that say which phones the zip is for
 BOARD_LINE_RE = re.compile(r"(?:^|\s)(?:board|product)\s*=", re.ASCII)
+# A line AOSP fastboot reads as a requirement (ParseRequirementLine; src/fastboot/android-info.ts)
+REQUIREMENT_RES = (re.compile(r"(require\s+|reject\s+)?\s*(\S+)\s*=\s*(.*)"),
+                   re.compile(r"require-for-product:\s*(\S+)\s+(\S+)\s*=\s*(.*)"))
 ISO_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}", re.ASCII)
 ISO_TIME_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", re.ASCII)
 SHA256_RE = re.compile(r"[0-9a-f]{64}", re.ASCII)
@@ -88,13 +96,21 @@ def release_re(device: str, suffix: str) -> re.Pattern[str]:
                       + r"-([0-9][0-9.]*)-([A-Za-z]+)(-r\d+)?" + re.escape(suffix), re.ASCII)
 
 
+def is_release_file(device: str, name: str) -> bool:
+    """name is one of <device>'s release files (a zip, a stock init_boot, or the .sha256 of one)."""
+    return any(release_re(device, suffix + side).fullmatch(name)
+               for suffix in (ZIP_SUFFIX, STOCK_SUFFIX) for side in ("", ".sha256"))
+
+
 def utc_now() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def file_ident(st: os.stat_result) -> tuple[int, int, int, int, int]:
-    """What a write to the file, or another file put in its place, changes."""
-    return (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
+def file_ident(st: os.stat_result) -> tuple[int, int, int, int]:
+    """What a write to the file, or another file put in its place, changes. Not ctime: eos-pack.sh
+    makes a testers/ zip a hard link of check/'s, and removing check/'s link on its next candidate
+    run changes the link count, and so the ctime, of the file testers/ still names."""
+    return (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns)
 
 
 def hash_stream(f: BinaryIO) -> tuple[str, int]:
@@ -256,6 +272,12 @@ def check_zip(zfile: BinaryIO, path: str, name: str, device: str) -> list[str]:
     boards = [line.strip() for line in lines if BOARD_LINE_RE.search(line)]
     if want not in lines or len(boards) != 1:
         fail(f"{name}'s android-info.txt doesn't say '{want}' only (its board/product lines: {boards!r:.300})")
+    # fastboot skips a line it can't read (a syntax error), and the flasher warns about one: a
+    # broken line means a broken build, so it's caught here, before anyone installs it
+    unreadable = [line for line in (x.rstrip("\r") for x in lines)
+                  if line.strip() and not any(r.fullmatch(line) for r in REQUIREMENT_RES)]
+    if unreadable:
+        fail(f"{name}'s android-info.txt has lines that aren't requirements fastboot can read: {unreadable!r:.300}")
     return [line.strip() for line in lines if line.strip()]
 
 
@@ -266,7 +288,15 @@ def rnum(name: str) -> int:
 
 
 def sort_key(entry: dict) -> tuple:
-    return (entry["date"], rnum(entry["name"]), entry["published"])
+    """Newest first (reversed): the build's date, then when it was first published, then -rN.
+    -rN counts only the zips of one name (one Android version, ExpressiveOS version and type) on
+    one day, so a 1.1 built after 1.0-r3 that day has none: the publish time orders them."""
+    return (entry["date"], entry["published"], rnum(entry["name"]))
+
+
+def key(e: dict) -> tuple[str, str]:
+    """What tells a manifest's entries apart: a name may be in both channels."""
+    return (e["name"], e["channel"])
 
 
 def entry_error(e: object, device: str) -> str | None:
@@ -330,22 +360,25 @@ def parse_manifest(data: bytes, device: str, where: str) -> list[dict]:
         bad(f"device {m.get('device')!r:.40}, not {device!r}")
     if not isinstance(m.get("releases"), list):
         bad("no releases list")
+    # A name may be in both channels (each has its own folder), only once in each
     seen = set()
     for e in m["releases"]:
         why = entry_error(e, device)
         if why:
             bad(why)
-        if e["name"] in seen:
-            bad(f"{e['name']} is listed twice")
-        seen.add(e["name"])
+        if key(e) in seen:
+            bad(f"{e['name']} is listed twice in the {e['channel']} channel")
+        seen.add(key(e))
     return m["releases"]
 
 
-def plan_releases(existing: list[dict], entry: dict, keep: int) -> tuple[list[dict], list[str]]:
+def plan_releases(existing: list[dict], entry: dict, keep: int) -> tuple[list[dict], list[tuple[str, str]]]:
     """The releases the manifest lists with entry (newest first, each channel's newest keep),
-    and the files no release listed any more (those of dropped or replaced releases)."""
-    others = [e for e in existing if e["name"] != entry["name"]]
-    replaced = [e for e in existing if e["name"] == entry["name"]]
+    and the files no release listed any more (those of dropped or replaced releases), each as
+    (channel, file): the channels' files are in different folders, so one is no longer listed
+    when no kept release of its own channel lists it."""
+    others = [e for e in existing if key(e) != key(entry)]
+    replaced = [e for e in existing if key(e) == key(entry)]
     # Stable: the new release goes first among equals
     ordered = sorted([entry] + others, key=sort_key, reverse=True)
     kept, dropped = [], []
@@ -354,13 +387,13 @@ def plan_releases(existing: list[dict], entry: dict, keep: int) -> tuple[list[di
         count[e["channel"]] += 1
         (kept if count[e["channel"]] <= keep else dropped).append(e)
 
-    def files(e: dict) -> list[str]:
-        out = [e["zip"]["file"]]
+    def files(e: dict) -> list[tuple[str, str]]:
+        out = [(e["channel"], e["zip"]["file"])]
         if e.get("initBootStock"):
-            out.append(e["initBootStock"]["file"])
+            out.append((e["channel"], e["initBootStock"]["file"]))
         return out
     listed = {f for e in kept for f in files(e)}
-    gone = []
+    gone: list[tuple[str, str]] = []
     for e in dropped + replaced:
         for f in files(e):
             if f not in listed and f not in gone:
@@ -397,18 +430,26 @@ def take_lock(device: str) -> int:
 
 
 class R2:
-    """The device's part of the bucket, through rclone: nothing outside it is ever written."""
+    """The device's part of the bucket, through rclone, for one channel's run: nothing but the
+    manifest and the files directly in that channel's folder is ever written."""
 
-    def __init__(self, rclone: str, remote: str, device: str, dry_run: bool):
+    def __init__(self, rclone: str, remote: str, device: str, channel: str, dry_run: bool):
         self.rclone = rclone
         self.remote = remote
         self.dry_run = dry_run
+        self.device = device
+        self.channel = channel
         self.device_dir = f"{remote}/expressiveos/{device}"
-        self.flasher_dir = f"{self.device_dir}/flasher"
+        self.channel_dir = self.dir_of(channel)
         self.manifest = f"{self.device_dir}/flasher.json"
 
-    def path(self, name: str) -> str:
-        return f"{self.flasher_dir}/{name}"
+    def dir_of(self, channel: str) -> str:
+        """A channel's folder: flasher/ for release, flasher/testers/ for testers."""
+        return f"{self.device_dir}/{CHANNEL_DIRS[channel]}"
+
+    def path(self, name: str, channel: str | None = None) -> str:
+        """Where a file of this run's channel (or of another channel) is in R2."""
+        return f"{self.dir_of(channel or self.channel)}/{name}"
 
     def _run(self, args: list[str], timeout: float | None = READ_TIMEOUT) -> subprocess.CompletedProcess:
         try:
@@ -431,13 +472,14 @@ class R2:
             self._failed(p, f"can't reach {self.remote} (rclone's {self.remote.split(':')[0]}: remote and its bucket, tools/ota_mirror/README.md)")
 
     def list_files(self, d: str) -> set[str]:
-        """The files directly in d; none while d doesn't exist (rclone exits 3)."""
+        """The files directly in d; none while d doesn't exist (rclone exits 3). Never a folder
+        in d, such as flasher/'s testers/ (lsf prints a folder with a trailing slash)."""
         p = self._run(["lsf", "--files-only", d + "/"])
         if p.returncode == RCLONE_DIR_NOT_FOUND:
             return set()
         if p.returncode != 0:
             self._failed(p, f"can't list {d}/ (rclone's remote, tools/ota_mirror/README.md)")
-        return {line for line in p.stdout.decode("utf-8", "replace").splitlines() if line}
+        return {line for line in p.stdout.decode("utf-8", "replace").splitlines() if line and not line.endswith("/")}
 
     def cat(self, path: str) -> bytes:
         p = self._run(["cat", path])
@@ -458,8 +500,11 @@ class R2:
         return int(out[0])
 
     def copyto(self, local: str, remote: str) -> None:
-        # Only ever the manifest or a file directly in flasher/ (never target-files/, never another device's)
-        inside = remote.startswith(self.flasher_dir + "/") and "/" not in remote[len(self.flasher_dir) + 1:]
+        # Only ever the manifest, or a release's file directly in this run's channel folder (named as
+        # the Worker serves them): never target-files/, never another device's, never the other
+        # channel's folder, never flasher/'s testers/ itself
+        folder, _, name = remote.rpartition("/")
+        inside = folder == self.channel_dir and is_release_file(self.device, name)
         if self.dry_run or not (remote == self.manifest or inside):
             fail(f"internal error: refusing to write {remote}")
         p = self._run(["copyto", "--s3-no-check-bucket", local, remote], timeout=None)
@@ -470,10 +515,11 @@ class R2:
         return sidecar_sha256(self.cat(self.path(name + ".sha256")), name)
 
     def state(self, f: LocalFile) -> str:
-        """Where R2 stands with f's name: 'new' (neither it nor its .sha256 there), 'sidecar' (only
-        its .sha256, ours: an upload cut short) or 'published' (both there, ours). Another file
-        under its name, or a .sha256 that isn't ours, is a failure: a name is never overwritten."""
-        listing = self.list_files(self.flasher_dir)
+        """Where the run's channel folder stands with f's name: 'new' (neither it nor its .sha256
+        there), 'sidecar' (only its .sha256, ours: an upload cut short) or 'published' (both there,
+        ours). Another file under its name, or a .sha256 that isn't ours, is a failure: a name is
+        never overwritten. The other channel's folder is never looked at: its names are its own."""
+        listing = self.list_files(self.channel_dir)
         remote, side = self.path(f.name), f.name + ".sha256"
         if f.name in listing:
             if side not in listing:
@@ -495,8 +541,8 @@ class R2:
             fail(f"R2's {self.path(f.name)} is {'not there' if size is None else f'{size} bytes'}, not {f.size} bytes")
 
     def publish(self, f: LocalFile) -> None:
-        """f and its .sha256 in flasher/, unless they're there already. The .sha256 goes first,
-        checked: a name is claimed before the long upload, and a cut-short run can be run again."""
+        """f and its .sha256 in the channel's folder, unless they're there already. The .sha256 goes
+        first, checked: a name is claimed before the long upload, and a cut-short run can be run again."""
         st = self.state(f)
         remote = self.path(f.name)
         if st == "published":
@@ -545,10 +591,13 @@ class Parser(argparse.ArgumentParser):
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
-    p = Parser(prog="flasher_publish.py", description="Publish an ExpressiveOS release for the web flasher.")
+    p = Parser(prog="flasher_publish.py", description=(
+        "Publish an ExpressiveOS release for the web flasher. Its files go to R2's expressiveos/<device>/flasher/ "
+        "(a testers build's to flasher/testers/), and expressiveos/<device>/flasher.json lists it."))
     p.add_argument("device", help=" | ".join(DEVICES))
     p.add_argument("zip", help="the release's ...-fastboot.zip (eos-pack.sh), its .sha256 beside it")
-    p.add_argument("--testers", action="store_true", help="the testers channel (default: release)")
+    p.add_argument("--testers", action="store_true",
+                   help="the testers channel, its files in flasher/testers/ (default: the release channel, in flasher/)")
     p.add_argument("--remote", default=DEFAULT_REMOTE, help=f"rclone remote:bucket (default {DEFAULT_REMOTE})")
     p.add_argument("--rclone", default=DEFAULT_RCLONE, help=f"rclone (default {DEFAULT_RCLONE})")
     p.add_argument("--keep", type=int, default=DEFAULT_KEEP, help=f"releases listed per channel (default {DEFAULT_KEEP})")
@@ -631,7 +680,7 @@ def publish(a: argparse.Namespace, device: str, zip_path: str, name: str, base: 
     print(f"OK: {name} holds {', '.join(REQUIRED_ENTRIES)}, stored; android-info.txt requires board={device} only")
     channel = "testers" if a.testers else "release"
 
-    r2 = R2(rclone, a.remote, device, a.dry_run)
+    r2 = R2(rclone, a.remote, device, channel, a.dry_run)
     files = [z] + ([stock] if stock else [])
     no_stock = (f"{base} was published as a KernelSU Next build, with {stock_name}, which isn't beside {zip_path}: "
                 "it would be listed without root. Publish it from the folder that holds its stock init_boot")
@@ -657,7 +706,8 @@ def publish(a: argparse.Namespace, device: str, zip_path: str, name: str, base: 
         why = entry_error(new, device)
         if why:
             fail(f"internal error: {why}")
-        old = next((e for e in existing or [] if e["name"] == base), None)
+        # This channel's entry of the name: the other channel's is another build's
+        old = next((e for e in existing or [] if key(e) == (base, channel)), None)
         if old is not None and stock is None and old["initBootStock"] is not None:
             fail(no_stock)
         if old is not None and all(old.get(k) == v for k, v in new.items() if k != "published"):
@@ -668,7 +718,7 @@ def publish(a: argparse.Namespace, device: str, zip_path: str, name: str, base: 
             fail(f"{base} wouldn't be listed: flasher.json's {channel} channel has {a.keep} newer releases (--keep {a.keep})")
         return {"schema": 1, "device": device, "updated": now, "releases": releases}, gone
 
-    print(f"== R2: {r2.device_dir} ({channel} channel){' (dry run: nothing is written)' if a.dry_run else ''}")
+    print(f"== R2: {r2.channel_dir}/ and {r2.manifest} ({channel} channel){' (dry run: nothing is written)' if a.dry_run else ''}")
     r2.reach()
     existing = r2.read_manifest(device)
     print(f"OK: {r2.manifest} lists {len(existing)} releases" if existing is not None
@@ -677,9 +727,9 @@ def publish(a: argparse.Namespace, device: str, zip_path: str, name: str, base: 
     # here, and so does a name another build holds (each is checked again just before its upload)
     plan(existing)
     if stock is None:
-        held = r2.list_files(r2.flasher_dir) & {stock_name, stock_name + ".sha256"}
+        held = r2.list_files(r2.channel_dir) & {stock_name, stock_name + ".sha256"}
         if held:
-            fail(f"R2's {r2.flasher_dir}/ holds {', '.join(sorted(held))}: {no_stock}")
+            fail(f"R2's {r2.channel_dir}/ holds {', '.join(sorted(held))}: {no_stock}")
     for f in files:
         r2.state(f)
     for f in files:
@@ -690,9 +740,9 @@ def publish(a: argparse.Namespace, device: str, zip_path: str, name: str, base: 
         # Again: the uploads took a while
         existing = r2.read_manifest(device)
     manifest, gone = plan(existing)
-    for f in gone:
-        print(f"no longer listed: {r2.path(f)}")
-        print(f"no longer listed: {r2.path(f)}.sha256")
+    for ch, f in gone:
+        print(f"no longer listed: {r2.path(f, ch)}")
+        print(f"no longer listed: {r2.path(f, ch)}.sha256")
     text = json.dumps(manifest, indent=2) + "\n"
     if a.dry_run:
         print(f"would write {r2.manifest}:")
@@ -703,8 +753,8 @@ def publish(a: argparse.Namespace, device: str, zip_path: str, name: str, base: 
     write_private(local, text.encode("utf-8"))
     r2.copyto(local, r2.manifest)
     back = parse_manifest(r2.cat(r2.manifest), device, f"R2's {r2.manifest} (read back)")
-    if not any(e["name"] == base and e["zip"]["sha256"] == z.sha256 for e in back):
-        fail(f"R2's {r2.manifest} doesn't list {base} when read back (written over by another run?)")
+    if not any(key(e) == (base, channel) and e["zip"]["sha256"] == z.sha256 for e in back):
+        fail(f"R2's {r2.manifest} doesn't list {base} ({channel}) when read back (written over by another run?)")
     print(f"OK: {r2.manifest} lists {len(back)} releases, {base} ({channel}) among them")
     print(f"PUBLISHED {base} {channel} {r2.manifest}")
 

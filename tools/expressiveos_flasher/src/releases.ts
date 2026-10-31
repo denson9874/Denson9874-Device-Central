@@ -22,7 +22,10 @@ export interface Release {
 	root: "kernelsu-next" | null;
 	/** android-info.txt's lines. */
 	requirements: string[];
-	/** The stock firmware the build was made on, when the manifest says (flasher_publish.py --bootloader/--baseband). */
+	/**
+	 * The stock firmware the build was made on. Optional, and flasher_publish.py doesn't write it
+	 * yet; when present, the page warns if the phone's bootloader differs.
+	 */
 	firmware?: { bootloader?: string; baseband?: string };
 }
 
@@ -69,7 +72,16 @@ export function releaseError(e: unknown, device: string): string | null {
 	return null;
 }
 
-/** The manifest's usable releases, newest first. Entries that don't check out are left out. */
+/** A release name's -rN (a second release of the day is -r2...), 1 without one. */
+export function rnum(name: string): number {
+	const m = /-r(\d+)$/.exec(name);
+	return m ? Number(m[1]) : 1;
+}
+
+/**
+ * The manifest's usable releases, newest first. Entries that don't check out are left out, but a
+ * manifest listing one (name, channel) twice isn't valid: the page tells builds apart by the two.
+ */
 export function parseManifest(value: unknown, device: string): { releases: Release[]; skipped: string[] } {
 	if (!value || typeof value !== "object") throw new ReleasesError("The build list isn't valid", "invalid");
 	const m = value as Record<string, unknown>;
@@ -78,12 +90,21 @@ export function parseManifest(value: unknown, device: string): { releases: Relea
 	if (!Array.isArray(m.releases)) throw new ReleasesError("The build list isn't valid", "invalid");
 	const releases: Release[] = [];
 	const skipped: string[] = [];
+	const seen = new Set<string>();
 	for (const e of m.releases) {
+		// Counted whether or not the entry checks out: the same name can be in both channels, once each
+		if (e && typeof e === "object" && typeof e.name === "string" && typeof e.channel === "string") {
+			const key = JSON.stringify([e.name, e.channel]);
+			if (seen.has(key)) throw new ReleasesError("The build list isn't valid", "invalid");
+			seen.add(key);
+		}
 		const why = releaseError(e, device);
 		if (why) skipped.push(why);
 		else releases.push(e as Release);
 	}
-	releases.sort((a, b) => (a.date === b.date ? b.published.localeCompare(a.published) : b.date.localeCompare(a.date)));
+	// Newest first, as flasher_publish.py orders them: date, then publish time, then -rN. A -rN counts
+	// only the zips of one name on one day, so a same-day 1.1 after 1.0-r3 has none of its own.
+	releases.sort((a, b) => b.date.localeCompare(a.date) || b.published.localeCompare(a.published) || rnum(b.name) - rnum(a.name));
 	return { releases, skipped };
 }
 
@@ -108,7 +129,9 @@ export async function fetchReleases(device: string, signal?: AbortSignal): Promi
 	return releases;
 }
 
-export const fileUrl = (device: string, file: string) => `/dl/${encodeURIComponent(device)}/${encodeURIComponent(file)}`;
+/** Where the Worker serves a release's file: the testers channel has its own folder. */
+export const fileUrl = (device: string, release: Pick<Release, "channel">, file: string) =>
+	`/dl/${encodeURIComponent(device)}/${release.channel === "testers" ? "testers/" : ""}${encodeURIComponent(file)}`;
 
 export function formatBytes(n: number): string {
 	if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(n >= 10 * 1024 ** 3 ? 0 : 1)} GB`;

@@ -23,8 +23,11 @@ import flasher_publish as fp  # noqa: E402
 
 REMOTE = "r2:denson9874-ota"
 FLASHER = REMOTE + "/expressiveos/cheetah/flasher"
+TESTERS = FLASHER + "/testers"     # the testers channel's own folder
+MANIFEST = REMOTE + "/expressiveos/cheetah/flasher.json"
 
 # lsf (--files-only, --format s), cat and copyto (--s3-no-check-bucket only) on <ROOT>/<remote>/<bucket>/...
+# lsf shows a folder as rclone does: "<name>/", or -1 with --format s, and not at all with --files-only.
 # FAKE_RCLONE_FAIL=<command> makes that command fail (with a credential in its message): only
 #   the calls whose arguments, joined by spaces, hold FAKE_RCLONE_FAIL_MATCH if that's set, with
 #   exit status FAKE_RCLONE_FAIL_RC (1 unless set);
@@ -75,7 +78,7 @@ def main():
                 q = os.path.join(p, n)
                 if os.path.isdir(q):
                     if not files_only:
-                        print(n + "/")
+                        print(-1 if fmt == "s" else n + "/")
                 else:
                     show(q, n)
         elif os.path.isfile(p) and not paths[0].endswith("/"):
@@ -165,9 +168,9 @@ class FlasherPublishTest(unittest.TestCase):
     # -- helpers
 
     def make_release(self, *, device="cheetah", date="20261030", version="1.0", rtype="OFFICIAL", r="",
-                     android="17.0", stock=True, info=None, omit=(), deflate=(), seed=b""):
-        """A fake release in self.rel: its stored Zip64 fastboot zip and (stock) stock init_boot,
-        each with its .sha256. Returns the zip's path."""
+                     android="17.0", stock=True, info=None, omit=(), deflate=(), seed=b"", folder=""):
+        """A fake release in self.rel (or its folder, such as testers/): its stored Zip64 fastboot
+        zip and (stock) stock init_boot, each with its .sha256. Returns the zip's path."""
         base = f"ExpressiveOS-{android}-{date}-{device}-{version}-{rtype}{r}"
         if info is None:
             info = f"require board={device}\nrequire version-bootloader={device}-1.0\n\n"
@@ -179,7 +182,8 @@ class FlasherPublishTest(unittest.TestCase):
             "super_empty.img": b"super_empty " + seed,
             "system.img": b"system " * 4096 + seed,
         }
-        zpath = os.path.join(self.rel, base + "-fastboot.zip")
+        os.makedirs(os.path.join(self.rel, folder), exist_ok=True)
+        zpath = os.path.join(self.rel, folder, base + "-fastboot.zip")
         with zipfile.ZipFile(zpath, "w") as zf:
             for n, data in entries.items():
                 if n in omit:
@@ -190,7 +194,7 @@ class FlasherPublishTest(unittest.TestCase):
                     f.write(data)
         write_sidecar(zpath)
         if stock:
-            spath = os.path.join(self.rel, base + "-init_boot-stock.img")
+            spath = os.path.join(self.rel, folder, base + "-init_boot-stock.img")
             with open(spath, "wb") as f:
                 f.write(b"ANDROID! stock init_boot " + seed)
             write_sidecar(spath)
@@ -257,9 +261,10 @@ class FlasherPublishTest(unittest.TestCase):
         with open(self.bucket("cheetah", "flasher.json"), "rb") as f:
             return json.loads(f.read())
 
-    def flasher_files(self):
-        d = self.bucket("cheetah", "flasher")
-        return sorted(os.listdir(d)) if os.path.isdir(d) else []
+    def flasher_files(self, *sub):
+        """The files directly in flasher/ (or flasher/<sub>/, such as testers/), never a folder."""
+        d = self.bucket("cheetah", "flasher", *sub)
+        return sorted(n for n in os.listdir(d) if os.path.isfile(os.path.join(d, n))) if os.path.isdir(d) else []
 
     @staticmethod
     def entry(base, channel="release", published="2026-10-01T10:00:00Z", stock=True):
@@ -320,14 +325,66 @@ class FlasherPublishTest(unittest.TestCase):
         self.assertIn(f"PUBLISHED {base} release {REMOTE}/expressiveos/cheetah/flasher.json", p.stdout)
 
     def test_testers_channel(self):
-        p = self.run_publish("cheetah", self.make_release(date="20261030"), "--testers")
+        # Its files go to flasher/testers/, which the Worker serves as /dl/<device>/testers/<file>
+        z = self.make_release(date="20261030", folder="testers")
+        name = os.path.basename(z)
+        stock = name[:-len("-fastboot.zip")] + "-init_boot-stock.img"
+        p = self.run_publish("cheetah", z, "--testers")
         self.assertOK(p)
+        testers = sorted([name, name + ".sha256", stock, stock + ".sha256"])
+        self.assertEqual(self.flasher_files("testers"), testers)
+        self.assertEqual(self.flasher_files(), [])
+        for n in testers:
+            with open(os.path.join(self.rel, "testers", n), "rb") as a, open(self.bucket("cheetah", "flasher", "testers", n), "rb") as b:
+                self.assertEqual(a.read(), b.read(), n)
+        self.assertEqual(self.uploads(), [f"{TESTERS}/{name}.sha256", f"{TESTERS}/{name}",
+                                          f"{TESTERS}/{stock}.sha256", f"{TESTERS}/{stock}", MANIFEST])
         self.assertEqual([(e["name"], e["channel"]) for e in self.manifest()["releases"]],
                          [("ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL", "testers")])
-        # A release beside it: both channels listed, newest first
-        self.assertOK(self.run_publish("cheetah", self.make_release(date="20261025", seed=b"2")))
+        self.assertIn(f"PUBLISHED ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL testers {MANIFEST}", p.stdout)
+        # A release beside it goes to flasher/, and the one manifest lists both channels, newest first
+        r = self.make_release(date="20261025", seed=b"2")
+        self.assertOK(self.run_publish("cheetah", r))
+        rname = os.path.basename(r)
+        rstock = rname[:-len("-fastboot.zip")] + "-init_boot-stock.img"
+        self.assertEqual(self.flasher_files(), sorted([rname, rname + ".sha256", rstock, rstock + ".sha256"]))
+        self.assertEqual(self.flasher_files("testers"), testers)
         self.assertEqual([(e["date"], e["channel"]) for e in self.manifest()["releases"]],
                          [("2026-10-30", "testers"), ("2026-10-25", "release")])
+
+    def test_same_name_in_both_channels(self):
+        # eos-pack.sh keeps a name unique only within its own folders, so a release can be named as
+        # an earlier testers build that's another build. Each channel's folder has names of its own
+        t = self.make_release(folder="testers", seed=b"testers")
+        z = self.make_release(seed=b"release")
+        name = os.path.basename(z)
+        self.assertEqual(os.path.basename(t), name)
+        self.assertOK(self.run_publish("cheetah", t, "--testers"))
+        os.remove(self.log)
+        p = self.run_publish("cheetah", z)
+        self.assertOK(p)
+        self.assertNotIn("no longer listed", p.stdout)
+        # The release run looked only in flasher/: never in testers/, never taking testers/ for a file
+        self.assertEqual([c for c in self.calls() if any("/flasher/testers" in a for a in c)], [])
+        for path, sub in ((z, ()), (t, ("testers",))):
+            for n in (name, name + ".sha256"):
+                with open(os.path.join(os.path.dirname(path), n), "rb") as a, open(self.bucket("cheetah", "flasher", *sub, n), "rb") as b:
+                    self.assertEqual(a.read(), b.read(), (sub, n))
+        with open(z, "rb") as fz, open(t, "rb") as ft:
+            want = sorted([("release", sha256(fz.read())), ("testers", sha256(ft.read()))])
+        self.assertEqual(sorted((e["channel"], e["zip"]["sha256"]) for e in self.manifest()["releases"]), want)
+        self.assertEqual({e["name"] for e in self.manifest()["releases"]}, {name[:-len("-fastboot.zip")]})
+        # A re-run is its own channel's: already published, both still listed as they were
+        listed = self.manifest()["releases"]
+        for path, args, folder in ((t, ("--testers",), TESTERS), (z, (), FLASHER)):
+            with self.subTest(args=args):
+                os.remove(self.log)
+                p = self.run_publish("cheetah", path, *args)
+                self.assertOK(p)
+                self.assertIn(f"already published: {folder}/{name} (", p.stdout)
+                self.assertEqual(p.stdout.count("already published: "), 2)
+                self.assertEqual(self.uploads(), [MANIFEST])
+                self.assertEqual(self.manifest()["releases"], listed)
 
     def test_other_device_and_remote(self):
         z = self.make_release(device="kodiak")
@@ -355,11 +412,31 @@ class FlasherPublishTest(unittest.TestCase):
         self.assertEqual({k: v for k, v in self.snapshot().items() if not k.endswith("flasher.json")}, before)
         # The same release, as it was listed: its published time too
         self.assertEqual(self.manifest()["releases"], listed)
-        # The same build to the other channel: still one entry, replaced, its files still listed
+        # The same build to the other channel: its own entry and its own copies in flasher/testers/,
+        # and the release stays listed as it was
         p = self.run_publish("cheetah", z, "--testers")
         self.assertOK(p)
-        self.assertEqual([e["channel"] for e in self.manifest()["releases"]], ["testers"])
+        self.assertNotIn("already published", p.stdout)
+        self.assertEqual(sorted(e["channel"] for e in self.manifest()["releases"]), ["release", "testers"])
+        self.assertIn(listed[0], self.manifest()["releases"])
+        self.assertEqual(self.flasher_files("testers"), self.flasher_files())
+        self.assertEqual({k: v for k, v in self.snapshot().items() if not k.endswith("flasher.json") and "testers" not in k}, before)
         self.assertNotIn("no longer listed", p.stdout)
+
+    def test_testers_rerun_skips_upload(self):
+        z = self.make_release(folder="testers")
+        name = os.path.basename(z)
+        self.assertOK(self.run_publish("cheetah", z, "--testers"))
+        before = {k: v for k, v in self.snapshot().items() if not k.endswith("flasher.json")}
+        listed = self.manifest()["releases"]
+        os.remove(self.log)
+        p = self.run_publish("cheetah", z, "--testers")
+        self.assertOK(p)
+        self.assertIn(f"already published: {TESTERS}/{name} ({os.path.getsize(z)} bytes, the same sha256)", p.stdout)
+        self.assertEqual(p.stdout.count("already published: "), 2)
+        self.assertEqual(self.uploads(), [MANIFEST])
+        self.assertEqual({k: v for k, v in self.snapshot().items() if not k.endswith("flasher.json")}, before)
+        self.assertEqual(self.manifest()["releases"], listed)
 
     def test_rerun_keeps_its_place(self):
         # A re-run of an older release of the day never moves it above (or drops) a newer one
@@ -381,15 +458,25 @@ class FlasherPublishTest(unittest.TestCase):
         self.assertEqual(self.snapshot(), before)
 
     def test_name_held_by_another_build(self):
+        # In the run's own channel folder a name is never overwritten; the other channel's folder
+        # has names of its own, so the same build still goes there
         z = self.make_release()
         name = os.path.basename(z)
-        self.put(b"another build", "cheetah", "flasher", name)
-        self.put(f"{sha256(b'another build')}  {name}\n".encode(), "cheetah", "flasher", name + ".sha256")
-        before = self.snapshot()
-        p = self.run_publish("cheetah", z)
-        self.assertFAIL(p, "another build holds", "never overwritten")
-        self.assertEqual(self.snapshot(), before)
-        self.assertEqual(self.uploads(), [])
+        for args, sub, other in (((), (), ("--testers",)), (("--testers",), ("testers",), ())):
+            with self.subTest(args=args):
+                shutil.rmtree(self.bucket(), ignore_errors=True)
+                self.put(b"another build", "cheetah", "flasher", *sub, name)
+                self.put(f"{sha256(b'another build')}  {name}\n".encode(), "cheetah", "flasher", *sub, name + ".sha256")
+                before = self.snapshot()
+                if os.path.exists(self.log):
+                    os.remove(self.log)
+                p = self.run_publish("cheetah", z, *args)
+                self.assertFAIL(p, f"another build holds {'/'.join([FLASHER, *sub, name])} ", "never overwritten")
+                self.assertEqual(self.snapshot(), before)
+                self.assertEqual(self.uploads(), [])
+                self.assertOK(self.run_publish("cheetah", z, *other))
+                with open(self.bucket("cheetah", "flasher", *sub, name), "rb") as f:
+                    self.assertEqual(f.read(), b"another build")
 
     def test_stock_name_held_by_another_build(self):
         # Checked before anything is uploaded: the zip doesn't go up either
@@ -557,7 +644,7 @@ class FlasherPublishTest(unittest.TestCase):
         os.remove(spath)
         os.remove(spath + ".sha256")
         before = self.snapshot()
-        for args in ((), ("--testers",), ("--dry-run",)):
+        for args in ((), ("--dry-run",)):
             with self.subTest(args=args):
                 os.remove(self.log)
                 p = self.run_publish("cheetah", z, *args)
@@ -583,6 +670,32 @@ class FlasherPublishTest(unittest.TestCase):
         p = self.run_publish("cheetah", z)
         self.assertFAIL(p, f"holds {stock}, {stock}.sha256", "listed without root")
         self.assertEqual(self.snapshot(), before)
+
+    def test_stock_image_check_goes_by_channel(self):
+        # The same refusal for a testers build, from the testers channel's own entry and folder
+        z = self.make_release(folder="testers")
+        spath = z[:-len("-fastboot.zip")] + "-init_boot-stock.img"
+        stock = os.path.basename(spath)
+        self.assertOK(self.run_publish("cheetah", z, "--testers"))
+        os.remove(spath)
+        os.remove(spath + ".sha256")
+        before = self.snapshot()
+        p = self.run_publish("cheetah", z, "--testers")
+        self.assertFAIL(p, "published as a KernelSU Next build", "listed without root")
+        self.assertEqual(self.snapshot(), before)
+        # Its stock image in flasher/testers/ but no longer listed
+        self.put_manifest([self.entry("ExpressiveOS-17.0-20261001-cheetah-1.0-OFFICIAL")])
+        before = self.snapshot()
+        p = self.run_publish("cheetah", z, "--testers")
+        self.assertFAIL(p, f"{TESTERS}/ holds {stock}, {stock}.sha256", "listed without root")
+        self.assertEqual(self.snapshot(), before)
+        # A release of that name is another build: one without KernelSU Next publishes beside it
+        r = self.make_release(stock=False, seed=b"release")
+        self.assertEqual(os.path.basename(r), os.path.basename(z))
+        self.assertOK(self.run_publish("cheetah", r))
+        e = next(e for e in self.manifest()["releases"] if e["name"] == stock[:-len("-init_boot-stock.img")])
+        self.assertEqual((e["channel"], e["root"], e["initBootStock"]), ("release", None, None))
+        self.assertEqual(self.flasher_files("testers")[-2:], [stock, stock + ".sha256"])
 
     # -- names, devices, arguments
 
@@ -638,6 +751,7 @@ class FlasherPublishTest(unittest.TestCase):
                 self.assertFAIL(p, "nothing published")
                 self.assertIn("usage: flasher_publish.py", p.stdout)
                 self.assertIn("--testers", p.stdout)
+                self.assertIn("flasher/testers/", p.stdout)
         self.assertEqual(self.calls(), [])
 
     def test_one_run_per_device(self):
@@ -685,6 +799,7 @@ class FlasherPublishTest(unittest.TestCase):
             "root without stock": m(releases=[dict(good, initBootStock=None)]),
             "bad date": m(releases=[dict(good, date="20261001")]),
             "listed twice": m(releases=[good, good]),
+            "listed twice in testers": m(releases=[dict(good, channel="testers")] * 2),
         }
         for case, data in cases.items():
             with self.subTest(case):
@@ -732,13 +847,43 @@ class FlasherPublishTest(unittest.TestCase):
         self.assertEqual([e["name"] for e in self.manifest()["releases"]],
                          ["ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL", tst])
 
-    def test_order_by_date_then_rn_then_published(self):
+    def test_keep_prunes_testers_in_their_folder(self):
+        # A testers build no longer listed is named in flasher/testers/, even with a release of the
+        # same name still listed: that release's files are in flasher/, other files
+        x = "ExpressiveOS-17.0-20261001-cheetah-1.0-OFFICIAL"
+        y = "ExpressiveOS-17.0-20261015-cheetah-1.0-OFFICIAL"
+        self.put_manifest([self.entry(y, channel="testers"), self.entry(x, channel="testers"), self.entry(x)])
+        p = self.run_publish("cheetah", self.make_release(date="20261030", folder="testers"), "--testers")
+        self.assertOK(p)
+        gone = [line for line in p.stdout.splitlines() if line.startswith("no longer listed: ")]
+        self.assertEqual(gone, [f"no longer listed: {TESTERS}/{x}-fastboot.zip",
+                                f"no longer listed: {TESTERS}/{x}-fastboot.zip.sha256",
+                                f"no longer listed: {TESTERS}/{x}-init_boot-stock.img",
+                                f"no longer listed: {TESTERS}/{x}-init_boot-stock.img.sha256"])
+        self.assertEqual([(e["name"], e["channel"]) for e in self.manifest()["releases"]],
+                         [("ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL", "testers"), (y, "testers"), (x, "release")])
+
+    def test_order_by_date_then_published_then_rn(self):
         a = "ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL"
-        a3 = "ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL-r3"
         self.put_manifest([self.entry(a, published="2026-10-30T09:00:00Z"),
-                           self.entry(a3, published="2026-10-30T08:00:00Z")])
+                           self.entry(a + "-r3", published="2026-10-30T13:00:00Z"),
+                           self.entry(a + "-r4", published="2026-10-30T13:00:00Z")])
+        # Published now, after the others: first, though its -r2 is lower
         self.assertOK(self.run_publish("cheetah", self.make_release(r="-r2"), "--keep", "5"))
-        self.assertEqual([e["name"] for e in self.manifest()["releases"]], [a3, a + "-r2", a])
+        # The same second: -rN decides
+        self.assertEqual([e["name"] for e in self.manifest()["releases"]], [a + "-r2", a + "-r4", a + "-r3", a])
+
+    def test_same_day_version_bump_after_rn_builds(self):
+        # 1.0, 1.0-r2 and 1.0-r3 sent to testers on one day, then 1.1 the same day: 1.1 has no -rN
+        # of its own (eos-pack.sh counts -rN per name), and is the newest
+        a = "ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL"
+        self.put_manifest([self.entry(a, channel="testers", published="2026-10-30T09:00:00Z"),
+                           self.entry(a + "-r2", channel="testers", published="2026-10-30T11:00:00Z"),
+                           self.entry(a + "-r3", channel="testers", published="2026-10-30T13:00:00Z")])
+        p = self.run_publish("cheetah", self.make_release(version="1.1", folder="testers"), "--testers")
+        self.assertOK(p)
+        self.assertEqual([e["name"] for e in self.manifest()["releases"]],
+                         ["ExpressiveOS-17.0-20261030-cheetah-1.1-OFFICIAL", a + "-r3"])
 
     def test_release_older_than_keep_is_refused(self):
         self.put_manifest([self.entry("ExpressiveOS-17.0-20261020-cheetah-1.0-OFFICIAL"),
@@ -772,6 +917,12 @@ class FlasherPublishTest(unittest.TestCase):
         m = json.loads("\n".join(out[start + 1:end]))
         self.assertEqual([e["name"] for e in m["releases"]],
                          ["ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL", "ExpressiveOS-17.0-20261015-cheetah-1.0-OFFICIAL"])
+        # A testers build: the same, in flasher/testers/
+        p = self.run_publish("cheetah", z, "--dry-run", "--testers")
+        self.assertOK(p)
+        self.assertIn(f"would upload: {z} -> {TESTERS}/{name} ", p.stdout)
+        self.assertIn(f"would upload: {TESTERS}/{name}.sha256 (the line '{line}')", p.stdout)
+        self.assertEqual(self.snapshot(), before)
         # On an empty bucket too
         shutil.rmtree(self.bucket())
         self.assertOK(self.run_publish("cheetah", z, "--dry-run"))
@@ -806,17 +957,19 @@ class FlasherPublishTest(unittest.TestCase):
         # or another build's file under this name would be written over
         z = self.make_release(stock=False)
         name = os.path.basename(z)
-        self.put(b"another build", "cheetah", "flasher", name)
-        self.put(f"{sha256(b'another build')}  {name}\n".encode(), "cheetah", "flasher", name + ".sha256")
+        for sub in ((), ("testers",)):
+            self.put(b"another build", "cheetah", "flasher", *sub, name)
+            self.put(f"{sha256(b'another build')}  {name}\n".encode(), "cheetah", "flasher", *sub, name + ".sha256")
         before = self.snapshot()
-        for rc in ("1", "2", "4", "5"):
-            with self.subTest(rc=rc):
-                p = self.run_publish("cheetah", z, env={
-                    "FAKE_RCLONE_FAIL": "lsf", "FAKE_RCLONE_FAIL_RC": rc,
-                    "FAKE_RCLONE_FAIL_MATCH": f"--files-only {FLASHER}/"})
-                self.assertFAIL(p, f"can't list {FLASHER}/", f"rclone exit {rc}")
-                self.assertEqual(self.snapshot(), before)
-                self.assertEqual(self.uploads(), [])
+        for args, folder in (((), FLASHER), (("--testers",), TESTERS)):
+            for rc in ("1", "2", "4", "5"):
+                with self.subTest(args=args, rc=rc):
+                    p = self.run_publish("cheetah", z, *args, env={
+                        "FAKE_RCLONE_FAIL": "lsf", "FAKE_RCLONE_FAIL_RC": rc,
+                        "FAKE_RCLONE_FAIL_MATCH": f"--files-only {folder}/"})
+                    self.assertFAIL(p, f"can't list {folder}/", f"rclone exit {rc}")
+                    self.assertEqual(self.snapshot(), before)
+                    self.assertEqual(self.uploads(), [])
 
     def test_size_read_failure_is_not_a_missing_file(self):
         z = self.make_release(stock=False)
@@ -844,7 +997,7 @@ class FlasherPublishTest(unittest.TestCase):
             "if phase == 'after' and args[0] == 'copyto' and args[3].endswith('/flasher.json'):\n"
             f"    open(bucket(args[3]), 'w').write({json.dumps(other)!r})\n")
         p = self.run_publish("cheetah", self.make_release(), env=env)
-        self.assertFAIL(p, "doesn't list ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL when read back")
+        self.assertFAIL(p, "doesn't list ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL (release) when read back")
 
     def test_manifest_read_again_after_the_uploads(self):
         # A release another run listed during the uploads stays listed
@@ -897,6 +1050,35 @@ class FlasherPublishTest(unittest.TestCase):
             self.assertEqual(f.read(), original)
         self.assertEqual(self.manifest()["releases"][0]["initBootStock"]["sha256"], sha256(original))
 
+    def test_android_info_line_fastboot_cant_read(self):
+        before = self.snapshot()
+        p = self.run_publish("cheetah", self.make_release(info="require board=cheetah\nrequire foo\n"))
+        self.assertFAIL(p, "lines that aren't requirements fastboot can read: ['require foo']")
+        self.assertEqual(self.snapshot(), before)
+
+    def test_android_info_lines_fastboot_reads(self):
+        # Blank lines (spaces too), reject, require-for-product and partition-exists are all fine
+        info = ("require board=cheetah\n   \nreject version-baseband=g5300q-1\n"
+                "require-for-product:cheetah version-bootloader=cloudripper-16.4*|cloudripper-17.0*\n"
+                "require partition-exists=vendor_kernel_boot\n")
+        self.assertOK(self.run_publish("cheetah", self.make_release(info=info)))
+
+    def test_testers_hard_link_unlinked_during_the_upload(self):
+        # eos-pack.sh --testers makes testers/'s zip a hard link of check/'s, and its next candidate
+        # run deletes check/'s: the link count (and the ctime) changes, the file doesn't
+        z = self.make_release(folder="testers")
+        check = os.path.join(self.rel, "check")
+        os.makedirs(check)
+        other = os.path.join(check, os.path.basename(z))
+        os.link(z, other)
+        env = self.hook(
+            "if phase == 'before' and args[0] == 'copyto' and args[3].endswith('-fastboot.zip'):\n"
+            f"    os.unlink({other!r})\n")
+        p = self.run_publish("cheetah", z, "--testers", env=env)
+        self.assertOK(p)
+        self.assertFalse(os.path.exists(other))
+        self.assertEqual(self.manifest()["releases"][0]["channel"], "testers")
+
     def test_zip_changed_before_its_upload(self):
         z = self.make_release(stock=False)
         name = os.path.basename(z)
@@ -945,6 +1127,21 @@ class FlasherPublishTest(unittest.TestCase):
         ups = [c for c in self.calls() if c[0] == "copyto" and c[3].endswith("-fastboot.zip")]
         self.assertEqual([c[2] for c in ups], [os.path.realpath(real)])
 
+    def test_fake_rclone_lists_folders_as_rclone_does(self):
+        # rclone lsf prints a folder with a trailing slash (its size as -1), and none with --files-only
+        self.put(b"zip", "cheetah", "flasher", "a-fastboot.zip")
+        self.put(b"testers zip", "cheetah", "flasher", "testers", "a-fastboot.zip")
+
+        def lsf(*args):
+            p = subprocess.run([self.rclone, "lsf", *args], capture_output=True, text=True, timeout=60)
+            return p.returncode, p.stdout.splitlines()
+        self.assertEqual(lsf(FLASHER + "/"), (0, ["a-fastboot.zip", "testers/"]))
+        self.assertEqual(lsf("--files-only", FLASHER + "/"), (0, ["a-fastboot.zip"]))
+        self.assertEqual(lsf("--format", "s", FLASHER), (0, ["3", "-1"]))
+        self.assertEqual(lsf("--files-only", TESTERS + "/"), (0, ["a-fastboot.zip"]))
+        self.assertEqual(lsf("--format", "s", TESTERS + "/a-fastboot.zip"), (0, ["11"]))
+        self.assertEqual(lsf("--files-only", FLASHER + "/nothing/")[0], 3)
+
     def test_existing_manifest_unreadable(self):
         self.put_manifest([])
         p = self.run_publish("cheetah", self.make_release(), env={"FAKE_RCLONE_FAIL": "cat"})
@@ -965,14 +1162,91 @@ class UnitTest(unittest.TestCase):
         f = FlasherPublishTest.entry("ExpressiveOS-17.0-20261030-cheetah-1.1-OFFICIAL", published="2026-10-30T00:00:00Z")
         kept, gone = fp.plan_releases([e], f, 1)
         self.assertEqual(kept, [f])
-        self.assertEqual(gone, [e["zip"]["file"], e["initBootStock"]["file"]])
+        self.assertEqual(gone, [("release", e["zip"]["file"]), ("release", e["initBootStock"]["file"])])
 
     def test_replaced_release_keeps_its_files(self):
         e = FlasherPublishTest.entry("ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL")
         new = dict(e, published="2026-10-31T00:00:00Z", initBootStock=None, root=None)
         kept, gone = fp.plan_releases([e], new, 2)
         self.assertEqual(kept, [new])
-        self.assertEqual(gone, [e["initBootStock"]["file"]])   # the zip is still listed
+        self.assertEqual(gone, [("release", e["initBootStock"]["file"])])   # the zip is still listed
+
+    def test_plan_goes_by_name_and_channel(self):
+        entry = FlasherPublishTest.entry
+        x = "ExpressiveOS-17.0-20261020-cheetah-1.0-OFFICIAL"
+        rel_x = entry(x, published="2026-10-20T00:00:00Z")
+        tst_x = entry(x, channel="testers", published="2026-10-21T00:00:00Z")
+        # The same name in the other channel replaces nothing: both are listed
+        kept, gone = fp.plan_releases([rel_x], tst_x, 2)
+        self.assertEqual(kept, [tst_x, rel_x])
+        self.assertEqual(gone, [])
+        # Replaced in its own channel only: the release's files are the release's
+        new = dict(tst_x, published="2026-10-22T00:00:00Z", initBootStock=None, root=None)
+        kept, gone = fp.plan_releases([rel_x, tst_x], new, 2)
+        self.assertEqual(kept, [new, rel_x])
+        self.assertEqual(gone, [("testers", x + "-init_boot-stock.img")])
+        # Dropped from testers while the release of that name stays: its testers files are no longer listed
+        tst_y = entry("ExpressiveOS-17.0-20261025-cheetah-1.0-OFFICIAL", channel="testers")
+        tst_z = entry("ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL", channel="testers")
+        kept, gone = fp.plan_releases([rel_x, tst_x, tst_y], tst_z, 2)
+        self.assertEqual(kept, [tst_z, tst_y, rel_x])
+        self.assertEqual(gone, [("testers", x + "-fastboot.zip"), ("testers", x + "-init_boot-stock.img")])
+
+    def test_manifest_names_unique_per_channel(self):
+        entry = FlasherPublishTest.entry
+        x = "ExpressiveOS-17.0-20261020-cheetah-1.0-OFFICIAL"
+
+        def manifest(releases):
+            return json.dumps({"schema": 1, "device": "cheetah", "updated": "2026-10-20T00:00:00Z",
+                               "releases": releases}).encode()
+        both = [entry(x), entry(x, channel="testers")]
+        self.assertEqual(fp.parse_manifest(manifest(both), "cheetah", "here"), both)
+        for channel in fp.CHANNELS:
+            with self.subTest(channel):
+                with self.assertRaises(fp.Fail) as cm:
+                    fp.parse_manifest(manifest(both + [entry(x, channel=channel, published="2026-10-21T00:00:00Z")]), "cheetah", "here")
+                self.assertIn(f"{x} is listed twice in the {channel} channel", str(cm.exception))
+
+    def test_copyto_writes_only_the_manifest_and_its_channel_folder(self):
+        dev = REMOTE + "/expressiveos/cheetah"
+        base = "ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL"
+        names = [base + "-fastboot.zip", base + "-fastboot.zip.sha256",
+                 base + "-init_boot-stock.img", base + "-init_boot-stock.img.sha256"]
+        for channel, own, other in (("release", f"{dev}/flasher", f"{dev}/flasher/testers"),
+                                    ("testers", f"{dev}/flasher/testers", f"{dev}/flasher")):
+            with self.subTest(channel):
+                r2 = fp.R2("/nonexistent/rclone", REMOTE, "cheetah", channel, dry_run=False)
+                self.assertEqual(r2.channel_dir, own)
+                runs = []
+                r2._run = lambda args, timeout=None: runs.append(args) or subprocess.CompletedProcess(args, 0, b"", b"")
+                allowed = [f"{dev}/flasher.json"] + [f"{own}/{n}" for n in names]
+                for remote in allowed:
+                    r2.copyto("/dev/null", remote)
+                self.assertEqual([a[3] for a in runs], allowed)
+                refused = [f"{other}/{n}" for n in names] + [
+                    f"{dev}/flasher/testers", f"{own}/testers", f"{own}/", f"{own}/sub/{names[0]}",
+                    f"{own}/../{names[0]}", f"{own}/notes.txt", f"{own}/{names[0]}.bak",
+                    f"{own}/ExpressiveOS-17.0-20261030-husky-1.0-OFFICIAL-fastboot.zip",
+                    f"{dev}/{names[0]}", f"{dev}/target-files/{names[0]}", f"{dev}/flasher.json.sha256",
+                    f"{REMOTE}/expressiveos/husky/flasher/{names[0]}", f"{REMOTE}/expressiveos/husky/flasher.json",
+                    f"backup:other/expressiveos/cheetah/{fp.CHANNEL_DIRS[channel]}/{names[0]}"]
+                for remote in refused:
+                    with self.assertRaises(fp.Fail) as cm:
+                        r2.copyto("/dev/null", remote)
+                    self.assertIn(f"refusing to write {remote}", str(cm.exception))
+                self.assertEqual(len(runs), len(allowed))
+                # A dry run writes nothing at all
+                dry = fp.R2("/nonexistent/rclone", REMOTE, "cheetah", channel, dry_run=True)
+                dry._run = r2._run
+                for remote in allowed:
+                    with self.assertRaises(fp.Fail):
+                        dry.copyto("/dev/null", remote)
+                self.assertEqual(len(runs), len(allowed))
+
+    def test_listing_never_takes_a_folder_for_a_file(self):
+        r2 = fp.R2("/nonexistent/rclone", REMOTE, "cheetah", "release", dry_run=False)
+        r2._run = lambda args, timeout=None: subprocess.CompletedProcess(args, 0, b"a-fastboot.zip\ntesters/\n\n", b"")
+        self.assertEqual(r2.list_files(r2.channel_dir), {"a-fastboot.zip"})
 
     def test_hash_stream_across_chunks(self):
         with tempfile.TemporaryDirectory() as t:

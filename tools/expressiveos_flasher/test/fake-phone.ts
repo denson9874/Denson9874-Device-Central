@@ -328,6 +328,8 @@ export class FakeTransport implements Transport {
 /** Restarts the simulated phone and connects to it again. */
 export class FakeConnector implements Connector {
 	restarts: string[] = [];
+	/** Runs while the phone is off, before it comes back (a test's chance to change what it boots). */
+	whileOff: ((phone: FakePhone) => void) | null = null;
 
 	constructor(private readonly phone: FakePhone) {}
 
@@ -346,6 +348,7 @@ export class FakeConnector implements Connector {
 		await send();
 		await link.close();
 		this.restarts.push(this.phone.nextMode);
+		this.whileOff?.(this.phone);
 		this.phone.boot();
 		if (this.phone.mode === "android") throw new Error("the phone started Android instead of fastboot");
 		return this.link();

@@ -36,6 +36,16 @@ function progressPoster(phase: Extract<WorkerReply, { type: "progress" }>["phase
 	};
 }
 
+/** Lets queued messages (a cancel) in during a long stretch of work, at most every 50 ms. */
+function yielder() {
+	let last = performance.now();
+	return async () => {
+		if (performance.now() - last < 50) return;
+		await new Promise((r) => setTimeout(r, 0));
+		last = performance.now();
+	};
+}
+
 const sleep = (ms: number, signal: AbortSignal) =>
 	new Promise<void>((resolve, reject) => {
 		const t = setTimeout(resolve, ms);
@@ -67,7 +77,9 @@ async function download(req: Extract<WorkerRequest, { type: "download" }>) {
 		if (size > 0) {
 			const tick = progressPoster("checking", size);
 			const buf = new Uint8Array(READ);
+			const pause = yielder();
 			for (let off = 0; off < size; ) {
+				await pause();
 				if (signal.aborted) throw new Failure("cancelled", "Cancelled");
 				const n = h.read(buf.subarray(0, Math.min(READ, size - off)), { at: off });
 				if (n <= 0) break;
@@ -88,21 +100,28 @@ async function download(req: Extract<WorkerRequest, { type: "download" }>) {
 					signal,
 				});
 				if (res.status === 404 || res.status === 410) throw new Failure("http", "This build is no longer on the server. Reload the page to see the current builds.");
-				if (size > 0 && res.status === 200) {
-					// The server sent the whole file instead of the rest: start again from the top
-					h.truncate(0);
-					size = 0;
-					lastFlush = 0;
-					hasher.init();
+				if (res.status === 200) {
+					// The whole file. Make sure it is before anything on disk is touched: a proxy's or a
+					// filter's page in its place would otherwise cost the part already downloaded.
+					const len = res.headers.get("Content-Length");
+					const html = /^text\/html\b/i.test(res.headers.get("Content-Type") ?? "");
+					if (html || (len === null && size > 0)) {
+						const kept = size > 0 ? " The part downloaded earlier is kept." : "";
+						throw new Failure("http", `Something on this network answered instead of the download server, so nothing was saved.${kept} Try again, or try another network.`);
+					}
+					if (len !== null && Number(len) !== req.size) throw new Failure("mismatch", "The server's copy of this build isn't the one listed (its size differs)");
+					if (size > 0) {
+						// The server sent the whole file instead of the rest: start again from the top
+						h.truncate(0);
+						size = 0;
+						lastFlush = 0;
+						hasher.init();
+					}
 				} else if (res.status === 206) {
 					const m = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(res.headers.get("Content-Range") ?? "");
 					if (!m || Number(m[1]) !== size || Number(m[3]) !== req.size) throw new Failure("mismatch", "The server's copy of this build isn't the one listed (its size changed)");
-				} else if (res.status !== 200) {
+				} else {
 					throw new Error(`The server answered ${res.status}`);
-				}
-				if (res.status === 200) {
-					const len = Number(res.headers.get("Content-Length") ?? NaN);
-					if (Number.isFinite(len) && len !== req.size) throw new Failure("mismatch", "The server's copy of this build isn't the one listed (its size differs)");
 				}
 				if (!res.body) throw new Error("Empty response");
 				const reader = res.body.getReader();

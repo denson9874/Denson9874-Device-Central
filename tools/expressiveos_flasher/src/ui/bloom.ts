@@ -180,6 +180,8 @@ export class BloomStage {
 		if (mode === this.mode) return;
 		this.mode = mode;
 		this.root.dataset.mode = mode;
+		// The full bloom's rules would otherwise outrank every later mode's (another phone's install)
+		if (mode !== "complete") this.root.classList.remove("is-blooming");
 		if (mode === "download") this.rate = 18;
 		else if (mode === "idle") this.rate = 2.5;
 		else this.rate = 0;

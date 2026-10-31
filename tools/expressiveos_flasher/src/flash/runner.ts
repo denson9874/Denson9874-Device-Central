@@ -30,6 +30,20 @@ export class InstallError extends Error {
 	}
 }
 
+/** The phone refused to erase a partition a clean install has to erase. */
+export class EraseError extends Error {
+	constructor(
+		readonly partition: string,
+		readonly reply: string,
+	) {
+		super(
+			`The phone couldn't erase ${partition} (${reply || "no reason given"}). A clean install has to erase it, or ExpressiveOS may not start. ` +
+				"Try the install again. If it fails the same way, flash the latest factory image with Google's Android Flash Tool, then install ExpressiveOS again.",
+		);
+		this.name = "EraseError";
+	}
+}
+
 /** Relative cost of each step, so overall progress moves at an even pace. */
 export function stepWeights(steps: Step[], images: ImageSource): number[] {
 	const MB = 1024 * 1024;
@@ -148,10 +162,12 @@ export async function runPlan(phone: Phone, steps: Step[], images: ImageSource, 
 					try {
 						await phone.command(`erase:${s.partition}`, { timeoutMs: 5 * 60_000 });
 					} catch (e) {
-						if (s.required || !(e instanceof FastbootError)) throw e;
-						ev.note(`Couldn't erase ${s.partition} (${e.reply}); the phone formats it when it starts`);
-						ev.step(i, "skipped", e.reply);
-						continue;
+						// fastboot stops here too (Epilog in fastboot.cpp). Android formats userdata and
+						// metadata at the first start only when they're blank: a metadata partition left as
+						// it was keeps the old system's encryption key, which ExpressiveOS can't use, so the
+						// phone would start into recovery's "Cannot load Android system" instead
+						if (!(e instanceof FastbootError)) throw e;
+						throw new EraseError(s.partition, e.reply);
 					}
 					break;
 				}

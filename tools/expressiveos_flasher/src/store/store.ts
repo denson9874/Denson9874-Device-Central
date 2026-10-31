@@ -18,11 +18,19 @@ export interface Progress {
 	total: number;
 }
 
+const cancelled = () => new StoreError("cancelled", "Cancelled");
+
 function run(req: WorkerRequest, onProgress: (p: Progress) => void, signal?: AbortSignal, onRetry?: (attempt: number, reason: string) => void): Promise<Extract<WorkerReply, { type: "done" }>> {
+	// A Pause or Cancel pressed before the worker exists would never reach it
+	if (signal?.aborted) return Promise.reject(cancelled());
 	const worker = new Worker(new URL("./download.worker.ts", import.meta.url), { type: "module" });
 	return new Promise((resolve, reject) => {
-		const end = () => setTimeout(() => worker.terminate(), 50);
-		signal?.addEventListener("abort", () => worker.postMessage({ type: "cancel" } satisfies WorkerRequest));
+		const cancel = () => worker.postMessage({ type: "cancel" } satisfies WorkerRequest);
+		const end = () => {
+			signal?.removeEventListener("abort", cancel);
+			setTimeout(() => worker.terminate(), 50);
+		};
+		signal?.addEventListener("abort", cancel);
 		worker.onmessage = (ev: MessageEvent<WorkerReply>) => {
 			const m = ev.data;
 			if (m.type === "progress") onProgress(m);
@@ -46,6 +54,50 @@ function run(req: WorkerRequest, onProgress: (p: Progress) => void, signal?: Abo
 /** A release file's place in the browser: named by its SHA-256, so a name means one content. */
 export const storeName = (sha256: string, ext: string) => `${sha256}.${ext}`;
 const okName = (name: string) => `${name}.ok`;
+// A tab using a stored file holds this Web Lock on it, shared; removing it takes it exclusively
+const lockName = (name: string) => `eos-flasher:${name}`;
+
+/** Lets go of a stored file; the promise settles once other tabs could remove it. */
+export type LetGo = () => Promise<void>;
+
+/** A stored file this tab uses: other tabs can't remove it until release() is called. */
+export interface Held {
+	file: File;
+	release: LetGo;
+}
+
+/**
+ * Marks a stored file as in use by this tab, until the returned function is called. Tabs share
+ * the same storage, and an install or a download reads the file for many minutes.
+ */
+export function holdStored(name: string): Promise<LetGo> {
+	const locks = navigator.locks;
+	if (!locks) return Promise.resolve(async () => {});
+	return new Promise((resolve) => {
+		let letGo = () => {};
+		let done: Promise<unknown> = Promise.resolve();
+		// request() settles once the lock is let go of, which is when another tab may take it
+		const release: LetGo = () => {
+			letGo();
+			return done.then(
+				() => {},
+				() => {},
+			);
+		};
+		try {
+			done = locks.request(lockName(name), { mode: "shared" }, () =>
+				new Promise<void>((r) => {
+					letGo = r;
+					resolve(release);
+				}),
+			);
+		} catch (e) {
+			done = Promise.reject(e);
+		}
+		// Without the lock the file is still usable, only not kept from other tabs
+		done.catch(() => resolve(async () => {}));
+	});
+}
 
 async function dir(): Promise<FileSystemDirectoryHandle> {
 	const root = await navigator.storage.getDirectory();
@@ -85,16 +137,32 @@ export async function downloadRelease(
 	onProgress: (p: Progress) => void,
 	signal?: AbortSignal,
 	onRetry?: (attempt: number, reason: string) => void,
-): Promise<File> {
-	// Asks the browser not to clear this site's storage when the disk gets full (it decides itself)
-	await navigator.storage.persist?.().catch(() => false);
-	const d = await dir();
-	await d.removeEntry(okName(name)).catch(() => {});
-	await run({ type: "download", url, name, size, sha256 }, onProgress, signal, onRetry);
-	await d.getFileHandle(okName(name), { create: true });
-	const f = await storedFile(name, size);
-	if (!f) throw new StoreError("other", "The download finished but can't be read back");
-	return f;
+): Promise<Held> {
+	const release = await holdStored(name);
+	try {
+		// Asks the browser not to clear this site's storage when the disk gets full (it decides itself)
+		await navigator.storage.persist?.().catch(() => false);
+		const d = await dir();
+		if (signal?.aborted) throw cancelled();
+		await d.removeEntry(okName(name)).catch(() => {});
+		await run({ type: "download", url, name, size, sha256 }, onProgress, signal, onRetry);
+		await d.getFileHandle(okName(name), { create: true });
+		const f = await storedFile(name, size);
+		if (!f) throw new StoreError("other", "The download finished but can't be read back");
+		return { file: f, release };
+	} catch (e) {
+		await release();
+		throw e;
+	}
+}
+
+/** A finished, checked download, held for this tab (holdStored), or null. */
+export async function openStored(name: string, size: number): Promise<Held | null> {
+	const release = await holdStored(name);
+	const file = await storedFile(name, size);
+	if (file) return { file, release };
+	await release();
+	return null;
 }
 
 export async function hashFile(file: File, onProgress: (p: Progress) => void, signal?: AbortSignal): Promise<string> {
@@ -107,23 +175,50 @@ export async function crcCheck(file: File, entries: Array<{ name: string; offset
 	return r.bad ?? [];
 }
 
-export async function removeStored(name: string): Promise<void> {
-	const d = await dir();
-	await d.removeEntry(okName(name)).catch(() => {});
-	await d.removeEntry(name).catch(() => {});
+/**
+ * Removes a stored file, unless a tab is using it (holdStored), and says whether it did. A tab
+ * removing its own file lets go of it first.
+ */
+export async function removeStored(name: string): Promise<boolean> {
+	const remove = async () => {
+		const d = await dir();
+		try {
+			await d.removeEntry(name);
+		} catch (e) {
+			if (!(e instanceof DOMException)) throw e;
+			// Open for writing somewhere (a download running in a page without the lock)
+			if (e.name === "NoModificationAllowedError" || e.name === "InvalidModificationError") return false;
+			if (e.name !== "NotFoundError") throw e;
+		}
+		await d.removeEntry(okName(name)).catch(() => {});
+		return true;
+	};
+	const locks = navigator.locks;
+	if (!locks) return remove();
+	return locks.request(lockName(name), { mode: "exclusive", ifAvailable: true }, (lock) => (lock ? remove() : false));
+}
+
+export interface StoredEntry {
+	name: string;
+	size: number;
+	complete: boolean;
+	/** A tab is using it (an install or a download), so it can't be removed now. */
+	inUse: boolean;
 }
 
 /** Everything kept in the browser, with sizes. */
-export async function listStored(): Promise<Array<{ name: string; size: number; complete: boolean }>> {
-	const out: Array<{ name: string; size: number; complete: boolean }> = [];
+export async function listStored(): Promise<StoredEntry[]> {
+	const out: StoredEntry[] = [];
 	try {
+		const state = await navigator.locks?.query().catch(() => null);
+		const used = new Set([...(state?.held ?? []), ...(state?.pending ?? [])].map((l) => l.name));
 		const d = await dir();
 		const names: string[] = [];
 		for await (const [n] of (d as unknown as { entries(): AsyncIterable<[string, FileSystemHandle]> }).entries()) names.push(n);
 		for (const n of names) {
 			if (n.endsWith(".ok") || n.endsWith(".crswap")) continue;
 			const f = await (await d.getFileHandle(n)).getFile();
-			out.push({ name: n, size: f.size, complete: names.includes(okName(n)) });
+			out.push({ name: n, size: f.size, complete: names.includes(okName(n)), inUse: used.has(lockName(n)) });
 		}
 	} catch {
 		/* no storage */
