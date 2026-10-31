@@ -3,8 +3,9 @@
 // the whole flow: root and a paused, resumed download on a computer; no root and a Reconnect prompt
 // on a phone-sized screen; the wrong phone; a locked bootloader; a testers build whose name
 // repeats a release's; a Pixel 11 build without root; a failed metadata erase followed by another
-// model; and "Install on another phone". Checks what the simulated phone ends up
-// with, and saves screenshots to e2e/out/.
+// model; "Install on another phone"; a phone running Android that Detect finds over USB debugging
+// and Connect restarts into Fastboot Mode; and an adb server holding that phone. Checks what the
+// simulated phone ends up with, and saves screenshots to e2e/out/.
 //
 //   npm run build && npm run test:e2e        (needs Playwright with Chromium installed)
 
@@ -472,6 +473,75 @@ try {
 		await page.getByRole("button", { name: "Install on another phone" }).click();
 		check((await page.locator('#stepper [aria-current="step"]').innerText()).includes("Build"), "Install on another phone goes back to the Build step");
 		check(await page.getByLabel(/Clean install/).isChecked(), "Install on another phone asks for a clean install again");
+		await ctx.close();
+	});
+
+	// ---------- 9. A phone running Android: Detect over USB debugging, Allow, Restart into Fastboot Mode ----------
+	await scenario("android", async (track) => {
+		state.bytesPerSecond = 0;
+		// The simulated user taps Allow, with Always allow ticked, 2.5 s after the phone asks
+		const { ctx, page, errors } = await newPage(browser, { fake: { android: { answer: "always", answerDelayMs: 2500 } } });
+		track(page);
+		const adb = () => page.evaluate(() => ({ prompts: window.__fakeAdb.prompts.length, opened: window.__fakeAdb.opened, mode: window.__fakeAdb.mode }));
+		await page.goto(url);
+		await page.getByRole("button", { name: "Detect a connected phone" }).click();
+		await page.locator("#panel").getByText("Tap Allow on your phone.").waitFor({ timeout: 30_000 });
+		await page.screenshot({ path: join(shots, "a1-allow-usb-debugging.png") });
+		check((await adb()).prompts === 1, "the phone asks to allow USB debugging");
+		await page.locator("#panel").getByText("Found a Pixel 7 Pro (cheetah), running Android.").waitFor({ timeout: 30_000 });
+		check((await page.getByRole("button", { name: /^Pixel 7 Pro\s*cheetah$/ }).getAttribute("aria-pressed")) === "true", "Detect chose the Pixel 7 Pro from what the phone said over USB debugging");
+		check((await adb()).opened.length === 0, "Detect restarts nothing");
+		await page.screenshot({ path: join(shots, "a2-detected.png") });
+		await page.getByRole("button", { name: "Continue with Pixel 7 Pro" }).click();
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		await page.getByRole("button", { name: "Download", exact: true }).click();
+		await page.getByText("Downloaded and checked").first().waitFor({ timeout: 60_000 });
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		const connectStatus = await page.locator("#status-detail").innerText();
+		check(connectStatus === "Running Android with USB debugging on, or in Fastboot Mode", `Connect's status names both ways in (${connectStatus})`);
+		await page.getByRole("button", { name: "Connect", exact: true }).click();
+		await page.getByRole("button", { name: "Restart into Fastboot Mode" }).waitFor({ timeout: 30_000 });
+		check((await page.locator(".panel").innerText()).includes("nothing on it is changed or erased"), "the page says what restarting does before it does it");
+		let a = await adb();
+		check(a.prompts === 1, `Always allow: the phone didn't ask again (${a.prompts} prompts)`);
+		check(a.opened.length === 0 && a.mode === "android", "nothing restarted before the button");
+		await page.screenshot({ path: join(shots, "a3-restart-into-fastboot.png") });
+		await page.getByRole("button", { name: "Restart into Fastboot Mode" }).click();
+		// In Fastboot Mode the phone has another USB product id: the browser needs it chosen again
+		await page.getByRole("button", { name: "Choose the phone again" }).waitFor({ timeout: 30_000 });
+		await page.screenshot({ path: join(shots, "a4-choose-again.png") });
+		await page.getByRole("button", { name: "Choose the phone again" }).click();
+		await page.locator("#panel").getByText("Ready to install").waitFor({ timeout: 30_000 });
+		await page.screenshot({ path: join(shots, "a5-ready.png") });
+		const opened = await page.evaluate(() => [localStorage.getItem("eos-flasher-fastboot-opened"), window.__fakeAdb.serial]);
+		check(JSON.stringify(JSON.parse(opened[0] ?? "[]")) === JSON.stringify([opened[1]]), `the browser notes it opened this phone in Fastboot Mode, so a restart next time waits longer before asking (${opened[0]})`);
+		a = await adb();
+		check(JSON.stringify(a.opened) === '["reboot:bootloader"]', `only reboot:bootloader was opened over USB debugging (${a.opened})`);
+		const facts = await page.locator("dl.facts").innerText();
+		check(/Pixel 7 Pro \(cheetah\)/.test(facts) && /Fastboot \(bootloader\)/.test(facts), "Connect goes on with the phone in Fastboot Mode");
+		check(JSON.stringify(await page.evaluate(() => window.__fakeUsbLog)) === '["restart -> bootloader (from Android)"]', "one restart, from Android into Fastboot Mode");
+		check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
+		await ctx.close();
+	});
+
+	// ---------- 10. An adb server on the computer holds the phone ----------
+	await scenario("adb-server", async (track) => {
+		const { ctx, page, errors } = await newPage(browser, { fake: { android: { adbServer: true, answer: "allow", answerDelayMs: 300 } } });
+		track(page);
+		await page.goto(url);
+		await page.getByRole("button", { name: "Detect a connected phone" }).click();
+		const alert = page.locator(".notice-danger");
+		await alert.waitFor({ timeout: 30_000 });
+		const said = await alert.innerText();
+		check(/Close Android Studio and scrcpy if they're open/.test(said) && /run adb kill-server in a terminal and try again/.test(said), "the page says to close Android Studio and scrcpy and run adb kill-server");
+		check((await page.locator("#status-title").innerText()) === "Couldn't read the phone", "the status says the phone couldn't be read");
+		await page.screenshot({ path: join(shots, "a6-adb-server.png") });
+		// adb kill-server: the interface is free
+		await page.evaluate(() => (window.__fakeAdb.opts.claimError = undefined));
+		await page.getByRole("button", { name: "Detect a connected phone" }).click();
+		await page.locator("#panel").getByText("Found a Pixel 7 Pro (cheetah), running Android.").waitFor({ timeout: 30_000 });
+		check((await page.locator(".notice-danger").count()) === 0, "once the adb server is stopped, Detect finds the phone");
+		check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
 		await ctx.close();
 	});
 } finally {

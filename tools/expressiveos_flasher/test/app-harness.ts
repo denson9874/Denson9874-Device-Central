@@ -1,11 +1,14 @@
 // The page's App in Node: a small DOM (elements, text, events and the few selectors app.ts uses),
 // the simulated Pixel (fake-phone.ts) behind stand-ins for WebUSB, and the browser's storage of
-// downloads as a map. test/app.test.ts mocks the page's modules with what's here.
+// downloads as a map. test/app.test.ts mocks the page's modules with what's here. A phone running
+// Android (fake-adb.ts) can be plugged in as well: the page talks to it with the real ADB code.
 
 import type { Transport } from "../src/fastboot/client.ts";
 import type { Link } from "../src/fastboot/device.ts";
+import type { Reconnector } from "../src/fastboot/webusb.ts";
 import type { Release } from "../src/releases.ts";
 import type { Held, Progress } from "../src/store/store.ts";
+import type { FakeAdbUsbDevice } from "./fake-adb.ts";
 import type { FakePhone, FakeTransport } from "./fake-phone.ts";
 
 // ---------- DOM ----------
@@ -247,6 +250,29 @@ export function buttonIn(root: FakeElement, label: string | RegExp): FakeElement
 export class FakeUsbDevice {
 	readonly vendorId = 0x18d1;
 	readonly productId = 0x4ee0;
+	/** Its fastboot interface, as webusb.ts's isFastbootDevice and the browser's chooser see it. */
+	readonly configurations = [
+		{
+			configurationValue: 1,
+			interfaces: [
+				{
+					interfaceNumber: 0,
+					alternates: [
+						{
+							alternateSetting: 0,
+							interfaceClass: 0xff,
+							interfaceSubclass: 0x42,
+							interfaceProtocol: 0x03,
+							endpoints: [
+								{ endpointNumber: 1, direction: "in", type: "bulk" },
+								{ endpointNumber: 1, direction: "out", type: "bulk" },
+							],
+						},
+					],
+				},
+			],
+		},
+	];
 	opened = false;
 	/** Its connections closed by the page (once each close has finished). */
 	closes = 0;
@@ -280,8 +306,15 @@ export class FakeUsbTransport implements Transport {
 }
 
 export const world = {
-	/** The phone plugged in now. */
+	/** The phone plugged in now, in Fastboot Mode. */
 	device: null as FakeUsbDevice | null,
+	/** The phone plugged in now, running Android with USB debugging on. */
+	android: null as FakeAdbUsbDevice | null,
+	/** Devices the page isn't allowed to use until the user picks them (getDevices leaves them out). */
+	unpermitted: new WeakSet<object>(),
+	/** How long the page waits for a phone back in Fastboot Mode before asking the user to choose it (Choose the phone again), and at all. */
+	askAfterMs: 0,
+	reconnectTimeoutMs: 5000,
 	usb: new EventTarget(),
 	bloom: null as FakeBloom | null,
 	/** Finished downloads in the browser, by store name. */
@@ -306,12 +339,33 @@ export function unplug() {
 	if (d) world.usb.dispatchEvent(Object.assign(new Event("disconnect"), { device: d }));
 }
 
+type Described = { configurations: Array<{ interfaces: Array<{ alternates: Array<{ interfaceClass: number; interfaceSubclass: number; interfaceProtocol: number }> }> }> };
+
+/** Whether the browser's chooser lists a device for these filters (by interface, as the page's filters are). */
+function listed(d: Described, filters: USBDeviceFilter[] | undefined): boolean {
+	if (!filters?.length) return true;
+	const alts = d.configurations.flatMap((c) => c.interfaces.flatMap((i) => i.alternates));
+	return filters.some((f) =>
+		alts.some(
+			(a) =>
+				(f.classCode === undefined || f.classCode === a.interfaceClass) &&
+				(f.subclassCode === undefined || f.subclassCode === a.interfaceSubclass) &&
+				(f.protocolCode === undefined || f.protocolCode === a.interfaceProtocol),
+		),
+	);
+}
+
+const plugged = () => [world.device, world.android].filter((d) => d !== null);
+
 export function fakeNavigatorUsb() {
 	world.usb = Object.assign(new EventTarget(), {
-		getDevices: async () => (world.device ? [world.device] : []),
-		requestDevice: async () => {
-			if (!world.device) throw new DOMException("No device selected.", "NotFoundError");
-			return world.device;
+		getDevices: async () => plugged().filter((d) => !world.unpermitted.has(d)),
+		// The chooser: the phone, if the filters list it, which the user picks (and so allows)
+		requestDevice: async (o?: USBDeviceRequestOptions) => {
+			const d = plugged().find((x) => listed(x as unknown as Described, o?.filters));
+			if (!d) throw new DOMException("No device selected.", "NotFoundError");
+			world.unpermitted.delete(d);
+			return d;
 		},
 	});
 	return world.usb;
@@ -333,9 +387,15 @@ export async function linkTo(device: FakeUsbDevice): Promise<Link> {
 	};
 }
 
-/** WebUsbConnector's stand-in: restarts the simulated phone and connects to it again. */
+/**
+ * WebUsbConnector's stand-in: restarts the simulated phone and connects to it again. A phone
+ * restarted into Fastboot Mode over USB debugging is waited for with the page's own Reconnector,
+ * on the fake navigator.usb, with world's timings.
+ */
 export class WebUsbConnector {
-	constructor(_ui: unknown) {}
+	private reconnector: Reconnector | null = null;
+
+	constructor(private readonly ui: { needsReconnect(show: boolean): void }) {}
 
 	async restart(link: Link, send: () => Promise<void>): Promise<Link> {
 		const phone = (link.transport as FakeUsbTransport).device.phone;
@@ -353,7 +413,29 @@ export class WebUsbConnector {
 		phone.boot();
 	}
 
-	async pick() {}
+	async waitForFastboot(serial: string, opts: { signal?: AbortSignal; timeoutMessage: string }): Promise<Link> {
+		// Imported here: webusb.ts's mock imports this module
+		const { Reconnector } = await import("../src/fastboot/webusb.ts");
+		const r = (this.reconnector ??= new Reconnector());
+		try {
+			const d = await r.wait(serial, {
+				timeoutMs: world.reconnectTimeoutMs,
+				needsUserAfterMs: world.askAfterMs,
+				needsUser: () => this.ui.needsReconnect(true),
+				signal: opts.signal,
+				timeoutMessage: opts.timeoutMessage,
+			});
+			this.ui.needsReconnect(false);
+			return await linkTo(d as unknown as FakeUsbDevice);
+		} finally {
+			this.ui.needsReconnect(false);
+		}
+	}
+
+	async pick() {
+		const { Reconnector } = await import("../src/fastboot/webusb.ts");
+		return (this.reconnector ??= new Reconnector()).pick();
+	}
 }
 
 // ---------- The Bloom stage ----------

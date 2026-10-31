@@ -1,6 +1,7 @@
 // The flasher's six steps: choose the phone, choose the build, download it, connect the phone,
 // install, done. The Bloom stage beside them follows along.
 
+import { ADB_FILTER, type AdbConnection, AdbError, connectAdb, isAdbDevice } from "../adb/adb.ts";
 import { type DeviceInfo, DEVICES, deviceByCodename } from "../devices.ts";
 import { parseRequirements } from "../fastboot/android-info.ts";
 import { FastbootClient, FastbootError, type LogKind, ProtocolError } from "../fastboot/client.ts";
@@ -8,7 +9,7 @@ import { Phone } from "../fastboot/device.ts";
 import { FastbootInfoError } from "../fastboot/fastboot-info.ts";
 import { logicalPartitions } from "../fastboot/lp.ts";
 import { WebUsbConnector, linkTo } from "../fastboot/usb-connector.ts";
-import { USB_DRIVER_URL, UsbError, UsbTransport, hostOs, isFastbootDevice, requestPhone, webUsbSupported } from "../fastboot/webusb.ts";
+import { FASTBOOT_FILTER, USB_DRIVER_URL, UsbError, UsbTransport, hostOs, isFastbootDevice, requestPhone, webUsbSupported } from "../fastboot/webusb.ts";
 import { PlanError, type Step, buildPlan, describe } from "../flash/plan.ts";
 import { type PhoneReport, type Problem, canUnlock, checkBeforeInstall, inspectPhone, plausibleProduct, reportProblems, unlockBootloader } from "../flash/preflight.ts";
 import { type ImageSource, InstallError, runPlan, stepWeights } from "../flash/runner.ts";
@@ -78,6 +79,13 @@ interface Flash {
 	status?: string;
 	/** A page that helps, shown as a link under the message. */
 	help?: Help;
+	/** A title over the message. */
+	title?: string;
+	/**
+	 * The steps into Fastboot Mode under the message, ending with a press of this button. The
+	 * notice goes in place of the step's own steps (fastbootHowto).
+	 */
+	howto?: string;
 }
 
 interface Help {
@@ -87,10 +95,11 @@ interface Help {
 
 /**
  * A page that helps with a failure: the Google USB Driver, when Windows won't let the browser
- * open the phone (the message says to install it; the address is a link, not part of the text).
+ * open the phone, in Fastboot Mode or over USB debugging (the message says to install it; the
+ * address is a link, not part of the text).
  */
 function helpFor(e: unknown): Help | undefined {
-	if (e instanceof UsbError && e.kind === "access" && hostOs() === "windows") return { href: USB_DRIVER_URL, text: "How to install the Google USB Driver" };
+	if ((e instanceof UsbError || e instanceof AdbError) && e.kind === "access" && hostOs() === "windows") return { href: USB_DRIVER_URL, text: "How to install the Google USB Driver" };
 	return undefined;
 }
 
@@ -100,6 +109,45 @@ const helpLink = (help: Help | undefined) => (help ? h("p", null, link(help.href
 const oddAnswer = (product: string | null) => (product ? `answered "${product}", which isn't a model name` : "didn't say which model it is");
 
 const RESTART_INTO_FASTBOOT = "Restart it into Fastboot Mode by holding Power and Volume down until it restarts";
+
+// Getting the phone into Fastboot Mode and plugged in, in one wording for the Phone and Connect
+// steps, "Before you start" and the notice for a list closed with no phone chosen (README.md's
+// steps 1 and 4 say it too). The easy way is USB debugging: the page finds the phone while it's
+// running Android and restarts it into Fastboot Mode itself. The other is by hand.
+
+/** What Detect and Connect ask the browser for: a phone in Fastboot Mode, or one with USB debugging on. */
+const PHONE_FILTERS = [FASTBOOT_FILTER, ADB_FILTER];
+
+/** What the browser's list shows (PHONE_FILTERS), and what it doesn't. */
+const LISTED = "The browser's list only shows a phone that's running Android with USB debugging on, or one that's in Fastboot Mode.";
+
+const USB_DEBUGGING = "On the phone, open Settings, then About phone, and tap Build number seven times. Then open System, Developer options and turn on USB debugging.";
+
+const INTO_FASTBOOT = "Turn the phone off. Then hold Power and Volume down together until you see Fastboot Mode.";
+
+/** What to do when the phone asks "Allow USB debugging?". */
+const ALLOW = "Tap Allow on your phone. Tick Always allow from this computer so it doesn't ask again.";
+
+/** The way out when Connect found another phone than the build's: the build's own may be plugged in as well. */
+const unplugOther = (dev: DeviceInfo) => `If your ${dev.model} is plugged in too, unplug this phone, then press Connect and choose your ${dev.model} in the list.`;
+
+/** The way into Fastboot Mode that doesn't need USB debugging, ending with a press of `button`. */
+const byHand = (button: string) =>
+	`Or put the phone in Fastboot Mode by hand: turn it off, then hold Power and Volume down together until you see Fastboot Mode, and press ${button} again.`;
+
+/** Failures over USB debugging that putting the phone in Fastboot Mode by hand gets around. */
+const BY_HAND_HELPS = new Set(["unauthorized", "timeout", "protocol", "usb"]);
+
+/** A cable that only charges leaves the phone out of the list too. */
+const plugInText = () =>
+	isAndroid()
+		? "Connect it to this phone with a USB-C cable that carries data. An OTG adapter may be needed."
+		: "Plug it into this computer with a USB cable that carries data, not a charge-only one.";
+
+/** A step's text with the keys, and what the phone shows, in bold. */
+const keysInBold = (text: string): Child[] => text.split(/(Power|Volume down|Fastboot Mode)/).map((s, i) => (i % 2 ? h("strong", null, s) : s));
+
+const DETECT = "Detect a connected phone";
 
 /** Why a phone may answer with something that isn't a model: only a shifted reply gives one. */
 const heldAnswer = (product: string | null) => (product ? " It may still be holding the answer to an earlier command." : "");
@@ -179,6 +227,28 @@ interface LogLine {
 	text: string;
 }
 
+/**
+ * A phone running Android that the page talks to over USB debugging: Detect only reads its model;
+ * Connect checks it's the build's model, then restarts it into Fastboot Mode once the user says so.
+ */
+interface AndroidPhone {
+	purpose: "detect" | "connect";
+	/**
+	 * connecting: opening USB debugging. ready: the build's model, waiting for Restart into
+	 * Fastboot Mode. restarting: on its way there, until it's back and connected in Fastboot Mode.
+	 */
+	stage: "connecting" | "ready" | "restarting";
+	/** The phone shows "Allow USB debugging?" for this browser. */
+	asking: boolean;
+	/** Cancel: stops waiting for the phone or the user. */
+	abort: AbortController;
+	conn: AdbConnection | null;
+	/** The browser needs the user to choose the phone again, now that it's in Fastboot Mode. */
+	choose: boolean;
+	/** Why the phone chosen then wasn't the one. */
+	chooseError: string | null;
+}
+
 export class App {
 	private step: StepId = "phone";
 	private reached = 0;
@@ -202,11 +272,17 @@ export class App {
 	/** Lets go of the stored zip; while this tab holds it, no other tab removes it. */
 	private zipHold: LetGo | null = null;
 	private phone: Phone | null = null;
+	/** A phone found running Android, on its way into Fastboot Mode (Detect or Connect). */
+	private android: AndroidPhone | null = null;
+	/** The phone running Android that Detect found on this visit, which Connect takes without asking. */
+	private detected: { serial: string; codename: string } | null = null;
 	private report: PhoneReport | null = null;
 	/** The zip whose android-info.txt the report checked the phone against. */
 	private reportZip: File | null = null;
 	private connector: WebUsbConnector;
 	private reconnectBox: HTMLElement | null = null;
+	/** The step's steps into Fastboot Mode, which a notice with them takes the place of. */
+	private howtoBox: HTMLElement | null = null;
 	private flash: Flash | null = null;
 	private flashBox: HTMLElement | null = null;
 	/** The flash that was shown already, so drawing it again doesn't say it again. */
@@ -252,6 +328,15 @@ export class App {
 		});
 		if (webUsbSupported()) {
 			navigator.usb.addEventListener("disconnect", (ev) => {
+				// A phone running Android unplugged while it waits for Restart into Fastboot Mode (a
+				// restart takes it off USB too, but that's while it's restarting)
+				const a = this.android;
+				if (a?.stage === "ready" && a.conn?.device === ev.device) {
+					void this.dropAndroid();
+					this.flash = { kind: "warn", message: "The phone was unplugged. Plug it back in and connect again." };
+					if (this.step === "connect") this.render();
+					return;
+				}
 				const t = this.phone?.link.transport;
 				if (!this.busy && t instanceof UsbTransport && t.device === ev.device) {
 					void this.dropPhone();
@@ -397,6 +482,8 @@ export class App {
 	private go(step: StepId) {
 		// Whatever runs (a download, a check, the install) finishes on the step it started on
 		if (this.busy) return;
+		// A phone running Android that waits for Restart into Fastboot Mode is let go of
+		if (this.android) void this.dropAndroid();
 		this.step = step;
 		this.reached = Math.max(this.reached, stepIndex(step));
 		this.flash = null;
@@ -440,6 +527,7 @@ export class App {
 		this.renderStepper();
 		this.logView = null;
 		this.reconnectBox = null;
+		this.howtoBox = null;
 		const body: Child[] = [];
 		switch (this.step) {
 			case "phone":
@@ -465,12 +553,17 @@ export class App {
 		const flash = this.flash;
 		const fresh = !!flash && flash !== this.flashShown;
 		this.flashShown = flash;
-		const box = flash ? notice(flash.kind, null, flash.message, helpLink(flash.help)) : null;
+		const box = flash
+			? notice(flash.kind, flash.title ?? null, flash.message, ...(flash.howto ? this.fastbootSteps(flash.howto) : []), helpLink(flash.help))
+			: null;
 		if (box && !fresh) box.removeAttribute("role");
 		const draw = () => {
 			this.panel.replaceChildren();
 			this.flashBox = box;
-			if (box) this.panel.append(box);
+			// One with the steps into Fastboot Mode goes where the step has them, so they're there once
+			const slot = flash?.howto ? this.howtoBox : null;
+			if (box && slot) slot.replaceChildren(box);
+			else if (box) this.panel.append(box);
 			append(this.panel, body);
 			this.heading();
 		};
@@ -484,7 +577,7 @@ export class App {
 			focused = this.keepFocus(draw, fresh ? box : null);
 		}
 		// A danger notice is an alert; the others are said, unless the keyboard went to them
-		if (flash && fresh && flash.kind !== "danger" && focused !== box) this.queueSay().flash = flash.message;
+		if (flash && fresh && flash.kind !== "danger" && focused !== box) this.queueSay().flash = flash.title ? sentence(flash.title, flash.message) : flash.message;
 		// A failure keeps its status and the stage's colour until the user moves on
 		if (this.flash?.status && !this.busy) {
 			this.bloom.setMode("error");
@@ -504,6 +597,51 @@ export class App {
 	private fail(status: string, message: string, error?: unknown) {
 		this.flash = { kind: "danger", message, status, help: helpFor(error) };
 		this.render();
+	}
+
+	/**
+	 * The browser's list was closed with no phone chosen, or had none to choose (requestPhone's
+	 * NotFoundError). Most often the phone is running Android, which the list doesn't show.
+	 */
+	private noPhoneChosen(button: string) {
+		this.flash = { kind: "info", title: "No phone was chosen", message: LISTED, howto: button };
+		this.render();
+	}
+
+	/**
+	 * How to get the phone into Fastboot Mode and plugged in, ending with a press of `button`: the
+	 * easy way, with USB debugging, then by hand. The Phone and Connect steps and the notice for no
+	 * phone chosen all show these.
+	 */
+	private fastbootSteps(button: string): Child[] {
+		return [
+			h(
+				"p",
+				{ class: "howto-way" },
+				h("strong", null, "The easy way: USB debugging. "),
+				"The page finds the phone while it's running Android, and restarts it into Fastboot Mode for you.",
+			),
+			h(
+				"ol",
+				{ class: "howto" },
+				h("li", null, USB_DEBUGGING),
+				h("li", null, plugInText()),
+				h("li", null, "Press ", h("strong", null, button), ' and choose your phone in the list. When the phone asks "Allow USB debugging?", tap Allow.'),
+			),
+			h("p", { class: "howto-way" }, h("strong", null, "Or by hand. "), "Put the phone in Fastboot Mode yourself."),
+			h(
+				"ol",
+				{ class: "howto" },
+				h("li", null, ...keysInBold(INTO_FASTBOOT)),
+				h("li", null, "Plug it in, press ", h("strong", null, button), " and choose your phone in the list. It may be called Pixel, Android or Fastboot."),
+			),
+		];
+	}
+
+	/** The steps into Fastboot Mode next to a step's button; a notice with them takes their place. */
+	private fastbootHowto(button: string): HTMLElement {
+		this.howtoBox = h("div", { class: "fastboot-howto" }, h("p", null, LISTED), ...this.fastbootSteps(button));
+		return this.howtoBox;
 	}
 
 	/** Takes the message off the step (something new starts). */
@@ -598,8 +736,8 @@ export class App {
 		);
 		const detect = h(
 			"button",
-			{ class: "btn btn-secondary", type: "button", disabled: !usb || this.busy, on: { click: () => void this.detect() } },
-			"Detect a connected phone",
+			{ class: "btn btn-secondary", type: "button", disabled: !usb || this.busy, dataset: { focus: "detect" }, on: { click: () => void this.detect() } },
+			DETECT,
 		);
 		out.push(
 			h(
@@ -612,6 +750,8 @@ export class App {
 				),
 				detect,
 			),
+			// A phone Detect found running Android shows what it's doing where the steps were
+			this.android ? h("div", { class: "android-panel" }, ...this.androidPanel(this.android)) : usb ? this.fastbootHowto(DETECT) : null,
 			this.prepList(),
 		);
 		return out;
@@ -643,13 +783,20 @@ export class App {
 				h(
 					"li",
 					null,
+					h("strong", null, "Turn on USB debugging. "),
+					"In Developer options, as for OEM unlocking, turn on USB debugging too. With it on, the page finds the phone while it's running Android and restarts it into Fastboot Mode for you. " +
+						`Without it, put the phone in Fastboot Mode yourself. ${INTO_FASTBOOT}`,
+				),
+				h(
+					"li",
+					null,
 					h("strong", null, "On Windows, "),
 					"install the ",
 					link(USB_DRIVER_URL, "Google USB Driver"),
 					" if the phone doesn't show up or won't connect.",
 				),
 				h("li", null, h("strong", null, "On Linux, "), LINUX_UDEV),
-				h("li", null, h("strong", null, "Use a good cable "), "plugged straight into the computer (not a hub), and charge the phone to at least half."),
+				h("li", null, h("strong", null, "Use a USB cable that carries data, "), "plugged straight into the computer (not a hub), and charge the phone to at least half."),
 				h("li", null, h("strong", null, "Leave about 8 GB free "), "on this computer for the download."),
 			),
 		);
@@ -670,9 +817,18 @@ export class App {
 	private async detect() {
 		let d: USBDevice;
 		try {
-			d = await requestPhone();
+			d = await requestPhone(PHONE_FILTERS);
 		} catch (e) {
-			if (!(e instanceof UsbError)) this.flashMessage("danger", errorText(e));
+			// requestPhone's one UsbError: no phone was chosen
+			if (e instanceof UsbError) this.noPhoneChosen(DETECT);
+			else this.flashMessage("danger", errorText(e));
+			return;
+		}
+		if (this.busy) return;
+		// Only the phone found last is the one Connect may take without asking
+		this.detected = null;
+		if (!isFastbootDevice(d) && isAdbDevice(d)) {
+			await this.detectAndroid(d);
 			return;
 		}
 		this.busy = true;
@@ -710,6 +866,25 @@ export class App {
 			this.busy = false;
 			this.fail("Couldn't read the phone", errorText(e), e);
 		}
+	}
+
+	/** Detect, for a phone running Android: its model, over USB debugging. Nothing is restarted. */
+	private async detectAndroid(d: USBDevice) {
+		const conn = await this.openAndroid(d, "detect");
+		if (!conn) return;
+		await this.dropAndroid();
+		this.busy = false;
+		const dev = deviceByCodename(conn.product);
+		if (!dev) {
+			this.flashMessage(
+				"warn",
+				conn.product ? `This phone says it's "${conn.product}", which ExpressiveOS isn't built for.` : "The phone didn't say which model it is. Choose it above instead.",
+			);
+			return;
+		}
+		this.selectDevice(dev);
+		if (d.serialNumber) this.detected = { serial: d.serialNumber, codename: dev.codename };
+		this.flashMessage("ok", `Found a ${dev.model} (${dev.codename}), running Android. Keep USB debugging on: at the Connect step, the page restarts it into Fastboot Mode for you.`);
 	}
 
 	// ---------- 2. Build ----------
@@ -1209,6 +1384,10 @@ export class App {
 			);
 			return out;
 		}
+		if (this.android) {
+			out.push(...this.androidPanel(this.android));
+			return out;
+		}
 		const r = this.currentReport();
 		if (this.phone && !r) {
 			// The build changed since the phone was checked: check it again, against this one
@@ -1220,28 +1399,20 @@ export class App {
 			this.bloom.setProgress(1);
 			if (!r) {
 				this.bloom.setMode("idle");
-				this.setStatus("Connect your phone", "In fastboot mode, over USB");
+				this.setStatus("Connect your phone", "Running Android with USB debugging on, or in Fastboot Mode");
 			}
 		}
 		if (!this.phone || !r) {
 			out.push(
-				h(
-					"ol",
-					{ class: "howto" },
-					h("li", null, "Turn the phone off. Then hold ", h("strong", null, "Power"), " and ", h("strong", null, "Volume down"), " together until you see ", h("strong", null, "Fastboot Mode"), "."),
-					h(
-						"li",
-						null,
-						isAndroid()
-							? "Connect it to this phone with a USB-C cable (this phone is the host; an OTG adapter may be needed)."
-							: "Plug it into this computer with a USB cable.",
-					),
-					h("li", null, "Press ", h("strong", null, "Connect"), " and choose your phone in the list. It may be called Pixel, Android or Fastboot."),
-				),
+				this.fastbootHowto("Connect"),
 				h(
 					"div",
 					{ class: "actions" },
-					h("button", { class: "btn btn-primary btn-big", type: "button", disabled: this.busy, on: { click: () => void this.connect() } }, this.busy ? "Connecting…" : "Connect"),
+					h(
+						"button",
+						{ class: "btn btn-primary btn-big", type: "button", disabled: this.busy, dataset: { focus: "connect" }, on: { click: () => void this.connect() } },
+						this.busy ? "Connecting…" : "Connect",
+					),
 					h("button", { class: "btn btn-quiet", type: "button", disabled: this.busy, on: { click: () => this.go("download") } }, "Back"),
 				),
 				...this.connectHelp(),
@@ -1343,7 +1514,7 @@ export class App {
 	private connectHelp(): Child[] {
 		if (isAndroid()) {
 			return [
-				h("p", { class: "status-detail" }, "Phone not in the list? Check that it shows Fastboot Mode, and try another cable or adapter."),
+				h("p", { class: "status-detail" }, "Phone not in the list? Check that USB debugging is on, or that the phone shows Fastboot Mode, and try another cable or adapter."),
 				h("p", { class: "status-detail" }, "In the list but won't connect? Unplug it, plug it back in and connect again, and allow Chrome to use it when Android asks."),
 			];
 		}
@@ -1351,7 +1522,7 @@ export class App {
 			h(
 				"p",
 				{ class: "status-detail" },
-				"Phone not in the list? Check that it shows Fastboot Mode, and try another cable or port. On Windows, install the ",
+				"Phone not in the list? Check that USB debugging is on, or that the phone shows Fastboot Mode, and try another cable or port. On Windows, install the ",
 				link(USB_DRIVER_URL, "Google USB Driver"),
 				`. On Linux, ${LINUX_UDEV}`,
 			),
@@ -1359,7 +1530,7 @@ export class App {
 				"p",
 				{ class: "status-detail" },
 				"In the list but won't connect? Without the Google USB Driver on Windows, or the udev rule on Linux, the browser can list the phone but can't open it. " +
-					"Close any other program using the phone, such as a terminal running adb or fastboot, and any other tab using it. " +
+					"Close any other program using the phone, such as Android Studio, scrcpy or a terminal running fastboot, and any other tab using it. If adb is installed, run adb kill-server too. " +
 					"After that, unplug the phone, plug it back in and connect again.",
 			),
 		];
@@ -1401,8 +1572,8 @@ export class App {
 						"danger",
 						"That's a different phone",
 						other
-							? `This is a ${other.model} (${other.codename}), and the build is for the ${dev.model}. Go back and choose the ${other.model}, or connect your ${dev.model}.`
-							: `This phone says it's "${p.product ?? "unknown"}", and the build is for the ${dev.model} (${dev.codename}).`,
+							? `This is a ${other.model} (${other.codename}), and the build is for the ${dev.model}. Go back and choose the ${other.model}, or connect your ${dev.model}. ${unplugOther(dev)}`
+							: `This phone says it's "${p.product ?? "unknown"}", and the build is for the ${dev.model} (${dev.codename}). ${unplugOther(dev)}`,
 					),
 				);
 			} else if (p.kind === "requirement") {
@@ -1472,14 +1643,26 @@ export class App {
 		if (this.busy || !this.zipFile) return;
 		let device: USBDevice;
 		try {
-			// A phone this site may already use is taken without asking again
-			const known = (await navigator.usb.getDevices()).filter(isFastbootDevice);
-			device = known.length === 1 ? known[0] : await requestPhone();
+			// A phone in Fastboot Mode this site may already use is taken without asking again, and so is
+			// the phone running Android that Detect found on this visit. Any other phone running Android
+			// is chosen in the browser's list: the site keeps its permission across visits, and a phone
+			// with USB debugging on is often plugged in, so it may not be the phone meant this time.
+			const detected = this.detected && this.detected.codename === this.device?.codename ? this.detected : null;
+			const known = (await navigator.usb.getDevices()).filter(
+				(d) => isFastbootDevice(d) || (detected !== null && isAdbDevice(d) && d.serialNumber === detected.serial),
+			);
+			device = known.length === 1 ? known[0] : await requestPhone(PHONE_FILTERS);
 		} catch (e) {
-			if (!(e instanceof UsbError)) this.fail("Couldn't connect", errorText(e), e);
+			// requestPhone's one UsbError: no phone was chosen
+			if (e instanceof UsbError) this.noPhoneChosen("Connect");
+			else this.fail("Couldn't connect", errorText(e), e);
 			return;
 		}
 		if (this.busy) return;
+		if (!isFastbootDevice(device) && isAdbDevice(device)) {
+			await this.connectAndroid(device);
+			return;
+		}
 		const closing = this.dropPhone();
 		this.flash = null;
 		this.busy = true;
@@ -1536,6 +1719,259 @@ export class App {
 		if (this.busy) return;
 		await this.dropPhone();
 		this.render();
+	}
+
+	// ---------- A phone running Android (USB debugging) ----------
+
+	/**
+	 * Connects to a phone running Android over USB debugging, with "Allow USB debugging?" help and
+	 * Cancel while the phone asks. Null when it was cancelled or failed, which the step then shows;
+	 * else the step is still busy with the phone. `closing` is a connection to let go of first.
+	 */
+	private async openAndroid(device: USBDevice, purpose: AndroidPhone["purpose"], closing: Promise<void> = Promise.resolve()): Promise<AdbConnection | null> {
+		const a: AndroidPhone = { purpose, stage: "connecting", asking: false, abort: new AbortController(), conn: null, choose: false, chooseError: null };
+		this.android = a;
+		this.flash = null;
+		this.busy = true;
+		this.render();
+		try {
+			await closing;
+			const conn = await connectAdb(device, { signal: a.abort.signal, onAllowPrompt: () => this.allowPrompt(a) });
+			// Cancel pressed as it connected
+			if (a.abort.signal.aborted) {
+				await conn.close();
+				throw a.abort.signal.reason;
+			}
+			a.conn = conn;
+			a.asking = false;
+			return conn;
+		} catch (e) {
+			if (this.android === a) this.android = null;
+			this.busy = false;
+			if (a.abort.signal.aborted) this.render();
+			else this.androidFailed(e, purpose);
+			return null;
+		}
+	}
+
+	/** The phone shows "Allow USB debugging?": the step says what to do, with Cancel. */
+	private allowPrompt(a: AndroidPhone) {
+		if (this.android !== a) return;
+		a.asking = true;
+		this.render();
+	}
+
+	/** Connect, for a phone running Android: the build's model waits for Restart into Fastboot Mode. */
+	private async connectAndroid(device: USBDevice) {
+		const dev = this.device!;
+		const conn = await this.openAndroid(device, "connect", this.dropPhone());
+		if (!conn) return;
+		const a = this.android!;
+		if (conn.product !== dev.codename) {
+			// Nothing is restarted on a phone the build isn't for
+			await this.dropAndroid();
+			this.busy = false;
+			const other = deviceByCodename(conn.product);
+			if (!conn.product) {
+				this.fail("Couldn't connect", `The phone didn't say which model it is, so the page left it as it is. ${byHand("Connect")}`);
+				return;
+			}
+			this.flash = {
+				kind: "danger",
+				status: "This phone can't take the build",
+				title: "That's a different phone",
+				message: other
+					? `This is a ${other.model} (${other.codename}), and the build is for the ${dev.model}, so the page left it as it is. Go back and choose the ${other.model}, or connect your ${dev.model}. ${unplugOther(dev)}`
+					: `This phone says it's "${conn.product}", and the build is for the ${dev.model} (${dev.codename}), so the page left it as it is. ${unplugOther(dev)}`,
+			};
+			this.render();
+			return;
+		}
+		a.stage = "ready";
+		this.busy = false;
+		this.render();
+	}
+
+	/**
+	 * Restart into Fastboot Mode: reboot:bootloader over USB debugging, then the same phone (by its
+	 * serial number) back in Fastboot Mode, where it's checked as a phone connected in Fastboot
+	 * Mode is. The browser may need the user to choose it again (showReconnect).
+	 */
+	private async restartAndroid() {
+		const a = this.android;
+		const conn = a?.conn;
+		if (this.busy || !a || !conn || a.stage !== "ready") return;
+		a.stage = "restarting";
+		a.conn = null;
+		this.flash = null;
+		this.busy = true;
+		this.render();
+		try {
+			await conn.rebootToBootloader({ signal: a.abort.signal });
+			if (a.asking) {
+				a.asking = false;
+				this.render();
+			}
+			const link = await this.connector.waitForFastboot(conn.serial, {
+				signal: a.abort.signal,
+				// The time can run out on a phone in Fastboot Mode that only wasn't chosen again
+				timeoutMessage:
+					"The page stopped waiting for the phone. If it shows Fastboot Mode, press Connect and choose it. If it shows something else, put it in Fastboot Mode by hand: turn it off, then hold Power and Volume down together until you see Fastboot Mode. Then press Connect.",
+			});
+			const phone = new Phone(link, this.connector, this.logger);
+			this.android = null;
+			this.phone = phone;
+			this.render();
+			this.setStatus("Checking your phone…", "");
+			await this.inspect(phone);
+			this.busy = false;
+			this.render();
+		} catch (e) {
+			// Closed before anything else can open it, as in connect()
+			await this.dropPhone();
+			if (this.android === a) this.android = null;
+			this.busy = false;
+			if (a.abort.signal.aborted) {
+				this.flash = { kind: "info", message: "The page stopped waiting for the phone. If it shows Fastboot Mode, press Connect and choose it." };
+				this.render();
+			} else {
+				this.androidFailed(e, "connect");
+			}
+		}
+	}
+
+	/** Cancel: stops waiting (the step that waits draws itself again), or lets go of a phone that waits for the user. */
+	private cancelAndroid() {
+		const a = this.android;
+		if (!a) return;
+		if (a.stage === "ready") {
+			void this.dropAndroid();
+			this.render();
+		} else {
+			a.abort.abort();
+		}
+	}
+
+	/** Lets go of the phone running Android, if the page has it. */
+	private dropAndroid(): Promise<void> {
+		const a = this.android;
+		this.android = null;
+		a?.abort.abort();
+		const conn = a?.conn;
+		if (a) a.conn = null;
+		return conn ? conn.close().catch(() => {}) : Promise.resolve();
+	}
+
+	/** What went wrong over USB debugging, with what else to try. */
+	private androidFailed(e: unknown, purpose: AndroidPhone["purpose"]) {
+		const button = purpose === "detect" ? DETECT : "Connect";
+		const message = e instanceof AdbError && BY_HAND_HELPS.has(e.kind) ? `${e.message} ${byHand(button)}` : errorText(e);
+		this.fail(purpose === "detect" ? "Couldn't read the phone" : "Couldn't connect", message, e);
+	}
+
+	/** Choose the phone again: the user picks it, in Fastboot Mode, in the browser's list. */
+	private async chooseAgain(a: AndroidPhone) {
+		// Emptied (which isn't said), so that the same reason for another wrong pick is said again
+		this.live.textContent = "";
+		try {
+			await this.connector.pick();
+		} catch (e) {
+			// Closing the list says nothing new
+			if (this.android !== a || (e instanceof UsbError && e.message === "No phone was chosen")) return;
+			a.chooseError = errorText(e);
+			this.render();
+			// The keyboard stays on the button and the status doesn't change: screen readers are told
+			this.say(a.chooseError);
+		}
+	}
+
+	/**
+	 * What a phone running Android is up to, in place of the steps into Fastboot Mode and the
+	 * button that found it. The status and the stage say it too.
+	 */
+	private androidPanel(a: AndroidPhone): Child[] {
+		// Cancel takes the place of the button pressed, and the keyboard with it
+		const key = a.purpose === "detect" ? "detect" : "connect";
+		const cancel = (focus: string | null) =>
+			h("button", { class: "btn btn-secondary", type: "button", dataset: focus ? { focus } : undefined, on: { click: () => this.cancelAndroid() } }, "Cancel");
+		const model = (c: { product: string; model: string } | null) => (c ? (deviceByCodename(c.product)?.model ?? c.model) : (this.device?.model ?? "phone"));
+		if (a.asking) {
+			this.bloom.setMode("waiting");
+			this.setStatus("Allow USB debugging", "Tap Allow on your phone");
+			// The phone tells the page nothing when Cancel is tapped there, and asks again only on a new connection
+			return [
+				notice(
+					"info",
+					'Your phone asks "Allow USB debugging?"',
+					ALLOW,
+					"If you don't see the question, unlock the phone.",
+					`If you tapped Cancel on the phone, press Cancel here, then press ${a.purpose === "detect" ? DETECT : "Connect"} so the phone asks again.`,
+				),
+				h("div", { class: "actions" }, cancel(key)),
+			];
+		}
+		switch (a.stage) {
+			case "connecting":
+				this.bloom.setMode("waiting");
+				this.setStatus("Connecting to your phone…", "Over USB debugging");
+				return [h("p", { class: "lead" }, "Connecting to the phone over USB debugging…"), h("div", { class: "actions" }, cancel(key))];
+			case "ready": {
+				const c = a.conn!;
+				const name = model(c);
+				this.bloom.setMode("idle");
+				this.setStatus("Phone found", `${name} · running Android`);
+				return [
+					h(
+						"dl",
+						{ class: "facts" },
+						h("dt", null, "Phone"),
+						h("dd", null, name, ` (${c.product})`),
+						h("dt", null, "Serial"),
+						h("dd", null, c.serial || "unknown"),
+						h("dt", null, "Mode"),
+						h("dd", null, "Android, with USB debugging"),
+					),
+					notice("ok", `Found your ${name}`, "It's running Android, and the build is for it. To install, it has to be in Fastboot Mode."),
+					h("p", null, "Restart into Fastboot Mode to go on. The phone restarts, and nothing on it is changed or erased."),
+					h(
+						"div",
+						{ class: "actions" },
+						h(
+							"button",
+							{ class: "btn btn-primary btn-big", type: "button", dataset: { focus: "connect" }, on: { click: () => void this.restartAndroid() } },
+							"Restart into Fastboot Mode",
+						),
+						cancel(null),
+					),
+				];
+			}
+			case "restarting": {
+				this.bloom.setMode("waiting");
+				this.setStatus("Restarting into Fastboot Mode…", a.choose ? "Choose the phone again in the browser's list" : "This takes a few seconds");
+				return [
+					h("p", { class: "lead" }, `Your ${model(null)} is restarting into Fastboot Mode. This takes a few seconds.`),
+					a.choose
+						? h(
+								"div",
+								{ class: "reconnect" },
+								h("strong", null, "Choose the phone again"),
+								h(
+									"p",
+									null,
+									"In Fastboot Mode, the browser sees the phone as a new device, so you need to choose it again. Once the phone shows Fastboot Mode, press Choose the phone again and pick it in the list. It may be called Pixel, Android or Fastboot.",
+								),
+								a.chooseError ? h("p", null, a.chooseError) : null,
+								h(
+									"button",
+									{ class: "btn btn-primary btn-attention", type: "button", dataset: { focus: "choose" }, on: { click: () => void this.chooseAgain(a) } },
+									"Choose the phone again",
+								),
+							)
+						: null,
+					h("div", { class: "actions" }, cancel("connect")),
+				];
+			}
+		}
 	}
 
 	private async unlock() {
@@ -1643,6 +2079,17 @@ export class App {
 	}
 
 	private showReconnect(show: boolean) {
+		// A phone restarted into Fastboot Mode over USB debugging, on the Connect step
+		const a = this.android;
+		if (a?.stage === "restarting") {
+			if (a.choose === show) return;
+			a.choose = show;
+			a.chooseError = null;
+			if (this.step !== "connect") return;
+			this.render();
+			if (show) this.findControl("choose")?.focus();
+			return;
+		}
 		if (!this.reconnectBox) return;
 		this.reconnectBox.hidden = !show;
 		if (show) {

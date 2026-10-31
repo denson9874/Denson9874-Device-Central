@@ -28,7 +28,7 @@ vi.mock("../src/fastboot/usb-connector.ts", async () => {
 });
 vi.mock("../src/fastboot/webusb.ts", async (importOriginal) => {
 	const h = await import("./app-harness.ts");
-	return { ...(await importOriginal<object>()), UsbTransport: h.FakeUsbTransport, isFastbootDevice: () => true };
+	return { ...(await importOriginal<object>()), UsbTransport: h.FakeUsbTransport };
 });
 vi.mock("../src/store/store.ts", async (importOriginal) => {
 	const h = await import("./app-harness.ts");
@@ -427,6 +427,36 @@ describe("the keyboard when the panel is drawn again (ux-6)", () => {
 	});
 });
 
+describe("a list closed with no phone chosen", () => {
+	const said = "No phone was chosen. The browser's list only shows a phone that's running Android with USB debugging on, or one that's in Fastboot Mode.";
+
+	it("is said on the Phone step, and the keyboard stays on Detect a connected phone", async () => {
+		new App();
+		const live = liveRegion();
+		await press("Detect a connected phone");
+		expect(page.panel.querySelector(".notice-info")).not.toBeNull();
+		expect(live.at(-1)).toBe(said);
+		expect(active().textContent).toBe("Detect a connected phone");
+		// Drawn again for another choice, it isn't said again
+		await press("Pixel 7 Procheetah");
+		expect(live.filter((s) => s.includes("No phone was chosen")).length).toBe(1);
+	});
+
+	it("is said on the Connect step, and the keyboard stays on Connect", async () => {
+		const b = build("cheetah", { stock: true, seed: 110 });
+		publish(b);
+		await start("Pixel 7 Pro", "cheetah");
+		await press("Continue");
+		await until(() => !!buttonIn(page.panel, "Continue"), "the stored download");
+		await press("Continue");
+		const live = liveRegion();
+		await press("Connect");
+		expect(page.panel.querySelector(".notice-info")).not.toBeNull();
+		expect(live.at(-1)).toBe(said);
+		expect(active()).toBe(buttonIn(page.panel, "Connect"));
+	});
+});
+
 describe("a way back on every step (ux-9)", () => {
 	it("has Back with the download stored and with the phone ready, and keeps the stepper's names", async () => {
 		const b = build("cheetah", { stock: true, seed: 70 });
@@ -504,10 +534,10 @@ describe("help for a phone that won't connect (ux-2, runtime-4)", () => {
 		const help = page.panel.querySelectorAll("p.status-detail").map((p) => p.textContent);
 		const missing = help.find((t) => t.startsWith("Phone not in the list?"));
 		const stuck = help.find((t) => t.startsWith("In the list but won't connect?"));
-		expect(missing).toContain("try another cable or port");
+		expect(missing).toContain("Check that USB debugging is on, or that the phone shows Fastboot Mode, and try another cable or port.");
 		expect(missing).toContain("On Windows, install the Google USB Driver.");
 		expect(missing).toContain(`On Linux, ${linuxRule}`);
-		expect(stuck).toContain("Close any other program using the phone, such as a terminal running adb or fastboot, and any other tab using it.");
+		expect(stuck).toContain("Close any other program using the phone, such as Android Studio, scrcpy or a terminal running fastboot, and any other tab using it. If adb is installed, run adb kill-server too.");
 		expect(stuck).toContain("Without the Google USB Driver on Windows, or the udev rule on Linux, the browser can list the phone but can't open it.");
 		expect(stuck).toContain("After that, unplug the phone, plug it back in and connect again.");
 		expect(page.panel.querySelectorAll("p.status-detail a").map((a) => a.getAttribute("href"))).toContain("https://developer.android.com/studio/run/win-usb");
@@ -607,6 +637,16 @@ describe("the stylesheet's contrast (ux-5)", () => {
 
 	it("has the same light theme from the system setting and from the toggle", () => {
 		expect(lightByToggle).toEqual(lightByScheme);
+	});
+
+	it("keeps the bold keys in a step's text in their line, in a notice and in a list of steps", () => {
+		// Only a notice's title is a line of its own
+		expect(declaration(".notice-body > strong", "display")).toBe("block");
+		expect(css).not.toMatch(/\n\.notice-body strong \{/);
+		// A step isn't a grid or flex box, which would make each bold word a cell of its own
+		const at = css.indexOf("\n.howto li {");
+		expect(at).toBeGreaterThanOrEqual(0);
+		expect(css.slice(at, css.indexOf("}", at))).not.toMatch(/display:\s*(grid|flex)/);
 	});
 
 	for (const [name, t] of Object.entries(themes)) {

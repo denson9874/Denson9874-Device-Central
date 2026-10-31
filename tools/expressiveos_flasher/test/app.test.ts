@@ -4,13 +4,20 @@
 
 import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ConnectOptions } from "../src/adb/adb.ts";
+import { browserAdbKey } from "../src/adb/key.ts";
+import { deviceByCodename } from "../src/devices.ts";
 import { USB_DRIVER_URL, openFailure } from "../src/fastboot/webusb.ts";
 import type { Release } from "../src/releases.ts";
 import { StoreError, storeName } from "../src/store/store.ts";
 import { App } from "../src/ui/app.ts";
 import { type FakeElement, type Page, buttonIn, buttonsIn, fakeDom, fakeNavigatorUsb, plugIn, unplug, world } from "./app-harness.ts";
+import { FakeAdbPhone, type FakeAdbOptions } from "./fake-adb.ts";
 import { FakePhone, type FakeOptions } from "./fake-phone.ts";
 import { bytes, makeSuperEmpty, makeZip } from "./helpers.ts";
+
+/** How long a phone running Android has to answer, and its user to tap Allow (the page's own are 10 s and 3 min). */
+const adbTiming = vi.hoisted(() => ({ answerTimeoutMs: 300, allowTimeoutMs: 800, settleMs: 20 }));
 
 vi.mock("../src/ui/bloom.ts", async () => {
 	const h = await import("./app-harness.ts");
@@ -22,9 +29,14 @@ vi.mock("../src/fastboot/usb-connector.ts", async () => {
 });
 vi.mock("../src/fastboot/webusb.ts", async (importOriginal) => {
 	const h = await import("./app-harness.ts");
-	return { ...(await importOriginal<object>()), UsbTransport: h.FakeUsbTransport, isFastbootDevice: () => true };
+	return { ...(await importOriginal<object>()), UsbTransport: h.FakeUsbTransport };
 });
 vi.mock("../src/store/store.ts", async (importOriginal) => ({ ...(await importOriginal<object>()), ...(await import("./app-harness.ts")).store }));
+// USB debugging as the page does it (src/adb/), over the simulated adbd (fake-adb.ts), on shorter timings
+vi.mock("../src/adb/adb.ts", async (importOriginal) => {
+	const adb = await importOriginal<typeof import("../src/adb/adb.ts")>();
+	return { ...adb, connectAdb: (d: USBDevice, o: ConnectOptions = {}) => adb.connectAdb(d, { ...o, ...adbTiming }) };
+});
 
 // ---------- Builds ----------
 
@@ -95,6 +107,11 @@ beforeEach(() => {
 	});
 	page = dom.page;
 	world.device = null;
+	world.android = null;
+	world.unpermitted = new WeakSet();
+	world.askAfterMs = 0;
+	world.reconnectTimeoutMs = 5000;
+	Object.assign(adbTiming, { answerTimeoutMs: 300, allowTimeoutMs: 800, settleMs: 20 });
 	world.stored = new Map();
 	world.files = new Map();
 	world.releases = [];
@@ -104,6 +121,8 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.unstubAllGlobals();
+	// Whatever a test did, the page never opened a service on a phone running Android but the restart
+	for (const p of androids.splice(0)) for (const service of p.opened) expect(service).toBe("reboot:bootloader");
 });
 
 const settle = async () => {
@@ -185,6 +204,64 @@ function usbGoesAfter(fake: FakePhone, command: string) {
 		return replies;
 	};
 }
+
+const androids: FakeAdbPhone[] = [];
+
+/**
+ * A phone running Android with USB debugging on, plugged in (fake-adb.ts), that `trusted` already
+ * allows this browser's key. reboot:bootloader takes it off USB, and unless `back` is false it
+ * comes back a moment later in Fastboot Mode (fake-phone.ts, with `fastboot`'s options) as a new
+ * USB device: one the page may use only once the user picks it, unless `permitted`.
+ */
+async function android(o: FakeAdbOptions & { trusted?: boolean; permitted?: boolean; back?: boolean; fastboot?: FakeOptions } = {}) {
+	const fastboot = new FakePhone({ product: o.device ?? "cheetah", ...o.fastboot });
+	const key = Buffer.from((await browserAdbKey()).androidPublicKey()).toString("base64");
+	const adb = new FakeAdbPhone({
+		serial: fastboot.serial,
+		device: fastboot.product,
+		model: deviceByCodename(fastboot.product)?.model ?? "Pixel",
+		trustedKeys: o.trusted ? [key] : [],
+		...o,
+	});
+	androids.push(adb);
+	world.device = null;
+	world.android = adb.usb;
+	adb.onDisconnect = (d) => {
+		if (world.android === d) world.android = null;
+		world.usb.dispatchEvent(Object.assign(new Event("disconnect"), { device: d }));
+		if (o.back === false) return;
+		setTimeout(() => {
+			const back = plugIn(fastboot);
+			// The browser tells the page only of a device it may use
+			if (o.permitted) world.usb.dispatchEvent(Object.assign(new Event("connect"), { device: back }));
+			else world.unpermitted.add(back);
+		}, 10);
+	};
+	return { adb, fastboot };
+}
+
+/** Everything the page's live region says from now on, in order (an emptying isn't said). */
+function sayings(): string[] {
+	const live = page.body.querySelector("#announce")!;
+	const said: string[] = [];
+	let proto: object | null = live;
+	let desc: PropertyDescriptor | undefined;
+	while (proto && !(desc = Object.getOwnPropertyDescriptor(proto, "textContent"))) proto = Object.getPrototypeOf(proto);
+	Object.defineProperty(live, "textContent", {
+		configurable: true,
+		get() {
+			return desc!.get!.call(this);
+		},
+		set(v: string) {
+			if (v) said.push(v);
+			desc!.set!.call(this, v);
+		},
+	});
+	return said;
+}
+
+/** A notice's title: the first thing in its body, in bold. */
+const noticeTitle = (box: FakeElement) => box.querySelector(".notice-body")!.children.find((c) => c.tagName === "strong")?.textContent;
 
 /** From the Build step, with the zip already in the browser, to the Connect step. */
 async function toConnect() {
@@ -411,7 +488,495 @@ describe("Detect a connected phone", () => {
 	});
 });
 
+describe("the steps into Fastboot Mode", () => {
+	// The browser's list shows a phone running Android only with USB debugging on: the page says so,
+	// with the easy way (USB debugging, and the page restarts it) and the way by hand, by Detect and
+	// Connect, and again when the list was closed with no phone chosen (NotFoundError)
+	const listed = "The browser's list only shows a phone that's running Android with USB debugging on, or one that's in Fastboot Mode.";
+	const easy = "The easy way: USB debugging. The page finds the phone while it's running Android, and restarts it into Fastboot Mode for you.";
+	const debugging = "On the phone, open Settings, then About phone, and tap Build number seven times. Then open System, Developer options and turn on USB debugging.";
+	const cable = "Plug it into this computer with a USB cable that carries data, not a charge-only one.";
+	const allow = (button: string) => `Press ${button} and choose your phone in the list. When the phone asks "Allow USB debugging?", tap Allow.`;
+	const byHand = "Or by hand. Put the phone in Fastboot Mode yourself.";
+	const into = "Turn the phone off. Then hold Power and Volume down together until you see Fastboot Mode.";
+	const choose = (button: string) => `Plug it in, press ${button} and choose your phone in the list. It may be called Pixel, Android or Fastboot.`;
+	const steps = (root: FakeElement) => root.querySelectorAll("ol.howto li").map((li) => li.textContent);
+	const ways = (root: FakeElement) => root.querySelectorAll("p.howto-way").map((p) => p.textContent);
+	const all = (button: string) => [debugging, cable, allow(button), into, choose(button)];
+	const howto = () => page.panel.querySelector(".fastboot-howto")!;
+	/** A notice's title: the first thing in its body, in bold. */
+	const title = (box: FakeElement) => box.querySelector(".notice-body")!.children.find((c) => c.tagName === "strong")?.textContent;
+	/** Where an element is among the panel's own children. */
+	const at = (e: FakeElement | null) => page.panel.children.indexOf(e!);
+	const b = build("cheetah", "1.0", "2026-10-30", "require board=cheetah\n", { stock: true, seed: 150 });
+
+	it("are under Detect a connected phone on the Phone step, the easy way first", () => {
+		new App();
+		const box = howto();
+		expect(box).not.toBeNull();
+		expect(at(box)).toBe(at(buttonIn(page.panel, "Detect a connected phone")!.parentNode) + 1);
+		expect(box.querySelector("p")?.textContent).toBe(listed);
+		expect(ways(box)).toEqual([easy, byHand]);
+		expect(box.querySelectorAll("ol.howto").length).toBe(2);
+		expect(steps(box)).toEqual(all("Detect a connected phone"));
+		expect(box.querySelectorAll("strong").map((s) => s.textContent)).toEqual([
+			"The easy way: USB debugging. ",
+			"Detect a connected phone",
+			"Or by hand. ",
+			"Power",
+			"Volume down",
+			"Fastboot Mode",
+			"Detect a connected phone",
+		]);
+	});
+
+	it("are over Connect on the Connect step, in the same words", async () => {
+		publish([b]);
+		await start("Pixel 7 Pro", "cheetah");
+		await toConnect();
+		const box = howto();
+		expect(at(box)).toBe(at(buttonIn(page.panel, "Connect")!.parentNode) - 1);
+		expect(box.querySelector("p")?.textContent).toBe(listed);
+		expect(ways(box)).toEqual([easy, byHand]);
+		expect(steps(box)).toEqual(all("Connect"));
+	});
+
+	it("say to use a USB-C cable on Chrome on Android", async () => {
+		vi.stubGlobal("navigator", { usb: fakeNavigatorUsb(), userAgent: "Mozilla/5.0 (Linux; Android 16; Pixel 9) Chrome/141.0 Mobile", storage: {} });
+		new App();
+		expect(steps(howto())[1]).toBe("Connect it to this phone with a USB-C cable that carries data. An OTG adapter may be needed.");
+	});
+
+	it("are in a notice when Detect gets no phone, in place of the step's own", async () => {
+		// Nothing in Fastboot Mode, and nothing with USB debugging on: the browser's list is empty,
+		// and closing it is a NotFoundError
+		new App();
+		await press("Detect a connected phone");
+		const info = howto().querySelector(".notice-info")!;
+		expect(info).not.toBeNull();
+		expect(title(info)).toBe("No phone was chosen");
+		expect(info.querySelector("p")?.textContent).toBe(listed);
+		expect(ways(info)).toEqual([easy, byHand]);
+		expect(steps(info)).toEqual(all("Detect a connected phone"));
+		// The steps are on the page once, and nothing else is over the step
+		expect(page.panel.querySelectorAll("ol.howto").length).toBe(2);
+		expect(page.panel.querySelectorAll(".notice").length).toBe(1);
+		expect(page.statusTitle.textContent).toBe("Install ExpressiveOS");
+		expect(world.bloom!.mode).toBe("idle");
+		// Choosing a model keeps it there; once the phone is in Fastboot Mode, Detect finds it
+		await press("Pixel 7 Procheetah");
+		expect(howto().querySelector(".notice-info")).not.toBeNull();
+		phone();
+		await press("Detect a connected phone");
+		await until(() => text().includes("Found a Pixel 7 Pro"), "the detected phone");
+		expect(page.panel.querySelector(".notice-info")).toBeNull();
+		expect(howto().querySelector("p")?.textContent).toBe(listed);
+	});
+
+	it("are in a notice when Connect gets no phone, and Connect goes on once it's there", async () => {
+		publish([b]);
+		await start("Pixel 7 Pro", "cheetah");
+		await toConnect();
+		await press("Connect");
+		const info = howto().querySelector(".notice-info")!;
+		expect(info).not.toBeNull();
+		expect(title(info)).toBe("No phone was chosen");
+		expect(info.querySelector("p")?.textContent).toBe(listed);
+		expect(steps(info)).toEqual(all("Connect"));
+		expect(page.panel.querySelectorAll("ol.howto").length).toBe(2);
+		expect(page.panel.querySelector(".notice-danger")).toBeNull();
+		expect(page.statusTitle.textContent).toBe("Connect your phone");
+		expect(world.bloom!.mode).toBe("idle");
+		expect(buttonIn(page.panel, "Connect")?.disabled).toBe(false);
+		phone();
+		await press("Connect");
+		await until(() => text().includes("Ready to install"), "the phone's checks");
+		expect(page.panel.querySelector(".notice-info")).toBeNull();
+	});
+
+	it("are in Before you start, in the same words", () => {
+		new App();
+		const prep = page.panel.querySelectorAll("details.prep li").map((li) => li.textContent);
+		expect(prep).toContain(
+			"Turn on USB debugging. In Developer options, as for OEM unlocking, turn on USB debugging too. With it on, the page finds the phone while it's running Android and restarts it into Fastboot Mode for you. " +
+				`Without it, put the phone in Fastboot Mode yourself. ${into}`,
+		);
+		expect(prep.find((t) => t.startsWith("Use a USB cable that carries data,"))).toBeDefined();
+	});
+});
+
+describe("a phone running Android, with USB debugging on", () => {
+	const b = build("cheetah", "1.0", "2026-10-30", "require board=cheetah\n", { stock: true, seed: 160 });
+	const byHand = (button: string) =>
+		`Or put the phone in Fastboot Mode by hand: turn it off, then hold Power and Volume down together until you see Fastboot Mode, and press ${button} again.`;
+	const danger = () => page.panel.querySelector(".notice-danger");
+
+	it("is found by Detect once the user allows USB debugging, and isn't restarted", async () => {
+		const { adb } = await android({ device: "husky" });
+		new App();
+		await press("Detect a connected phone");
+		await until(() => text().includes("Tap Allow on your phone."), "the help for the phone's question");
+		expect(adb.prompts).toHaveLength(1);
+		expect(adb.prompts[0].name).toBe("ExpressiveOS Flasher@browser");
+		const box = page.panel.querySelector(".notice-info")!;
+		expect(noticeTitle(box)).toBe('Your phone asks "Allow USB debugging?"');
+		expect(box.textContent).toContain("Tap Allow on your phone. Tick Always allow from this computer so it doesn't ask again.");
+		expect(box.textContent).toContain("If you don't see the question, unlock the phone.");
+		expect(box.textContent).toContain("If you tapped Cancel on the phone, press Cancel here, then press Detect a connected phone so the phone asks again.");
+		// In place of the steps into Fastboot Mode, by the button that found it
+		expect(page.panel.querySelector(".fastboot-howto")).toBeNull();
+		expect(buttonIn(page.panel, "Cancel")?.disabled).toBe(false);
+		expect(buttonIn(page.panel, "Detect a connected phone")?.disabled).toBe(true);
+		expect(page.statusTitle.textContent).toBe("Allow USB debugging");
+		expect(page.statusDetail.textContent).toBe("Tap Allow on your phone");
+		expect(world.bloom!.mode).toBe("waiting");
+
+		adb.tapAllow({ always: true });
+		await until(() => text().includes("Found a Pixel 8 Pro"), "the detected phone");
+		expect(text()).toContain("Found a Pixel 8 Pro (husky), running Android. Keep USB debugging on: at the Connect step, the page restarts it into Fastboot Mode for you.");
+		expect(page.panel.querySelector('button[aria-pressed="true"]')?.textContent).toBe("Pixel 8 Prohusky");
+		expect(buttonIn(page.panel, "Continue with Pixel 8 Pro")?.disabled).toBe(false);
+		// Read, then let go: nothing restarted
+		expect(adb.opened).toEqual([]);
+		expect(adb.mode).toBe("android");
+		expect(adb.usb.calls.slice(-2)).toEqual(["releaseInterface 1", "close"]);
+		expect(page.panel.querySelector(".fastboot-howto")).not.toBeNull();
+	});
+
+	it("can be let go of with Cancel while the phone asks", async () => {
+		const { adb } = await android();
+		new App();
+		await press("Detect a connected phone");
+		await until(() => text().includes("Tap Allow on your phone."), "the help for the phone's question");
+		await press("Cancel");
+		await until(() => buttonIn(page.panel, "Detect a connected phone")?.disabled === false, "the step again");
+		expect(page.panel.querySelector(".notice")).toBeNull();
+		expect(page.panel.querySelector(".fastboot-howto")).not.toBeNull();
+		expect(page.statusTitle.textContent).toBe("Install ExpressiveOS");
+		expect(adb.usb.opened).toBe(false);
+		expect(adb.opened).toEqual([]);
+	});
+
+	it("is restarted into Fastboot Mode on Connect only when the user says so, chosen again, then checked as a phone in Fastboot Mode is", async () => {
+		publish([b]);
+		const { adb, fastboot } = await android();
+		await start("Pixel 7 Pro", "cheetah");
+		await toConnect();
+		await press("Connect");
+		await until(() => text().includes("Tap Allow on your phone."), "the help for the phone's question");
+		expect(text()).toContain("If you tapped Cancel on the phone, press Cancel here, then press Connect so the phone asks again.");
+		adb.tapAllow();
+		await until(() => !!buttonIn(page.panel, "Restart into Fastboot Mode"), "the button to restart it");
+		expect(text()).toContain("Found your Pixel 7 Pro");
+		expect(text()).toContain("Restart into Fastboot Mode to go on. The phone restarts, and nothing on it is changed or erased.");
+		expect(text()).toContain("Android, with USB debugging");
+		expect(text()).toContain(fastboot.serial);
+		expect(page.statusTitle.textContent).toBe("Phone found");
+		expect(page.statusDetail.textContent).toBe("Pixel 7 Pro · running Android");
+		// Nothing yet: the phone waits for the button
+		await new Promise((r) => setTimeout(r, 50));
+		expect(adb.opened).toEqual([]);
+		expect(adb.mode).toBe("android");
+
+		await press("Restart into Fastboot Mode");
+		await until(() => !!buttonIn(page.panel, "Choose the phone again"), "the button to choose it again");
+		expect(adb.opened).toEqual(["reboot:bootloader"]);
+		expect(text()).toContain("In Fastboot Mode, the browser sees the phone as a new device, so you need to choose it again.");
+		expect(page.statusTitle.textContent).toBe("Restarting into Fastboot Mode…");
+		expect(world.bloom!.mode).toBe("waiting");
+		await until(() => world.device !== null, "the phone in Fastboot Mode");
+		await press("Choose the phone again");
+		await until(() => text().includes("Ready to install"), "the phone's checks");
+		expect(text()).toContain("Fastboot (bootloader)");
+		expect(fastboot.commands).toContain("getvar:product");
+		// On as after any Connect
+		await press("Continue");
+		await install();
+		expect(text()).toContain("ExpressiveOS is installed");
+		expect(fastboot.mode).toBe("android");
+	});
+
+	it("is found again in Fastboot Mode without the user when the browser may use it, and goes on to the unlock", async () => {
+		publish([b]);
+		world.askAfterMs = 60_000;
+		const { adb } = await android({ trusted: true, permitted: true, fastboot: { unlocked: false } });
+		await start("Pixel 7 Pro", "cheetah");
+		await toConnect();
+		await press("Connect");
+		await until(() => !!buttonIn(page.panel, "Restart into Fastboot Mode"), "the button to restart it");
+		// This browser's key is allowed already
+		expect(adb.prompts).toHaveLength(0);
+		await press("Restart into Fastboot Mode");
+		await until(() => text().includes("The bootloader is locked"), "the unlock");
+		expect(buttonIn(page.panel, "Unlock the bootloader")).not.toBeNull();
+		expect(adb.opened).toEqual(["reboot:bootloader"]);
+	});
+
+	it("isn't restarted when it's another model than the build's", async () => {
+		publish([b]);
+		const { adb } = await android({ device: "husky", trusted: true });
+		await start("Pixel 7 Pro", "cheetah");
+		await toConnect();
+		await press("Connect");
+		await until(() => text().includes("That's a different phone"), "the refusal");
+		expect(danger()?.textContent).toContain(
+			"This is a Pixel 8 Pro (husky), and the build is for the Pixel 7 Pro, so the page left it as it is. Go back and choose the Pixel 8 Pro, or connect your Pixel 7 Pro. If your Pixel 7 Pro is plugged in too, unplug this phone, then press Connect and choose your Pixel 7 Pro in the list.",
+		);
+		expect(buttonIn(page.panel, "Restart into Fastboot Mode")).toBeNull();
+		expect(adb.opened).toEqual([]);
+		expect(adb.mode).toBe("android");
+		expect(adb.usb.opened).toBe(false);
+		expect(page.statusTitle.textContent).toBe("This phone can't take the build");
+		expect(world.bloom!.mode).toBe("error");
+		expect(step("Install").disabled).toBe(true);
+		expect(buttonIn(page.panel, "Connect")?.disabled).toBe(false);
+	});
+
+	it("isn't asked about a key it trusts on Connect, after the user allowed a Detect the page had stopped waiting for", async () => {
+		publish([b]);
+		const { adb } = await android({ back: false });
+		new App();
+		await press("Detect a connected phone");
+		await until(() => !!adb.prompt, "the phone's question");
+		await press("Cancel");
+		await until(() => buttonIn(page.panel, "Detect a connected phone")?.disabled === false, "the step again");
+		// The user taps Allow on the phone afterwards, with Always allow, and presses Detect again
+		adb.tapAllow({ always: true });
+		await press("Detect a connected phone");
+		await until(() => text().includes("Found a Pixel 7 Pro"), "the detected phone");
+		await press("Continue with Pixel 7 Pro");
+		await until(() => text().includes("Install type"), "the build list");
+		await toConnect();
+		const prompts = adb.prompts.length;
+		await press("Connect");
+		await until(() => !!buttonIn(page.panel, "Restart into Fastboot Mode"), "the button to restart it");
+		expect(adb.prompts).toHaveLength(prompts);
+		expect(adb.prompt).toBeNull();
+		await press("Restart into Fastboot Mode");
+		await until(() => !!buttonIn(page.panel, "Choose the phone again"), "the button to choose it again");
+		expect(adb.opened).toEqual(["reboot:bootloader"]);
+		await press("Cancel");
+		await until(() => !!buttonIn(page.panel, "Connect"), "the step again");
+	});
+
+	it("is chosen in the browser's list on Connect, though the site may still use it from an earlier visit", async () => {
+		// The Pixel 7 Pro the page restarted last time is still plugged in, running Android with USB
+		// debugging on; the Pixel 8 Pro the build is for is in Fastboot Mode, new to the site
+		const husky = build("husky", "1.0", "2026-10-30", "require board=husky\n", { stock: true, seed: 170 });
+		publish([husky]);
+		const { adb } = await android({ trusted: true });
+		const pixel8 = new FakePhone({ product: "husky", serial: "35021FDH300ABC" });
+		world.unpermitted.add(plugIn(pixel8));
+		const list = vi.spyOn(world.usb as unknown as { requestDevice: (o?: USBDeviceRequestOptions) => Promise<USBDevice> }, "requestDevice");
+		await start("Pixel 8 Pro", "husky");
+		await toConnect();
+		await press("Connect");
+		await until(() => /Ready to install|different phone|locked/.test(text()), "the phone's checks");
+		expect(list).toHaveBeenCalledTimes(1);
+		expect(text()).toContain("Ready to install");
+		expect(text()).toContain("35021FDH300ABC");
+		expect(adb.usb.calls).toEqual([]);
+		expect(adb.opened).toEqual([]);
+	});
+
+	it("found by Detect is taken on Connect without the browser's list", async () => {
+		publish([b]);
+		const { adb } = await android({ trusted: true });
+		const list = vi.spyOn(world.usb as unknown as { requestDevice: (o?: USBDeviceRequestOptions) => Promise<USBDevice> }, "requestDevice");
+		new App();
+		await press("Detect a connected phone");
+		await until(() => text().includes("Found a Pixel 7 Pro"), "the detected phone");
+		await press("Continue with Pixel 7 Pro");
+		await until(() => text().includes("Install type"), "the build list");
+		await toConnect();
+		await press("Connect");
+		await until(() => !!buttonIn(page.panel, "Restart into Fastboot Mode"), "the button to restart it");
+		expect(list).toHaveBeenCalledTimes(1);
+		expect(adb.opened).toEqual([]);
+	});
+
+	it("tells the user to stop the adb server that holds the phone, then works once it's stopped", async () => {
+		const { adb } = await android({ claimError: new DOMException("Unable to claim interface.", "NetworkError") });
+		new App();
+		await press("Detect a connected phone");
+		await until(() => page.statusTitle.textContent === "Couldn't read the phone", "the failure");
+		expect(danger()?.textContent).toContain(
+			"usually an adb server started by adb, Android Studio or scrcpy. Close Android Studio and scrcpy if they're open, and any other tab using the phone. Then run adb kill-server in a terminal and try again.",
+		);
+		expect(danger()?.querySelector("a")).toBeNull();
+		expect(world.bloom!.mode).toBe("error");
+		// adb kill-server
+		adb.opts.claimError = undefined;
+		await press("Detect a connected phone");
+		await until(() => !!adb.prompt, "the phone's question");
+		adb.tapAllow();
+		await until(() => text().includes("Found a Pixel 7 Pro"), "the detected phone");
+	});
+
+	it("links to the Google USB Driver when Windows won't let the browser have it", async () => {
+		vi.stubGlobal("navigator", { usb: fakeNavigatorUsb(), userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0", storage: {} });
+		await android({ openError: new DOMException("Access denied.", "SecurityError") });
+		new App();
+		await press("Detect a connected phone");
+		await until(() => !!danger(), "the failure");
+		expect(danger()?.textContent).toContain("run adb kill-server in a terminal and try again. Otherwise install the Google USB Driver");
+		expect(danger()?.querySelector("a")?.getAttribute("href")).toBe(USB_DRIVER_URL);
+	});
+
+	it("says how to allow USB debugging, or put the phone in Fastboot Mode by hand, when the user doesn't allow it", async () => {
+		publish([b]);
+		const { adb } = await android();
+		await start("Pixel 7 Pro", "cheetah");
+		await toConnect();
+		await press("Connect");
+		await until(() => !!adb.prompt, "the phone's question");
+		// Cancel on the phone: it says nothing, so the page waits out its time
+		adb.tapCancel();
+		await until(() => page.statusTitle.textContent === "Couldn't connect", "the failure");
+		expect(danger()?.textContent).toContain(
+			`The phone didn't allow USB debugging in time. Unlock the phone, tap Allow when it asks "Allow USB debugging?", then try again. ${byHand("Connect")}`,
+		);
+		expect(adb.usb.opened).toBe(false);
+		expect(buttonIn(page.panel, "Connect")?.disabled).toBe(false);
+		expect(page.panel.querySelector(".fastboot-howto")).not.toBeNull();
+	});
+
+	it("says what to do when Cancel was tapped on the phone, which the phone doesn't tell the page", async () => {
+		// The page's own time to allow it, 3 minutes: nothing comes before that
+		adbTiming.allowTimeoutMs = undefined as unknown as number;
+		const { adb } = await android();
+		new App();
+		await press("Detect a connected phone");
+		await until(() => !!adb.prompt, "the phone's question");
+		adb.tapCancel();
+		await new Promise((r) => setTimeout(r, 300));
+		expect(text()).toContain("If you tapped Cancel on the phone, press Cancel here, then press Detect a connected phone so the phone asks again.");
+		expect(page.statusTitle.textContent).toBe("Allow USB debugging");
+		// As it says: a new connection, and the phone asks again
+		await press("Cancel");
+		await until(() => buttonIn(page.panel, "Detect a connected phone")?.disabled === false, "the step again");
+		await press("Detect a connected phone");
+		await until(() => !!adb.prompt, "the phone's question again");
+		expect(adb.prompts).toHaveLength(2);
+		adb.tapAllow();
+		await until(() => text().includes("Found a Pixel 7 Pro"), "the detected phone");
+	});
+
+	it("says the same when the phone doesn't answer at all", async () => {
+		const { adb } = await android();
+		adb.onMessage = () => true;
+		new App();
+		await press("Detect a connected phone");
+		await until(() => !!danger(), "the failure");
+		expect(danger()?.textContent).toContain(`The phone didn't answer over USB debugging. Unplug it, plug it back in and try again. ${byHand("Detect a connected phone")}`);
+		expect(page.statusTitle.textContent).toBe("Couldn't read the phone");
+	});
+
+	it("passes on the phone's refusal to restart, with the steps by hand once", async () => {
+		publish([b]);
+		const { adb } = await android({ trusted: true, reboot: "refuse" });
+		await start("Pixel 7 Pro", "cheetah");
+		await toConnect();
+		await press("Connect");
+		await until(() => !!buttonIn(page.panel, "Restart into Fastboot Mode"), "the button to restart it");
+		await press("Restart into Fastboot Mode");
+		await until(() => !!danger(), "the failure");
+		const said = danger()!.textContent;
+		expect(said).toContain("The phone didn't restart into Fastboot Mode when asked over USB debugging. Turn the phone off. Then hold Power and Volume down together until you see Fastboot Mode.");
+		expect(said.match(/Volume down/g)).toHaveLength(1);
+		expect(adb.mode).toBe("android");
+	});
+
+	it("says what to do when it doesn't come back in Fastboot Mode", async () => {
+		publish([b]);
+		world.reconnectTimeoutMs = 200;
+		await android({ trusted: true, back: false });
+		await start("Pixel 7 Pro", "cheetah");
+		await toConnect();
+		await press("Connect");
+		await until(() => !!buttonIn(page.panel, "Restart into Fastboot Mode"), "the button to restart it");
+		await press("Restart into Fastboot Mode");
+		await until(() => page.statusTitle.textContent === "Couldn't connect", "the failure");
+		// The time also runs out on a phone in Fastboot Mode that wasn't chosen again
+		expect(danger()?.textContent).toContain(
+			"The page stopped waiting for the phone. If it shows Fastboot Mode, press Connect and choose it. If it shows something else, put it in Fastboot Mode by hand: turn it off, then hold Power and Volume down together until you see Fastboot Mode. Then press Connect.",
+		);
+		expect(buttonIn(page.panel, "Choose the phone again")).toBeNull();
+		expect(buttonIn(page.panel, "Connect")?.disabled).toBe(false);
+	});
+
+	it("stops waiting for it with Cancel, and says another phone chosen isn't it", async () => {
+		publish([b]);
+		const { fastboot } = await android({ trusted: true, back: false });
+		await start("Pixel 7 Pro", "cheetah");
+		await toConnect();
+		await press("Connect");
+		await until(() => !!buttonIn(page.panel, "Restart into Fastboot Mode"), "the button to restart it");
+		await press("Restart into Fastboot Mode");
+		await until(() => !!buttonIn(page.panel, "Choose the phone again"), "the button to choose it again");
+		// Another phone in Fastboot Mode is chosen
+		world.unpermitted.add(plugIn(new FakePhone({ serial: "OTHERPHONE01" })));
+		const said = sayings();
+		await press("Choose the phone again");
+		await until(() => text().includes("That isn't the phone the page is waiting for"), "the wrong phone");
+		expect(buttonIn(page.panel, "Choose the phone again")).not.toBeNull();
+		// The keyboard stays on the button and the status is the same: screen readers are told, each time
+		const wrong = "That isn't the phone the page is waiting for, or it isn't in Fastboot Mode yet. Choose it again.";
+		expect(said.at(-1)).toBe(wrong);
+		await press("Choose the phone again");
+		await settle();
+		expect(said.filter((t) => t === wrong)).toHaveLength(2);
+		await press("Cancel");
+		await until(() => !!buttonIn(page.panel, "Connect"), "the step again");
+		expect(text()).toContain("The page stopped waiting for the phone. If it shows Fastboot Mode, press Connect and choose it.");
+		expect(page.panel.querySelector(".notice-danger")).toBeNull();
+		// It's in Fastboot Mode now: Connect takes it from there
+		plugIn(fastboot);
+		await press("Connect");
+		await until(() => text().includes("Ready to install"), "the phone's checks");
+	});
+
+	it("is let go of when it's unplugged while waiting for Restart into Fastboot Mode", async () => {
+		publish([b]);
+		const { adb } = await android({ trusted: true, back: false });
+		await start("Pixel 7 Pro", "cheetah");
+		await toConnect();
+		await press("Connect");
+		await until(() => !!buttonIn(page.panel, "Restart into Fastboot Mode"), "the button to restart it");
+		adb.usb.disconnect();
+		await settle();
+		expect(text()).toContain("The phone was unplugged. Plug it back in and connect again.");
+		expect(buttonIn(page.panel, "Restart into Fastboot Mode")).toBeNull();
+		expect(buttonIn(page.panel, "Connect")?.disabled).toBe(false);
+		expect(adb.opened).toEqual([]);
+	});
+
+	it("is let go of when the user leaves the step instead of restarting it", async () => {
+		publish([b]);
+		const { adb } = await android({ trusted: true });
+		await start("Pixel 7 Pro", "cheetah");
+		await toConnect();
+		await press("Connect");
+		await until(() => !!buttonIn(page.panel, "Restart into Fastboot Mode"), "the button to restart it");
+		await press(step("Download").textContent, page.stepper);
+		await settle();
+		expect(adb.usb.opened).toBe(false);
+		await press("Continue");
+		expect(text()).toContain("Connect your phone");
+		expect(buttonIn(page.panel, "Connect")).not.toBeNull();
+		expect(adb.opened).toEqual([]);
+	});
+});
+
 describe("the status under the flower", () => {
+	it("says on Connect that the phone may be running Android with USB debugging, or in Fastboot Mode", async () => {
+		publish([build("cheetah", "1.0", "2026-10-30", "require board=cheetah\n", { stock: true, seed: 95 })]);
+		await start("Pixel 7 Pro", "cheetah");
+		await toConnect();
+		expect(page.statusTitle.textContent).toBe("Connect your phone");
+		expect(page.statusDetail.textContent).toBe("Running Android with USB debugging on, or in Fastboot Mode");
+	});
+
 	it("stays on a failed download", async () => {
 		const b = build("cheetah", "1.0", "2026-10-30", "require board=cheetah\n", { stock: true, seed: 90 });
 		publish([b], { stored: false });
