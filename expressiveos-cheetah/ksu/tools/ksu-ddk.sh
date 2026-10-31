@@ -38,13 +38,20 @@ want="$image@$digest ($tag)"
 have() { [[ "$(head -1 "$dir/IMAGE" 2>/dev/null)" = "$want" && -d $dir/kdir/$kmi ]]; }
 
 fetch() {
+    local part=$dir.part old=$dir.old tok m layers d size mt n=0 pre free
+    # What an earlier fetch cut short left: a half-unpacked image, or the DDK it was replacing
+    # (moved aside, complete), which goes back if nothing replaced it
+    rm -rf -- "$part"
+    if [[ -d $old && ! -e $dir ]]; then mv -- "$old" "$dir"; fi
+    rm -rf -- "$old"
     if have; then echo "OK: DDK $want in $dir"; return; fi
     [[ ! -e $dir || -f $dir/IMAGE ]] || fail "$dir isn't a DDK folder (no IMAGE in it): not replacing it"
-    local part=$dir.part tok m layers d size mt n=0 pre free
     mkdir -p -- "${dir%/*}"
     free=$(df -BG --output=avail -- "${dir%/*}" | tail -1 | tr -dc 0-9)
     (( free >= 20 )) || fail "${dir%/*} has ${free}G free: unpacking the DDK takes about 12G (20G to be safe)"
-    rm -rf -- "$part"; mkdir -p -- "$part/root"
+    # Not left behind by a fetch that fails from here on
+    trap 'rm -rf -- "$dir.part"' EXIT
+    mkdir -p -- "$part/root"
     tok=$(curl -fsS --retry 3 "https://ghcr.io/token?scope=repository:$repo:pull" \
         | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["token"])') || fail "no pull token from ghcr.io for $repo"
     # The token goes to ghcr.io only: curl drops it when a blob redirects to its storage host
@@ -82,18 +89,21 @@ for l in m["layers"]:
     local r=$part/root/opt/ddk
     [[ -d $r/kdir/$kmi && -d $r/src/$kmi && -x $r/clang/$clangv/bin/clang ]] \
         || fail "$image@$digest has no /opt/ddk/kdir/$kmi, /opt/ddk/src/$kmi or /opt/ddk/clang/$clangv"
-    rm -rf -- "$dir"
-    mv -- "$r" "$dir"
-    # The image's absolute paths (/opt/ddk/...) lead into <dir> now: its symlinks, and the
-    # Makefile modules_prepare wrote in the prepared tree (it includes the source's)
+    # The image's absolute paths (/opt/ddk/...) are to lead into <dir>: its symlinks, and the
+    # Makefile modules_prepare wrote in the prepared tree (it includes the source's). Done
+    # before the move, IMAGE last, so <dir> is only ever a whole DDK or none
     local l t
     while IFS= read -r -d '' l; do
         t=$(readlink -- "$l")
         [[ $t != /opt/ddk/* ]] || ln -sfn -- "$dir/${t#/opt/ddk/}" "$l"
-    done < <(find "$dir" -type l -print0)
-    sed -i "s#/opt/ddk/#$dir/#g" "$dir/kdir/$kmi/Makefile"
-    printf '%s\n%s\n' "$want" "$layers" > "$dir/IMAGE"
-    rm -rf -- "$part"
+    done < <(find "$r" -type l -print0)
+    sed -i "s#/opt/ddk/#$dir/#g" "$r/kdir/$kmi/Makefile"
+    printf '%s\n%s\n' "$want" "$layers" > "$r/IMAGE"
+    # Renames only: the DDK this replaces (another pin) goes aside first, and only then away
+    if [[ -e $dir ]]; then mv -- "$dir" "$old"; fi
+    mv -- "$r" "$dir"
+    rm -rf -- "$old" "$part"
+    trap - EXIT
     echo "OK: DDK $want unpacked in $dir ($(du -sh -- "$dir" | cut -f1))"
 }
 
@@ -129,7 +139,9 @@ build() {
         || { tail -30 "$log" >&2; fail "kernelsu.ko didn't build with the DDK (log: $log)"; }
     # Debug info would make it several MB, too big for an init_boot with a ramdisk
     "$clang/llvm-strip" --strip-debug -o "$out/kernelsu.ko" "$src/kernel/kernelsu.ko"
-    if readelf -S -- "$out/kernelsu.ko" | grep -q '\.BTF'; then fail "$out/kernelsu.ko has a BTF section, built against the DDK's vmlinux"; fi
+    # Read whole first: grep -q stopping early would kill readelf, and pipefail would hide the match
+    x=$(readelf -SW -- "$out/kernelsu.ko") || fail "can't read $out/kernelsu.ko's sections"
+    [[ $x != *.BTF* ]] || fail "$out/kernelsu.ko has a BTF section, built against the DDK's vmlinux"
     cp -- "$kdir/.config" "$out/kbuild/.config"
     echo "OK: $out/kernelsu.ko built with the DDK $want"
 }

@@ -6,7 +6,10 @@
 # stock boot images and the kit's KernelSU Next download, and asks Google's public servers
 # (android.googlesource.com, ci.android.com) about the stock kernel's source and build. It
 # prints names, versions, commit SHAs and kernel config lines (the GKI is GPL), never a
-# proprietary file's contents, and writes only under devices-check.sh's mktemp folder.
+# proprietary file's contents, and writes only under devices-check.sh's mktemp folder, except
+# its last part, the trial: KernelSU Next's DDK fetched and kernelsu.ko built in a scratch folder
+# in ~ (about 12G, removed at the end), only while ~ has 80G free, so a build beside it keeps
+# room.
 # shellcheck shell=bash
 gs=https://android.googlesource.com ci=https://ci.android.com
 get() { timeout 60 curl -fsSL --retry 2 "$@"; }
@@ -210,6 +213,11 @@ df -BG ~ | sed 1d
 
 h "trial: ExpressiveOS's own kernelsu.ko for android16-6.12 with KernelSU Next's DDK (ksu/tools/ksu-ddk.sh, in a scratch folder)"
 # The DDK unpacks to about 12G: a scratch folder on the home disk, not /tmp, removed at the end
+free=$(df -BG --output=avail ~ | tail -1 | tr -dc 0-9)
+if (( free < 80 )); then
+    echo "skipped: ~ has ${free}G free; the trial takes about 12G and runs only with 80G free (a build beside it needs the rest)"
+    return 0
+fi
 big=$(mktemp -d ~/eos-gki-trial.XXXXXX)
 trap 'rm -rf "$work" "$big"' EXIT
 df -BG /tmp ~ | sed 1d

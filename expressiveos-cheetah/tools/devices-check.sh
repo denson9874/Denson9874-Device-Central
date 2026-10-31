@@ -5,7 +5,8 @@
 # expressiveos-devices action runs it (.github/workflows/kodiak-build.yml).
 #
 # It changes nothing: no repo or git command that writes (GIT_OPTIONAL_LOCKS=0), no build,
-# scratch files only under a mktemp folder it removes. It prints names, sizes, commit SHAs,
+# scratch files only under a mktemp folder it removes (query gki's trial also unpacks about 12G
+# in a scratch folder in ~ it removes, only with 80G free: devices-gki.sh). It prints names, sizes, commit SHAs,
 # version strings, build-file lines (makefile variables, board names) and counts, never the
 # contents of a proprietary file. It may run beside a build; du runs at low priority.
 set -uo pipefail

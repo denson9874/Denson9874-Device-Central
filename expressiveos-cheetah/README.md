@@ -553,9 +553,10 @@ build holds `~/.expressiveos.lock`).
   so the same KernelSU Next module ([`ksu/`](ksu/README.md#other-phones)). Its audio effects run on the
   AIDL effect HAL: no ViPER4Android.
 - **The Pixel 11s** (kodiak, grizzly, cubs, yogi) run Google's stock kernel (the factory image's
-  android16-6.12 GKI `boot.img`, prebuilt) and stock vendor, vendor_dlkm, system_dlkm and dtbo images:
-  no root (no android16-6.12 KernelSU Next module yet; init_boot is the build's own, stock) and no
-  ViPER4Android (no HIDL effect HAL) for now. Their vendor blobs, `vendor/google/<device>`, aren't in
+  android16-6.12 GKI `boot.img`, prebuilt) and stock vendor, vendor_dlkm, system_dlkm and dtbo images.
+  They ship KernelSU Next as cheetah does, with a `kernelsu.ko` built against KernelSU Next's own DDK,
+  as their tree has no kernel source ([`ksu/`](ksu/README.md#other-phones)); no ViPER4Android (no HIDL
+  effect HAL) for now. Their vendor blobs, `vendor/google/<device>`, aren't in
   ExpressiveOS's manifest (Google's files, never pushed anywhere): `prepare.sh` copies the build
   server's own repo of them (`~/evolution`'s, only read) on the first build and moves to its newer
   commits after, and `sources.txt` records the commit. `vendor/google/<device>-images` (those images and
@@ -565,8 +566,9 @@ build holds `~/.expressiveos.lock`).
   `require board=<device>` only (the factory zip's `android-info.txt` names all four).
 
 Testing is the same gate, on a phone of that model (`check/<zip>.device-ok`), less what it doesn't ship
-(KernelSU Next, ViPER4Android); until someone has tested one, `eos-pack.sh --testers` (Test and
-release) gets a candidate to testers.
+(ViPER4Android): KernelSU Next's checks included, which on a Pixel 11 are a first (its module is
+built from a later android16-6.12 than the phone's kernel); until someone has tested one,
+`eos-pack.sh --testers` (Test and release) gets a candidate to testers.
 
 ## Disk
 
@@ -607,7 +609,7 @@ too. An older release's can go once its `.uploaded` marker is there.
 - The incremental OTA script: `ota_from_target_files -i` from a release's target-files to the next, signed
   with the tree's release key, everything but the dynamic partitions in full (`--full_ota_partitions`), and
   offered only to phones on that base build (`packages_apps_Updater` 0005's `base_timestamp`).
-- Root and ViPER4Android on the Pixel 11s: an android16-6.12 KernelSU Next module, and ViPER4Android
-  on the AIDL effect HAL (husky's too).
+- ViPER4Android on the Pixel 11s, on the AIDL effect HAL (husky's too); a first phone test of KernelSU
+  Next on a Pixel 11.
 - Decisions still open: patch-level properties in cheetah's vbmeta, purging the old keystore from this
   repo's history.
