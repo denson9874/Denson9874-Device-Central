@@ -200,10 +200,13 @@ export class UsbTransport implements Transport {
 	}
 }
 
-/** Asks the user to pick the phone (needs a click). */
-export async function requestPhone(): Promise<USBDevice> {
+/**
+ * Asks the user to pick the phone (needs a click). The list shows only devices that match
+ * `filters`: by default a phone in Fastboot Mode.
+ */
+export async function requestPhone(filters: USBDeviceFilter[] = [FASTBOOT_FILTER]): Promise<USBDevice> {
 	try {
-		return await navigator.usb.requestDevice({ filters: [FASTBOOT_FILTER] });
+		return await navigator.usb.requestDevice({ filters });
 	} catch (e) {
 		if (e instanceof DOMException && e.name === "NotFoundError") throw new UsbError("No phone was chosen");
 		throw e;
@@ -218,8 +221,15 @@ export async function requestPhone(): Promise<USBDevice> {
  */
 export class Reconnector {
 	private resolveDevice: ((d: USBDevice) => boolean) | null = null;
+	/** The browser's lists open for pick(): while one is, the wait doesn't run out of time. */
+	private picking = 0;
+	/** The wait's failure for running out of time, held until the last list closes. */
+	private afterPick: (() => void) | null = null;
 
-	async wait(serial: string, opts: { timeoutMs: number; needsUserAfterMs: number; needsUser: () => void; signal?: AbortSignal }): Promise<USBDevice> {
+	async wait(
+		serial: string,
+		opts: { timeoutMs: number; needsUserAfterMs: number; needsUser: () => void; signal?: AbortSignal; timeoutMessage?: string },
+	): Promise<USBDevice> {
 		const usb = navigator.usb;
 		return new Promise<USBDevice>((resolve, reject) => {
 			let done = false;
@@ -231,6 +241,7 @@ export class Reconnector {
 				clearTimeout(timeout);
 				usb.removeEventListener("connect", onConnect);
 				this.resolveDevice = null;
+				this.afterPick = null;
 				if (d) resolve(d);
 				else reject(err);
 			};
@@ -253,9 +264,31 @@ export class Reconnector {
 			const userTimer = setTimeout(() => {
 				if (!done) opts.needsUser();
 			}, opts.needsUserAfterMs);
-			const timeout = setTimeout(() => finish(null, new UsbError("The phone didn't come back. Check the cable and that it shows Fastboot Mode, then try again.")), opts.timeoutMs);
-			opts.signal?.addEventListener("abort", () => finish(null, opts.signal?.reason ?? new DOMException("Aborted", "AbortError")));
+			const timeout = setTimeout(() => {
+				const fail = () => finish(null, new UsbError(opts.timeoutMessage ?? "The phone didn't come back. Check the cable and that it shows Fastboot Mode, then try again."));
+				// The phone the user is choosing in the browser's list right now may be the one: the pick decides
+				if (this.picking > 0) this.afterPick = fail;
+				else fail();
+			}, opts.timeoutMs);
+			const onAbort = () => finish(null, opts.signal?.reason ?? new DOMException("Aborted", "AbortError"));
+			if (opts.signal?.aborted) onAbort();
+			else opts.signal?.addEventListener("abort", onAbort, { once: true });
 		});
+	}
+
+	/**
+	 * The user picks the phone in the browser's list (`choose` opens it) while the page waits. The
+	 * wait doesn't run out of time while the list is open: it ends with the phone picked, or when the
+	 * list closes after its time is up. Rejects with a UsbError when the phone picked isn't the one
+	 * waited for (the wait goes on), and as requestPhone does when none was picked.
+	 */
+	async pick(choose: () => Promise<USBDevice> = () => requestPhone()): Promise<void> {
+		this.picking++;
+		try {
+			if (!this.offer(await choose())) throw new UsbError("That isn't the phone the page is waiting for, or it isn't in Fastboot Mode yet. Choose it again.");
+		} finally {
+			if (--this.picking === 0) this.afterPick?.();
+		}
 	}
 
 	/**
