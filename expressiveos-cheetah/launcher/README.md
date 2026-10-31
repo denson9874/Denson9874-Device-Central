@@ -88,7 +88,7 @@ Home itself needs no config: the Home role's default is the highest-priority sys
 | `tools/launcher-xml.py` | XML and APK reads for the checks (`python3 -I`); its privapp and hidden-API reads are copies of `../viper4android/tools/v4a-xml.py`'s |
 | `tools/apk-info.py` | ViPER4Android's APK reader plus the `--home` and `--overlay` reads the `out` check uses: don't replace it with ViPER4Android's copy |
 | `tools/mk-line.awk` | A copy of ViPER4Android's makefile-line finder, so this kit stands alone |
-| `tools/dex-refs.py` | What a launcher release's code needs that a phone's platform lacks, read from the APK's dex files and the phone's jars (no build tools): missing classes, methods and fields with the APK methods that use them, uses that can't link (static/instance, invoke kind, access, final), APK classes the platform shadows, and abstract platform methods an APK class doesn't implement. Each use is marked `[caught: ...]` or `[reads SDK_INT]` when a catch or SDK check may keep it from running, so the output is for review, not a verdict. `--mapping` turns R8 names back into source names. The output format is in the script's header. Exit 2 when a platform dex can't be read |
+| `tools/dex-refs.py` | What a launcher release's code needs that a phone's platform lacks, read from the APK's dex files and the phone's jars (no build tools): missing classes, methods and fields with the APK methods that use them, uses that can't link (static/instance, invoke kind, access, final, instantiation, abstract or conflicting defaults; the header lists them all), APK classes that can't load or link (a final, interface or non-public supertype, the platform's or the APK's own, a final override, a non-public implementation, a supertype cycle), APK classes the platform shadows, and abstract platform methods an APK class doesn't implement. A use is marked `[caught: T]` when a handler of type T in that method keeps the error on every path, `[caught?: T]` when it may (only some paths, the error handed on, a typed handler before it that may catch it first, or code that can't be followed), and `[reads SDK_INT]` when the method reads SDK_INT, so the output is for review, not a verdict. `--mapping` turns R8 names back into source names. The output format is in the script's header. Exit 2 when a platform dex can't be read |
 | `tools/tests/dex-refs-test.py` | Builds its own dex files and checks `dex-refs.py` on them (`python3 -I`); last line `DEX_REFS_TEST=OK` |
 
 ## How to run
@@ -121,9 +121,11 @@ done
 python3 -I $K/tools/dex-refs.py --mapping <release>/mapping/mapping.txt <release APK> jars/*.jar > dex-refs.txt
 ```
 
-Read every `missing-*`, `link-error` and `unimplemented` entry that has a `from` or `in` line without
-`[caught: ...]`: if that method can run on the phone, it's a crash. The mapping must be the release's own
-(`dex-refs.py` notes a `pg_map_id` that doesn't match the APK).
+Read every `missing-*`, `link-error` and `unimplemented` entry with a `super of`, `interface of` or `in`
+line (an APK class that can't load, can't link or lacks a method), or a `from` line not marked
+`[caught: ...]` (a `[caught?: ...]` one may still crash): if that code can run on the phone, it's a
+crash. The mapping must be the release's own (`dex-refs.py` notes a `pg_map_id` that doesn't match
+the APK).
 
 The first build after this kit lands should start with `m installclean` (the runner's
 `expressiveos-build` with installclean, or `EOS_INSTALLCLEAN=1`), so no Pixel Launcher from an earlier
