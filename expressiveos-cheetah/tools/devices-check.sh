@@ -48,6 +48,12 @@ if [[ ${1:-} = gki ]]; then
     source "$(dirname -- "$(readlink -f -- "$0")")/devices-gki.sh"
     exit 0
 fi
+# Query "ramdisk": out/'s, target-files' and the OTA payload's init_boot ramdisks side by side (devices-ramdisk.sh)
+if [[ ${1:-} = ramdisk ]]; then
+    # shellcheck source=devices-ramdisk.sh
+    source "$(dirname -- "$(readlink -f -- "$0")")/devices-ramdisk.sh"
+    exit 0
+fi
 
 h "disk"
 df -BG ~ | sed 1d
