@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>ExpressiveOS Flasher</title>
+		<meta name="description" content="Install ExpressiveOS on your Pixel from the browser, with or without KernelSU Next root." />
+		<meta name="theme-color" content="#141329" />
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght,ROND@6..144,1..1000,0..100&display=swap" />
+	</head>
+	<body>
+		<header class="top">
+			<a class="brand" href="/" aria-label="ExpressiveOS Flasher, start again">
+				<span id="brand-mark"></span>
+				<span class="brand-name">ExpressiveOS</span>
+				<span class="brand-tag">Flasher</span>
+			</a>
+			<span class="top-spacer"></span>
+			<button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch between light and dark">
+				<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.5 0-.9-.1-1.4A5.5 5.5 0 0 1 13.4 3.1 9 9 0 0 0 12 3Z" /></svg>
+			</button>
+		</header>
+		<div class="layout">
+			<div class="stage-col">
+				<div class="stage-host" id="stage"></div>
+				<div class="status" aria-live="polite">
+					<div class="status-title" id="status-title">Install ExpressiveOS</div>
+					<div class="status-detail" id="status-detail">Right from your browser</div>
+				</div>
+			</div>
+			<main class="panel-col">
+				<nav aria-label="Steps"><ol class="stepper" id="stepper"></ol></nav>
+				<section class="panel" id="panel" tabindex="-1"></section>
+			</main>
+		</div>
+		<footer class="foot">
+			<span>ExpressiveOS is an unofficial Android build. It isn't made or endorsed by Google.</span>
+			<a href="https://github.com/denson9874" rel="noopener">denson9874 on GitHub</a>
+		</footer>
+		<script type="module" src="/src/main.ts"></script>
+	</body>
+</html>
