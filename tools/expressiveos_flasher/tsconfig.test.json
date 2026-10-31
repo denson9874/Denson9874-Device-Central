@@ -1,0 +1,18 @@
+{
+	"compilerOptions": {
+		"target": "es2024",
+		"lib": ["es2024", "dom", "dom.iterable", "webworker.importscripts"],
+		"module": "preserve",
+		"moduleResolution": "bundler",
+		"types": ["w3c-web-usb", "vite/client", "node"],
+		"strict": true,
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"skipLibCheck": true,
+		"noUnusedLocals": true,
+		"noFallthroughCasesInSwitch": true
+	},
+	"include": ["src", "test", "worker/http.ts"]
+}

@@ -1,0 +1,26 @@
+{
+	"name": "expressiveos-flasher",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "cf dev",
+		"build": "cf build",
+		"deploy": "cf deploy",
+		"preview": "vite preview",
+		"test": "vitest run",
+		"test:e2e": "node e2e/run.mjs",
+		"typecheck": "cf workers types && tsc -p tsconfig.json && tsc -p tsconfig.worker.json && tsc -p tsconfig.test.json"
+	},
+	"dependencies": {
+		"hash-wasm": "^4.12.0"
+	},
+	"devDependencies": {
+		"@cloudflare/vite-plugin": "beta",
+		"@types/node": "^22.20.5",
+		"@types/w3c-web-usb": "^1.0.14",
+		"cf": "^1.0.0-beta.19",
+		"typescript": "^7.0.2",
+		"vite": "^8.3.0",
+		"vitest": "^5.0.5"
+	}
+}
