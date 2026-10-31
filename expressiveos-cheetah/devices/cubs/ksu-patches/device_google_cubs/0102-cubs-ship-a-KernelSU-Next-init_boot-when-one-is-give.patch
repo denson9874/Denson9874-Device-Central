@@ -16,6 +16,7 @@ before. Only ExpressiveOS's build sets it. Same as cheetah's, whose variable
 is CHEETAH_KSU_INIT_BOOT.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Csz3tZY7m4dy7t6hausAkK
 ---
  BoardConfig.mk | 10 ++++++++++
  device.mk      |  5 +++++
