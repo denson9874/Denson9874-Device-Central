@@ -35,6 +35,20 @@ for t in ~/evolution ~/derpfest ~/expressiveos; do
     echo "-- $t/out/soong: one level, and its files over 500 MiB (date, size, name)"
     lowdu1 "$t/out/soong" | head -15
     find "$t/out/soong" -maxdepth 1 -type f -size +500M -printf '%TY-%Tm-%Td %s %f\n' 2>/dev/null | sort | numfmt --invalid=ignore --to=iec --field=2 | head -40 || true
+    # Each product's own files directly in out/ and out/soong (Kati's and Soong's ninja files,
+    # Android-<product>.mk, raw-<product>/ ...): what removing one product's build would free there
+    for r in "$t"/out/soong/raw-*/; do
+        [[ -d $r ]] || continue
+        P=${r%/}; P=${P##*/raw-}
+        [[ $P =~ ^[a-z0-9_]+$ ]] || continue
+        echo "-- $t/out and out/soong: $P's own files and folders (date, size, name)"
+        find "$t/out" "$t/out/soong" -mindepth 1 -maxdepth 1 -regextype posix-extended -regex ".*/[^/]*[-._]${P}([-._][^/]*)?" \
+            -printf '%TY-%Tm-%Td %y %s %p\n' 2>/dev/null | sort -u -k4 | while read -r d y z f; do
+            [[ $y = d ]] && z=$(nice -n 19 du -x -s -B1 "$f" 2>/dev/null | cut -f1)
+            echo "$d $y ${z:-0} ${f#"$t"/}"
+        done | numfmt --invalid=ignore --to=iec --field=3 || true
+        echo "   total: $(find "$t/out" "$t/out/soong" -mindepth 1 -maxdepth 1 -regextype posix-extended -regex ".*/[^/]*[-._]${P}([-._][^/]*)?" -print0 2>/dev/null | sort -zu | nice -n 19 du -x -s -c -h --files0-from=- 2>/dev/null | tail -n 1 | cut -f1)"
+    done
     if [[ -d $t/out/target/product ]]; then
         echo "-- $t/out/target/product: size, newest file"
         for p in "$t"/out/target/product/*/; do
@@ -92,6 +106,8 @@ find ~ -maxdepth 1 -type f -size +100M -printf '%TY-%Tm-%Td %s %f\n' 2>/dev/null
 echo "== /tmp: entries of this user over 500 MiB (GiB)"
 find /tmp -maxdepth 1 -user "$(id -u)" -printf '%p\n' 2>/dev/null | while read -r p; do
     s=$(nice -n 19 du -x -s -BM "$p" 2>/dev/null | cut -f1 | tr -d M)
-    [[ ${s:-0} -ge 500 ]] && echo "$((s / 1024))G  $p  $(date -r "$p" '+%F %T' 2>/dev/null)"
+    [[ ${s:-0} -ge 500 ]] || continue
+    echo "$((s / 1024))G  $p  $(date -r "$p" '+%F %T' 2>/dev/null)"
+    [[ -d $p ]] && find "$p" -mindepth 1 -maxdepth 1 -printf '   %y %TY-%Tm-%Td %s %f\n' 2>/dev/null | sort -k4 | numfmt --invalid=ignore --to=iec --field=3 | head -20
 done
 echo "USAGE=LISTED"
