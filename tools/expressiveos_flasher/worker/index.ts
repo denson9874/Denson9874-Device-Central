@@ -3,6 +3,8 @@
 //   GET /api/releases/<device>    expressiveos/<device>/flasher.json, the device's manifest
 //   GET /dl/<device>/<file>       expressiveos/<device>/flasher/<file>: a release's fastboot zip
 //                                 or stock init_boot (or its .sha256), with single byte ranges
+//   GET /dl/<device>/testers/<file>   the same from expressiveos/<device>/flasher/testers/, the
+//                                 testers channel's own folder (its names can repeat a release's)
 // Release files are named by flasher_publish.py and never rewritten, so they're cached for good.
 
 import { env } from "cloudflare:workers";
@@ -31,8 +33,8 @@ async function manifest(device: string): Promise<Response> {
 	});
 }
 
-async function file(request: Request, device: string, name: string): Promise<Response> {
-	const key = `expressiveos/${device}/flasher/${name}`;
+async function file(request: Request, device: string, testers: boolean, name: string): Promise<Response> {
+	const key = `expressiveos/${device}/flasher/${testers ? "testers/" : ""}${name}`;
 	const head = await env.RELEASES.head(key);
 	if (!head) return reply(404, "Not Found", { "Content-Type": "text/plain; charset=utf-8" });
 
@@ -72,13 +74,13 @@ export default {
 			if (!(DEVICES as readonly string[]).includes(api[1])) return json(404, { error: "unknown-device" });
 			return manifest(api[1]);
 		}
-		const dl = /^\/dl\/([a-z]+)\/([^/]+)$/.exec(url.pathname);
+		const dl = /^\/dl\/([a-z]+)\/(testers\/)?([^/]+)$/.exec(url.pathname);
 		if (dl) {
-			const [, device, name] = dl;
+			const [, device, testers, name] = dl;
 			if (!(DEVICES as readonly string[]).includes(device) || !releaseFileRe(device).test(name)) {
 				return reply(404, "Not Found", { "Content-Type": "text/plain; charset=utf-8" });
 			}
-			return file(request, device, name);
+			return file(request, device, !!testers, name);
 		}
 		return json(404, { error: "not-found" });
 	},

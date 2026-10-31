@@ -7,6 +7,12 @@ export interface Transport {
 	send(data: Uint8Array): Promise<void>;
 	/** One bulk IN transfer of at most `maxLength` bytes. */
 	receive(maxLength: number): Promise<Uint8Array>;
+	/**
+	 * The session stopped part way through a command (a download not finished, or a reply not
+	 * read), so the phone may still be waiting for bytes or holding a late reply. The next
+	 * connection to it should reset it first.
+	 */
+	abandon?(): void;
 }
 
 /** Bytes to send in a download: in-memory pieces and Blob slices read lazily from disk. */
@@ -73,7 +79,15 @@ function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
 	return Promise.race([
 		p.finally(() => clearTimeout(timer)),
 		new Promise<T>((_, reject) => {
-			timer = setTimeout(() => reject(new ProtocolError(`The phone didn't answer "${what}" within ${Math.round(ms / 1000)} s`)), ms);
+			timer = setTimeout(
+				() =>
+					reject(
+						new ProtocolError(
+							`The phone didn't answer "${what}" within ${Math.round(ms / 1000)} s. Restart it into Fastboot Mode by holding Power and Volume down until it restarts, then connect again.`,
+						),
+					),
+				ms,
+			);
 		}),
 	]);
 }
@@ -82,7 +96,11 @@ const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 
 export class FastbootClient {
-	/** Set once a reply timed out: the pipe may hold a stale reply, so the session is over. */
+	/**
+	 * Set once a command stopped part way (a reply timed out or couldn't be read, or a download
+	 * couldn't be finished): the pipe may hold a stale reply, or the phone may still be waiting
+	 * for bytes, so the session is over.
+	 */
 	private broken = false;
 	transferSize = DEFAULT_TRANSFER_SIZE;
 
@@ -90,6 +108,12 @@ export class FastbootClient {
 		private readonly transport: Transport,
 		private readonly log: Logger = () => {},
 	) {}
+
+	private breakSession() {
+		if (this.broken) return;
+		this.broken = true;
+		this.transport.abandon?.();
+	}
 
 	private check(cmd: string) {
 		if (this.broken) throw new ProtocolError("The connection to the phone was lost; reconnect it to go on");
@@ -130,19 +154,30 @@ export class FastbootClient {
 		try {
 			return await withTimeout(read(), opts.timeoutMs ?? 30_000, cmd);
 		} catch (e) {
-			if (e instanceof ProtocolError) this.broken = true;
+			// FAIL ends the command cleanly; anything else leaves its reply unaccounted for
+			if (!(e instanceof FastbootError)) this.breakSession();
+			throw e;
+		}
+	}
+
+	private async sendCommand(cmd: string) {
+		this.check(cmd);
+		this.log("cmd", cmd);
+		try {
+			await this.transport.send(encoder.encode(cmd));
+		} catch (e) {
+			// Whether the phone took the command is unknown
+			this.breakSession();
 			throw e;
 		}
 	}
 
 	/** Sends one command and waits for OKAY; FAIL throws FastbootError. */
 	async command(cmd: string, opts: CommandOptions = {}): Promise<CommandResult> {
-		this.check(cmd);
-		this.log("cmd", cmd);
-		await this.transport.send(encoder.encode(cmd));
+		await this.sendCommand(cmd);
 		const r = await this.readReply(cmd, opts);
 		if (r.status !== "OKAY") {
-			this.broken = true;
+			this.breakSession();
 			throw new ProtocolError(`The phone asked for data after "${cmd}"`);
 		}
 		return { text: r.text, info: r.info };
@@ -166,20 +201,19 @@ export class FastbootClient {
 	async download(payload: Payload, onProgress: (sent: number) => void = () => {}, signal?: AbortSignal): Promise<void> {
 		if (payload.size <= 0 || payload.size > 0xffffffff) throw new ProtocolError(`Can't send ${payload.size} bytes in one download`);
 		const cmd = `download:${payload.size.toString(16).padStart(8, "0")}`;
-		this.check(cmd);
-		this.log("cmd", cmd);
-		await this.transport.send(encoder.encode(cmd));
+		await this.sendCommand(cmd);
 		const r = await this.readReply(cmd, { timeoutMs: 30_000 });
 		if (r.status !== "DATA") {
-			this.broken = true;
+			this.breakSession();
 			throw new ProtocolError(`The phone didn't accept the download (${r.status} ${r.text})`);
 		}
 		const want = parseInt(r.text, 16);
 		if (want !== payload.size) {
-			this.broken = true;
+			this.breakSession();
 			throw new ProtocolError(`The phone wants ${want} bytes, not ${payload.size}`);
 		}
 		let sent = 0;
+		let sending = false;
 		// Read the next piece from disk while the current one goes over USB
 		const pieces = readPieces(payload, this.transferSize);
 		let next = pieces.next();
@@ -189,20 +223,36 @@ export class FastbootClient {
 				if (cur.done) break;
 				next = pieces.next();
 				if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
+				sending = true;
 				await this.transport.send(cur.value);
+				sending = false;
 				sent += cur.value.byteLength;
 				onProgress(sent);
 			}
+			if (sent !== payload.size) throw new ProtocolError(`Read ${sent} of ${payload.size} bytes of the image`);
 		} catch (e) {
-			// The phone is still waiting for the rest of the bytes: nothing else can be sent
-			this.broken = true;
+			void next.catch(() => {});
+			// The phone is still waiting for the rest of the bytes. When USB failed, nothing more
+			// can be sent. When this side stopped (the image couldn't be read, or the install was
+			// stopped), zeros make up the rest so the phone is ready for the next command; nothing
+			// writes them anywhere.
+			if (sending || !(await this.finishWithZeros(cmd, payload.size - sent))) this.breakSession();
 			throw e;
 		}
-		if (sent !== payload.size) {
-			this.broken = true;
-			throw new ProtocolError(`Sent ${sent} of ${payload.size} bytes`);
-		}
 		await this.readReply(cmd, { timeoutMs: 60_000 });
+	}
+
+	/** Ends a download's data phase with zeros; false when that failed too. */
+	private async finishWithZeros(cmd: string, left: number): Promise<boolean> {
+		try {
+			this.log("note", `Finishing the download with ${left} empty bytes`);
+			const zeros = new Uint8Array(Math.min(left, this.transferSize));
+			for (; left > 0; left -= zeros.byteLength) await this.transport.send(left < zeros.byteLength ? zeros.subarray(0, left) : zeros);
+			await this.readReply(cmd, { timeoutMs: 60_000 });
+			return true;
+		} catch (e) {
+			return e instanceof FastbootError;
+		}
 	}
 
 	get isBroken() {

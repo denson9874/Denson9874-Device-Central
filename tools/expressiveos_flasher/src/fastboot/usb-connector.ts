@@ -4,15 +4,21 @@
 import type { Connector, Link } from "./device.ts";
 import { Reconnector, UsbError, UsbTransport, requestPhone } from "./webusb.ts";
 
-export async function linkTo(device: USBDevice): Promise<Link> {
+/**
+ * Opens the phone's fastboot interface. A phone that just came back from a restart can need a
+ * moment before it can be opened (on Linux its udev permissions land just after it appears), so
+ * that tries for a few seconds; a phone the user picked that the computer won't let the browser
+ * open fails at once, since waiting doesn't fix a missing driver or permission.
+ */
+export async function linkTo(device: USBDevice, opts: { afterRestart?: boolean } = {}): Promise<Link> {
 	let last: unknown;
-	// A phone that just came back can need a moment before it can be opened
 	for (let i = 0; i < 6; i++) {
 		try {
 			const t = await UsbTransport.open(device);
 			return { transport: t, serial: device.serialNumber ?? "", close: () => t.close() };
 		} catch (e) {
 			last = e;
+			if (!opts.afterRestart && e instanceof UsbError && e.kind === "access") break;
 			await new Promise((r) => setTimeout(r, 1000));
 		}
 	}
@@ -76,7 +82,7 @@ export class WebUsbConnector implements Connector {
 				signal,
 			});
 			this.ui.needsReconnect(false);
-			return await linkTo(d);
+			return await linkTo(d, { afterRestart: true });
 		} finally {
 			this.ui.needsReconnect(false);
 			this.ui.restarting(false);

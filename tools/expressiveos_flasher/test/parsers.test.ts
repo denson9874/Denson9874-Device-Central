@@ -20,6 +20,14 @@ describe("android-info.txt", () => {
 		expect(requiredBoards("require board=cheetah\n")).toEqual(["cheetah"]);
 	});
 
+	it("skips lines of only spaces or tabs, as they require nothing", () => {
+		const { requirements, errors } = parseRequirements("require board=cheetah\n \n\t\n  \t \r\n\r\n");
+		expect(errors).toEqual([]);
+		expect(requirements.map((r) => r.line)).toEqual(["require board=cheetah"]);
+		// A line fastboot can't read either is still reported (fastboot prints a syntax error for it)
+		expect(parseRequirements("require board=cheetah\nrequire foo\n").errors).toEqual(["require foo"]);
+	});
+
 	it("matches prefixes with a trailing *", () => {
 		expect(matches(["cloudripper-16.4*"], "cloudripper-16.4-1")).toBe(true);
 		expect(matches(["cloudripper-16.4"], "cloudripper-16.4-1")).toBe(false);

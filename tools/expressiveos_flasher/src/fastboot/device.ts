@@ -92,10 +92,17 @@ export class Phone {
 		this.vars.clear();
 	}
 
-	/** Restarts into the bootloader or fastbootd and checks it's the same phone in the right mode. */
+	/**
+	 * Restarts into the bootloader or fastbootd and checks it's the same phone, in the right mode,
+	 * on the same slot. When the images just written to a slot can't start, the bootloader can fall
+	 * back to the other slot, whose fastbootd answers just the same; the rest of the install would
+	 * then go to that slot.
+	 */
 	async restartInto(target: Mode, signal?: AbortSignal): Promise<void> {
 		const cmd = target === "fastbootd" ? "reboot-fastboot" : "reboot-bootloader";
 		const serial = this.serial;
+		// The slot this session has been writing (partitionName reads the same cached value)
+		const before = await this.slots();
 		this.log("note", `Restarting into ${target === "fastbootd" ? "fastbootd" : "the bootloader"}`);
 		const link = await this.connector.restart(this.link, () => this.sendRestart(cmd), signal);
 		this.reset(link);
@@ -106,6 +113,18 @@ export class Phone {
 				target === "fastbootd"
 					? "The phone didn't start fastbootd. One of the images written so far may be broken; start the install again."
 					: "The phone didn't return to the bootloader",
+			);
+		}
+		const after = before && (await this.slots());
+		if (before && after && after.current !== before.current) {
+			const was = before.current.toUpperCase();
+			const now = after.current.toUpperCase();
+			throw new ProtocolError(
+				target === "fastbootd"
+					? `The phone started fastbootd from slot ${now} instead of slot ${was}, which means the boot images just written to slot ${was} didn't start. ` +
+							`The install stopped here so nothing is written to the wrong slot. Try the install again. If the same thing happens, this build's boot images don't start on this phone. ` +
+							"Try installing without root if the build offers it, or flash the latest factory image with Google's Android Flash Tool and install again."
+					: `The phone came back on slot ${now} instead of slot ${was}. The install stopped here so nothing is written to the wrong slot. Try the install again.`,
 			);
 		}
 	}

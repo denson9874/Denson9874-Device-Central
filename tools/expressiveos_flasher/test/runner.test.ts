@@ -2,12 +2,12 @@
 // written by the plan the page builds, and what ends up on each partition checked byte for byte.
 
 import { describe, expect, it } from "vitest";
-import { FastbootClient, FastbootError, ProtocolError } from "../src/fastboot/client.ts";
+import { FastbootClient, FastbootError, ProtocolError, type Transport, payloadOf } from "../src/fastboot/client.ts";
 import { Phone } from "../src/fastboot/device.ts";
 import { logicalPartitions } from "../src/fastboot/lp.ts";
 import { buildPlan } from "../src/flash/plan.ts";
 import { canUnlock, inspectPhone, unlockBootloader } from "../src/flash/preflight.ts";
-import { type ImageSource, InstallError, runPlan, stepWeights } from "../src/flash/runner.ts";
+import { EraseError, type ImageSource, InstallError, runPlan, stepWeights } from "../src/flash/runner.ts";
 import { ZipReader } from "../src/zip/zip.ts";
 import { FakeConnector, FakePhone } from "./fake-phone.ts";
 import { bytes, expandSparse, makeSparse, makeSuperEmpty, makeZip, withAvbFooter } from "./helpers.ts";
@@ -157,6 +157,46 @@ describe("install on a simulated phone", () => {
 		expect(String(err)).toMatch(/Lock State/);
 	});
 
+	it("stops when the phone comes back from the restart into fastbootd on the other slot", async () => {
+		const { fake, connector, phone, steps, source } = await setup({ wipe: true, root: true });
+		// The boot images just written to slot a don't start, so the bootloader falls back to slot
+		// b, whose fastbootd answers with the same serial number
+		connector.whileOff = (p) => {
+			if (p.nextMode === "fastbootd") p.slot = "b";
+		};
+		const err = await runPlan(phone, steps, source, { step: () => {}, progress: () => {}, note: () => {} }).catch((e) => e);
+		expect(err).toBeInstanceOf(InstallError);
+		expect((err as InstallError).step).toEqual({ kind: "reboot", target: "fastbootd" });
+		expect((err as InstallError).cause).toBeInstanceOf(ProtocolError);
+		expect((err as InstallError).message).toMatch(/slot B instead of slot A/);
+		// Nothing went to slot b, super's layout wasn't touched, nothing was erased
+		expect(fake.writes.filter((w) => w.endsWith("_b"))).toEqual([]);
+		expect(fake.commands.some((c) => c.startsWith("update-super") || c.startsWith("resize-logical-partition"))).toBe(false);
+		expect(fake.erased.size).toBe(0);
+		expect(fake.mode).toBe("fastbootd");
+	});
+
+	it("stops a clean install when metadata can't be erased, as fastboot does", async () => {
+		const { fake, phone, steps, source } = await setup({ wipe: true, root: true }, { failOnce: "erase:metadata" });
+		const err = await runPlan(phone, steps, source, { step: () => {}, progress: () => {}, note: () => {} }).catch((e) => e);
+		expect(err).toBeInstanceOf(InstallError);
+		expect((err as InstallError).step).toEqual({ kind: "erase", partition: "metadata" });
+		expect((err as InstallError).cause).toBeInstanceOf(EraseError);
+		expect((err as InstallError).message).toMatch(/couldn't erase metadata \(simulated failure\)\. A clean install has to erase it/);
+		expect(fake.erased.has("userdata")).toBe(true);
+		// It never said it was done: the phone wasn't told to start Android
+		expect(fake.commands).not.toContain("reboot");
+		expect(fake.mode).toBe("fastbootd");
+	});
+
+	it("stops a clean install when userdata can't be erased", async () => {
+		const { fake, phone, steps, source } = await setup({ wipe: true, root: true }, { failOnce: "erase:userdata" });
+		const err = await runPlan(phone, steps, source, { step: () => {}, progress: () => {}, note: () => {} }).catch((e) => e);
+		expect((err as InstallError).step).toEqual({ kind: "erase", partition: "userdata" });
+		expect((err as InstallError).cause).toBeInstanceOf(EraseError);
+		expect(fake.commands).not.toContain("erase:metadata");
+	});
+
 	it("goes on from fastbootd after an earlier attempt stopped there", async () => {
 		const { fake, connector, phone, steps, source } = await setup({ wipe: true, root: true });
 		fake.mode = "fastbootd";
@@ -209,10 +249,62 @@ describe("fastboot protocol", () => {
 	});
 
 	it("gives up on a phone that stops answering, and stays given up", async () => {
-		const silent = { send: async () => {}, receive: () => new Promise<Uint8Array>(() => {}) };
+		let abandoned = 0;
+		const silent: Transport = { send: async () => {}, receive: () => new Promise<Uint8Array>(() => {}), abandon: () => abandoned++ };
 		const c = new FastbootClient(silent);
-		await expect(c.command("getvar:product", { timeoutMs: 50 })).rejects.toThrow(ProtocolError);
+		const err = await c.command("getvar:product", { timeoutMs: 50 }).catch((e) => e);
+		expect(err).toBeInstanceOf(ProtocolError);
+		// A late reply may still come, so the next connection resets the phone, and the user is told
+		// how to restart it where that isn't possible
+		expect((err as Error).message).toMatch(/Restart it into Fastboot Mode by holding Power and Volume down/);
 		expect(c.isBroken).toBe(true);
+		expect(abandoned).toBe(1);
 		await expect(c.command("getvar:product")).rejects.toThrow(/lost/);
+	});
+
+	it("finishes a download it can't read to the end, so the phone takes the next command", async () => {
+		const MiB = 1024 * 1024;
+		const fake = new FakePhone({ maxDownload: 4 * MiB });
+		const t = fake.connect();
+		let abandoned = 0;
+		const c = new FastbootClient({ send: (d) => t.send(d), receive: () => t.receive(), abandon: () => abandoned++ });
+		// The stored file changes under its snapshot after 1 MiB, as a File can in the browser
+		class Unreadable extends Blob {
+			override slice(start?: number, end?: number, type?: string): Blob {
+				const b = super.slice(start, end, type);
+				if ((start ?? 0) < MiB) return b;
+				return Object.assign(b, { arrayBuffer: () => Promise.reject(new DOMException("The requested file could not be read.", "NotReadableError")) });
+			}
+		}
+		const sent: number[] = [];
+		const err = await c.download(payloadOf([new Unreadable([new Uint8Array(3 * MiB)])]), (n) => sent.push(n)).catch((e) => e);
+		expect((err as Error).name).toBe("NotReadableError");
+		expect(sent[sent.length - 1]).toBe(MiB);
+		// The rest went as zeros, the phone answered, and the session goes on
+		expect(c.isBroken).toBe(false);
+		expect(abandoned).toBe(0);
+		expect(await c.getVar("product")).toBe("cheetah");
+		expect(fake.commands).toEqual(["download:00300000", "getvar:product"]);
+		expect(fake.writes).toEqual([]);
+	});
+
+	it("gives up when USB fails part way through a download, and marks the phone for a reset", async () => {
+		const fake = new FakePhone({ maxDownload: 4 * 1024 * 1024 });
+		const t = fake.connect();
+		let abandoned = 0;
+		let n = 0;
+		const flaky: Transport = {
+			send: async (d) => {
+				if (++n === 3) throw new DOMException("A transfer error has occurred.", "NetworkError");
+				await t.send(d);
+			},
+			receive: () => t.receive(),
+			abandon: () => abandoned++,
+		};
+		const c = new FastbootClient(flaky);
+		await expect(c.download(payloadOf([bytes(1024 * 1024, 3)]))).rejects.toThrow(/transfer error/);
+		expect(c.isBroken).toBe(true);
+		expect(abandoned).toBe(1);
+		await expect(c.getVar("product")).rejects.toThrow(/lost/);
 	});
 });

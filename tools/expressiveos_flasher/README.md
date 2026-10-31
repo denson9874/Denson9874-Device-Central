@@ -9,6 +9,11 @@ Phones: Pixel 7 Pro (cheetah), Pixel 8 Pro (husky), Pixel 11 (cubs), Pixel 11 Pr
 Pixel 11 Pro Fold (yogi). It works in Chrome or Edge on a computer, and in Chrome on Android with the target phone on a
 USB-C cable. Firefox and Safari have no WebUSB.
 
+On Linux, the browser may open the phone only with a udev rule for Google's USB vendor id 18d1, such as the one in the
+`android-udev-rules` package (`android-sdk-platform-tools-common` on Debian and Ubuntu). Add it, then unplug the phone and
+plug it back in. On Windows, the phone may need the Google USB Driver. Without them the phone shows up in the browser's
+list but won't connect; the page then says what to do, and its "Before you start" list and Connect step say so too.
+
 It's one Cloudflare Worker, `expressiveos-flash`, on the same account and R2 bucket as `ota-mirror`. Once deployed, it
 lives at `https://expressiveos-flash.daryldenson-apps.workers.dev`.
 
@@ -18,9 +23,10 @@ lives at `https://expressiveos-flash.daryldenson-apps.workers.dev`.
 |---|---|
 | `/` | The page (Vite's build of `index.html` and `src/`, served as static assets) |
 | `/api/releases/<device>` | R2 `expressiveos/<device>/flasher.json`, the device's build list |
-| `/dl/<device>/<file>` | R2 `expressiveos/<device>/flasher/<file>`, with byte ranges so downloads resume |
+| `/dl/<device>/<file>` | R2 `expressiveos/<device>/flasher/<file>`, a release's file, with byte ranges so downloads resume |
+| `/dl/<device>/testers/<file>` | R2 `expressiveos/<device>/flasher/testers/<file>`, a testers build's file, the same way |
 
-`worker/index.ts` answers only those two R2 paths, and only for the six codenames and file names shaped like a release's
+`worker/index.ts` answers only those R2 paths, and only for the six codenames and file names shaped like a release's
 fastboot zip or stock `init_boot`. Nothing else in the bucket can be reached: no listing, no target-files, no OTA
 packages. `publish/flasher_publish.py` is what puts the files and the manifest there ([publish/README.md](publish/README.md)).
 SourceForge can't be used as the source, because it sends no CORS headers.
@@ -34,7 +40,8 @@ The six steps:
    arrives. A closed tab or a dropped connection resumes from where it stopped, with a Range request. A zip the user
    already has can be picked instead, and it must match the listed SHA-256.
 4. **Connect.** WebUSB to the phone in Fastboot Mode. The page checks the product against the build's `android-info.txt`,
-   and offers to unlock the bootloader with `flashing unlock` when it's locked.
+   and offers to unlock the bootloader with `flashing unlock` when it's locked. A line of `android-info.txt` that isn't a
+   requirement is a warning, as fastboot's "syntax error" is, and doesn't stop the install.
 5. **Install.** What `fastboot -w update` does with the zip's `fastboot-info.txt`: `set_active`, cancel a pending
    snapshot update, the boot images in the bootloader, restart into fastbootd, `update-super`, the logical partitions
    (resized to each image), then erase userdata and metadata for a clean install. Images bigger than the phone's
@@ -77,10 +84,13 @@ npm run build && npm run test:e2e   # the built page in Chromium with a simulate
   in super that `update-super` lays out and `resize-logical-partition` sizes (rounded up to 4 KiB, as liblp does), and
   restarts that hand out a new connection. The install tests check every partition byte for byte afterwards.
 - `e2e/run.mjs` needs Playwright with Chromium (`require("playwright")`). It builds `e2e/fake-usb.ts` into a script that
-  replaces `navigator.usb`, serves the built page with its real Content-Security-Policy from `public/_headers` and a
-  small fixture release, and walks four runs: root with a paused and resumed download, no root with keep-data on a
-  phone-sized screen where the browser asks for the phone again, the wrong phone, and a locked bootloader. Screenshots
-  land in `e2e/out/screenshots/`.
+  replaces `navigator.usb`, serves the built page with its real Content-Security-Policy from `public/_headers`, and
+  answers `/api/*` and `/dl/*` with the real Worker (`worker/index.ts`, run in Node by `e2e/server.mjs`) over a folder
+  of small fixture releases standing in for R2. It walks eight runs: root with a paused and resumed download, no root
+  with keep-data on a phone-sized screen where the browser asks for the phone again, the wrong phone, a locked
+  bootloader, a testers build whose name repeats a release's, a Pixel 11 build without root, a failed metadata erase
+  followed by another model plugged in, and "Install on another phone". Screenshots land in
+  `e2e/out/screenshots/`.
 
 ## Files
 

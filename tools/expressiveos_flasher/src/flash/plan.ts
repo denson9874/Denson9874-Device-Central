@@ -14,7 +14,7 @@ export type Step =
 	| { kind: "reboot"; target: "fastbootd" | "bootloader" }
 	| { kind: "update-super"; wipe: boolean }
 	| { kind: "resize-to-zero"; partitions: string[] }
-	| { kind: "erase"; partition: string; required: boolean }
+	| { kind: "erase"; partition: string }
 	| { kind: "start-android" };
 
 export interface PlanOptions {
@@ -87,7 +87,7 @@ export function buildPlan(fastbootInfo: string | null, has: (name: string) => bo
 			case "erase":
 				if (!t.ifWipe) throw new PlanError(`fastboot-info.txt erases ${t.partition} even without a wipe, which this installer doesn't do`);
 				erased.add(t.partition);
-				steps.push({ kind: "erase", partition: t.partition, required: t.partition === "userdata" });
+				steps.push({ kind: "erase", partition: t.partition });
 				break;
 		}
 	}
@@ -103,9 +103,10 @@ export function buildPlan(fastbootInfo: string | null, has: (name: string) => bo
 		steps.splice(firstLogical, 0, { kind: "resize-to-zero", partitions: parts });
 	}
 
-	// fastboot -w also wipes userdata and metadata after the update (cache too; Pixels have none)
+	// fastboot -w also wipes userdata and metadata after the update (cache too; Pixels have none).
+	// Each erase must work, as in fastboot, which stops when one fails
 	if (opts.wipe) {
-		for (const p of ["userdata", "metadata"]) if (!erased.has(p)) steps.push({ kind: "erase", partition: p, required: p === "userdata" });
+		for (const p of ["userdata", "metadata"]) if (!erased.has(p)) steps.push({ kind: "erase", partition: p });
 	}
 	// No root: the stock init_boot on the other slot too, as the release notes say for both slots
 	if (!opts.root) steps.push({ kind: "flash", partition: "init_boot", image: { kind: "stock-init-boot" }, slot: "other", logical: false });

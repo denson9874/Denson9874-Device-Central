@@ -23,7 +23,7 @@
 	--line-strong: rgb(255 255 255 / 0.2);
 	--text: #f5f2ff;
 	--muted: #b8b3da;
-	--faint: #8a84b3;
+	--faint: #9b95c6;
 	--accent: var(--violet);
 	--accent-text: #ffffff;
 	--accent-strong: #c18cfd;
@@ -31,6 +31,12 @@
 	--ok: var(--green);
 	--warn: var(--coral-light);
 	--danger: var(--coral);
+	/* Text on the tinted badges, at least 4.5:1 on a card, a hovered card and a chosen one */
+	--badge-ok: var(--green);
+	--badge-testers: color-mix(in srgb, var(--coral) 60%, #fff);
+	--badge-root: var(--violet-light);
+	/* The keyboard's ring: opaque, at least 3:1 against the panel, the cards and the page */
+	--focus: var(--blue-light);
 	--petal-ghost: rgb(255 255 255 / 0.05);
 	--petal-ghost-line: rgb(255 255 255 / 0.14);
 	--ring-track: rgb(255 255 255 / 0.08);
@@ -52,13 +58,17 @@
 		--line-strong: rgb(20 19 41 / 0.22);
 		--text: #141329;
 		--muted: #4f4a75;
-		--faint: #77729c;
+		--faint: #5d5884;
 		--accent: var(--violet-deep);
 		--accent-strong: #5a1fa3;
 		--link: var(--violet-deep);
 		--ok: var(--green-deep);
 		--warn: #9a5800;
 		--danger: var(--coral-deep);
+		--badge-ok: color-mix(in srgb, var(--green-deep) 60%, #000);
+		--badge-testers: color-mix(in srgb, var(--coral-deep) 70%, #000);
+		--badge-root: var(--accent-strong);
+		--focus: var(--blue-deep);
 		--petal-ghost: rgb(20 19 41 / 0.05);
 		--petal-ghost-line: rgb(20 19 41 / 0.14);
 		--ring-track: rgb(20 19 41 / 0.08);
@@ -76,13 +86,17 @@
 	--line-strong: rgb(20 19 41 / 0.22);
 	--text: #141329;
 	--muted: #4f4a75;
-	--faint: #77729c;
+	--faint: #5d5884;
 	--accent: var(--violet-deep);
 	--accent-strong: #5a1fa3;
 	--link: var(--violet-deep);
 	--ok: var(--green-deep);
 	--warn: #9a5800;
 	--danger: var(--coral-deep);
+	--badge-ok: color-mix(in srgb, var(--green-deep) 60%, #000);
+	--badge-testers: color-mix(in srgb, var(--coral-deep) 70%, #000);
+	--badge-root: var(--accent-strong);
+	--focus: var(--blue-deep);
 	--petal-ghost: rgb(20 19 41 / 0.05);
 	--petal-ghost-line: rgb(20 19 41 / 0.14);
 	--ring-track: rgb(20 19 41 / 0.08);
@@ -167,8 +181,12 @@ kbd {
 	position: absolute;
 	width: 1px;
 	height: 1px;
+	padding: 0;
+	margin: -1px;
+	border: 0;
 	overflow: hidden;
 	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
 	white-space: nowrap;
 }
 
@@ -209,11 +227,9 @@ kbd {
 	padding: 2px 10px;
 }
 
-.top-spacer {
-	flex: 1;
-}
-
 .theme-toggle {
+	flex-shrink: 0;
+	margin-left: auto;
 	appearance: none;
 	border: 1px solid var(--line);
 	background: var(--bg-raised);
@@ -277,6 +293,8 @@ kbd {
 
 .panel-col {
 	min-width: 0;
+	/* The stepper fits its labels to this column's width */
+	container-type: inline-size;
 }
 
 /* ---------- Stepper ---------- */
@@ -351,6 +369,22 @@ kbd {
 	text-overflow: ellipsis;
 }
 
+/* Too narrow for six labels: the step you're on gets the room, and the others show their number
+   (their name stays for screen readers), which keeps them big enough to tap */
+@container (max-width: 540px) {
+	.stepper li.is-current {
+		flex-grow: 3;
+	}
+	.stepper li:not(.is-current) .step-name {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+}
+
 /* ---------- Panel ---------- */
 
 .panel {
@@ -415,12 +449,19 @@ kbd {
 .choice:focus-within,
 .stepper button:focus-visible,
 .theme-toggle:focus-visible {
-	outline: 3px solid color-mix(in srgb, var(--blue) 70%, transparent);
+	outline: 3px solid var(--focus);
 	outline-offset: 2px;
 }
 
+/* The heading of a new step, or a message, takes the keyboard to be read out; it isn't a control */
+.panel:focus,
+.panel [tabindex="-1"]:focus {
+	outline: none;
+}
+
+/* Deep enough behind the white label for 4.5:1 all the way along; the bright petals stay in the glow */
 .btn-primary {
-	background: linear-gradient(135deg, var(--violet-deep), var(--violet) 55%, var(--blue));
+	background: linear-gradient(135deg, var(--violet-deep), color-mix(in srgb, var(--violet) 40%, var(--violet-deep)) 50%, var(--blue-deep));
 	color: #fff;
 	box-shadow: 0 8px 24px color-mix(in srgb, var(--violet) 35%, transparent);
 }
@@ -589,17 +630,17 @@ kbd {
 	margin-left: 6px;
 	vertical-align: 2px;
 	background: color-mix(in srgb, var(--green) 20%, transparent);
-	color: var(--ok);
+	color: var(--badge-ok);
 }
 
 .badge-testers {
 	background: color-mix(in srgb, var(--coral) 22%, transparent);
-	color: var(--danger);
+	color: var(--badge-testers);
 }
 
 .badge-root {
 	background: color-mix(in srgb, var(--violet) 22%, transparent);
-	color: var(--accent-strong);
+	color: var(--badge-root);
 }
 
 fieldset {
@@ -985,6 +1026,15 @@ details.log pre {
 	margin: 0 auto;
 }
 
+/* ---------- Small phones ---------- */
+
+/* The header's tag goes, so the brand and the theme button fit in 320 px */
+@media (max-width: 380px) {
+	.brand-tag {
+		display: none;
+	}
+}
+
 /* ---------- Narrow screens ---------- */
 
 @media (max-width: 860px) {
@@ -1000,12 +1050,6 @@ details.log pre {
 	}
 	.status {
 		min-height: 0;
-	}
-	.stepper .step-label {
-		font-size: 0;
-	}
-	.stepper .is-current .step-label {
-		font-size: 0.8rem;
 	}
 	.choice {
 		grid-template-columns: auto 1fr;

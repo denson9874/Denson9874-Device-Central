@@ -15,12 +15,19 @@ export interface Requirement {
 	options: string[];
 }
 
+/**
+ * The requirements, and in `errors` the lines that are neither blank nor a requirement. fastboot
+ * prints "android-info.txt syntax error" for those and goes on (CheckRequirements in fastboot.cpp),
+ * and so does the page: reportProblems (src/flash/preflight.ts) leaves them out, so they never
+ * refuse a phone, and the Connect and Install steps show them in a warning. A line of only spaces
+ * or tabs requires nothing and is skipped, not reported.
+ */
 export function parseRequirements(text: string): { requirements: Requirement[]; errors: string[] } {
 	const requirements: Requirement[] = [];
 	const errors: string[] = [];
 	for (const raw of text.split("\n")) {
 		const line = raw.replace(/\r$/, "");
-		if (!line) continue;
+		if (!line.trim()) continue;
 		let m = /^(require\s+|reject\s+)?\s*(\S+)\s*=\s*(.*)$/.exec(line);
 		let product = "";
 		let invert = false;

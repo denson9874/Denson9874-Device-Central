@@ -55,6 +55,17 @@ describe("install plan", () => {
 		expect(k[k.length - 1]).toBe("start-android");
 	});
 
+	it("makes every erase of a clean install one that must work, as fastboot -w does", () => {
+		const erases = (info: string | null) => buildPlan(info, has, LOGICAL, { wipe: true, root: true, hasStockInitBoot: false }).filter((s) => s.kind === "erase");
+		const both = [
+			{ kind: "erase", partition: "userdata" },
+			{ kind: "erase", partition: "metadata" },
+		];
+		expect(erases(INFO)).toEqual(both);
+		expect(erases("version 1\nflash boot\n")).toEqual(both);
+		expect(erases(null)).toEqual(both);
+	});
+
 	it("only shrinks the current slot's logical partitions", () => {
 		const r = buildPlan(INFO, has, LOGICAL, { wipe: true, root: true, hasStockInitBoot: false }).find((s) => s.kind === "resize-to-zero");
 		expect(r).toEqual({ kind: "resize-to-zero", partitions: ["product", "system", "vendor"] });

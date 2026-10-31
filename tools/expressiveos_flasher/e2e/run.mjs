@@ -1,7 +1,10 @@
-// Browser tests: the built page in Chromium, a simulated Pixel behind navigator.usb, and a local
-// stand-in for the Worker serving a small fixture release. Walks the whole flow twice (root and a
-// paused, resumed download on a computer; no root and a Reconnect prompt on a phone-sized
-// screen), checks what the simulated phone ends up with, and saves screenshots to e2e/out/.
+// Browser tests: the built page in Chromium, a simulated Pixel behind navigator.usb, and the real
+// Worker (e2e/server.mjs) serving small fixture releases from a folder standing in for R2. Walks
+// the whole flow: root and a paused, resumed download on a computer; no root and a Reconnect prompt
+// on a phone-sized screen; the wrong phone; a locked bootloader; a testers build whose name
+// repeats a release's; a Pixel 11 build without root; a failed metadata erase followed by another
+// model; and "Install on another phone". Checks what the simulated phone ends up
+// with, and saves screenshots to e2e/out/.
 //
 //   npm run build && npm run test:e2e        (needs Playwright with Chromium installed)
 
@@ -48,45 +51,59 @@ const images = {
 	"super_empty.img": makeSuperEmpty(["product_a", "product_b", "system_a", "system_b", "vendor_a", "vendor_b"]),
 };
 const stock = bytes(70_000, 99);
-const zip = makeZip(
-	[
-		{ name: "android-info.txt", data: new TextEncoder().encode("require board=cheetah\n") },
-		{ name: "fastboot-info.txt", data: new TextEncoder().encode(INFO) },
-		...Object.entries(images).map(([name, data]) => ({ name, data })),
-	],
-	{ zip64: true },
-);
 const sha = (b) => createHash("sha256").update(b).digest("hex");
-rmSync(fixtures, { recursive: true, force: true });
-mkdirSync(join(fixtures, "cheetah/flasher"), { recursive: true });
-writeFileSync(join(fixtures, `cheetah/flasher/${NAME}-fastboot.zip`), zip);
-writeFileSync(join(fixtures, `cheetah/flasher/${NAME}-init_boot-stock.img`), stock);
-writeFileSync(
-	join(fixtures, "cheetah/flasher.json"),
-	JSON.stringify({
-		schema: 1,
-		device: "cheetah",
-		updated: "2026-10-30T12:00:00Z",
-		releases: [
-			{
-				name: NAME,
-				channel: "release",
-				android: "16.0",
-				version: "1.0",
-				type: "Unofficial",
-				date: "2026-10-29",
-				published: "2026-10-30T12:00:00Z",
-				zip: { file: `${NAME}-fastboot.zip`, size: zip.byteLength, sha256: sha(zip) },
-				initBootStock: { file: `${NAME}-init_boot-stock.img`, size: stock.byteLength, sha256: sha(stock) },
-				root: "kernelsu-next",
-				requirements: ["require board=cheetah"],
-			},
+
+/** A fixture release: its fastboot zip (images, with initBoot as init_boot.img) and, with a stock image, that too. */
+function release(device, name, { channel = "release", initBoot = images["init_boot.img"], stockImage = stock, published = "2026-10-30T12:00:00Z" } = {}) {
+	const z = makeZip(
+		[
+			{ name: "android-info.txt", data: new TextEncoder().encode(`require board=${device}\n`) },
+			{ name: "fastboot-info.txt", data: new TextEncoder().encode(INFO) },
+			...Object.entries({ ...images, "init_boot.img": initBoot }).map(([n, data]) => ({ name: n, data })),
 		],
-	}),
-);
+		{ zip64: true },
+	);
+	// The testers channel has its own folder (flasher/testers/), so its names can repeat a release's
+	const dir = join(fixtures, device, "flasher", channel === "testers" ? "testers" : "");
+	mkdirSync(dir, { recursive: true });
+	writeFileSync(join(dir, `${name}-fastboot.zip`), z);
+	if (stockImage) writeFileSync(join(dir, `${name}-init_boot-stock.img`), stockImage);
+	return {
+		name,
+		channel,
+		android: "16.0",
+		version: "1.0",
+		type: "Unofficial",
+		date: "2026-10-29",
+		published,
+		zip: { file: `${name}-fastboot.zip`, size: z.byteLength, sha256: sha(z) },
+		initBootStock: stockImage ? { file: `${name}-init_boot-stock.img`, size: stockImage.byteLength, sha256: sha(stockImage) } : null,
+		root: stockImage ? "kernelsu-next" : null,
+		requirements: [`require board=${device}`],
+	};
+}
+function manifest(device, releases) {
+	writeFileSync(join(fixtures, device, "flasher.json"), JSON.stringify({ schema: 1, device, updated: "2026-10-31T12:00:00Z", releases }));
+}
+
+rmSync(fixtures, { recursive: true, force: true });
+// The Pixel 7 Pro: a release, and a testers build of the same name with other bytes
+const testersInitBoot = bytes(90_000, 42);
+const testersStock = bytes(70_000, 43);
+manifest("cheetah", [
+	release("cheetah", NAME),
+	release("cheetah", NAME, { channel: "testers", initBoot: testersInitBoot, stockImage: testersStock, published: "2026-10-31T09:00:00Z" }),
+]);
+// The Pixel 11: a build without root, so no stock init_boot (its zip's init_boot is the stock one)
+const CUBS = "ExpressiveOS-16.0-20261029-cubs-1.0-Unofficial";
+const cubsInitBoot = bytes(90_000, 52);
+manifest("cubs", [release("cubs", CUBS, { initBoot: cubsInitBoot, stockImage: null })]);
+
 const want = {
 	initBootKsu: sha(images["init_boot.img"]),
 	stock: sha(stock),
+	testersInitBoot: sha(testersInitBoot),
+	cubsInitBoot: sha(cubsInitBoot),
 	system: sha(expandSparse(images["system.img"])),
 	product: sha(expandSparse(images["product.img"])),
 	vendor: sha(images["vendor.img"]),
@@ -189,6 +206,7 @@ async function phoneState(page) {
 			initBootA: await hex(p.physical.get("init_boot_a").slice(0, 90_000)),
 			initBootAStock: await hex(p.physical.get("init_boot_a").slice(0, 70_000)),
 			initBootBStock: await hex(p.physical.get("init_boot_b").slice(0, 70_000)),
+			initBootB: await hex(p.physical.get("init_boot_b").slice(0, 90_000)),
 			system: await hex(p.logical.get(`system_${p.slot}`)),
 			product: await hex(p.logical.get(`product_${p.slot}`)),
 			vendor: await hex(p.logical.get(`vendor_${p.slot}`).slice(0, 400 * 4096 + 1000)),
@@ -347,6 +365,113 @@ try {
 		await page.getByRole("button", { name: "Unlock the bootloader" }).click();
 		await page.getByText("Ready to install").waitFor({ timeout: 30_000 });
 		check(await page.evaluate(() => window.__fakePhone.unlocked), "the bootloader unlocks after the user agrees");
+		await ctx.close();
+	});
+
+	// ---------- 5. A testers build with the same name as the release, from its own folder ----------
+	await scenario("testers", async (track) => {
+		state.bytesPerSecond = 0;
+		const { ctx, page, errors } = await newPage(browser);
+		track(page);
+		await page.goto(`${url}/?testers`);
+		await page.getByRole("button", { name: /Pixel 7 Pro/ }).first().click();
+		await page.getByRole("button", { name: "Continue with Pixel 7 Pro" }).click();
+		await page.locator(`input[type=radio][value="testers/${NAME}"]`).check();
+		await page.screenshot({ path: join(shots, "t1-testers-build.png"), fullPage: true });
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		await page.getByRole("button", { name: "Download", exact: true }).click();
+		await page.getByText("Downloaded and checked").first().waitFor({ timeout: 60_000 });
+		check(state.requests.includes(`GET /dl/cheetah/testers/${NAME}-fastboot.zip`), "the testers build downloads from its own folder");
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		await page.getByRole("button", { name: "Connect", exact: true }).click();
+		await page.getByText("Ready to install").waitFor();
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		await page.getByLabel(/erases everything/).check();
+		await page.getByRole("button", { name: "Install", exact: true }).click();
+		await page.getByRole("heading", { name: "ExpressiveOS is installed" }).waitFor({ timeout: 120_000 });
+		const s = await phoneState(page);
+		check(s.initBootA === want.testersInitBoot, "the testers build's init_boot is on the phone, not the release's");
+		check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
+		await ctx.close();
+	});
+
+	// ---------- 6. A Pixel 11 build without root: no stock init_boot, the zip's own is kept ----------
+	await scenario("no-root-build", async (track) => {
+		const { ctx, page, errors } = await newPage(browser, { fake: { product: "cubs" } });
+		track(page);
+		await page.goto(url);
+		await page.getByRole("button", { name: /cubs/ }).click();
+		await page.getByRole("button", { name: "Continue with Pixel 11" }).click();
+		await page.getByText("ExpressiveOS 1.0").first().waitFor();
+		check((await page.getByLabel(/KernelSU Next/).count()) === 0, "a build without root offers no KernelSU Next choice");
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		await page.getByRole("button", { name: "Download", exact: true }).click();
+		await page.getByText("Downloaded and checked").first().waitFor({ timeout: 60_000 });
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		await page.getByRole("button", { name: "Connect", exact: true }).click();
+		await page.getByText("Ready to install").waitFor();
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		await page.getByLabel(/erases everything/).check();
+		await page.getByRole("button", { name: "Install", exact: true }).click();
+		await page.getByRole("heading", { name: "ExpressiveOS is installed" }).waitFor({ timeout: 120_000 });
+		await page.screenshot({ path: join(shots, "n1-no-root-done.png") });
+		const s = await phoneState(page);
+		check(s.mode === "android", "the Pixel 11 started Android");
+		check(s.initBootA === want.cubsInitBoot, "the zip's own init_boot is on the current slot");
+		check(s.initBootB === sha(new Uint8Array(90_000).fill(0xee)), "nothing is written to the other slot's init_boot");
+		check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
+		await ctx.close();
+	});
+
+	// ---------- 7. A failed metadata erase stops a clean install; then another model can't skip Connect ----------
+	await scenario("failed-then-wrong-phone", async (track) => {
+		const { ctx, page } = await newPage(browser, { fake: { failOnce: "erase:metadata" } });
+		track(page);
+		await page.goto(url);
+		await page.getByRole("button", { name: /Pixel 7 Pro/ }).first().click();
+		await page.getByRole("button", { name: "Continue with Pixel 7 Pro" }).click();
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		await page.getByRole("button", { name: "Download", exact: true }).click();
+		await page.getByText("Downloaded and checked").first().waitFor({ timeout: 60_000 });
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		await page.getByRole("button", { name: "Connect", exact: true }).click();
+		await page.getByText("Ready to install").waitFor();
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		await page.getByLabel(/erases everything/).check();
+		await page.getByRole("button", { name: "Install", exact: true }).click();
+		await page.getByText("Stopped at: Erase metadata").waitFor({ timeout: 120_000 });
+		check((await page.getByRole("heading", { name: "ExpressiveOS is installed" }).count()) === 0, "a failed metadata erase isn't reported as installed");
+		await page.screenshot({ path: join(shots, "f1-erase-failed.png") });
+		// Another model plugged in after the failure
+		await page.evaluate(() => (window.__fakePhone.product = "husky"));
+		await page.getByRole("button", { name: "Try again" }).click();
+		await page.getByRole("button", { name: "Connect", exact: true }).click();
+		await page.getByText("That's a different phone").waitFor();
+		check((await page.getByRole("button", { name: "Continue", exact: true }).count()) === 0, "no Continue for another model after a failed install");
+		check(await page.getByRole("button", { name: /5\. Install/ }).isDisabled(), "the stepper can't jump to Install with another model connected");
+		await ctx.close();
+	});
+
+	// ---------- 8. "Install on another phone" asks for the install type again ----------
+	await scenario("another-phone", async (track) => {
+		const { ctx, page } = await newPage(browser, { fake: { msPerMiB: 0 } });
+		track(page);
+		await page.goto(url);
+		await page.getByRole("button", { name: /Pixel 7 Pro/ }).first().click();
+		await page.getByRole("button", { name: "Continue with Pixel 7 Pro" }).click();
+		await page.getByLabel(/Keep my data/).check();
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		await page.getByRole("button", { name: "Download", exact: true }).click();
+		await page.getByText("Downloaded and checked").first().waitFor({ timeout: 60_000 });
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		await page.getByRole("button", { name: "Connect", exact: true }).click();
+		await page.getByText("Ready to install").waitFor();
+		await page.getByRole("button", { name: "Continue", exact: true }).click();
+		await page.getByRole("button", { name: "Install", exact: true }).click();
+		await page.getByRole("heading", { name: "ExpressiveOS is installed" }).waitFor({ timeout: 120_000 });
+		await page.getByRole("button", { name: "Install on another phone" }).click();
+		check((await page.locator('#stepper [aria-current="step"]').innerText()).includes("Build"), "Install on another phone goes back to the Build step");
+		check(await page.getByLabel(/Clean install/).isChecked(), "Install on another phone asks for a clean install again");
 		await ctx.close();
 	});
 } finally {
