@@ -1,0 +1,21 @@
+{
+	"compilerOptions": {
+		"target": "es2024",
+		"lib": ["es2024", "dom", "dom.iterable", "webworker.importscripts"],
+		"module": "preserve",
+		"moduleResolution": "bundler",
+		"types": ["w3c-web-usb", "vite/client", "node"],
+		"strict": true,
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"skipLibCheck": true,
+		"noUnusedLocals": true,
+		"noFallthroughCasesInSwitch": true,
+		// test/worker.test.ts runs the Worker on a stub of its runtime module (vitest.config.ts aliases it the same way),
+		// with test/workers-runtime.d.ts's cut-down Workers types: the real ones replace the DOM's globals
+		"paths": { "cloudflare:workers": ["./test/cloudflare-workers-stub.ts"] }
+	},
+	"include": ["src", "test", "worker"]
+}
