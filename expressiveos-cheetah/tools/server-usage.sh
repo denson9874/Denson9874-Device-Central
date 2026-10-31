@@ -22,15 +22,19 @@ done
 tmux ls 2>/dev/null | cut -d: -f1 | tr '\n' ' '; echo
 pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja|p11-routine|eos-(images|pack)' | cut -c1-160 | head -5 || true
 
-echo "== ~, one level "
+echo "== ~, one level"
 lowdu1 ~ | head -40
 
 for t in ~/evolution ~/derpfest ~/expressiveos; do
     [[ -d $t ]] || continue
-    echo "== $t : source, out, and each out folder"
+    echo "== $t: the tree's top folders, source, kernel out, and each out folder"
+    lowdu1 "$t" | head -15
     lowdu "$t/.repo"
     for k in "$t"/out-kernel*; do [[ -d $k ]] && lowdu "$k"; done
     lowdu1 "$t/out" | head -25
+    echo "-- $t/out/soong: one level, and its files over 500 MiB (date, size, name)"
+    lowdu1 "$t/out/soong" | head -15
+    find "$t/out/soong" -maxdepth 1 -type f -size +500M -printf '%TY-%Tm-%Td %s %f\n' 2>/dev/null | sort | numfmt --invalid=ignore --to=iec --field=2 | head -40 || true
     if [[ -d $t/out/target/product ]]; then
         echo "-- $t/out/target/product: size, newest file"
         for p in "$t"/out/target/product/*/; do
@@ -45,7 +49,7 @@ for t in ~/evolution ~/derpfest ~/expressiveos; do
     done
 done
 
-echo "== ~/releases, two levels "
+echo "== ~/releases, two levels"
 nice -n 19 ionice -c2 -n7 du -x -d2 -h ~/releases 2>/dev/null | sort -rh | head -60 || true
 echo "== files in ~/releases over 200 MiB (date, size, path)"
 find ~/releases -type f -size +200M -printf '%TY-%Tm-%Td %TH:%TM %s %P\n' 2>/dev/null | sort | numfmt --invalid=ignore --to=iec --field=3 | head -150 || true
@@ -59,7 +63,7 @@ for d in ~/releases/*/check ~/releases/*/testers ~/releases/*/staged-* ~/release
 done
 for f in ~/releases/*/target-files/LATEST; do [[ -f $f ]] && echo "${f#"$HOME"/}: $(head -n 1 "$f")"; done
 
-echo "== ~/android-dt, two levels "
+echo "== ~/android-dt, two levels"
 nice -n 19 ionice -c2 -n7 du -x -d2 -h ~/android-dt 2>/dev/null | sort -rh | head -40 || true
 echo "== files in ~/android-dt over 1 GiB (date, size, path)"
 find ~/android-dt -xdev -type f -size +1G -printf '%TY-%Tm-%Td %s %P\n' 2>/dev/null | sort | numfmt --invalid=ignore --to=iec --field=2 | head -80 || true
@@ -85,7 +89,7 @@ for t in ~/evolution ~/derpfest ~/expressiveos; do
 done
 echo "== ~ top-level files over 100 MiB (logs, archives)"
 find ~ -maxdepth 1 -type f -size +100M -printf '%TY-%Tm-%Td %s %f\n' 2>/dev/null | sort | numfmt --invalid=ignore --to=iec --field=2 || true
-echo "== /tmp: entries of this user over 500 MiB "
+echo "== /tmp: entries of this user over 500 MiB (GiB)"
 find /tmp -maxdepth 1 -user "$(id -u)" -printf '%p\n' 2>/dev/null | while read -r p; do
     s=$(nice -n 19 du -x -s -BM "$p" 2>/dev/null | cut -f1 | tr -d M)
     [[ ${s:-0} -ge 500 ]] && echo "$((s / 1024))G  $p  $(date -r "$p" '+%F %T' 2>/dev/null)"
