@@ -220,7 +220,11 @@ for d in "$home/$R"/expressiveos-*/target-files; do
     for z in "$n" "$newest"; do [[ -z "$z" ]] || keep+=("$rel/$z" "$rel/$z.sha256"); done
 done
 # Checksum files the pack scripts and the release step write next to a zip or image
-sidecars() { local f; for f in "$1.sha256" "$1.sha256sum" "$1.md5sum" "${1%.zip}.sha256"; do [[ -f "$f" && ! -L "$f" ]] && echo "$f"; done; return 0; }
+sidecars() { # each checksum file beside $1, once (name.sha256 for a .zip too)
+    local f; local -a c=("$1.sha256" "$1.sha256sum" "$1.md5sum")
+    [[ $1 == *.zip ]] && c+=("${1%.zip}.sha256")
+    for f in "${c[@]}"; do [[ -f "$f" && ! -L "$f" ]] && echo "$f"; done; return 0
+}
 size_of() { nice -n 19 ionice -c2 -n7 du -s -B1 --apparent-size -- "$@" 2>/dev/null | awk '{s += $1} END {print s + 0}'; }
 human() { numfmt --to=iec --suffix=B "$1"; }
 
@@ -305,7 +309,7 @@ for n in "${chosen[@]}"; do
         else
             mapfile -t side < <(sidecars "$T")
             s=$(size_of "$T" ${side[@]+"${side[@]}"})
-            echo "file     $(human "$s")  $t${side[*]:+ (+ ${#side[@]} checksum file)}"
+            echo "file     $(human "$s")  $t${side[*]:+ (+ ${#side[@]} checksum file(s))}"
         fi
         if [[ "$mode" = delete ]]; then
             if [[ -d "$T" ]]; then
