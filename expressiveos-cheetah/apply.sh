@@ -8,9 +8,9 @@
 #   device_google_pantah 0001, 0002, 0010   ExpressiveOS's own: maintainer, update feed,
 #                                           only ExpressiveOS's boot animation
 #   device_google_pantah 0003-0009,         evolution-cheetah's, copied unchanged
-#   device_google_gs201 0001-0005,
+#   device_google_gs201 0001-0004,
 #   vendor_google_cheetah
-#   device_google_gs201 0006                ExpressiveOS's own: target-files takes the built
+#   device_google_gs201 0005                ExpressiveOS's own: target-files takes the built
 #                                           system, vendor, product... images (incrementals)
 #   frameworks_base                         the fixes the Evolution X tree carries for
 #                                           every build there (evolution-kodiak's copies)

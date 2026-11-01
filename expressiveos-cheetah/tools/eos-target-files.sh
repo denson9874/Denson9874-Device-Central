@@ -15,7 +15,7 @@
 #      KernelSU Next (EOS_KSU=lkm); on the others a WARNING says when its ramdisk isn't out/'s;
 #   4. for incrementals: the images of the dynamic partitions (system, vendor, product...:
 #      misc_info.txt's dynamic_partition_list, what an incremental patches block by block)
-#      are the fastboot zip's (out/'s) byte for byte: patches/device_google_gs201/0006 has
+#      are the fastboot zip's (out/'s) byte for byte: patches/device_google_gs201/0005 has
 #      target-files take the built ones (COPY_IMAGES_FOR_TARGET_FILES_ZIP; another phone's
 #      device tree needs the same), and an image the device tree takes prebuilt (the Pixel
 #      11s' stock vendor, vendor_dlkm and system_dlkm) is copied into target-files as it is.
