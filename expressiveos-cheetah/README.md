@@ -9,8 +9,9 @@ ExpressiveOS is its own ROM, built on Evolution X (cnb) like any standard custom
   (`~/releases/expressiveos-cheetah`), SourceForge folder (`expressiveos/cheetah`) and R2 prefix
   (`expressiveos/cheetah/`), all set in `eos.conf` and `devices/cheetah.conf`;
 - a clean install only: updates from other ROMs, Evolution X included, never install on it;
-- KernelSU Next with susfs and NeoZygisk switched on at first boot (both active after one restart)
-  ([`ksu/`](ksu/README.md)), ViPER4Android RE ([`viper4android/`](viper4android/README.md)), its
+- no root out of the box: root is the user's choice (Daryl, 2026-11-01). `EOS_KSU=lkm` in a
+  phone's `devices/<device>.conf` still builds KernelSU Next with susfs and NeoZygisk into it
+  ([`ksu/`](ksu/README.md)); every phone ships `EOS_KSU=none` today. ViPER4Android RE ([`viper4android/`](viper4android/README.md)), its
   own boot animation ([`bootanimation/`](bootanimation/README.md)), its own wallpaper, Bloom, on a
   clean install's first screen ([`wallpapers/`](wallpapers/README.md)), and Daryl's Expressive
   Launcher as the Home and Recents app in Pixel Launcher's place ([`launcher/`](launcher/README.md)).
