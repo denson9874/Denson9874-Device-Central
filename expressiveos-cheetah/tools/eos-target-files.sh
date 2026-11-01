@@ -99,6 +99,8 @@ if [[ $EOS_KSU = lkm ]]; then
 # target-files packs again from the same ramdisk files rather than taking it as built
 elif cmp -s -- "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk"; then
     echo "OK: its init_boot carries out/'s ramdisk (no KernelSU Next on $EOS_DEVICE)"
+elif cpio_same "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk"; then
+    echo "OK: its init_boot ramdisk holds out/'s files, packed again (no KernelSU: EOS_KSU=none)"
 else
     echo "WARNING: its init_boot ramdisk isn't out/'s: phones updated by OTA would get another init_boot ramdisk than the fastboot zip's (compare the two with unpack_bootimg)"
 fi

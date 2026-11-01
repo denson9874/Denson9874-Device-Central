@@ -84,7 +84,7 @@ cache)
               grep -oE "$EOS_DEVICE:17/[A-Z0-9]{4}\.[0-9]{6}\.[0-9]{3}" "$top/$EOS_DEVICE_TREE/lineage_$EOS_DEVICE.mk" | cut -d/ -f2 | tr '[:upper:]' '[:lower:]' ||
               true)   # neither: unknown, said below
     if [[ -z "$cached" ]]; then
-        echo "WARNING: no cached factory firmware in $fw (run evolution-cheetah/fetch-firmware.sh); shipping the vendor repo's ${shipped:-unknown}"
+        echo "WARNING: no cached factory firmware in $fw (run update-firmware.sh); shipping the vendor repo's ${shipped:-unknown}"
     elif [[ -n "$shipped" && "$(date_of "$cached")" < "$(date_of "$shipped")" ]]; then
         echo "WARNING: cached firmware $cached is older than the vendor repo's $shipped; keeping the vendor repo's (run fetch-firmware.sh)"
     else
