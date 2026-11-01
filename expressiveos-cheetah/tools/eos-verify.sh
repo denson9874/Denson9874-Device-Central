@@ -258,6 +258,12 @@ def entries(path):
         d = (n + nsz + 3) & ~3
         if name == "TRAILER!!!":
             break
+        # A device node's permission bits aren't compared: target-files' mkbootfs gives the
+        # ramdisk's dev/console, kmsg, null and urandom 0755 where out/'s has 0644, and first-
+        # stage init mounts its own /dev before anything opens them. Type, owner and numbers
+        # still are
+        if (mode & 0o170000) in (0o020000, 0o060000):
+            mode &= 0o170000
         out[name] = (mode, uid, gid, rmaj, rmin, raw[d:d + size])
         i = (d + size + 3) & ~3
     return out
