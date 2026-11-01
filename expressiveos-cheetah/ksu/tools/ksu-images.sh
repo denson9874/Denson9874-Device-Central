@@ -106,6 +106,23 @@ if [[ $EOS_KERNEL = gs-6.1 ]]; then
     build_kernel || fail "build_kernel failed"
     [[ -d $kt/.repo ]] || fail "no $kt/.repo: build_kernel didn't sync the kernel source there"
     (cd "$kt" && repo manifest -r -o "$top/$EOS_STATE/kernel-manifest.xml") || fail "can't save the kernel source's manifest"
+    for b in "$top"/device/google/*-kernels/*/boot.img; do
+        [[ -f $b ]] || continue
+        t=$(mktemp -d "${TMPDIR:-/tmp}/boot_patch.XXXXXX")
+        if python3 "$top/system/tools/mkbootimg/unpack_bootimg.py" --boot_img "$b" --out "$t" >/dev/null 2>&1; then
+            out=$(python3 "$top/system/tools/mkbootimg/unpack_bootimg.py" --boot_img "$b" --out "$t")
+            if echo "$out" | grep -q 'os patch level: None'; then
+                echo "Patching boot.img header os_patch_level for ${b#"$top"/}"
+                python3 "$top/system/tools/mkbootimg/mkbootimg.py" \
+                    --header_version 4 \
+                    --kernel "$t/kernel" \
+                    --os_version 14.0.0 \
+                    --os_patch_level 2026-10 \
+                    -o "$b" || echo "WARNING: failed to repack $b"
+            fi
+        fi
+        rm -rf -- "$t"
+    done
 else
     # No kernel source to name: the record says what the kernel is instead, so the records
     # are the same set for every phone

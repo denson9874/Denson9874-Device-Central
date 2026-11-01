@@ -1,0 +1,51 @@
+From fd06ed1bfc0bc5a9a46bad22d4d9ba17d35a626a Mon Sep 17 00:00:00 2001
+From: Daryl Denson <daryldenson0405@gmail.com>
+Date: Sun, 1 Nov 2026 22:38:51 +0100
+Subject: [PATCH] NetworkCapabilities: treat XCAP as mutable and requestable
+
+On certain cellular networks (e.g. T-Mobile 5G NR), Telephony DataNetwork
+dynamically removes NET_CAPABILITY_XCAP from the primary cellular data
+network when IWLAN is preferred for XCAP. Because NET_CAPABILITY_XCAP was
+treated as immutable, ConnectivityService flagged this capability removal
+as a bug (am_wtf: lost immutable capabilities).
+
+Add NET_CAPABILITY_XCAP to MUTABLE_CAPABILITIES so ConnectivityService
+allows its dynamic removal, and exclude it from NON_REQUESTABLE_CAPABILITIES
+so that telephony and apps can continue requesting XCAP.
+---
+ framework/src/android/net/NetworkCapabilities.java | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/framework/src/android/net/NetworkCapabilities.java b/framework/src/android/net/NetworkCapabilities.java
+index 70f7372f14..ba0b8fe1c1 100644
+--- a/framework/src/android/net/NetworkCapabilities.java
++++ b/framework/src/android/net/NetworkCapabilities.java
+@@ -830,7 +830,8 @@ public final class NetworkCapabilities implements Parcelable {
+             (1L << NET_CAPABILITY_NOT_VCN_MANAGED) |
+             // The value of NET_CAPABILITY_HEAD_UNIT is 32, which cannot use int to do bit shift,
+             // otherwise there will be an overflow. Use long to do bit shift instead.
+-            (1L << NET_CAPABILITY_HEAD_UNIT);
++            (1L << NET_CAPABILITY_HEAD_UNIT) |
++            (1L << NET_CAPABILITY_XCAP);
+ 
+     /**
+      * Network capabilities that are not allowed in NetworkRequests. This exists because the
+@@ -839,13 +840,14 @@ public final class NetworkCapabilities implements Parcelable {
+      * can get into a cycle where the NetworkFactory endlessly churns out NetworkAgents that then
+      * get immediately torn down because they do not have the requested capability.
+      */
+-    // Note that as a historical exception, the TRUSTED and NOT_VCN_MANAGED capabilities
++    // Note that as a historical exception, the TRUSTED, NOT_VCN_MANAGED, and XCAP capabilities
+     // are mutable but requestable. Factories are responsible for not getting
+     // in an infinite loop about these.
+     private static final long NON_REQUESTABLE_CAPABILITIES =
+             MUTABLE_CAPABILITIES
+             & ~(1L << NET_CAPABILITY_TRUSTED)
+-            & ~(1L << NET_CAPABILITY_NOT_VCN_MANAGED);
++            & ~(1L << NET_CAPABILITY_NOT_VCN_MANAGED)
++            & ~(1L << NET_CAPABILITY_XCAP);
+ 
+     /**
+      * Capabilities that are set by default when the object is constructed.
+-- 
+2.43.0

@@ -1,0 +1,30 @@
+From f5f056f18486279307a444e18df7ea251105686a Mon Sep 17 00:00:00 2001
+From: Daryl Denson <daryldenson0405@gmail.com>
+Date: Sun, 1 Nov 2026 22:38:05 +0100
+Subject: [PATCH] Iwlan: declare IWLAN attribution tag in manifest
+
+AppOps logs an error when checking attribution tags created via
+createAttributionContext("IWLAN") if the tag is not declared
+in the package manifest. Declare the attribution tag in Iwlan's
+manifest.
+
+Change-Id: Ida9a63f23229cf8f4f7f51b78a2ecd22dd48e16e
+---
+ AndroidManifest.xml | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 8edca71..7b8b885 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -4,6 +4,8 @@
+     android:sharedUserId="android.uid.system"
+     package="com.google.android.iwlan">
+ 
++  <attribution android:tag="IWLAN" android:label="IWLAN" />
++
+   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+-- 
+2.43.0
