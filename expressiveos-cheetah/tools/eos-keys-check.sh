@@ -13,6 +13,8 @@
 #                                          quick build, EOS_QUICK=1: images only)
 #   eos-keys-check.sh vbmeta <img> [top]   one image's AVB signer is the tree's key
 #
+# Evolution X's and DerpFest's keys are read from their trees or, since those were deleted,
+# from evo-retire keep's copy in ~/retired (eos.conf's EVO_* pins count either way).
 # Pins: once the keys exist and are backed up, eos.conf's EOS_AVB_PUBKEY_SHA1 and
 # EOS_OTA_CERT_SHA256 hold their public fingerprints (README.md, "Keys"), and a tree whose
 # keys differ fails. While they are empty the checks pass with UNPINNED, and eos-pack.sh
@@ -94,11 +96,25 @@ others() {
     for f in "$top"/external/avb/test/data/testkey_rsa*.pem; do
         [[ -f "$f" ]] && c=$(key_sha1 "$f") && printf '%s\tthe AOSP AVB test key %s\n' "$c" "${f##*/}" >> "$work/avb"
     done
-    for d in "$evo/vendor/evolution-priv/keys:Evolution X" "$derp/vendor/lineage-priv/keys:DerpFest"; do
+    # Their trees' keys, and, once those trees are gone (evo-retire, 2026-11-02), every copy
+    # evo-retire keep made of them in ~/retired/keys-<time>/. Every copy, not KEPT's keys= line:
+    # a later keep run with the trees gone has nothing to copy
+    # (a copy reached through a link counts too: more keys can only add refusals)
+    local kd seen=0 unread=0 dirs=("$evo/vendor/evolution-priv/keys:Evolution X" "$derp/vendor/lineage-priv/keys:DerpFest")
+    for kd in "$HOME"/retired/keys-[0-9]*; do
+        [[ -d $kd ]] || continue
+        if [[ ! -r $kd || ! -x $kd ]]; then echo "note: can't read $kd; relying on eos.conf's pins for the keys in it"; unread=$((unread + 1)); continue; fi
+        dirs+=("$kd/evolution:Evolution X" "$kd/derpfest:DerpFest")
+    done
+    if [[ -d $HOME/retired && ( ! -r $HOME/retired || ! -x $HOME/retired ) ]]; then
+        echo "note: can't read ~/retired; relying on eos.conf's pins for any key copies in it"; unread=$((unread + 1))
+    fi
+    for d in "${dirs[@]}"; do
         label="${d##*:}'s"; d=${d%:*}
         [[ "$d" != /vendor/* ]] || continue        # that tree isn't on this server
         if [[ ! -d "$d" ]]; then continue; fi
-        if [[ ! -r "$d" || ! -x "$d" ]]; then echo "note: can't read $d; relying on eos.conf's pins for $label keys"; continue; fi
+        if [[ ! -r "$d" || ! -x "$d" ]]; then echo "note: can't read $d; relying on eos.conf's pins for $label keys"; unread=$((unread + 1)); continue; fi
+        seen=$((seen + 1))
         for f in "$d"/*.x509.pem; do
             [[ -f "$f" ]] && c=$(cert_fp "$f") && printf '%s\t%s %s\n' "$c" "$label" "${f##*/}" >> "$work/certs"
         done
@@ -110,6 +126,8 @@ others() {
             else echo "note: can't read $f; its public half (avb_custom_key.bin) and the pins still count"; fi
         done
     done
+    if [[ $seen = 0 && $unread = 0 ]]; then echo "note: no Evolution X or DerpFest keys on this server (no tree, no copy in ~/retired); only eos.conf's pins stand for them"
+    elif [[ $seen = 0 ]]; then echo "note: no Evolution X or DerpFest keys readable here (see the notes above); only eos.conf's pins stand for them"; fi
     return 0
 }
 whose() {   # whose certs|avb <fingerprint>: who else holds it, or nothing

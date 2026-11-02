@@ -1,90 +1,52 @@
-# Evolution X kodiak builds on the build server, through a self-hosted runner.
+# The ExpressiveOS build server (voltage-build), through a self-hosted runner.
 #
-# Lets a cloud Claude session (which can reach GitHub but not the server) run
-# the HANDOFF.md workflow: sync the device tree from this repo, re-extract the
-# blobs, build images, check the SELinux policy against the stock vendor and
-# pack the fastboot zip. Flashing stays manual, on the Mac.
+# Lets a cloud Claude session (which can reach GitHub but not the server) build, check and
+# look after ExpressiveOS on the server. Flashing stays manual, on the Mac. The workflow and
+# its file keep their old names (kodiak-build.yml, "kodiak build server") so links to past
+# runs still work. Since 2026-11-02 the server builds ExpressiveOS only: Evolution X and
+# DerpFest were retired and their trees deleted (evo-retire below), and their actions are gone.
 #
-# The cheetah-* actions do the same for the Pixel 7 Pro (evolution-cheetah/ in
-# tree_ref): set up its trees, fetch Google's firmware, build and verify. They take
-# ~/.evolution-tree.lock, like the weekly routines, and never upload anything
-# (publishing is p11-routine.sh's job).
-#
-# routine-install installs tree_ref's weekly-routine scripts in ~ (p11-routine.sh and
-# what it runs: the OTA, upload, cleanup and release-check scripts, every device's pack
-# script, and cheetah's and husky's images scripts), keeping the previous copies in
-# ~/routine-backups/<time>, then dry-runs every device's routine. Only while the tree lock
-# is free and no routine is running or waiting. release-checks (read-only) runs tree_ref's
-# release-checks.sh on the builds in out/ (query: devices; default all six), so a new
-# check is seen to pass on the current builds before it's installed. ccache-direct-mode
-# turns on ccache's direct mode in the shared cache and adds USE_CCACHE and CCACHE_EXEC to
-# ~/.profile, without which Evolution X's envsetup.sh turns direct mode off again.
-#
-# bp-check and bp-repair deal with an Android.bp that doesn't parse: Soong reads
-# every Android.bp in the tree, so one bad file (a hand edit in a vendor tree, say)
-# stops every device's build. bp-check shows it and its git state (build-file
-# text only: the lines around the error and that file's diff, never blobs);
-# bp-repair fixes one named file in a narrow, checked way and keeps a backup.
-#
-# local-commits prints the commits made on the server on top of repo projects
-# (cheetah's by default) as patches, so fixes made there by hand can go into
-# evolution-cheetah/patches before a repo sync drops them. Binary changes are
-# listed by name, never included.
-#
-# expressiveos-host is read-only too: what the ExpressiveOS cheetah tree
-# (expressiveos-cheetah/) needs from the server before its first sync: free
-# disk and where it went, the host packages its scripts use, and whether its
-# folders exist yet. Names and sizes only, never file contents.
-#
-# build-speed is read-only too: what decides how long builds take on the server
-# (CPU, memory, disks, ccache's settings and hit rate, the kernel build's caches) and
-# how long past builds took and where the time went (soong_ui's build traces, ninja's
-# logs, the result lines in the build logs). Names, sizes and timings only, never
-# file contents beyond the build scripts' ccache and jobs lines. build-explain (read-only)
-# asks ninja, in a dry run that runs and writes nothing, why a product's next build in a
-# tree would redo the big framework steps, and how other products' commands for them
-# differ (tools/build_speed/build-explain.sh; query: tree, product, other products).
-#
-# routine-scripts is read-only too: how the server's copies of the routine scripts (~/*.sh,
-# ~/*.py, ~/evolution-cheetah, ~/evolution-husky) differ from this ref's, as diffs with
-# lines that may hold a secret hidden, plus what the build speed changes rely on (Evolution
-# X's build_kernel, ccache's settings, the shell startup files' ccache lines, the crontab).
-#
-# server-usage is read-only too: where the disk goes in more detail than expressiveos-host
-# (expressiveos-cheetah/tools/server-usage.sh): each tree's source and build output per
-# product, the release folders, firmware, caches, logs and big files outside the trees.
+# Server-wide, read-only unless said: ccache-direct-mode turns on ccache's direct mode in the
+# shared cache and adds USE_CCACHE and CCACHE_EXEC to ~/.profile (envsetup.sh turns direct
+# mode off again without them). expressiveos-host: what the ExpressiveOS tree needs from the
+# server: free disk and where it went, the host packages its scripts use, its folders. Names
+# and sizes only, never file contents. build-speed: what decides how long builds take (CPU,
+# memory, disks, ccache's settings and hit rate, the kernel build's caches) and how long past
+# builds took and where the time went. build-explain asks ninja, in a dry run that runs and
+# writes nothing, why a product's next build would redo the big framework steps
+# (tools/build_speed/build-explain.sh; query: tree, product, other products). routine-scripts:
+# how the server's scripts in ~ differ from this ref's, as diffs with lines that may hold a
+# secret hidden. server-usage: where the disk goes per tree, product, release folder, cache
+# and big file (expressiveos-cheetah/tools/server-usage.sh).
 #
 # server-cleanup-list (read-only) and server-cleanup free disk on the server:
-# expressiveos-cheetah/tools/server-cleanup.sh lists or removes the seven groups
-# of files it names (its second round, 2026-10-31: scratch and an old cache, build
-# output no build uses any more or that Daryl lets go, an untested candidate, a
-# reference download), by exact path; the image zips the pack scripts read, the
-# product output the next builds start from and the candidates in use stay.
-# server-cleanup removes only the groups in query, which Daryl approves, and only
-# while the tree lock is free (it holds it while it removes); build output only
-# while nothing builds.
+# expressiveos-cheetah/tools/server-cleanup.sh lists or removes the groups of files it names,
+# by exact path. server-cleanup removes only the groups in query, which Daryl approves, and
+# only while the tree lock is free (it holds it while it removes); build output only while
+# nothing builds.
 #
-# evo-retire retires Evolution X and DerpFest on the server (Daryl, 2026-11-02: the server
-# builds ExpressiveOS only), reversibly (expressiveos-cheetah/tools/evo-retire.sh). query
-# list (read-only, the default) shows the scripts in ~ that build or publish them, what runs
-# and the marker; stop moves those scripts into ~/retired/evo-derp-<time>/, leaves a
-# ~/p11-routine.sh stub that prints ROUTINE_RESULT=RETIRED (so a Mac evox-parity task that
-# still fires ends at its first check) and writes ~/retired/EVO_DERP_RETIRED; undo puts them
-# back. check (read-only) shows what ExpressiveOS still reaches in ~/evolution or ~/derpfest
-# (tools, alternates, links, the Pixel 11 blob repos, unpushed feed commits, keys); keep
-# copies what outlives those trees out of them before a cleanup deletes them: the Pixel 11
-# blob repos into ~/expressiveos, the private signing keys into ~/retired/keys-<time>/, a git
-# bundle or diff of every repo with work found only on the server into ~/retired/saved-<time>/,
-# and the manifests, release records, old kits and scripts into ~/retired/records-<time>/.
-# delete <parts> (permanent; Daryl chose it on 2026-11-02) deletes, after keep and with both
-# build locks free and nothing building: out (~/evolution/out, out-kernel), evolution (the rest,
-# after checking keep's copies), derpfest, research (the reeky and p11-diff folders in
-# ~/android-dt) and leftovers (old kits, feed clones, non-ExpressiveOS ~/releases folders, logs).
-# While the marker exists, Preflight refuses the Evolution X build actions and
-# routine-install. The Evolution X actions that read ~/evolution check that it's there; no
-# other action needs it.
+# evo-retire (expressiveos-cheetah/tools/evo-retire.sh) retired Evolution X and DerpFest on
+# 2026-11-02. list and check are read-only: what's left of them in ~, and whether ExpressiveOS
+# still reaches into their old trees (tools, alternates, links, the Pixel 11 blob repos).
+# stop and undo move their scripts out of ~ and back; keep copied what outlives their trees
+# into ~/retired (the Pixel 11 blob repos into ~/expressiveos, the signing keys, every repo's
+# server-only work, the manifests and release records); delete <parts> removed the trees and
+# leftovers (permanent; Daryl chose it on 2026-11-02), and its cheetah-kit part removes
+# ~/evolution-cheetah now that expressiveos-firmware fetches cheetah's firmware.
 #
-# The other expressiveos-* actions run the ExpressiveOS cheetah build in its own tree,
+# expressiveos-kit (read-only by default) compares the installed kit, ~/expressiveos-cheetah,
+# with tree_ref's expressiveos-cheetah: every folder, file and link, executable bits (the only
+# mode git keeps), any git repository inside the kit, then the text files' diffs (a file whose
+# name could be a key is named only; a line that may hold a secret is hidden).
+# The runner installs over a kit only if it installed it (INSTALLED_FROM), so a kit copied in
+# by hand stops expressiveos-setup, -build and -pack; query adopt writes INSTALLED_FROM for
+# such a kit, and only when it matches tree_ref's exactly, so nothing in it is lost when the
+# runner next installs over it. expressiveos-firmware downloads the newest generic Google
+# factory image for cheetah, checks its SHA-256 and keeps only its bootloader and radio images
+# in ~/android-dt/firmware/cheetah, which prepare.sh reads at the start of each cheetah build
+# (expressiveos-cheetah/tools/fetch-firmware.sh; query check: just say which is newest).
+#
+# The expressiveos-* actions run the ExpressiveOS builds in their own tree,
 # ~/expressiveos (expressiveos-cheetah/README.md), with tree_ref's kit installed as
 # ~/expressiveos-cheetah. setup (repo sync, then KernelSU Next's files), build and
 # pack run for hours, past this job's limit, so each runs in a tmux session of its own
@@ -105,7 +67,9 @@
 # ~/.expressiveos.lock, and prints what that freed; never cheetah's. Daryl allowed freeing build
 # output on 2026-10-26: no builds need to stay on the server (check/ keeps the candidate zip and
 # its target-files; eos-pack.sh can't pack that build again, and the phone's next build starts
-# its product over). expressiveos-pack's 'testers' runs eos-pack.sh --testers: check/'s
+# its product over). Since Evolution X and DerpFest left the server (2026-11-02, about 1.1 TB
+# free), routine builds don't pass clean: a phone's kept output makes its next build
+# incremental. expressiveos-pack's 'testers' runs eos-pack.sh --testers: check/'s
 # candidate, not yet tested on a phone, to SourceForge's expressiveos/<device>/testers (and
 # ~/releases/expressiveos-<device>/testers), with no device-ok. Only when Daryl says so. No
 # query token releases or uploads a release (eos-pack.sh --release, --upload).
@@ -159,10 +123,8 @@
 # change of ExpressiveOS's manifest, a branch of its repo or pull/<n>, read as the update reads
 # it, before it's merged).
 #
-# Never add an upload-artifact step: build output contains Google's
-# proprietary images, which must not leave the server. Logs only. `inspect`
-# prints policy excerpts, manifests and library lists, never file contents
-# beyond small text configs (.rc, .xml).
+# Never add an upload-artifact step: build output contains Google's proprietary images,
+# which must not leave the server. Logs only.
 #
 # Runner setup (once, on the build server, as the `build` user, no sudo):
 #   1. GitHub: Settings > Actions > Runners > New self-hosted runner > Linux x64.
@@ -184,26 +146,8 @@ on:
     inputs:
       action:
         description: >-
-          status: read-only state check. sync: device tree from tree_ref to the
-          server. extract: extract-files.py. images: images build + check-sepolicy.
-          check-sepolicy: policy check only. imgzip: fastboot zip.
-          round: sync, extract, images, check-sepolicy, imgzip. ota: m evolution.
-          inspect: read-only lookups in the stock dump (see query).
-          cheetah-status: read-only. cheetah-setup: kit, scripts, local manifest,
-          repo sync of cheetah's projects, prepare.sh. cheetah-firmware: newest
-          Google factory bootloader/radio. cheetah-kernel: build_kernel only.
-          cheetah-build: full build. cheetah-verify: tree_ref's cheetah-pack.sh and
-          p11-ota.sh, without uploading. routine-install: install tree_ref's routine
-          scripts in ~ (backups kept), then dry-run every device's routine.
-          release-checks: read-only: tree_ref's release-checks.sh on the builds in
-          out/ (query: devices). ccache-direct-mode: ccache direct mode on, and the
-          ~/.profile line that keeps it on.
-          bp-check: read-only: Android.bp files under device/ and vendor/ (and any
-          named in the last build logs) that don't parse, with context and git
-          state. bp-repair: fix the one Android.bp named in query (see query).
-          local-commits: read-only: commits on top of the manifest revision in the
-          repo projects named in query (default: cheetah's four), as patches.
-          expressiveos-host: read-only: disk, host packages and folders the
+          ccache-direct-mode: ccache direct mode on, and the ~/.profile line that
+          keeps it on. expressiveos-host: read-only: disk, host packages and folders the
           ExpressiveOS cheetah tree needs. build-speed: read-only: CPU, memory,
           disks, ccache and past build timings. build-explain: read-only: why a
           product's next build redoes the framework steps (see query).
@@ -214,9 +158,14 @@ on:
           server-cleanup.sh's groups hold now. server-cleanup: permanently remove
           the groups in query. evo-retire: retire Evolution X and DerpFest
           (query: list or check, read-only, list the default; stop; undo; keep;
-          delete out evolution derpfest research leftovers, permanent).
+          delete out evolution derpfest research leftovers cheetah-kit, permanent).
           expressiveos-status: read-only: the ExpressiveOS
-          sessions, logs, keys and every phone's build. expressiveos-setup: install tree_ref's
+          sessions, logs, keys and every phone's build. expressiveos-kit: read-only
+          diff of the installed kit against tree_ref's (query adopt: hand the runner a
+          kit installed some other way, only when it matches tree_ref's exactly).
+          expressiveos-firmware: cheetah's newest Google factory bootloader and radio
+          into ~/android-dt/firmware/cheetah (query check: read-only).
+          expressiveos-setup: install tree_ref's
           expressiveos-cheetah, then setup.sh and ksu/fetch-ksu.sh in tmux.
           expressiveos-keys: make ExpressiveOS's keys (once) and a backup archive.
           expressiveos-pins: read-only: the upstream commit of every project in the
@@ -231,29 +180,9 @@ on:
           tmux (cheetah, or the phone or phones in query). expressiveos-pack: install
           the kit, then eos-pack.sh in tmux (query: the phone; testers).
         type: choice
-        default: status
+        default: expressiveos-status
         options:
-          - status
-          - sync
-          - extract
-          - images
-          - check-sepolicy
-          - imgzip
-          - round
-          - ota
-          - inspect
-          - cheetah-status
-          - cheetah-setup
-          - cheetah-firmware
-          - cheetah-kernel
-          - cheetah-build
-          - cheetah-verify
-          - routine-install
-          - release-checks
           - ccache-direct-mode
-          - bp-check
-          - bp-repair
-          - local-commits
           - expressiveos-host
           - build-speed
           - build-explain
@@ -263,6 +192,8 @@ on:
           - server-cleanup
           - evo-retire
           - expressiveos-status
+          - expressiveos-kit
+          - expressiveos-firmware
           - expressiveos-pins
           - expressiveos-devices
           - expressiveos-update-check
@@ -272,21 +203,12 @@ on:
           - expressiveos-build
           - expressiveos-pack
       tree_ref:
-        description: Branch, tag or commit of this repo to take expressiveos-cheetah (expressiveos-setup, -keys, -build, -pack) from, or, for the retired Evolution X actions, evolution-kodiak/device_google_kodiak (sync, round), evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, routine-install, release-checks)
+        description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -keys, -build, -pack, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
         default: main
       query:
         description: >-
-          inspect only. Space-separated. A name (SELinux type, package, service)
-          is grepped in the stock system_ext/product/vendor policy and contexts; a
-          path relative to the dump (e.g. system_ext/priv-app/Foo) lists it and
-          describes its APKs (manifest), libraries and binaries (NEEDED), rc and
-          xml files. bp-repair: 'restore <path>' (drop the file's uncommitted
-          changes, when its committed version parses) or 'drop-comma <path>'
-          (delete lone ',' lines the parser stops at); path relative to
-          ~/evolution, e.g. vendor/google/kodiak/Android.bp. local-commits:
-          space-separated project paths under device/ or vendor/ (default:
-          cheetah's four projects). server-cleanup-list (optional) and
+          server-cleanup-list (optional) and
           server-cleanup (required): groups, e.g. 1,2,3,4,5,6,7.
           expressiveos-build (optional): device=<phone> (one of tree_ref's
           expressiveos-cheetah/devices: cheetah husky kodiak grizzly cubs yogi;
@@ -311,8 +233,9 @@ on:
           expressiveos/<phone>/testers; only when Daryl says so), try-ok (testers may
           send a candidate built with try=). build-explain
           (required): tree, product, then up to two products to compare, e.g.
-          'evolution lineage_yogi lineage_cubs'. release-checks (optional): devices,
-          e.g. 'kodiak cheetah' (default: all six). expressiveos-update (required):
+          'expressiveos lineage_cheetah lineage_husky'. expressiveos-kit (optional): diff
+          (the default) or adopt. expressiveos-firmware (optional): check.
+          expressiveos-update (required):
           token (read-only: may the push token push to every ExpressiveOS repo?),
           lint [ref] (read-only: a change of ExpressiveOS's manifest, e.g. pull/2, read
           as the update reads it), plan <id> (make update <id>, e.g. 2026-11; nothing
@@ -344,31 +267,16 @@ jobs:
       - name: Preflight
         run: |
           [[ "$TREE_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "::error::bad tree_ref: $TREE_REF"; exit 1; }
-          # Evolution X and DerpFest are retired (evo-retire): their build actions, and
-          # routine-install (which would put the routine scripts back in ~), stay refused
-          # until evo-retire undo. Only the Evolution X actions need ~/evolution; the
-          # ExpressiveOS and server-wide ones run without it.
-          evo_build='sync|extract|images|check-sepolicy|imgzip|round|ota|cheetah-setup|cheetah-firmware|cheetah-kernel|cheetah-build|cheetah-verify|routine-install|bp-repair'
-          evo_tree="$evo_build|status|inspect|cheetah-status|release-checks|bp-check|local-commits"
-          if [[ -f ~/retired/EVO_DERP_RETIRED && "$ACTION" =~ ^($evo_build)$ ]]; then
-            echo "::error::Evolution X and DerpFest are retired on this server: $(head -n 1 ~/retired/EVO_DERP_RETIRED). evo-retire with query undo brings their scripts back"
-            exit 1
-          fi
-          if [[ "$ACTION" =~ ^($evo_tree)$ ]]; then
-            for p in ~/evolution ~/android-dt/trees/device_google_kodiak ~/evolution/device/google/kodiak; do
-              [[ -d "$p" ]] || { echo "::error::missing $p (Evolution X's tree, which $ACTION reads)"; exit 1; }
-            done
-          fi
-          # Builds started by hand (or by another agent) share ~/evolution with
-          # this job, and the husky build too. Don't start on top of one. The
-          # read-only actions run anyway, and so do expressiveos-setup (a repo sync
+          # Builds started by hand (or by another agent) share the server with this
+          # job. Don't start on top of one. The read-only actions run anyway, and so
+          # do expressiveos-setup (a repo sync
           # of its own tree, ~/expressiveos: network and disk, no build),
           # expressiveos-keys (two minutes of openssl in that tree),
           # expressiveos-update-check (fetches and merges in its own folder) and
           # expressiveos-update (the same, and pushes to GitHub)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -381,325 +289,13 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-pins|expressiveos-devices)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-kit|expressiveos-pins|expressiveos-devices)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
             echo "::notice::the ExpressiveOS tmux session $s is running"
           done
           echo "host $(hostname), user $(id -un), action $ACTION, tree_ref $TREE_REF"
-
-      - name: Status
-        if: inputs.action == 'status'
-        run: |
-          echo "== machine"; uptime; free -g | head -2; df -h ~ /tmp | sed 1d
-          echo "== device tree (source of truth)"
-          git -C ~/android-dt/trees/device_google_kodiak log --oneline -3
-          git -C ~/android-dt/trees/device_google_kodiak status --short | head -20
-          echo "== ~/evolution/device/google/kodiak"
-          git -C ~/evolution/device/google/kodiak log --oneline -1
-          git -C ~/evolution/device/google/kodiak status --short | head -20
-          for v in vendor/google/kodiak vendor/google/kodiak-images; do
-            echo "== ~/evolution/$v"
-            git -C ~/evolution/$v log --oneline -1 2>/dev/null || echo "(not a git tree)"
-            git -C ~/evolution/$v status --short 2>/dev/null | head -20 || true
-          done
-          echo "== scripts"; ls -l ~/kodiak-images.sh ~/kodiak-build.sh ~/kodiak-imgzip.sh 2>&1
-          echo "== last build log"; grep -E 'BUILD_EXIT|#### |FAILED:' ~/kodiak-build.log 2>/dev/null | tail -5 || true
-          echo "== image zips"; ls -lh /tmp/kodiak-evox-img*.zip 2>/dev/null || echo none
-
-      - name: Inspect the stock dump
-        if: inputs.action == 'inspect'
-        run: |
-          dump=~/android-dt/dumps/kodiak
-          read -r -a toks <<< "$QUERY"
-          (( ${#toks[@]} > 0 && ${#toks[@]} <= 40 )) || { echo "::error::query needs 1-40 tokens"; exit 1; }
-          for t in "${toks[@]}"; do
-            if [[ ! "$t" =~ ^[A-Za-z0-9_.@/-]+$ || "$t" == /* || "$t" == *..* ]]; then
-              echo "::error::bad query token: $t"; exit 1
-            fi
-          done
-          aapt2=""
-          for c in ~/evolution/out/host/linux-x86/bin/aapt2 ~/evolution/prebuilts/sdk/tools/linux/bin/aapt2 ~/android-dt/bin/aapt2; do
-            [[ -x "$c" ]] && { aapt2="$c"; break; }
-          done
-          pol=(); ctx=()
-          for f in system_ext/etc/selinux/system_ext_sepolicy.cil product/etc/selinux/product_sepolicy.cil vendor/etc/selinux/vendor_sepolicy.cil; do
-            [[ -f "$dump/$f" ]] && pol+=("$dump/$f")
-          done
-          for f in "$dump"/{system_ext,product,vendor}/etc/selinux/*contexts* "$dump"/{system_ext,product}/etc/selinux/*mac_permissions.xml; do
-            [[ -f "$f" ]] && ctx+=("$f")
-          done
-          describe() {
-            local f="$1"; echo "--- ${f#"$dump"/}"
-            case "$f" in
-              *.apk)
-                if [[ -n "$aapt2" ]]; then
-                  "$aapt2" dump badging "$f" 2>/dev/null | grep -E '^(package|sdkVersion|targetSdkVersion|uses-library|uses-native-library|uses-permission|uses-static-library)' | head -100 || true
-                  "$aapt2" dump xmltree --file AndroidManifest.xml "$f" 2>/dev/null | grep -E 'sharedUserId|persistent|directBootAware|android:process|E: (service|provider|receiver)' | head -60 || true
-                else
-                  echo "(no aapt2 found)"
-                fi
-                unzip -l "$f" 2>/dev/null | grep -oE 'lib/[^ ]+\.so' | head -20 || true ;;
-              *.so|*/bin/*)
-                readelf -d "$f" 2>/dev/null | grep -E 'NEEDED|SONAME' | sed 's/.*\[\(.*\)\]/  \1/' || true ;;
-              *.rc|*.xml|*.txt)
-                head -100 "$f" ;;
-            esac
-          }
-          for t in "${toks[@]}"; do
-            if [[ "$t" == */* ]]; then
-              echo "===== path $t"
-              p="$dump/$t"
-              if [[ -d "$p" ]]; then
-                find "$p" -maxdepth 3 | sed "s|^$dump/||" | head -120
-                while IFS= read -r f; do describe "$f"; done < <(find "$p" -maxdepth 3 -type f \( -name '*.apk' -o -name '*.so' -o -name '*.rc' -o -name '*.xml' -o -path '*/bin/*' \) | head -40)
-              elif [[ -f "$p" ]]; then
-                describe "$p"
-              else
-                echo "(not found)"
-              fi
-            else
-              echo "===== name $t"
-              re="(^|[^A-Za-z0-9_.])${t//./\\.}(_[0-9]+)?([^A-Za-z0-9_]|\$)"
-              for f in "${pol[@]}" "${ctx[@]}"; do
-                m="$(grep -nE "$re" "$f" | head -300 || true)"
-                [[ -n "$m" ]] && { echo "--- ${f#"$dump"/}"; echo "$m"; }
-              done
-              true
-            fi
-          done
-
-      - name: Check out the device tree
-        if: inputs.action == 'sync' || inputs.action == 'round'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tree_ref }}
-          sparse-checkout: evolution-kodiak/device_google_kodiak
-          fetch-depth: 1
-
-      - name: Sync to the server tree
-        if: inputs.action == 'sync' || inputs.action == 'round'
-        run: |
-          src="$GITHUB_WORKSPACE/evolution-kodiak/device_google_kodiak/"
-          dst=~/android-dt/trees/device_google_kodiak
-          sha="$(git -C "$GITHUB_WORKSPACE" rev-parse --short HEAD)"
-          # Refuse to overwrite uncommitted work in either tree.
-          for t in "$dst" ~/evolution/device/google/kodiak; do
-            if [[ -n "$(git -C "$t" status --porcelain)" ]]; then
-              echo "::error::$t has uncommitted changes; commit or stash them first"
-              git -C "$t" status --short | head -20
-              exit 1
-            fi
-          done
-          # Same as HANDOFF.md section 11: copy over, no --delete.
-          rsync -a --exclude .git "$src" "$dst/"
-          git -C "$dst" add -A
-          if git -C "$dst" diff --cached --quiet; then
-            echo "server tree already matches $TREE_REF@$sha"
-          else
-            git -C "$dst" diff --cached --stat
-            ident=()
-            git -C "$dst" config user.email > /dev/null || ident=(-c user.name=kodiak-runner -c user.email=build@kodiak-build-server)
-            git -C "$dst" ${ident[@]+"${ident[@]}"} commit -q -m "sync from Denson9874-Device-Central $TREE_REF@$sha"
-            if git -C "$dst" diff --name-only HEAD~1 HEAD | grep -q '^proprietary-files'; then
-              echo "::warning::proprietary-files changed: run extract before building"
-            fi
-          fi
-          git -C ~/evolution/device/google/kodiak pull -q --ff-only
-          git -C ~/evolution/device/google/kodiak log --oneline -1
-
-      - name: Extract blobs
-        if: inputs.action == 'extract' || inputs.action == 'round'
-        run: |
-          for venv in ~/android-dt/venv ~/android-dt/.venv; do
-            if [[ -f "$venv/bin/activate" ]]; then
-              echo "using $venv"; set +u; source "$venv/bin/activate"; set -u; break
-            fi
-          done
-          export PATH="$HOME/android-dt/bin:$PATH"
-          cd ~/evolution/device/google/kodiak
-          ./extract-files.py ~/android-dt/dumps/kodiak
-          git -C ~/evolution/vendor/google/kodiak status --short | head -40
-
-      - name: Build images
-        if: inputs.action == 'images' || inputs.action == 'round'
-        run: |
-          # Full log stays on the server, where the HANDOFF grep commands expect it.
-          ~/kodiak-images.sh > ~/kodiak-build.log 2>&1 || true
-          grep -E 'FAILED:|error:' ~/kodiak-build.log | head -40 || true
-          tail -40 ~/kodiak-build.log
-          grep -q '^BUILD_EXIT=0$' ~/kodiak-build.log || { echo "::error::build failed (log: ~/kodiak-build.log)"; exit 1; }
-
-      - name: Build OTA (m evolution)
-        if: inputs.action == 'ota'
-        run: |
-          ~/kodiak-build.sh > ~/kodiak-build.log 2>&1 || true
-          grep -E 'FAILED:|error:' ~/kodiak-build.log | head -40 || true
-          tail -40 ~/kodiak-build.log
-          grep -q '^BUILD_EXIT=0$' ~/kodiak-build.log || { echo "::error::build failed (log: ~/kodiak-build.log)"; exit 1; }
-          ls -lh ~/evolution/out/target/product/kodiak/EvolutionX-*.zip 2>/dev/null | tail -3 || true
-
-      - name: Check SELinux policy against the stock vendor
-        if: contains(fromJSON('["images","check-sepolicy","round","ota"]'), inputs.action)
-        run: |
-          cd ~/evolution
-          device/google/kodiak/check-sepolicy.sh out/host/linux-x86/bin/secilc \
-            out/target/product/kodiak ~/android-dt/dumps/kodiak/vendor | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Pack the fastboot zip
-        if: inputs.action == 'imgzip' || inputs.action == 'round'
-        run: |
-          sha="$(git -C ~/android-dt/trees/device_google_kodiak rev-parse --short HEAD)"
-          zip="/tmp/kodiak-evox-img-$sha.zip"
-          ~/kodiak-imgzip.sh ~/evolution/out/target/product/kodiak \
-            ~/android-dt/firmware/image-kodiak-cd1a.261005.003.zip "$zip"
-          echo "Image zip on the server: \`$zip\` (sha256 in \`$zip.sha256\`). Copy it to the Mac with scp; it never leaves the server otherwise." | tee -a "$GITHUB_STEP_SUMMARY"
-
-      # ---- Pixel 7 Pro (cheetah): evolution-cheetah/README.md -------------------
-
-      - name: Cheetah status
-        if: inputs.action == 'cheetah-status'
-        run: |
-          cd ~/evolution
-          echo "== tree lock"; if flock -n ~/.evolution-tree.lock true; then echo free; else echo "held (a routine or build is running)"; fi
-          echo "== kit"; ls -l ~/evolution-cheetah/prepare.sh ~/cheetah-images.sh ~/cheetah-pack.sh 2>&1 || true
-          echo "== local manifest"; ls -l .repo/local_manifests/ 2>&1
-          for p in device/google/pantah device/google/gs201 device/google/pantah-kernels vendor/google/cheetah; do
-            echo "== $p"; git -C $p log --oneline -4 2>/dev/null || echo "(not synced)"
-          done
-          echo "== firmware"; echo "cached: $(cat ~/android-dt/firmware/cheetah/CURRENT 2>/dev/null || echo none)"
-          echo "in vendor tree: $(cat vendor/google/cheetah/FIRMWARE_SOURCE 2>/dev/null || echo "vendor repo default")"
-          echo "== kernel"; ls -la device/google/pantah-kernels/6.1 2>/dev/null | head -8 || true
-          echo "== last build log"; grep -E 'BUILD_EXIT|#### |FAILED:' ~/cheetah-build.log 2>/dev/null | tail -5 || true
-          echo "== releases"; ls -lh ~/releases/cheetah 2>/dev/null || echo none
-          echo "== routine logs"; ls -t ~/routine-logs/cheetah-* 2>/dev/null | head -3 || true
-
-      - name: Check out evolution-cheetah and the routine scripts
-        if: contains(fromJSON('["cheetah-setup","cheetah-verify"]'), inputs.action)
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tree_ref }}
-          sparse-checkout: |
-            evolution-cheetah
-            evolution-kodiak/tools
-          fetch-depth: 1
-
-      - name: Cheetah setup
-        if: inputs.action == 'cheetah-setup'
-        run: |
-          exec 9>~/.evolution-tree.lock
-          flock -n 9 || { echo "::error::the tree lock is held (a routine or build is running)"; exit 1; }
-          git lfs version || { echo "::error::git-lfs isn't installed (vendor_google_cheetah needs it)"; exit 1; }
-          sha="$(git -C "$GITHUB_WORKSPACE" rev-parse --short HEAD)"
-          rsync -a --delete --exclude .git "$GITHUB_WORKSPACE/evolution-cheetah/" ~/evolution-cheetah/
-          echo "$TREE_REF@$sha" > ~/evolution-cheetah/INSTALLED_FROM
-          # The first setup only: after that, routine-install keeps ~/cheetah-*.sh in step with the
-          # other routine scripts (an older kit's cheetah-pack.sh can't stage a release)
-          for f in cheetah-images.sh cheetah-pack.sh; do
-            [[ -e ~/$f ]] || install -m 755 ~/evolution-cheetah/tools/$f ~/$f
-          done
-          mkdir -p ~/evolution/.repo/local_manifests
-          install -m 644 ~/evolution-cheetah/local_manifests/cheetah.xml ~/evolution/.repo/local_manifests/cheetah.xml
-          cd ~/evolution
-          projects="device/google/pantah device/google/gs201 device/google/pantah-kernels vendor/google/cheetah"
-          # Only cheetah's projects; leave the manifest checkout (when repo allows) and everything else alone.
-          nmu=; help="$(repo sync --help 2>/dev/null || true)"; [[ "$help" == *--nmu* ]] && nmu=--nmu
-          repo sync -c -j4 --no-tags --no-clone-bundle $nmu $projects 9>&- \
-            || repo sync -c -j2 --no-tags --no-clone-bundle $nmu $projects 9>&-
-          ~/evolution-cheetah/prepare.sh ~/evolution 9>&-
-          for p in $projects; do echo "== $p"; git -C $p log --oneline -3; done
-          ls -la vendor/google/cheetah/radio; du -sh vendor/google/cheetah
-          echo "cheetah kit $TREE_REF@$sha installed; projects synced" | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Cheetah firmware
-        if: inputs.action == 'cheetah-firmware'
-        run: |
-          exec 9>~/.evolution-tree.lock
-          flock -n 9 || { echo "::error::the tree lock is held (a routine or build is running)"; exit 1; }
-          ~/evolution-cheetah/fetch-firmware.sh 9>&-
-          ~/evolution-cheetah/prepare.sh ~/evolution 9>&-
-
-      - name: Cheetah build
-        if: inputs.action == 'cheetah-kernel' || inputs.action == 'cheetah-build'
-        run: |
-          exec 9>~/.evolution-tree.lock
-          flock -n 9 || { echo "::error::the tree lock is held (a routine or build is running)"; exit 1; }
-          k=0; [[ "$ACTION" == cheetah-kernel ]] && k=1
-          KERNEL_ONLY=$k ~/cheetah-images.sh > ~/cheetah-build.log 2>&1 9>&- || true
-          grep -E 'FAILED:|error:|build_kernel failed|prepare.sh failed' ~/cheetah-build.log | head -40 || true
-          tail -40 ~/cheetah-build.log
-          grep -q '^BUILD_EXIT=0$' ~/cheetah-build.log || { echo "::error::build failed (log: ~/cheetah-build.log)"; exit 1; }
-          ls -lh ~/evolution/out/target/product/cheetah/EvolutionX-*.zip 2>/dev/null | tail -2 || true
-
-      - name: Cheetah verify (no upload)
-        if: inputs.action == 'cheetah-verify'
-        run: |
-          # tree_ref's copies, so a fixed check can run without cheetah-setup's repo sync
-          bash "$GITHUB_WORKSPACE/evolution-cheetah/tools/cheetah-pack.sh"
-          bash "$GITHUB_WORKSPACE/evolution-kodiak/tools/p11-ota.sh" cheetah --preview
-
-      # ---- The weekly routines' scripts (evolution-kodiak/tools/p11-routine.sh) ----
-
-      - name: Check out the routine scripts to install or check
-        if: inputs.action == 'routine-install' || inputs.action == 'release-checks'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tree_ref }}
-          sparse-checkout: |
-            evolution-kodiak/tools
-            evolution-cheetah/tools
-            evolution-husky/tools
-          fetch-depth: 1
-
-      - name: Install the routine scripts
-        if: inputs.action == 'routine-install'
-        run: |
-          exec 9>~/.evolution-tree.lock
-          flock -n 9 || { echo "::error::the tree lock is held (a routine or build is running)"; exit 1; }
-          # A routine waiting for the tree (or uploading after it) is still reading its script
-          if pgrep -u "$(id -u)" -f 'p11-routine\.sh|release-chain' > /dev/null; then
-            pgrep -a -u "$(id -u)" -f 'p11-routine\.sh|release-chain' | cut -c1-200
-            echo "::error::a routine is running or waiting"; exit 1
-          fi
-          w=$GITHUB_WORKSPACE
-          files=(
-            evolution-kodiak/tools/{p11-routine,p11-ota,p11-upload,release-chain,release-cleanup,release-checks}.sh
-            evolution-kodiak/tools/{kodiak-release-pack,grizzly-pack,cubs-pack,yogi-pack}.sh
-            evolution-cheetah/tools/{cheetah-images,cheetah-pack}.sh
-            evolution-husky/tools/{husky-images,husky-release-pack}.sh
-          )
-          for f in "${files[@]}"; do bash -n "$w/$f"; done
-          bak=~/routine-backups/$(date +%Y%m%d-%H%M%S); mkdir -p "$bak"
-          echo "$TREE_REF@$(git -C "$w" rev-parse --short HEAD)" > "$bak/INSTALLED_FROM"
-          for f in "${files[@]}"; do
-            n=$(basename "$f")
-            if [[ -f ~/$n ]] && cmp -s ~/"$n" "$w/$f"; then echo "same       ~/$n"; continue; fi
-            note=" (new)"
-            if [[ -f ~/$n ]]; then cp -p ~/"$n" "$bak/$n"; note=" (previous: $bak/$n)"; fi
-            # A new file renamed over the old one, never rewritten in place
-            install -m 755 "$w/$f" ~/".$n.new" && mv -f ~/".$n.new" ~/"$n"
-            echo "installed  ~/$n$note"
-          done
-          exec 9>&-   # the dry runs take the lock themselves
-          for d in kodiak grizzly yogi cubs husky cheetah; do
-            echo "== dry run: $d"
-            timeout 900 ~/p11-routine.sh $d --dry-run 2>&1 | tail -6 || true
-          done
-
-      # Read-only, so it runs beside a build too (a device being built shows a half-written out/)
-      - name: Release checks on the builds in out/
-        if: inputs.action == 'release-checks'
-        run: |
-          read -r -a devs <<< "${QUERY:-kodiak grizzly cubs yogi cheetah husky}"
-          rc=0
-          for d in "${devs[@]}"; do
-            [[ "$d" =~ ^(kodiak|grizzly|cubs|yogi|cheetah|husky)$ ]] || { echo "::error::not a device: $d"; exit 1; }
-            o=~/evolution/out/target/product/$d
-            echo "======== $d: $(grep -h -m1 '^ro.evolution.build.version=' $o/system/build.prop $o/product/etc/build.prop 2>/dev/null | head -1 | cut -d= -f2 || true) (out/ from $(date -r $o/system/build.prop '+%F %T' 2>/dev/null || echo "no build"))"
-            bash "$GITHUB_WORKSPACE/evolution-kodiak/tools/release-checks.sh" "$d" || rc=1
-          done
-          exit $rc
 
       - name: ccache direct mode
         if: inputs.action == 'ccache-direct-mode'
@@ -719,188 +315,6 @@ jobs:
           fi
           echo "== after"; ccache -p | grep -E ' direct_mode '
           ccache -s | grep -E 'Hits|Direct|Preprocessed|Misses' | head -6
-
-      # ---- Android.bp syntax: one file that doesn't parse stops every build ----
-
-      - name: Android.bp check
-        if: inputs.action == 'bp-check'
-        run: |
-          cd ~/evolution
-          bpfmt=""
-          for c in prebuilts/build-tools/linux-x86/bin/bpfmt out/host/linux-x86/bin/bpfmt; do
-            [[ -x "$c" ]] && { bpfmt="$PWD/$c"; break; }
-          done
-          [[ -n "$bpfmt" ]] || { echo "::error::no bpfmt in prebuilts/build-tools or out/host"; exit 1; }
-          echo "== blueprint errors in the last build logs"
-          for l in ~/*-build.log; do
-            [[ -f "$l" ]] || continue
-            e="$(grep -E '^error: .*\.bp:[0-9]+:[0-9]+:' "$l" | tail -3 || true)"
-            if [[ -n "$e" ]]; then echo "--- $l ($(date -r "$l" '+%F %T'))"; echo "$e"; fi
-          done
-          # Every Android.bp under device/ and vendor/, plus any other one a build log names
-          list=$(mktemp); trap 'rm -f "$list"' EXIT
-          find device vendor -name .git -prune -o -name Android.bp -type f -print > "$list" || echo "(find reported errors)"
-          { grep -ohE '^error: [A-Za-z0-9._+/-]+\.bp:' ~/*-build.log 2>/dev/null || true; } | sed -E 's/^error: //; s/:$//' \
-            | { grep -vE '^(device|vendor)/|^/|\.\.' || true; } | sort -u | while read -r f; do
-                [[ -f "$f" ]] && echo "$f" || true
-              done >> "$list"
-          echo "== checking $(wc -l < "$list") Android.bp files"
-          bad="$(tr '\n' '\0' < "$list" | xargs -0 -r "$bpfmt" -l 2>&1 > /dev/null | grep -E '^[^ :]+\.bp:[0-9]+:[0-9]+: ' || true)"
-          if [[ -z "$bad" ]]; then
-            echo "bp-check: every Android.bp checked parses" | tee -a "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          echo "$bad"
-          while IFS=: read -r f line _; do
-            echo; echo "===== $f (first error: line $line)"
-            awk -v l="$line" 'NR >= l - 12 && NR <= l + 8 { printf "%s%6d  %s\n", (NR == l ? ">" : " "), NR, $0 }' "$f"
-            if [[ "$(sed -n "${line}p" "$f")" =~ ^[[:space:]]*,[[:space:]]*$ ]]; then
-              echo "line $line is a lone ',': bp-repair 'drop-comma $f' removes it"
-            fi
-            top="$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null || true)"
-            if [[ -z "$top" ]]; then echo "(not in a git tree)"; continue; fi
-            rel="$(realpath --relative-to="$top" "$f")"
-            echo "--- project ${top#"$PWD"/}, HEAD $(git -C "$top" log --oneline -1)"
-            echo "--- commits touching $rel"
-            git -C "$top" log -3 --format='%h %ad %an  %s' --date=iso -- "$rel"
-            echo "--- uncommitted changes in the project"
-            git -C "$top" status --short | head -30 || true
-            if ! git -C "$top" ls-files --error-unmatch -- "$rel" > /dev/null 2>&1; then
-              echo "$rel isn't tracked by git"
-            elif git -C "$top" diff --quiet HEAD -- "$rel"; then
-              echo "--- $rel matches HEAD, so the error is committed. The last commit's change to it:"
-              git -C "$top" log -1 -p --format='%h %s' -- "$rel" | head -150 || true
-            else
-              echo "--- uncommitted changes to $rel"
-              git -C "$top" diff --stat HEAD -- "$rel"
-              git -C "$top" diff -U3 HEAD -- "$rel" | head -150 || true
-              tmp=$(mktemp -d)
-              git -C "$top" show "HEAD:$rel" > "$tmp/Android.bp"
-              if "$bpfmt" -l "$tmp/Android.bp" > /dev/null 2>&1; then
-                echo "HEAD's version parses: bp-repair 'restore $f' puts it back (dropping the changes above)"
-              else
-                echo "HEAD's version doesn't parse either"
-              fi
-              rm -rf "$tmp"
-            fi
-          done < <(awk -F: '!seen[$1]++' <<< "$bad")
-          echo "::error::$(awk -F: '!seen[$1]++' <<< "$bad" | wc -l) Android.bp file(s) don't parse; every build stops until they do"
-          exit 1
-
-      - name: Android.bp repair
-        if: inputs.action == 'bp-repair'
-        run: |
-          exec 9>~/.evolution-tree.lock
-          flock -n 9 || { echo "::error::the tree lock is held (a routine or build is running)"; exit 1; }
-          fail() { echo "::error::$*"; exit 1; }
-          cd ~/evolution
-          read -r mode f extra <<< "$QUERY"
-          [[ "${mode:-}" =~ ^(restore|drop-comma)$ && -z "${extra:-}" ]] || fail "query must be 'restore <path>' or 'drop-comma <path>'"
-          [[ "${f:-}" =~ ^(device|vendor)/[A-Za-z0-9._/-]+/Android\.bp$ && "$f" != *..* ]] || fail "bad path '${f:-}': an Android.bp under device/ or vendor/"
-          [[ -f "$f" && ! -L "$f" ]] || fail "no such file: $f"
-          [[ "$(realpath "$f")" == "$(pwd -P)"/* ]] || fail "$f resolves outside ~/evolution"
-          bpfmt=""
-          for c in prebuilts/build-tools/linux-x86/bin/bpfmt out/host/linux-x86/bin/bpfmt; do
-            [[ -x "$c" ]] && { bpfmt="$PWD/$c"; break; }
-          done
-          [[ -n "$bpfmt" ]] || fail "no bpfmt in prebuilts/build-tools or out/host"
-          parses() { "$bpfmt" -l "$1" > /dev/null 2>&1; }
-          if parses "$f"; then echo "$f already parses; nothing to do"; exit 0; fi
-          top="$(git -C "$(dirname "$f")" rev-parse --show-toplevel)"
-          rel="$(realpath --relative-to="$top" "$f")"
-          tracked=0; git -C "$top" ls-files --error-unmatch -- "$rel" > /dev/null 2>&1 && tracked=1
-          clean=0; (( tracked )) && git -C "$top" diff --quiet HEAD -- "$rel" && clean=1
-          if [[ "$mode" == restore ]]; then
-            # Only when the damage is uncommitted and the committed version is good
-            (( tracked )) || fail "$rel isn't tracked by git: there's no committed version to restore"
-            (( ! clean )) || fail "$rel has no uncommitted changes: the error is committed (see bp-check)"
-            tmp=$(mktemp -d)
-            git -C "$top" show "HEAD:$rel" > "$tmp/Android.bp"
-            if ! parses "$tmp/Android.bp"; then rm -rf "$tmp"; fail "HEAD's version of $rel doesn't parse either"; fi
-            rm -rf "$tmp"
-          fi
-          # Keep the file as it was, and the project's state, before touching anything
-          mkdir -p ~/bp-repair-backups
-          bak=$(mktemp -d ~/bp-repair-backups/"$(date +%Y%m%d-%H%M%S)"-XXXX)
-          cp -p "$f" "$bak/Android.bp"
-          git -C "$top" status --short > "$bak/git-status.txt"
-          git -C "$top" diff HEAD -- "$rel" > "$bak/uncommitted.patch"
-          echo "$f, project ${top#"$PWD"/} at $(git -C "$top" rev-parse --short HEAD), mode $mode" > "$bak/SOURCE"
-          echo "backup of the file as it was: $bak/Android.bp"
-          "$bpfmt" -l "$f" 2>&1 > /dev/null | grep -E '\.bp:[0-9]+:[0-9]+: ' || true
-          case "$mode" in
-            restore)
-              echo "== dropping these uncommitted changes (kept in $bak/uncommitted.patch)"
-              git -C "$top" diff --stat HEAD -- "$rel"
-              git -C "$top" checkout HEAD -- "$rel"
-              ;;
-            drop-comma)
-              # Only lines that hold nothing but a ',' and are exactly where the parser stops
-              for _ in $(seq 20); do
-                err="$("$bpfmt" -l "$f" 2>&1 > /dev/null | grep -m1 -E '\.bp:[0-9]+:[0-9]+: ' || true)"
-                [[ -n "$err" ]] || break
-                line="$(sed -E 's/^.*\.bp:([0-9]+):[0-9]+: .*/\1/' <<< "$err")"
-                text="$(sed -n "${line}p" "$f")"
-                if [[ "$err" != *'found ","'* || ! "$text" =~ ^[[:space:]]*,[[:space:]]*$ ]]; then
-                  cp -p "$bak/Android.bp" "$f"
-                  fail "not a lone ',': $err (line $line is '$text'); $f left as it was"
-                fi
-                sed -i "${line}d" "$f"
-                echo "removed line $line (a lone ',')"
-              done
-              if ! parses "$f"; then cp -p "$bak/Android.bp" "$f"; fail "$f still doesn't parse; left as it was"; fi
-              echo "== change"; diff -u "$bak/Android.bp" "$f" || true
-              if (( clean )); then
-                # The comma was committed: commit the fix the same way (never pushed anywhere)
-                ident=()
-                git -C "$top" config user.email > /dev/null || ident=(-c user.name=kodiak-runner -c user.email=build@kodiak-build-server)
-                git -C "$top" ${ident[@]+"${ident[@]}"} commit -q -m "Android.bp: drop a stray ',' that stopped Soong's blueprint parse" -- "$rel"
-                git -C "$top" log --oneline -1
-              elif (( tracked )); then
-                echo "left uncommitted: $rel had other uncommitted changes, kept as they were"
-              else
-                echo "left uncommitted: $rel isn't tracked by git"
-              fi
-              ;;
-          esac
-          if ! parses "$f"; then cp -p "$bak/Android.bp" "$f"; fail "$f doesn't parse after the repair; left as it was"; fi
-          git -C "$top" status --short -- "$rel"
-          echo "bp-repair: $mode $f done, it parses now; the file as it was is in $bak on the server" | tee -a "$GITHUB_STEP_SUMMARY"
-          echo "next: bp-check, to confirm no other Android.bp blocks the build"
-
-      - name: Local commits
-        if: inputs.action == 'local-commits'
-        run: |
-          cd ~/evolution
-          read -r -a projects <<< "${QUERY:-device/google/pantah device/google/gs201 device/google/pantah-kernels vendor/google/cheetah}"
-          (( ${#projects[@]} > 0 && ${#projects[@]} <= 10 )) || { echo "::error::query needs 1-10 project paths"; exit 1; }
-          for p in "${projects[@]}"; do
-            if [[ ! "$p" =~ ^(device|vendor)/[A-Za-z0-9._/-]+$ || "$p" == *..* || ! -e "$p/.git" ]] \
-               || [[ "$(realpath "$p")" != "$(pwd -P)"/* ]]; then
-              echo "::error::bad project path: $p (a git project under device/ or vendor/)"; exit 1
-            fi
-          done
-          for p in "${projects[@]}"; do
-            # repo keeps the manifest revision of each project in refs/remotes/m/<branch>
-            base="$(git -C "$p" for-each-ref --count=1 --format='%(refname)' refs/remotes/m/)"
-            echo; echo "=================== $p"
-            if [[ -z "$base" ]]; then
-              echo "(not a repo project: no refs/remotes/m/; last commits)"
-              git -C "$p" log -5 --format='%h %ad %an  %s' --date=iso
-              continue
-            fi
-            echo "--- commits on HEAD that aren't in ${base#refs/remotes/} ($(git -C "$p" rev-parse --short "$base"))"
-            git -C "$p" log --format='%h %ad %an  %s' --date=iso "$base..HEAD"
-            echo "--- uncommitted changes"
-            git -C "$p" status --short | head -30 || true
-            n="$(git -C "$p" rev-list --count "$base..HEAD")"
-            (( n > 0 )) || continue
-            echo "--- the $n commit(s) as patches (binary changes are named, not included)"
-            git -C "$p" format-patch --stdout --no-binary "$base..HEAD" > "$RUNNER_TEMP/lc.patch"
-            lines=$(wc -l < "$RUNNER_TEMP/lc.patch")
-            head -6000 "$RUNNER_TEMP/lc.patch"
-            (( lines <= 6000 )) || echo "(cut after 6000 of $lines lines)"
-          done
 
       - name: ExpressiveOS host check
         if: inputs.action == 'expressiveos-host'
@@ -1051,10 +465,100 @@ jobs:
       - name: Retire Evolution X and DerpFest
         if: inputs.action == 'evo-retire'
         run: |
-          part='(out|evolution|derpfest|research|leftovers)'
-          [[ "${QUERY:-list}" =~ ^(list|check|stop|undo|keep|delete( $part)+)$ ]] || { echo "::error::query is list, check, stop, undo, keep, or delete followed by parts: out evolution derpfest research leftovers"; exit 1; }
+          part='(out|evolution|derpfest|research|leftovers|cheetah-kit)'
+          [[ "${QUERY:-list}" =~ ^(list|check|stop|undo|keep|delete( $part)+)$ ]] || { echo "::error::query is list, check, stop, undo, keep, or delete followed by parts: out evolution derpfest research leftovers cheetah-kit"; exit 1; }
           read -ra q <<< "${QUERY:-list}"
           bash expressiveos-cheetah/tools/evo-retire.sh "${q[@]}"
+
+      # ---- The installed kit, and cheetah's firmware cache ----------------------------------
+
+      - name: Check out expressiveos-cheetah to compare or fetch with
+        if: inputs.action == 'expressiveos-kit' || inputs.action == 'expressiveos-firmware'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tree_ref }}
+          sparse-checkout: expressiveos-cheetah
+          fetch-depth: 1
+
+      - name: ExpressiveOS kit (diff, or adopt)
+        if: inputs.action == 'expressiveos-kit'
+        run: |
+          [[ "${QUERY:-diff}" =~ ^(diff|adopt)$ ]] || { echo "::error::query is diff (read-only, the default) or adopt"; exit 1; }
+          kit=~/expressiveos-cheetah src=$GITHUB_WORKSPACE/expressiveos-cheetah
+          [[ -f $src/eos.conf && -f $src/lib.sh ]] || { echo "::error::$TREE_REF has no expressiveos-cheetah/"; exit 1; }
+          [[ ! -L $kit ]] || { echo "::error::$kit is a symlink"; exit 1; }
+          [[ -d $kit ]] || { echo "::error::no $kit: expressiveos-setup or -build installs one"; exit 1; }
+          sha=$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)
+          echo "== installed: $(cat "$kit/INSTALLED_FROM" 2>/dev/null || echo "some other way (no INSTALLED_FROM)")"
+          echo "== compared with: $TREE_REF@${sha:0:7}"
+          # Everything on each side: folders, files, links and anything else, by type, and for a
+          # file whether it's executable (the only mode bit git keeps, so a kit copied under
+          # another umask still matches). Left out: the kit's own INSTALLED_FROM, Python's
+          # __pycache__ folders, and .git (listed apart below: the ref never has one)
+          list() { (cd "$1" && find . -mindepth 1 \( -path ./INSTALLED_FROM -o -name .git -o \( -name __pycache__ -type d \) \) -prune \
+                      -o \( -type f -perm -u=x -printf 'fx %P\n' \) -o \( -type f -printf 'f- %P\n' \) -o -printf '%y %P\n' | LC_ALL=C sort); }
+          list "$src" > "$RUNNER_TEMP/ref.ls"; list "$kit" > "$RUNNER_TEMP/server.ls"
+          names=$(diff "$RUNNER_TEMP/ref.ls" "$RUNNER_TEMP/server.ls" | sed -n 's/^< /only in the ref, or another type: /p; s/^> /only on the server, or another type: /p' || true)
+          # A git repository anywhere in the kit holds history the ref doesn't, and the next
+          # install deletes it with the old kit
+          gits=$(cd "$kit" && find . -mindepth 1 -name .git -prune -printf 'a git repository on the server (its history is not in the ref): %P\n' | LC_ALL=C sort || true)
+          if [[ -n $gits ]]; then names=$(printf '%s\n%s' "$gits" "$names" | sed '/^$/d'); fi
+          # Then the files both have whose bytes differ, and the links whose targets differ
+          bytes="" links=""
+          while IFS= read -r e; do
+            t=${e%% *} f=${e#* }
+            case $t in
+              f?) cmp -s -- "$src/$f" "$kit/$f" || bytes+="$f"$'\n' ;;
+              l) [[ "$(readlink -- "$src/$f")" == "$(readlink -- "$kit/$f")" ]] || links+="$f"$'\n' ;;
+            esac
+          done < <(LC_ALL=C comm -12 "$RUNNER_TEMP/ref.ls" "$RUNNER_TEMP/server.ls")
+          bytes=${bytes%$'\n'} links=${links%$'\n'}
+          # (Long lists are cut with head reading a here-string, not a pipe: under pipefail an echo
+          # into a head that stops early would end the step, SIGPIPE, before the verdict)
+          if [[ -z $names && -z $bytes && -z $links ]]; then
+            echo "SAME: every folder, file, link and executable bit matches $TREE_REF@${sha:0:7}"
+          else
+            [[ -z $names ]] || { echo "== names or types that differ ($(wc -l <<< "$names"), the first 200 shown)"; head -n 200 <<< "$names"; }
+            [[ -z $links ]] || { echo "== links that point somewhere else ($(wc -l <<< "$links"))"; head -n 200 <<< "$links"; }
+            if [[ -n $bytes ]]; then
+              echo "== files whose contents differ ($(wc -l <<< "$bytes"))"
+              head -n 200 <<< "$bytes"
+              # Text the kit is made of, as a diff (ref first). A file whose name could be a key or
+              # a keybox is named only, and any line that may hold a secret is hidden
+              hide() { sed -E 's/^([-+ ]?).*(token|secret|passw|api[_-]?key|private|BEGIN [A-Z ]*KEY|authorization|bearer|cookie|keybox).*$/\1[line hidden: it may hold a secret]/I'; }
+              echo "$bytes" | while IFS= read -r f; do
+                case ${f,,} in
+                  *key*|*.pem|*.pk8|*.p12|*.jks|*token*|*secret*) echo "== $f: named only"; continue ;;
+                  *.sh|*.py|*.conf|*.md|*.txt|*.patch|*.mk|*.bp|*.rc|*.xml|*.json|*.cfg|*.list) ;;
+                  *) echo "== $f: not text the kit is made of, named only"; continue ;;
+                esac
+                echo "== $f"
+                diff -u --label "ref/$f" --label "server/$f" -- "$src/$f" "$kit/$f" | hide | head -n 300 || true
+              done
+            fi
+            echo "DIFFERS: the installed kit isn't $TREE_REF@${sha:0:7}"
+          fi
+          [[ "${QUERY:-diff}" = adopt ]] || exit 0
+          # adopt: from now on the runner installs over this kit as over its own. Only an exact
+          # match: a kit with other files would be replaced (and its changes lost) by the next
+          # expressiveos-setup or -build
+          [[ -z $names && -z $bytes && -z $links ]] || { echo "::error::not adopted: the installed kit differs from $TREE_REF@${sha:0:7} (above). Put those changes in a branch and adopt from it, or move the kit away"; exit 1; }
+          exec 8>~/.expressiveos.lock
+          flock -n 8 || { echo "::error::~/.expressiveos.lock is held (an ExpressiveOS setup, build or pack is running)"; exit 1; }
+          if [[ -f $kit/INSTALLED_FROM ]]; then echo "already the runner's: $(cat "$kit/INSTALLED_FROM")"; exit 0; fi
+          printf '%s@%s\n' "$TREE_REF" "$sha" > "$kit/INSTALLED_FROM.new"
+          mv -- "$kit/INSTALLED_FROM.new" "$kit/INSTALLED_FROM"
+          echo "ADOPTED: ~/expressiveos-cheetah is $TREE_REF@${sha:0:7}; expressiveos-setup, -build and -pack install over it from now on" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: ExpressiveOS firmware (cheetah)
+        if: inputs.action == 'expressiveos-firmware'
+        run: |
+          [[ "${QUERY:-}" =~ ^(check)?$ ]] || { echo "::error::query is empty (fetch) or check (read-only)"; exit 1; }
+          if [[ "${QUERY:-}" = check ]]; then bash expressiveos-cheetah/tools/fetch-firmware.sh --check; exit 0; fi
+          # prepare.sh reads the cache at the start of every cheetah build: not while one runs
+          exec 8>~/.expressiveos.lock
+          flock -n 8 || { echo "::error::~/.expressiveos.lock is held (an ExpressiveOS setup, build or pack is running)"; exit 1; }
+          bash expressiveos-cheetah/tools/fetch-firmware.sh 8>&-
 
       # ---- ExpressiveOS for cheetah: expressiveos-cheetah/README.md ---------------
 
@@ -1092,7 +596,9 @@ jobs:
               q=$(ps -o ppid= -p "$q" 2>/dev/null | tr -d ' ' || true)
             done
           fi
-          echo "== kit: $(cat ~/expressiveos-cheetah/INSTALLED_FROM 2>/dev/null || echo "not installed")"
+          if [[ -f ~/expressiveos-cheetah/INSTALLED_FROM ]]; then echo "== kit: $(cat ~/expressiveos-cheetah/INSTALLED_FROM)"
+          elif [[ -d ~/expressiveos-cheetah ]]; then echo "== kit: installed some other way (no INSTALLED_FROM): expressiveos-kit compares it with a ref, and adopts it when they match"
+          else echo "== kit: not installed"; fi
           grep -E '^EOS_(AVB_PUBKEY_SHA1|OTA_CERT_SHA256)=' ~/expressiveos-cheetah/eos.conf 2>/dev/null || true
           echo "== tree"
           if [[ -d $top/.repo ]]; then
@@ -1149,12 +655,6 @@ jobs:
           # Names only. The kit and the routines call ~/bin/rclone (eos-pack.sh --upload needs
           # EOS_R2_REMOTE's remote), which this step's PATH doesn't have
           if [[ -x ~/bin/rclone ]]; then echo "== ~/bin/rclone remotes: $(~/bin/rclone listremotes 2>/dev/null | tr '\n' ' ')"; else echo "== no ~/bin/rclone"; fi
-          echo "== Evolution X routines (they share the tree lock): newest result per device"
-          for f in ~/routine-logs/*-latest.out; do
-            [[ -f $f ]] || continue
-            echo "$(basename "$f" -latest.out): $(date -r "$f" '+%F %T'), $(grep -a '^ROUTINE_RESULT=' "$f" | tail -1 || true)"
-          done
-          ls -t ~/routine-logs 2>/dev/null | head -8 || true
           ls -lh ~/releases/expressiveos-cheetah/check 2>/dev/null || true
           # The other phones' candidates, and any phone's builds for testers (eos-pack.sh
           # --testers), where there are any
