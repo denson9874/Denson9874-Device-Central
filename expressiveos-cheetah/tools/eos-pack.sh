@@ -417,7 +417,7 @@ if [[ -z "$mode" ]]; then
     # A check isn't a release: one candidate in check/, replaced each time
     if ! cmp -s -- "$T/$NAME" "$CHECK/$NAME" 2>/dev/null; then
         find "$CHECK" -maxdepth 1 -type f \( -name '*-fastboot.zip' -o -name '*.sha256' -o -name '*.img' \
-            -o -name '*-manifest.xml' -o -name '*-sources.txt' \) -delete
+            -o -name '*-manifest.xml' -o -name '*-sources.txt' -o -name '*-changelog.txt' \) -delete
         cp -- "$T/$NAME" "$CHECK/$NAME"
     fi
     if [[ $EOS_KSU = lkm ]]; then
@@ -428,9 +428,15 @@ if [[ -z "$mode" ]]; then
         (cd "$CHECK" && sha256sum -- "$NAME" > "$NAME.sha256")
     fi
     for r in manifest.xml kernel-manifest.xml sources.txt; do cp -- "$EOS_STATE/$r" "$CHECK/$base-$r"; done
-    mkdir -p -- "$CHECK/changelogs"
-    generate_changelog "$CHECK/changelogs/$EOS_DEVICE.txt" "$base"
-    cp -- "$CHECK/changelogs/$EOS_DEVICE.txt" "$CHECK/$base-changelog.txt"
+    if [[ $quick = 1 ]]; then
+        # Release notes are for a build that can be released: a quick one never is
+        rm -f -- "$CHECK/changelogs/$EOS_DEVICE.txt"
+        rmdir -- "$CHECK/changelogs" 2>/dev/null || true
+    else
+        mkdir -p -- "$CHECK/changelogs"
+        generate_changelog "$CHECK/changelogs/$EOS_DEVICE.txt" "$base"
+        cp -- "$CHECK/changelogs/$EOS_DEVICE.txt" "$CHECK/$base-changelog.txt"
+    fi
     # Its target-files, removed before they're replaced and never written over: a release
     # folder may hold a hard link to check/'s copy. A quick candidate has none: an older
     # candidate's go, with their .sha256
