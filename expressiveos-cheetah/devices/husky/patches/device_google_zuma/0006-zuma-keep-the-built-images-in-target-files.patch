@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Fri, 30 Oct 2026 12:00:00 +0000
-Subject: [PATCH 7/7] zuma: keep the built images in target-files
+Subject: [PATCH 6/6] zuma: keep the built images in target-files
 
 target-files made its system, system_ext, product, vendor, vendor_dlkm
 and system_dlkm images again from their folders, with

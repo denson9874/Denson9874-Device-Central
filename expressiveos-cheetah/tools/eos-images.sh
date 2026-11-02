@@ -19,6 +19,9 @@
 #   6. eos-verify.sh: the finished build, offline.
 # Only a run that gets through all six writes build.ok and target-files.ok there (the
 # sha256 of the OTA package and of the target-files zip kept with it), which eos-pack.sh needs.
+# A quick one (EOS_QUICK=1: the images only, m droid; lib.sh) writes quick.ok instead (the
+# sha256 of every file the fastboot zip takes from out/, and with EOS_KSU=lkm the stock init_boot),
+# which eos-pack.sh packs as a quick candidate to test on a phone, never to release.
 # Holds ~/.evolution-tree.lock (the Evolution X routines' lock) and ~/.expressiveos.lock
 # for the whole run, and first waits for any build already running. Everything also goes
 # to EOS_BUILD_LOG (~/expressiveos-build.log for cheetah, ~/expressiveos-build-<device>.log
@@ -30,6 +33,8 @@
 #   EOS_KERNEL_SYNC=1 eos-images.sh      # sync the kernel source to pins/kernel.xml again
 #                                        # (otherwise only the first build syncs it)
 #   EOS_INSTALLCLEAN=1 eos-images.sh     # start the make with m installclean (ksu-images.sh)
+#   EOS_QUICK=1 eos-images.sh            # a quick build: the images only (m droid), about 5
+#                                        # minutes sooner; packed for testing, never released
 set -o pipefail
 self=$(readlink -f -- "$0")
 # Until the build's own trap below, a failure ends with the status line too, except while
@@ -56,11 +61,21 @@ eos_top "${1:-}"
 clean_env
 cd "$top" || fail "can't cd to $top"
 PATH=$HOME/bin:$PATH
-rm -f -- "$EOS_STATE/build.ok" "$EOS_STATE/target-files.ok"
+rm -f -- "$EOS_STATE/build.ok" "$EOS_STATE/target-files.ok" "$EOS_STATE/quick.ok"
 # patches/device_google_pantah/0010 sets it too; apply-bootanim.sh checks for it here
 export EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
-echo "== ExpressiveOS $EOS_VERSION $EOS_BUILD_TYPE for $EOS_DEVICE in $top, $(date -u '+%F %T') UTC"
+kind="full build (m evolution: the images, the OTA package and its target-files)"
+[[ $EOS_QUICK != 1 ]] || kind="quick build (EOS_QUICK=1: the images only, m droid; for testing, never released)"
+# What the STEP and TIME lines (lib.sh's eos_step) say this build is; ksu-images.sh's too
+EOS_RUN_KIND=full EOS_RUN_FRESH=0
+[[ $EOS_QUICK != 1 ]] || EOS_RUN_KIND=quick
+[[ "${KERNEL_ONLY:-0}" != 1 ]] || EOS_RUN_KIND=kernel
+[[ -d $EOS_PRODUCT_OUT ]] || EOS_RUN_FRESH=1
+export EOS_RUN_KIND EOS_RUN_FRESH
+echo "== ExpressiveOS $EOS_VERSION $EOS_BUILD_TYPE for $EOS_DEVICE in $top, $(date -u '+%F %T') UTC: a $kind"
+[[ $EOS_RUN_FRESH = 0 ]] || echo "note: no $EOS_PRODUCT_OUT: this build makes all of it again, the longest kind of build"
 wait_builds
+eos_step prepare
 step() {   # step <title> <regex> <command>...: run it; its last line must match <regex>
     local title=$1 want=$2 rc=0
     shift 2
@@ -183,13 +198,38 @@ fi
 cat "$EOS_STATE/sources.txt"
 
 # Kernel source (EOS_KERNEL=gs-6.1): ksu-images.sh syncs it to pins/kernel.xml when it's
-# missing or EOS_KERNEL_SYNC=1, and checks it's on them otherwise
+# missing or EOS_KERNEL_SYNC=1, and checks it's on them otherwise. Its kernel and make steps
+# are its own (eos_step)
+eos_step end
 step "make (ksu-images.sh)" 'MAKE_EXIT=0' "$kit/ksu/tools/ksu-images.sh" "$top"
 if [[ "${KERNEL_ONLY:-0}" = 1 ]]; then
     echo "OK: kernel only (KERNEL_ONLY=1): nothing to pack"
     done=1; echo "BUILD_EXIT=0"; exit 0
 fi
+eos_step verify
 step "verify (eos-verify.sh)" 'VERIFY=OK' "$kit/tools/eos-verify.sh" "$top"
+eos_step end
+if [[ $EOS_QUICK = 1 ]]; then
+    ver=$(sed -n 's/^VERIFIED_QUICK //p' "$work/step.log" | tail -1)
+    [[ -n $ver ]] || fail "eos-verify.sh didn't verify a quick build (no VERIFIED_QUICK line)"
+    # What the quick candidate takes from out/, as eos-verify.sh checked it: eos-pack.sh
+    # packs it only while every one of them is still this build's
+    mapfile -t files < <(fastboot_files)
+    # As eos-pack.sh checks the zip (fastboot_files always adds super_empty.img or vendor_kernel_boot.img)
+    for need in init_boot.img vbmeta.img; do
+        printf '%s\n' "${files[@]}" | grep -qxF -- "$need" || fail "$EOS_PRODUCT_OUT/fastboot-info.txt doesn't flash ${need%.img}"
+    done
+    files=("${files[@]/#/$EOS_PRODUCT_OUT/}")
+    [[ $EOS_KSU != lkm ]] || files+=("$EOS_KSU_OUT/init_boot-stock.img")
+    for f in "${files[@]}"; do [[ -f $f ]] || fail "no $f (eos-verify.sh checked it)"; done
+    { sha256sum -- "${files[@]}" > "$EOS_STATE/.quick.ok.part" && mv -f -- "$EOS_STATE/.quick.ok.part" "$EOS_STATE/quick.ok"; } \
+        || fail "can't write $EOS_STATE/quick.ok"
+    echo "OK: quick build $ver: $EOS_STATE/quick.ok holds the sha256 of the ${#files[@]} files its fastboot zip takes from out/"
+    echo "OK: no OTA package or target-files (quick): eos-pack.sh packs it to test on a phone, never to release or send to testers"
+    done=1
+    echo "BUILD_EXIT=0"
+    exit 0
+fi
 zip=$(sed -n 's/^VERIFIED //p' "$work/step.log" | tail -1)
 [[ -f $zip ]] || fail "eos-verify.sh named no package"
 tf=$(tf_zip)

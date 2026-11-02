@@ -4,7 +4,7 @@
 # (apply.sh), then the firmware its EOS_FIRMWARE_MODE says (devices/<device>.conf):
 #   cache   the newest cached Google firmware into its vendor repo unless that already ships
 #           newer (cheetah). The cache, ~/android-dt/firmware/<device>, is the one
-#           evolution-cheetah/fetch-firmware.sh fills; it's only read here;
+#           tools/fetch-firmware.sh fills (runner action expressiveos-firmware); only read here;
 #   blobs   the vendor repo's own (husky: TheMuppets' blobs carry the factory firmware);
 #   images  vendor/google/<device>-images made by the device tree's extract-images.sh from the
 #           newest ~/android-dt/firmware/image-<device>-*.zip, again only when that zip
@@ -84,9 +84,9 @@ cache)
               grep -oE "$EOS_DEVICE:17/[A-Z0-9]{4}\.[0-9]{6}\.[0-9]{3}" "$top/$EOS_DEVICE_TREE/lineage_$EOS_DEVICE.mk" | cut -d/ -f2 | tr '[:upper:]' '[:lower:]' ||
               true)   # neither: unknown, said below
     if [[ -z "$cached" ]]; then
-        echo "WARNING: no cached factory firmware in $fw (run evolution-cheetah/fetch-firmware.sh); shipping the vendor repo's ${shipped:-unknown}"
+        echo "WARNING: no cached factory firmware in $fw (runner action expressiveos-firmware fills it: tools/fetch-firmware.sh); shipping the vendor repo's ${shipped:-unknown}"
     elif [[ -n "$shipped" && "$(date_of "$cached")" < "$(date_of "$shipped")" ]]; then
-        echo "WARNING: cached firmware $cached is older than the vendor repo's $shipped; keeping the vendor repo's (run fetch-firmware.sh)"
+        echo "WARNING: cached firmware $cached is older than the vendor repo's $shipped; keeping the vendor repo's (put a newer build in firmware/$EOS_DEVICE.conf, then run the runner action expressiveos-firmware)"
     else
         bl=$(find "$fw" -maxdepth 1 -name "bootloader-$EOS_DEVICE-*.img" | sort | tail -1)
         rd=$(find "$fw" -maxdepth 1 -name "radio-$EOS_DEVICE-*.img" | sort | tail -1)
@@ -121,5 +121,26 @@ images)
     fwsrc="${zip##*/} (vendor/google/$EOS_DEVICE-images)"
     ;;
 esac
+
+# Ensure prebuilt boot.img has valid os_version and os_patch_level in its header
+# so KeyMint does not receive boot_patch_level 20000000 causing live RKP HTTP 400 errors
+for b in "$top"/device/google/*-kernels/*/boot.img; do
+    [[ -f $b ]] || continue
+    t=$(mktemp -d "${TMPDIR:-/tmp}/boot_patch.XXXXXX")
+    if python3 "$top/system/tools/mkbootimg/unpack_bootimg.py" --boot_img "$b" --out "$t" >/dev/null 2>&1; then
+        out=$(python3 "$top/system/tools/mkbootimg/unpack_bootimg.py" --boot_img "$b" --out "$t")
+        if echo "$out" | grep -q 'os patch level: None'; then
+            echo "Patching boot.img header os_patch_level for ${b#"$top"/}"
+            python3 "$top/system/tools/mkbootimg/mkbootimg.py" \
+                --header_version 4 \
+                --kernel "$t/kernel" \
+                --os_version 14.0.0 \
+                --os_patch_level 2026-10 \
+                -o "$b" || echo "WARNING: failed to repack $b"
+        fi
+    fi
+    rm -rf -- "$t"
+done
+
 done=1
 echo "PREPARE_OK firmware $fwsrc"

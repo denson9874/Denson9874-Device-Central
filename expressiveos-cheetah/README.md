@@ -1,14 +1,14 @@
 # ExpressiveOS for cheetah (Pixel 7 Pro) and the other phones
 
-ExpressiveOS is its own ROM, built on Evolution X (cnb) like any standard custom ROM (Daryl,
+ExpressiveOS is its own ROM, built from its own sources like any standard custom ROM (Daryl,
 2026-10-25 and 2026-10-26):
 
-- its own name and version: `ExpressiveOS-17.0-<date>-cheetah-1.0-Unofficial.zip`, "ExpressiveOS 1.0"
+- its own name and version: `ExpressiveOS-17.0-<date>-cheetah-1.0-Official.zip`, "ExpressiveOS 1.0"
   in Settings and the Updater;
 - its own release keys, update feed (`denson9874/expressiveos_ota`, branch `main`), release folder
   (`~/releases/expressiveos-cheetah`), SourceForge folder (`expressiveos/cheetah`) and R2 prefix
   (`expressiveos/cheetah/`), all set in `eos.conf` and `devices/cheetah.conf`;
-- a clean install only: updates from other ROMs, Evolution X included, never install on it;
+- a clean install only: updates from other ROMs never install on it;
 - no root out of the box: root is the user's choice (Daryl, 2026-11-01). `EOS_KSU=lkm` in a
   phone's `devices/<device>.conf` still builds KernelSU Next with susfs and NeoZygisk into it
   ([`ksu/`](ksu/README.md)); every phone ships `EOS_KSU=none` today. ViPER4Android RE ([`viper4android/`](viper4android/README.md)), its
@@ -20,12 +20,29 @@ That's ExpressiveOS on cheetah, the kit's first phone and the one every script b
 otherwise. husky (Pixel 8 Pro) and the four Pixel 11s build from the same kit and tree, with their own
 names, folders and switches (Other phones, below).
 
-The Evolution X cheetah build (`evolution-cheetah/`, built in `~/evolution`) stays as it is, unrooted.
-Nothing here touches it: every script refuses `~/evolution` and `~/derpfest` (`prepare.sh` only copies
-a Pixel 11's vendor blobs out of it, Other phones), writes nothing through a
-symlink that leads out of `~/expressiveos` (its `out/` and `out-kernel/` included), and builds only while
-holding the lock the Evolution X routines take (`~/.evolution-tree.lock`). The one exception is
-`tools/server-cleanup.sh` (Disk, below).
+Since 2026-11-02 the build server builds ExpressiveOS only: Evolution X and DerpFest were retired and
+their trees (`~/evolution`, `~/derpfest`) deleted, after `tools/evo-retire.sh keep` copied the Pixel 11
+vendor blob repos into `~/expressiveos/vendor/google/` and their keys and server-only work into
+`~/retired/`. The scripts still refuse those two paths, should they come back (`prepare.sh` copies a
+Pixel 11's vendor blobs out of `~/evolution` only when the ExpressiveOS tree lacks them), write nothing
+through a symlink that leads out of `~/expressiveos` (its `out/` and `out-kernel/` included), and build
+only while holding `~/.evolution-tree.lock` (the old name stays). The one exception is
+`tools/server-cleanup.sh` (Disk, below). Cheetah's firmware cache is filled by `tools/fetch-firmware.sh`
+(runner action `expressiveos-firmware`), which used to live in `evolution-cheetah/`.
+
+**Cheetah's firmware pin.** Google shows the factory image tables only after a visitor accepts its
+terms, so the fetcher can't read them unattended. When Google ships a monthly release, a person opens
+https://developers.google.com/android/images#cheetah, accepts the terms, and copies the newest generic
+Android 17 release (no carrier suffix) into `firmware/cheetah.conf`:
+
+```
+url=https://dl.google.com/dl/android/aosp/cheetah-<build>-factory-<8 hex>.zip
+sha256=<the 64-hex SHA-256 from the same row>
+```
+
+Merge it, then run the runner action `expressiveos-firmware` (query `check` only says what the pin and
+the cache hold). The next cheetah build's `prepare.sh` puts that bootloader and radio into
+`vendor/google/cheetah` through `update-firmware.sh`.
 
 ## What's here
 
@@ -43,6 +60,7 @@ holding the lock the Evolution X routines take (`~/.evolution-tree.lock`). The o
 | `tools/eos-verify.sh` | Checks a finished build offline |
 | `tools/eos-target-files.sh` | Checks the target-files zip kept with the build (`eos-verify.sh` runs it) |
 | `tools/eos-pack.sh` | The fastboot zip, the release gate, the SourceForge upload and testers' uploads |
+| `tools/eos-ota.sh` | A release's OTA packages for the Updater: the full one and an incremental from the feed's build, to R2 (Updates over the air, below; offline test `tools/tests/eos-ota-test.sh`) |
 | `tools/server-cleanup.sh` | Frees disk on the build server (runner actions `server-cleanup-list` and `server-cleanup`) |
 | `lib.sh`, `tools/payload.py`, `tools/payload-sig.py` | Shared guards and helpers; `payload-sig.py` checks a payload's signatures without update_engine's code |
 
@@ -54,8 +72,8 @@ project, or a patch changed in place, stops the build. In any other project they
 | Patches | What |
 |---|---|
 | `device_google_pantah` 0001, 0002, 0010 | ExpressiveOS's own: maintainer, update feed, only ExpressiveOS's boot animation |
-| `device_google_pantah` 0003-0009, `device_google_gs201` 0001-0005, `vendor_google_cheetah` | `evolution-cheetah`'s, copied unchanged |
-| `device_google_gs201` 0006 | ExpressiveOS's own: target-files takes the system, vendor, product and other dynamic partition images the build made (`COPY_IMAGES_FOR_TARGET_FILES_ZIP`) instead of making them again with other file times, so the fastboot zip and the OTA carry the same ones and an incremental OTA can patch them on phones installed either way (target-files still signs its own boot images and vbmeta, which an incremental writes whole) |
+| `device_google_pantah` 0003-0009, `device_google_gs201` 0001-0004, `vendor_google_cheetah` | `evolution-cheetah`'s, copied unchanged |
+| `device_google_gs201` 0005 | ExpressiveOS's own: target-files takes the system, vendor, product and other dynamic partition images the build made (`COPY_IMAGES_FOR_TARGET_FILES_ZIP`) instead of making them again with other file times, so the fastboot zip and the OTA carry the same ones and an incremental OTA can patch them on phones installed either way (target-files still signs its own boot images and vbmeta, which an incremental writes whole) |
 | `frameworks_base` 0001-0010 | The fixes the Evolution X tree carries, refreshed for today's frameworks/base: they apply without history too |
 | `frameworks_base` 0011-0020 | evolution-kodiak's background-power fixes (2026-10-26), copied: SystemUI animations that kept running with the screen off or on AOD, the colored status bar icons setting, AxSpoofManager's fetches, Extreme Charging's 50% limit |
 | `vendor_lineage` 0001 | ExpressiveOS 1.0 names, and the build's own date, so both make passes name one zip |
@@ -97,7 +115,7 @@ from), without a shell on the server:
 | `expressiveos-status` | Read-only: the sessions, locks, kit, tree, keys, build and the end of each log |
 | `expressiveos-setup` | Installs `tree_ref`'s kit as `~/expressiveos-cheetah`, then runs `setup.sh` and `ksu/fetch-ksu.sh` in tmux session `eos-setup` |
 | `expressiveos-keys` | "Keys" below, once, never over an existing `vendor/evolution-priv`, and a backup archive `~/expressiveos-keys-<time>.tar.gz` (mode 600) to copy off the server |
-| `expressiveos-build` | Installs the kit, then `tools/eos-images.sh` and `tools/eos-pack.sh` in `eos-build` (query: `device=<phone>` or `devices=<phone>,<phone>,...`, `kernel-only`, `kernel-sync`, `clean`) |
+| `expressiveos-build` | Installs the kit, then `tools/eos-images.sh` and `tools/eos-pack.sh` in `eos-build` (query: `device=<phone>` or `devices=<phone>,<phone>,...`, `kernel-only`, `kernel-sync`, `installclean`, `quick`, `clean`, `try=`, `modules=`) |
 | `expressiveos-pack` | Installs the kit, then `tools/eos-pack.sh` in `eos-pack` (query: `device=<phone>`, `testers`) |
 
 The sessions run outside the job (a first build outlasts its 4 hours) with a fresh login's environment, and
@@ -163,7 +181,38 @@ before is kept as `.1`); the last line is `BUILD_EXIT=0` or `BUILD_EXIT=1`.
 - `EOS_KERNEL_SYNC=1`: sync the kernel source to `pins/kernel.xml` again. Otherwise only the first
   build syncs it, and later ones check it's still on the pins.
 - `EOS_INSTALLCLEAN=1`: start the make with `m installclean` (the runner's `installclean`). A
-  `modules=` compile check asks the next full build for it itself; a kernel-only run skips it.
+  `modules=` compile check asks the next build that makes images (full or quick) for it itself; a
+  kernel-only run skips it.
+- `EOS_QUICK=1`: a quick build (the runner's `quick`), to test a change on a phone: the images only,
+  `m droid` where a full build runs `m evolution`, which is `droid` plus the OTA package and its
+  target-files zip (`vendor/lineage`'s `build/tasks/evolution.mk`), about 5 of a cheetah build's 8 to
+  11 minutes. `eos-verify.sh` checks everything but the package, its payload and the target-files,
+  and the run writes `quick.ok` instead of `build.ok` (Test and release, "Quick builds").
+
+### Progress
+
+The runner's `expressiveos-progress` (`tools/eos-progress.py`) is read-only and takes a few seconds, so
+it runs fine while a build does. It tells you how the running `eos-build` or `eos-pack` session is
+going, or how the last one went. It prints a `PROGRESS` line per phone: its state, its step (wait,
+prepare, kernel, make, target_files, ota_zip, verify, pack, done), the make's actions done out of the
+total (Soong's own `out/build_progress.pb`), and an ETA for when the phone should be built and packed.
+Then come a `SESSION` line, the log's last 40 lines as `LOG` lines, and `PROGRESS_OK`, followed by the
+same in words with US Eastern times. The docstring at the top of the script spells out every field.
+
+To know where a build is, `lib.sh`'s `eos_step` prints a line as each step begins, such as
+`STEP make device=husky kind=full fresh=0 at=<UTC>`. `eos-images.sh` prints prepare and verify,
+`ksu-images.sh` prints kernel (lunch and `build_kernel`, on the phones that build theirs) and make,
+and `eos-pack.sh` prints pack. As each step ends, `eos_step` writes how long it took to
+`~/expressiveos-build-times.txt`, one `TIME` line per step for every phone. `fresh=1` means
+`out/target/product/<device>` wasn't there when the build began, so the build made all of it again.
+The make's ETA comes from the first of these that is known:
+
+- Soong's own estimate in its progress lines, based on how long the same actions took last time.
+- The make's pace so far.
+- The median of the last 5 recorded makes like this one (same phone, same kind, same fresh).
+- This server's measured times.
+
+The other steps' ETAs come from their recorded times, or from typical times.
 
 ## Sources
 
@@ -234,6 +283,9 @@ package's sha256, which `eos-pack.sh` needs),
 (the kit's commit, the KernelSU Next and Expressive Launcher sources, and each patched project's
 upstream revision and HEAD).
 They're the record of what the build was made from, for the GPL source offer.
+A quick build (`EOS_QUICK=1`) writes `quick.ok` in place of `build.ok` and `target-files.ok`: the
+sha256 of every file its fastboot zip takes from out/ (`fastboot_files` in `lib.sh`) and, with
+KernelSU Next, of the stock init_boot.
 
 `eos-verify.sh` checks, without a phone: the package (the build's own, A/B, for cheetah), the identity
 (cheetah, Pixel 7 Pro, user build, every kit patch in, the Updater on ExpressiveOS's feed), the keys
@@ -253,7 +305,10 @@ patch it on phones installed from the fastboot zip, so `eos-pack.sh --release` r
 though it still packs as a candidate; a note lists the other images, which target-files signs again
 with its own AVB salts and an incremental writes whole). Another phone's build is checked the same way
 against its `devices/<device>.conf`: its model, firmware, and what it ships or doesn't (KernelSU Next,
-ViPER4Android).
+ViPER4Android). A quick build has no package, payload or target-files: `eos-verify.sh` (and
+`eos-keys-check.sh out`) checks out/'s own vbmeta, init_boot, boot and vbmeta_system and their
+patch levels instead, that out/ holds no package or target-files zip, and everything else as above,
+and prints `VERIFIED_QUICK <name>`.
 
 ## The monthly update
 
@@ -498,6 +553,9 @@ cheetah's, as below; another phone's run the same with its own folders and board
    (`target-files/LATEST` names the newest), and `--upload` sends them to R2's
    `expressiveos/cheetah/target-files/` (`EOS_R2_REMOTE`, `~/bin/rclone`), or with `EOS_R2_REMOTE=` empty to
    SourceForge's `expressiveos/cheetah/target-files`: every incremental OTA from the release starts from them.
+   It also keeps out/'s OTA package, `ota/<release>.zip` with its `.sha256`, for the Updater (below).
+6. `tools/eos-ota.sh --upload` (the runner's `expressiveos-ota` with query `upload`, only when Daryl
+   says so) puts the release on the Updater: below.
 
 For a phone nobody has tested a build on yet, `tools/eos-pack.sh --testers` (the runner's
 `expressiveos-pack` with query `testers`, only when Daryl says so) uploads `check/`'s candidate for
@@ -507,7 +565,60 @@ The fastboot zip, its `.sha256` and (with KernelSU Next) the stock init_boot go 
 file; never to the release folder itself, target-files or the feed. It ends with
 `UPLOADED_TESTERS <url>`.
 
-The Updater feed stays `{"response": []}` until the OTA publish script exists (below).
+### Quick builds
+
+To try a change on a phone, `EOS_QUICK=1 tools/eos-images.sh` (the runner's `expressiveos-build`
+with query `quick`, with `try=` or `device=` as usual) builds the images only, about 5 minutes
+sooner. `tools/eos-pack.sh` then packs it by itself as a quick candidate:
+`check/<name>-quick-fastboot.zip` (and `<name>-quick-init_boot-stock.img` with KernelSU Next), flashed
+the same way (step 2), with its `.sha256` and `.pack-ok` (`build quick`). It replaces `check/`'s
+candidate, as any candidate does, and it is never released or sent to testers: with no target-files,
+no incremental OTA could update phones installed from it, and a release must be the very zip that was
+tested. `--release`, `--upload` and `--testers` refuse it. When the change works, build again without
+`quick`, pack, flash and test that zip, and release it.
+
+### Updates over the air
+
+Every release goes to the Updater as a full OTA package, plus one incremental from the build the feed
+offers when it's made (Daryl, 2026-11-02): phones on that build download the incremental, a fraction of the
+full package; every other phone takes the full one. `tools/eos-ota.sh` makes and checks both and writes the
+feed files; the feed itself (`denson9874/expressiveos_ota`, `builds/<device>.json` and
+`changelogs/<device>.txt`) changes only by a pull request, and phones see the update once it's merged.
+
+- The full package is the release's own (`ota/<release>.zip`, out/'s, which `eos-verify.sh` checked).
+- The incremental, `ota/<release>-incremental-from-<base date>.zip`, is `ota_from_target_files -i` from
+  the base build's target-files (`target-files/`, else R2's) to the release's, signed with the tree's
+  release key. The dynamic partitions (system, vendor, product...) are patched block by block: they're
+  the target-files' byte for byte on every phone of the base build, however it was installed (the
+  incremental base, which `--release` needs). Everything else (boot, init_boot, vbmeta, the firmware...)
+  is written whole (`--full_ota_partitions`): the fastboot zip flashes out/'s images, which target-files
+  signs again with its own AVB salts, and the firmware is whichever stock release the user flashed.
+- The base is the build the feed's full entry offers now; with none (the first release) there's no
+  incremental. A rerun of a release already in the feed makes the incremental from the same base again.
+- Both are checked: A/B, this phone, this build, signed with the pinned OTA key, every A/B partition;
+  the incremental from the base build. The Updater never goes back: a release older than the feed's
+  stops with `OTA_SUPERSEDED`.
+- The feed lists the incremental first, with `base_timestamp` (`packages_apps_Updater` 0005 offers it
+  only to the base build) and a timestamp one second after the build's: of the updates a phone may take
+  the Updater shows the newest by timestamp, so a phone on the base build gets the incremental, not the
+  full package of the same build. Then the full package, for every other phone.
+- R2's `expressiveos/<device>/ota/` keeps what the new feed and the one phones read now point at; the
+  OTA mirror (`EOS_OTA_MIRROR`) serves them.
+
+A release, start to finish, once the first one is in the feed (your phone on that build):
+
+1. Build and pack as usual (`expressiveos-build`), but don't flash the candidate: `tools/eos-ota.sh
+   --candidate` (runner: `expressiveos-ota` with `candidate`) makes the incremental from the feed's build
+   to it and puts it, with a test feed of its own, in R2's `ota/test/`.
+2. On the phone (root): `adb shell "su -c 'setprop evolution.updater.uri <the test feed's URL>'"`, then the
+   Updater's check for updates: it offers the incremental; install it and reboot. The setting goes with
+   the reboot. Test the build (Test and release, step 3) and write the candidate's `.device-ok`.
+3. Release it (`eos-pack.sh --upload`; runner: `expressiveos-pack` with `release`), then
+   `eos-ota.sh --upload` (runner: `expressiveos-ota` with `upload`), and open the feed's pull request with
+   the files it printed. Merge it, and phones get the update.
+
+Without `--upload` or `--candidate`, `eos-ota.sh` makes and checks the packages and the feed files and
+uploads nothing. The packages take a few GB in `ota/`; once they're on R2 an older release's can go.
 
 ## Other phones
 
@@ -542,7 +653,7 @@ only, since a release repacks from `out/`; to release it, build again without `c
 zip); `expressiveos-pack` with `device=<phone>`. `try=<path>@<commit>` builds an unmerged commit of
 one of ExpressiveOS's own projects (it stays checked out until a build without `try=`), and
 `modules=<module>,...` is a compile check of just those modules (it removes the last build's
-`build.ok`: pack needs a full build after it, and that build starts with `m installclean`, since
+`build.ok`: pack needs another build after it, full or quick, and that build starts with `m installclean`, since
 `m` would leave a module the product doesn't install, like Settings beside SettingsGoogle, in `out/`
 and the target-files zip, though not in the images, which take only the build's file list;
 `installclean` asks any build that makes images for it, and `eos-verify.sh` refuses two APKs with
@@ -587,10 +698,9 @@ too. An older release's can go once its `.uploaded` marker is there.
 
 ## Not done yet
 
-- The OTA publish script (feed JSON in Evolution X's Updater format, changelog, R2 upload), modelled on
-  `evolution-kodiak/tools/p11-ota.sh` with ExpressiveOS's own feed and folders. Don't publish
-  `ota_property_files` yet. With `system_update_engine` 0001, update_engine refuses a payload that isn't
-  signed with ExpressiveOS's key even when it streams one, but that has to be seen on a 1.0 phone first:
+- Streaming updates (the feed's `ota_property_files`, which `eos-ota.sh` doesn't publish yet). With
+  `system_update_engine` 0001, update_engine refuses a payload that isn't signed with ExpressiveOS's key
+  even when it streams one, but that has to be seen on a 1.0 phone first:
   `update_engine_client --verify` must refuse an Evolution X cheetah OTA's metadata
   (`kDownloadMetadataSignatureMismatch`) and take ExpressiveOS's ("Payload is applicable"). It writes
   no partition; root comes from KernelSU Next. A user build doesn't install `update_engine_client`, so
@@ -606,9 +716,6 @@ too. An older release's can go once its `.uploaded` marker is there.
   adb shell "su -c 'chmod 755 /data/local/tmp/update_engine_client; cp /data/local/tmp/meta.bin /data/ota_package/eos-meta.bin; /data/local/tmp/update_engine_client --verify --metadata=/data/ota_package/eos-meta.bin; echo rc=\$?; rm -f /data/ota_package/eos-meta.bin'"
   adb logcat -d | grep -E 'Failed to validate metadata signature|Payload is (not )?applicable'
   ```
-- The incremental OTA script: `ota_from_target_files -i` from a release's target-files to the next, signed
-  with the tree's release key, everything but the dynamic partitions in full (`--full_ota_partitions`), and
-  offered only to phones on that base build (`packages_apps_Updater` 0005's `base_timestamp`).
 - Root and ViPER4Android on the Pixel 11s: an android16-6.12 KernelSU Next module, and ViPER4Android
   on the AIDL effect HAL (husky's too).
 - Decisions still open: patch-level properties in cheetah's vbmeta, purging the old keystore from this

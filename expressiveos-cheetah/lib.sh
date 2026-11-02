@@ -35,6 +35,16 @@ EOS_DEVICE=${EOS_DEVICE:-cheetah}
 [[ $EOS_DEVICE =~ ^[a-z0-9]+$ && -f $kit/devices/$EOS_DEVICE.conf ]] \
     || fail "EOS_DEVICE '$EOS_DEVICE' isn't one of the kit's devices: $(cd "$kit/devices" 2>/dev/null && printf '%s ' *.conf | sed 's/\.conf//g')"
 export EOS_DEVICE
+# A quick build (EOS_QUICK=1; the runner's expressiveos-build query quick) makes the images
+# only: m droid where a full build runs m evolution, which is droid plus the OTA package and
+# its target-files zip (vendor/lineage's build/tasks/evolution.mk), about 5 minutes more.
+# eos-verify.sh and eos-keys-check.sh out skip only what reads those two, eos-images.sh
+# writes quick.ok instead of build.ok, and eos-pack.sh packs it as a quick candidate
+# (<name>-quick-fastboot.zip in check/) to flash and test, which it never releases, uploads
+# or sends to testers. eos-pack.sh sets it itself, from the build it packs
+EOS_QUICK=${EOS_QUICK:-0}
+[[ $EOS_QUICK = 0 || $EOS_QUICK = 1 ]] || fail "EOS_QUICK is '$EOS_QUICK': 1 for a quick build (images only, m droid), 0 or unset for a full one"
+export EOS_QUICK
 # eos.conf's own values of the keys cheetah's file restates, which must agree (sources/update.py
 # reads eos.conf's EOS_LUNCH); then none of the device keys from the caller's environment
 _eosc="$EOS_LUNCH|$EOS_RELEASES|$EOS_SF_DIR|$EOS_R2_PREFIX"
@@ -72,6 +82,26 @@ else
     EOS_STATE=out/eos-$EOS_DEVICE EOS_KSU_OUT=out/ksu-$EOS_DEVICE
     EOS_BUILD_LOG=$HOME/expressiveos-build-$EOS_DEVICE.log EOS_KSU_INIT_BOOT_VAR=EOS_KSU_INIT_BOOT
 fi
+
+# For the runner's expressiveos-progress (tools/eos-progress.py): a STEP line in the log as a
+# phone's build or pack reaches each step (prepare, kernel, make, verify, pack), and each
+# finished step's time in EOS_TIMES (every phone's, one file), which its estimates start from.
+# EOS_RUN_KIND (full, quick or kernel; eos-pack.sh: full, quick, testers, release or upload) and
+# EOS_RUN_FRESH (1: the product out wasn't there when the build began, so every module was
+# built; - when it doesn't apply) say what the times are of
+EOS_TIMES=$HOME/expressiveos-build-times.txt
+eos_step() {   # eos_step <step>|end: say this run is at <step> now, after recording how long the step before took (a failure records nothing)
+    local now
+    now=$(date -u +%s)
+    [[ $1 != "${_eos_step:-}" ]] || return 0
+    if [[ -n ${_eos_step:-} ]]; then
+        echo "TIME $_eos_step device=$EOS_DEVICE kind=${EOS_RUN_KIND:--} fresh=${EOS_RUN_FRESH:--} at=$(date -ud "@$now" +%FT%TZ) secs=$((now - _eos_step_at))" \
+            >> "$EOS_TIMES" 2>/dev/null || true
+    fi
+    _eos_step=$1 _eos_step_at=$now
+    if [[ $1 = end ]]; then _eos_step=; return 0; fi
+    echo "STEP $1 device=$EOS_DEVICE kind=${EOS_RUN_KIND:--} fresh=${EOS_RUN_FRESH:--} at=$(date -ud "@$now" +%FT%TZ)"
+}
 
 kit_patch_dirs() {   # kit_patch_dirs: the kit's patch folders for EOS_DEVICE, one a line: the shared ones (patches/, ksu/patches/, viper4android/patches/), then devices/<device>/patches/ and ksu-patches/
     local d
@@ -177,7 +207,7 @@ am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local co
                 rm -f -- "$log"
                 fail "$label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change, and ${d#"$top"/} is ExpressiveOS's own repo ($own): change it with a new commit there, never by editing a kit patch (README.md, \"Sources\")"
             elif [[ $rc = 1 ]]; then
-                echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change. If apply.sh or apply-ksu.sh made it (an older version of the patch): repo sync -d ${d#"$top"/}, then build again (tools/eos-images.sh puts the kit's patches back). If it came with Evolution X's source: compare the two, then drop or regenerate the patch"
+                echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change. If apply.sh or apply-ksu.sh made it (an older version of the patch): repo sync -d ${d#"$top"/}, then build again (tools/eos-images.sh puts the kit's patches back). If it came with upstream source: compare the two, then drop or regenerate the patch"
             elif [[ $rc != 0 ]]; then
                 echo "note: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/}, but its change can't be compared with the patch here (no parent in this clone, or git failed)"
             fi
@@ -293,10 +323,70 @@ tf_zip() {   # tf_zip: the target-files zip m evolution keeps (patches/vendor_li
     printf '%s\n' "$EOS_PRODUCT_OUT/obj/PACKAGING/target_files_intermediates/${EOS_LUNCH%%-*}-target_files.zip"
 }
 
-eos_lock() {   # eos_lock <script> [arg]...: run <script> holding ~/.expressiveos.lock and ~/.evolution-tree.lock (shared with the Evolution X routines), waiting up to 8 h for each
+cpio_same() {   # cpio_same <ramdisk> <ramdisk>: the same entries (name, mode, owner, device, bytes), whatever their times, order or compression
+    python3 - "$1" "$2" <<'PY'
+import subprocess, sys
+def entries(path):
+    raw = None
+    for cmd in (["lz4", "-dc", path], ["gzip", "-dc", path]):
+        try:
+            r = subprocess.run(cmd, capture_output=True)
+        except OSError:
+            continue
+        if r.returncode == 0 and r.stdout:
+            raw = r.stdout
+            break
+    if raw is None:
+        sys.exit(f"can't decompress {path}")
+    out, i = {}, 0
+    while i + 110 <= len(raw):
+        if raw[i:i + 6] not in (b"070701", b"070702"):
+            sys.exit(f"{path}: not a newc cpio at byte {i}")
+        f = [int(raw[i + 6 + 8 * k:i + 14 + 8 * k], 16) for k in range(13)]
+        mode, uid, gid, size, rmaj, rmin, nsz = f[1], f[2], f[3], f[6], f[9], f[10], f[11]
+        n = i + 110
+        name = raw[n:n + nsz - 1].decode("utf-8", "surrogateescape")
+        d = (n + nsz + 3) & ~3
+        if name == "TRAILER!!!":
+            break
+        # A device node's permission bits aren't compared: target-files' mkbootfs gives the
+        # ramdisk's dev/console, kmsg, null and urandom 0755 where out/'s has 0644, and first-
+        # stage init mounts its own /dev before anything opens them. Type, owner and numbers
+        # still are
+        if (mode & 0o170000) in (0o020000, 0o060000):
+            mode &= 0o170000
+        out[name] = (mode, uid, gid, rmaj, rmin, raw[d:d + size])
+        i = (d + size + 3) & ~3
+    return out
+a, b = entries(sys.argv[1]), entries(sys.argv[2])
+bad = sorted(n for n in set(a) | set(b) if a.get(n) != b.get(n))
+for n in bad[:20]:
+    print(f"  differs: {n} ({'only one side' if n not in a or n not in b else 'mode, owner or bytes'})", file=sys.stderr)
+sys.exit(1 if bad else 0)
+PY
+}
+
+fastboot_files() {   # fastboot_files: what the fastboot zip takes from the product out, relative to it, one a line: fastboot-info.txt, android-info.txt, each image fastboot-info.txt flashes, super_empty.img (EOS_SUPER_EMPTY=out) and vendor_kernel_boot.img (EOS_FLASH_VKB=1)
+    local O=$top/$EOS_PRODUCT_OUT cmd rest img
+    [[ -f $O/fastboot-info.txt ]] || fail "no $EOS_PRODUCT_OUT/fastboot-info.txt"
+    {
+        echo fastboot-info.txt
+        echo android-info.txt
+        while read -r cmd rest; do
+            [[ $cmd = flash ]] || continue
+            img=${rest##* }; [[ $img == *.img ]] || img=$img.img
+            # No dexpreopt to the other slot: no system_other to flash (eos-pack.sh skips it too)
+            [[ $img = system_other.img && ! -f $O/$img ]] || echo "$img"
+        done < "$O/fastboot-info.txt"
+        [[ $EOS_SUPER_EMPTY != out ]] || echo super_empty.img
+        [[ $EOS_FLASH_VKB != 1 ]] || echo vendor_kernel_boot.img
+    } | awk '!seen[$0]++'
+}
+
+eos_lock() {   # eos_lock <script> [arg]...: run <script> holding ~/.expressiveos.lock and ~/.evolution-tree.lock (shared with the build server routines), waiting up to 8 h for each
     local rc=0
     # Its own lock first: waiting for an ExpressiveOS run (eos-pack.sh) never holds up the routines
-    echo "== waiting for ~/.expressiveos.lock, then ~/.evolution-tree.lock (the Evolution X routines and builds share the server)"
+    echo "== waiting for ~/.expressiveos.lock, then ~/.evolution-tree.lock (ExpressiveOS build locks)"
     env EOS_HOLDS_LOCK=1 flock -o -E 75 -w 28800 "$HOME/.expressiveos.lock" \
         flock -o -E 75 -w 28800 "$HOME/.evolution-tree.lock" "$@" || rc=$?
     [[ $rc != 75 ]] || echo "FAIL: a lock was held for 8 hours; nothing was built" >&2

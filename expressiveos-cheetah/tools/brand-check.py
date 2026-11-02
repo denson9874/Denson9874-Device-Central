@@ -10,9 +10,14 @@ Scans, in UTF-8 and UTF-16 (resource string pools use either):
     and links;
   - system/bin, system/lib64 and the APEXes' payload images (raw bytes: they hold crash_dump
     and the apps some APEXes carry) for the same text and for the crash report header
-    (debuggerd's tombstones).
-Every hit must be on the allowlist below: links the build keeps on purpose, none of them
-shown to users. Prints one FAIL line per other hit, then BRAND_CHECK=OK or BRAND_CHECK=FAIL.
+    (debuggerd's tombstones);
+  - every build.prop (system, system_ext, product, vendor, odm): property values naming
+    Evolution X (links, versions, brands). Property *names* such as ro.evolution.* are not
+    checked yet: they go with the staged rename (rebrand phase D).
+Policy (Daryl, 2026-11-01): every Evolution reference becomes Expressive; only copyright,
+licence and credit lines stay. The allowlist below is therefore short-lived: internal class
+names that the code renames (rebrand phase C) will remove. Prints one FAIL line per other
+hit, then BRAND_CHECK=OK or BRAND_CHECK=FAIL.
 """
 import io
 import os
@@ -20,19 +25,16 @@ import re
 import sys
 import zipfile
 
-# What users must never see (case-sensitive: class and resource names such as
-# org.evolution.* or evolution_logo_paths are internal and stay)
-PATTERNS = ["Evolution X", "EvolutionX", "Evolution-X", "evolution-x.org", "Evo Egg", "The Evolver"]
-# Text kept on purpose. Each entry: (regex over the whole string found, why)
+# What users must never see or send. Case-sensitive: class and resource names such as
+# org.evolution.* or evolution_logo_paths are internal and get renamed by rebrand phase C,
+# so they are not matched here yet. No link, user agent or catalog may name Evolution X any
+# more (rebrand phase A, 2026-11-01): the photo, theme catalog, paste host and user agent
+# all moved to ExpressiveOS's own repos.
+PATTERNS = ["Evolution X", "EvolutionX", "Evolution-X", "evolution-x.org", "Evo Egg", "The Evolver",
+            "Evo Sans", "Evolve Sans"]
+# Text kept for now. Each entry: (regex over the whole string found, why). Every entry here
+# goes away with the code rename (rebrand phase C); nothing user-visible or outbound belongs here.
 ALLOW = [
-    (r"https://raw\.githubusercontent\.com/Evolution-X/www_gitres/main/devices/images/%s\.webp",
-     "Settings' hardware info: the phone's photo"),
-    (r"https://raw\.githubusercontent\.com/Evolution-X/vendor_themes/cnb/themes_v2\.json",
-     "Theme Store's theme catalog"),
-    (r"https://paste\.evolution-x\.org",
-     "PastyUtils in framework.jar: nothing in the build calls it any more"),
-    (r"Mozilla/5\.0 \(Linux; Android 14\) EvolutionX/HardwareInfo",
-     "the Evolver's HTTP user agent, not shown"),
     # dex: internal names (classes, their source files, log tags), never shown
     (r"L[\w/$]*EvolutionX[\w$]*;", "a class name"),
     (r"^.?EvolutionX\w*\.(kt|java)$", "a class's source file name"),
@@ -134,6 +136,31 @@ for jar in JARS:
                 services_has_keybox_url = True
             n += 1
 
+# build.prop values: a link, version or brand naming Evolution X reaches About phone, the
+# Updater and every app that reads the props. Names (ro.evolution.*) are phase D's.
+PROP_VALUE_RE = re.compile(r"evolution|evox|evo-x|\bevo\b", re.IGNORECASE)
+PROPS = ["system/build.prop", "system_ext/etc/build.prop", "product/etc/build.prop",
+         "vendor/build.prop", "odm/etc/build.prop", "vendor_dlkm/etc/build.prop",
+         "odm_dlkm/etc/build.prop", "system_dlkm/etc/build.prop"]
+nprops = 0
+for prop in PROPS:
+    p = os.path.join(out, prop)
+    if not os.path.exists(p):
+        continue
+    nprops += 1
+    with open(p, encoding="utf-8", errors="replace") as f:
+        for lineno, line in enumerate(f, 1):
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            if PROP_VALUE_RE.search(value):
+                bad += 1
+                print(f"FAIL: {prop}:{lineno}: {key}={value!r}")
+if nprops == 0:
+    bad += 1
+    print(f"FAIL: no build.prop found under {out}")
+
 if not services_has_keybox_url:
     bad += 1
     print(f"FAIL: system/framework/services.jar does not contain EOS_KEYBOX_URL ({keybox_url})")
@@ -190,7 +217,7 @@ if not header:
 
 for (s, why), wheres in sorted(kept.items()):
     print(f"note: kept {s!r} ({why}) in {', '.join(sorted(wheres))}")
-print(f"OK: {len(apks)} APKs and {napex} APEX payloads, {n} entries scanned" if bad == 0
-      else f"{bad} Evolution X strings found")
+print(f"OK: {len(apks)} APKs, {napex} APEX payloads and {nprops} build.prop files, {n} entries scanned" if bad == 0
+      else f"{bad} branding issues found")
 print("BRAND_CHECK=OK" if bad == 0 else "BRAND_CHECK=FAIL")
 sys.exit(1 if bad else 0)

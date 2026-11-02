@@ -143,7 +143,7 @@ else
 fi
 
 if [[ "${TARGET_INCLUDE_BOOT_ANIMATIONS:-}" != false ]]; then
-    echo "note: export TARGET_INCLUDE_BOOT_ANIMATIONS=false before building, or Evolution X's 12 other styles (about 190 MiB) ship in /product/media too"
+    echo "note: export TARGET_INCLUDE_BOOT_ANIMATIONS=false before building, or the 12 other boot animation styles (about 190 MiB) ship in /product/media too"
 fi
 done=1
 echo "BOOTANIM_APPLY=OK sha256=$sha holiday=$hsha"
