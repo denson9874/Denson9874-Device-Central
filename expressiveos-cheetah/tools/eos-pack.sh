@@ -98,6 +98,16 @@ if [[ "$mode" != --testers && -f $EOS_STATE/quick.ok ]]; then
 fi
 EOS_QUICK=$quick
 export EOS_QUICK
+# For the runner's expressiveos-progress (lib.sh's eos_step, which reads both): a candidate is
+# of the build's kind
+# shellcheck disable=SC2034
+case $mode in
+    '') EOS_RUN_KIND=full; [[ $quick = 0 ]] || EOS_RUN_KIND=quick ;;
+    *) EOS_RUN_KIND=${mode#--} ;;
+esac
+# shellcheck disable=SC2034
+EOS_RUN_FRESH=-
+eos_step pack
 
 # ExpressiveOS's own release folder, never Evolution X's: ~/releases/expressiveos-*/ and
 # its check/, as named, with no symlink anywhere on the way. Checked before anything is made
@@ -266,6 +276,7 @@ if [[ "$mode" = --testers ]]; then
     for f in "${up[@]}"; do [[ $f != *.sha256 ]] || cat -- "$TD/$f"; done
     echo "TESTERS $TD/$TREL"
     echo "UPLOADED_TESTERS https://sourceforge.net/projects/denson9874-s-user-builds/files/${EOS_SF_DIR#/home/frs/project/denson9874-s-user-builds/}/testers/"
+    eos_step end
     done=1
     echo "PACK=OK"
     exit 0
@@ -478,6 +489,7 @@ if [[ -z "$mode" ]]; then
     else
         echo "testers: not yet (keys $keys, incremental base $ib in $CHECK/$NAME.pack-ok): --testers needs both OK"
     fi
+    eos_step end
     done=1
     echo "CANDIDATE $CHECK/$NAME"
     echo "PACK=OK"
@@ -587,5 +599,6 @@ if [[ "$mode" = --upload ]]; then
     echo "UPLOADED_TARGET_FILES $where"
     echo "UPLOADED https://sourceforge.net/projects/denson9874-s-user-builds/files/${EOS_SF_DIR#/home/frs/project/denson9874-s-user-builds/}/"
 fi
+eos_step end
 done=1
 echo "PACK=OK"
