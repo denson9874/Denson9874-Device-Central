@@ -54,7 +54,7 @@ index 000000000000..f690d6a2f36b
 +++ b/packages/SystemUI/res/drawable/ic_qs_extreme_charging.xml
 @@ -0,0 +1,24 @@
 +<!--
-+Copyright (C) 2026 ExpressiveOS
++Copyright (C) 2026 The Evolution X Project
 +
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -170,7 +170,7 @@ index 000000000000..67e4777253af
 +++ b/packages/SystemUI/src/com/android/systemui/qs/tiles/ExtremeChargingTile.java
 @@ -0,0 +1,200 @@
 +/*
-+ * Copyright (C) 2026 ExpressiveOS
++ * Copyright (C) 2026 The Evolution X Project
 + *
 + * Licensed under the Apache License, Version 2.0 (the "License");
 + * you may not use this file except in compliance with the License.
@@ -434,7 +434,7 @@ index 000000000000..19716be78954
 +++ b/services/core/java/com/android/server/power/ExtremeChargingController.java
 @@ -0,0 +1,300 @@
 +/*
-+ * Copyright (C) 2026 ExpressiveOS
++ * Copyright (C) 2026 The Evolution X Project
 + *
 + * Licensed under the Apache License, Version 2.0 (the License);
 + * you may not use this file except in compliance with the License.
