@@ -15,7 +15,7 @@
 #      KernelSU Next (EOS_KSU=lkm); on the others a WARNING says when its ramdisk isn't out/'s;
 #   4. for incrementals: the images of the dynamic partitions (system, vendor, product...:
 #      misc_info.txt's dynamic_partition_list, what an incremental patches block by block)
-#      are the fastboot zip's (out/'s) byte for byte: patches/device_google_gs201/0006 has
+#      are the fastboot zip's (out/'s) byte for byte: patches/device_google_gs201/0005 has
 #      target-files take the built ones (COPY_IMAGES_FOR_TARGET_FILES_ZIP; another phone's
 #      device tree needs the same), and an image the device tree takes prebuilt (the Pixel
 #      11s' stock vendor, vendor_dlkm and system_dlkm) is copied into target-files as it is.
@@ -99,6 +99,8 @@ if [[ $EOS_KSU = lkm ]]; then
 # target-files packs again from the same ramdisk files rather than taking it as built
 elif cmp -s -- "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk"; then
     echo "OK: its init_boot carries out/'s ramdisk (no KernelSU Next on $EOS_DEVICE)"
+elif cpio_same "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk"; then
+    echo "OK: its init_boot ramdisk holds out/'s files, packed again (no KernelSU: EOS_KSU=none)"
 else
     echo "WARNING: its init_boot ramdisk isn't out/'s: phones updated by OTA would get another init_boot ramdisk than the fastboot zip's (compare the two with unpack_bootimg)"
 fi

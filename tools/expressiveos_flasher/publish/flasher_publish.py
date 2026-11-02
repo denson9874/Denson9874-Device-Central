@@ -644,10 +644,18 @@ def publish(a: argparse.Namespace, device: str, zip_path: str, name: str, base: 
             meta: tuple[str, str, str, str], rclone: str, tmp: str) -> None:
     android, date, version, rtype = meta
     print(f"== the release: {zip_path}")
-    want = read_sidecar(zip_path, name)
     # The zip is opened once: hashed, then read as a zip, from that one file. rclone reads it
     # by its real path, and it must stay that file, unwritten, until its upload has ended
     real = os.path.realpath(zip_path)
+    # eos-pack.sh writes check/ before the phone test (it may carry try= commits or unpinned
+    # keys) and testers/ with no device-ok: never the release channel's
+    folder = os.path.basename(os.path.dirname(real))
+    if folder == "check":
+        fail(f"{zip_path} is a check/ candidate, not a release: publish the copy eos-pack.sh releases "
+             "into the release folder, or its testers/ copy with --testers")
+    if folder == "testers" and not a.testers:
+        fail(f"{zip_path} is a testers build: publish it with --testers")
+    want = read_sidecar(zip_path, name)
     zfile, st = open_regular(real)
     with zfile:
         got, size = hash_stream(zfile)

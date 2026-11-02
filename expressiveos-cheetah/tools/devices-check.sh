@@ -114,9 +114,9 @@ if [[ -d $evo/out-kernel/google/gs-6.1/.repo ]]; then
     if [[ -f $work/evo-kernel.xml && -f $kit/pins/kernel.xml ]]; then
         if diff -q <(grep -oE '<project [^>]*' "$work/evo-kernel.xml" | grep -oE '(name|revision)="[^"]*"' | paste - - | sort) \
                    <(grep -oE '<project [^>]*' "$kit/pins/kernel.xml" | grep -oE '(name|revision)="[^"]*"' | paste - - | sort) > /dev/null; then
-            echo "Evolution X's gs-6.1 kernel source: same projects and revisions as pins/kernel.xml"
+            echo "Upstream gs-6.1 kernel source: same projects and revisions as pins/kernel.xml"
         else
-            echo "Evolution X's gs-6.1 kernel source differs from pins/kernel.xml:"
+            echo "Upstream gs-6.1 kernel source differs from pins/kernel.xml:"
             diff <(grep -oE '<project [^>]*' "$work/evo-kernel.xml" | grep -oE '(name|revision)="[^"]*"' | paste - - | sort) \
                  <(grep -oE '<project [^>]*' "$kit/pins/kernel.xml" | grep -oE '(name|revision)="[^"]*"' | paste - - | sort) | head -20
         fi

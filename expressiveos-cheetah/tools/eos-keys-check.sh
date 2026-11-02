@@ -9,9 +9,12 @@
 #                                          own, complete, and nobody else's
 #   eos-keys-check.sh vars [top]           product config signs with it (dumpvars)
 #   eos-keys-check.sh out [top]            after: otacerts, build tags, every AVB signer
-#                                          and the OTA package's certificate
+#                                          and the OTA package's certificate (none in a
+#                                          quick build, EOS_QUICK=1: images only)
 #   eos-keys-check.sh vbmeta <img> [top]   one image's AVB signer is the tree's key
 #
+# Evolution X's and DerpFest's keys are read from their trees or, since those were deleted,
+# from evo-retire keep's copy in ~/retired (eos.conf's EVO_* pins count either way).
 # Pins: once the keys exist and are backed up, eos.conf's EOS_AVB_PUBKEY_SHA1 and
 # EOS_OTA_CERT_SHA256 hold their public fingerprints (README.md, "Keys"), and a tree whose
 # keys differ fails. While they are empty the checks pass with UNPINNED, and eos-pack.sh
@@ -93,21 +96,38 @@ others() {
     for f in "$top"/external/avb/test/data/testkey_rsa*.pem; do
         [[ -f "$f" ]] && c=$(key_sha1 "$f") && printf '%s\tthe AOSP AVB test key %s\n' "$c" "${f##*/}" >> "$work/avb"
     done
-    for d in "$evo/vendor/evolution-priv/keys:Evolution X" "$derp/vendor/lineage-priv/keys:DerpFest"; do
+    # Their trees' keys, and, once those trees are gone (evo-retire, 2026-11-02), every copy
+    # evo-retire keep made of them in ~/retired/keys-<time>/. Every copy, not KEPT's keys= line:
+    # a later keep run with the trees gone has nothing to copy
+    # (a copy reached through a link counts too: more keys can only add refusals)
+    local kd seen=0 unread=0 dirs=("$evo/vendor/evolution-priv/keys:Evolution X" "$derp/vendor/lineage-priv/keys:DerpFest")
+    for kd in "$HOME"/retired/keys-[0-9]*; do
+        [[ -d $kd ]] || continue
+        if [[ ! -r $kd || ! -x $kd ]]; then echo "note: can't read $kd; relying on eos.conf's pins for the keys in it"; unread=$((unread + 1)); continue; fi
+        dirs+=("$kd/evolution:Evolution X" "$kd/derpfest:DerpFest")
+    done
+    if [[ -d $HOME/retired && ( ! -r $HOME/retired || ! -x $HOME/retired ) ]]; then
+        echo "note: can't read ~/retired; relying on eos.conf's pins for any key copies in it"; unread=$((unread + 1))
+    fi
+    for d in "${dirs[@]}"; do
         label="${d##*:}'s"; d=${d%:*}
         [[ "$d" != /vendor/* ]] || continue        # that tree isn't on this server
         if [[ ! -d "$d" ]]; then continue; fi
-        if [[ ! -r "$d" || ! -x "$d" ]]; then echo "note: can't read $d; relying on eos.conf's pins for $label keys"; continue; fi
+        if [[ ! -r "$d" || ! -x "$d" ]]; then echo "note: can't read $d; relying on eos.conf's pins for $label keys"; unread=$((unread + 1)); continue; fi
+        seen=$((seen + 1))
         for f in "$d"/*.x509.pem; do
             [[ -f "$f" ]] && c=$(cert_fp "$f") && printf '%s\t%s %s\n' "$c" "$label" "${f##*/}" >> "$work/certs"
         done
         [[ -f "$d/avb_custom_key.bin" ]] && printf '%s\t%s avb_custom_key.bin\n' "$(blob_sha1 "$d/avb_custom_key.bin")" "$label" >> "$work/avb"
         for f in "$d"/avb*.pk8 "$d"/avb*.pem; do
             [[ -f "$f" ]] || continue
+            [[ "$f" == *.x509.pem ]] && continue
             if c=$(key_sha1 "$f"); then printf '%s\t%s %s\n' "$c" "$label" "${f##*/}" >> "$work/avb"
             else echo "note: can't read $f; its public half (avb_custom_key.bin) and the pins still count"; fi
         done
     done
+    if [[ $seen = 0 && $unread = 0 ]]; then echo "note: no Evolution X or DerpFest keys on this server (no tree, no copy in ~/retired); only eos.conf's pins stand for them"
+    elif [[ $seen = 0 ]]; then echo "note: no Evolution X or DerpFest keys readable here (see the notes above); only eos.conf's pins stand for them"; fi
     return 0
 }
 whose() {   # whose certs|avb <fingerprint>: who else holds it, or nothing
@@ -268,7 +288,7 @@ out|vbmeta)
                 if [[ "$fp" = "$ota" ]]; then
                     mine=1
                 elif [[ "$z" = "$O"/recovery/* && -n "$lineage" && "$fp" = "$lineage" ]]; then
-                    echo "note: ${z#"$O"/} also trusts LineageOS's release certificate ($lf, Evolution X's PRODUCT_EXTRA_RECOVERY_KEYS)"
+                    echo "note: ${z#"$O"/} also trusts LineageOS's release certificate ($lf, recovery PRODUCT_EXTRA_RECOVERY_KEYS)"
                 else
                     w=$(whose certs "$fp"); [[ "$fp" != "$lineage" ]] || w="LineageOS's release certificate, allowed in recovery's only"
                     fail "${z#"$O"/} trusts ${c##*/} (${w:+$w, }${fp:0:16}...), not only ExpressiveOS's OTA certificate"
@@ -301,13 +321,19 @@ out|vbmeta)
             [[ -f "$O/$i.img" ]] || fail "vbmeta.img chains $i, but there's no $i.img in $O"
             signed_by_us "$O/$i.img" "$i.img (chained)"
         done < <(sort -u "$work/chained" | grep -vxE 'vbmeta|vbmeta_system|vbmeta_vendor|boot|init_boot' || true)
-        # The OTA package m evolution made last, named by patches/vendor_lineage/0001
+        # The OTA package m evolution made last, named by patches/vendor_lineage/0001. A quick
+        # build (EOS_QUICK=1, lib.sh) makes none, and nothing of it is ever released
         pkg=$(find "$O" -maxdepth 1 -name 'ExpressiveOS-*.zip' ! -name '*-fastboot.zip' -printf '%T@ %p\n' | sort -n | tail -1 | cut -d' ' -f2-)
-        [[ -n "$pkg" ]] || fail "no ExpressiveOS-*.zip OTA package in $O (m evolution not run, or the version patch missing)"
-        unzip -p "$pkg" META-INF/com/android/otacert > "$work/otacert" 2>/dev/null || fail "${pkg##*/} has no META-INF/com/android/otacert"
-        fp=$(cert_fp "$work/otacert") || fail "${pkg##*/}'s otacert isn't a certificate"
-        [[ "$fp" = "$ota" ]] || fail "${pkg##*/} is signed by certificate ${fp:0:16}... ($(whose certs "$fp"; true)), not ExpressiveOS's OTA key"
-        echo "OK: ${pkg##*/} is signed with ExpressiveOS's OTA key"
+        if [[ $EOS_QUICK = 1 ]]; then
+            [[ -z "$pkg" ]] || fail "${pkg##*/} is in $O, but this is a quick build (EOS_QUICK=1), which makes no OTA package"
+            echo "note: a quick build (EOS_QUICK=1) has no OTA package: no package certificate to check"
+        else
+            [[ -n "$pkg" ]] || fail "no ExpressiveOS-*.zip OTA package in $O (m evolution not run, or the version patch missing)"
+            unzip -p "$pkg" META-INF/com/android/otacert > "$work/otacert" 2>/dev/null || fail "${pkg##*/} has no META-INF/com/android/otacert"
+            fp=$(cert_fp "$work/otacert") || fail "${pkg##*/}'s otacert isn't a certificate"
+            [[ "$fp" = "$ota" ]] || fail "${pkg##*/} is signed by certificate ${fp:0:16}... ($(whose certs "$fp"; true)), not ExpressiveOS's OTA key"
+            echo "OK: ${pkg##*/} is signed with ExpressiveOS's OTA key"
+        fi
         pin "the OTA certificate" "$ota" EOS_OTA_CERT_SHA256
         pin "the AVB public key" "$avb" EOS_AVB_PUBKEY_SHA1
     fi

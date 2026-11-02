@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Sat, 24 Oct 2026 13:31:19 +0200
-Subject: [PATCH 5/5] gs201: keep ssr_detector_app's app_domain() in private
+Subject: [PATCH 4/5] gs201: keep ssr_detector_app's app_domain() in private
  policy
 
 The CP3A sepolicy import put app_domain(ssr_detector_app) in
