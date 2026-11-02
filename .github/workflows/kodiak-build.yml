@@ -1127,8 +1127,8 @@ jobs:
             if [[ -f $top/$st/quick.ok && ! $top/$st/build.ok -nt $top/$st/quick.ok ]]; then
               echo "== $l: a quick build (images only, $st/quick.ok: $(wc -l < "$top/$st/quick.ok") files), $(date -r "$top/$st/quick.ok" '+%F %T')"
             else
-              [[ ! -f $top/$st/quick.ok ]] || echo "   $st/quick.ok is older than build.ok (stale: eos-pack.sh removes it)"
               echo "== $l: $(cat "$top/$st/build.ok" 2>/dev/null || echo "no complete build ($st/build.ok)")"
+              [[ ! -f $top/$st/quick.ok ]] || echo "   $st/quick.ok is older than build.ok (stale: eos-pack.sh removes it)"
             fi
             # Written by a modules= compile check, removed by the m installclean it asks for
             if [[ -e $top/$st/installclean ]]; then
