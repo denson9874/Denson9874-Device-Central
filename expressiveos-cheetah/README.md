@@ -20,12 +20,29 @@ That's ExpressiveOS on cheetah, the kit's first phone and the one every script b
 otherwise. husky (Pixel 8 Pro) and the four Pixel 11s build from the same kit and tree, with their own
 names, folders and switches (Other phones, below).
 
-The Evolution X cheetah build (`evolution-cheetah/`, built in `~/evolution`) stays as it is, unrooted.
-Nothing here touches it: every script refuses `~/evolution` and `~/derpfest` (`prepare.sh` only copies
-a Pixel 11's vendor blobs out of it, Other phones), writes nothing through a
-symlink that leads out of `~/expressiveos` (its `out/` and `out-kernel/` included), and builds only while
-holding the lock the Evolution X routines take (`~/.evolution-tree.lock`). The one exception is
-`tools/server-cleanup.sh` (Disk, below).
+Since 2026-11-02 the build server builds ExpressiveOS only: Evolution X and DerpFest were retired and
+their trees (`~/evolution`, `~/derpfest`) deleted, after `tools/evo-retire.sh keep` copied the Pixel 11
+vendor blob repos into `~/expressiveos/vendor/google/` and their keys and server-only work into
+`~/retired/`. The scripts still refuse those two paths, should they come back (`prepare.sh` copies a
+Pixel 11's vendor blobs out of `~/evolution` only when the ExpressiveOS tree lacks them), write nothing
+through a symlink that leads out of `~/expressiveos` (its `out/` and `out-kernel/` included), and build
+only while holding `~/.evolution-tree.lock` (the old name stays). The one exception is
+`tools/server-cleanup.sh` (Disk, below). Cheetah's firmware cache is filled by `tools/fetch-firmware.sh`
+(runner action `expressiveos-firmware`), which used to live in `evolution-cheetah/`.
+
+**Cheetah's firmware pin.** Google shows the factory image tables only after a visitor accepts its
+terms, so the fetcher can't read them unattended. When Google ships a monthly release, a person opens
+https://developers.google.com/android/images#cheetah, accepts the terms, and copies the newest generic
+Android 17 release (no carrier suffix) into `firmware/cheetah.conf`:
+
+```
+url=https://dl.google.com/dl/android/aosp/cheetah-<build>-factory-<8 hex>.zip
+sha256=<the 64-hex SHA-256 from the same row>
+```
+
+Merge it, then run the runner action `expressiveos-firmware` (query `check` only says what the pin and
+the cache hold). The next cheetah build's `prepare.sh` puts that bootloader and radio into
+`vendor/google/cheetah` through `update-firmware.sh`.
 
 ## What's here
 

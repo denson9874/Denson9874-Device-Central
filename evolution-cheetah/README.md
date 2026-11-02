@@ -1,5 +1,9 @@
 # Evolution X (Android 17) for the Pixel 7 Pro (cheetah)
 
+> **Retired 2026-11-02.** Evolution X no longer builds on the server (its tree was deleted after
+> `expressiveos-cheetah/tools/evo-retire.sh keep`), and the runner's cheetah-* actions are gone. This
+> folder is kept as a record. Cheetah's firmware fetcher moved to the ExpressiveOS kit (below).
+
 > **Unofficial.** Pixel 7 Pro has an official Evolution X maintainer for Android 16 (nhansp, last build
 > 11.10 on 2026-08-08). Evolution X hasn't published official Android 17 (`cnb`) cheetah builds yet:
 > Evolution-X/OTA `cnb` lists only marble, raphael, tissot and venus. These builds are labelled
@@ -78,21 +82,10 @@ The weekly routine runs all of that: `~/p11-routine.sh cheetah` (see "Release sc
    `FIRMWARE_SOURCE`, and commits locally. It's skipped if the cached release is older than what the
    vendor repo already ships.
 
-`repo sync` drops the local commits; `prepare.sh` puts them back. Run `fetch-firmware.sh` when Google
-ships a monthly release (`--check` only reports the newest one).
-
-**Where the factory image link comes from:** Google now shows the per-device tables only after a visitor
-accepts its terms of use, so the script can't read them unattended. A person opens
-https://developers.google.com/android/images#cheetah, accepts the terms, and copies the newest generic
-Android 17 release (no carrier suffix) into `firmware.conf`:
-
-```
-url=https://dl.google.com/dl/android/aosp/cheetah-<build>-factory-<8 hex>.zip
-sha256=<the 64-hex SHA-256 from the same row>
-```
-
-Commit it, run the runner's `cheetah-setup` (installs the kit) and `cheetah-firmware`. Without
-`firmware.conf` the script still tries Google's page, and says what it saw if that fails.
+`repo sync` drops the local commits; `prepare.sh` puts them back. Since 2026-11-02 (Evolution X retired
+from the build server) the fetcher and its pin live in the ExpressiveOS kit only:
+`expressiveos-cheetah/tools/fetch-firmware.sh` and `expressiveos-cheetah/firmware/cheetah.conf`, run by
+the runner action `expressiveos-firmware` (how to update the pin: `expressiveos-cheetah/README.md`).
 
 ## Shared patches
 

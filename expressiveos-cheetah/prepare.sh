@@ -4,7 +4,7 @@
 # (apply.sh), then the firmware its EOS_FIRMWARE_MODE says (devices/<device>.conf):
 #   cache   the newest cached Google firmware into its vendor repo unless that already ships
 #           newer (cheetah). The cache, ~/android-dt/firmware/<device>, is the one
-#           evolution-cheetah/fetch-firmware.sh fills; it's only read here;
+#           tools/fetch-firmware.sh fills (runner action expressiveos-firmware); only read here;
 #   blobs   the vendor repo's own (husky: TheMuppets' blobs carry the factory firmware);
 #   images  vendor/google/<device>-images made by the device tree's extract-images.sh from the
 #           newest ~/android-dt/firmware/image-<device>-*.zip, again only when that zip
@@ -84,9 +84,9 @@ cache)
               grep -oE "$EOS_DEVICE:17/[A-Z0-9]{4}\.[0-9]{6}\.[0-9]{3}" "$top/$EOS_DEVICE_TREE/lineage_$EOS_DEVICE.mk" | cut -d/ -f2 | tr '[:upper:]' '[:lower:]' ||
               true)   # neither: unknown, said below
     if [[ -z "$cached" ]]; then
-        echo "WARNING: no cached factory firmware in $fw (run update-firmware.sh); shipping the vendor repo's ${shipped:-unknown}"
+        echo "WARNING: no cached factory firmware in $fw (runner action expressiveos-firmware fills it: tools/fetch-firmware.sh); shipping the vendor repo's ${shipped:-unknown}"
     elif [[ -n "$shipped" && "$(date_of "$cached")" < "$(date_of "$shipped")" ]]; then
-        echo "WARNING: cached firmware $cached is older than the vendor repo's $shipped; keeping the vendor repo's (run fetch-firmware.sh)"
+        echo "WARNING: cached firmware $cached is older than the vendor repo's $shipped; keeping the vendor repo's (put a newer build in firmware/$EOS_DEVICE.conf, then run the runner action expressiveos-firmware)"
     else
         bl=$(find "$fw" -maxdepth 1 -name "bootloader-$EOS_DEVICE-*.img" | sort | tail -1)
         rd=$(find "$fw" -maxdepth 1 -name "radio-$EOS_DEVICE-*.img" | sort | tail -1)

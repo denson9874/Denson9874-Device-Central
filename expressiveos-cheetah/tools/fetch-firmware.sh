@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # Download the newest Pixel 7 Pro (cheetah) factory image from Google, verify its
-# SHA-256 against Google's page, and keep only its bootloader and radio images
-# for update-firmware.sh. Run it when Google ships a new monthly release.
+# SHA-256 against Google's page, and keep only its bootloader and radio images in the
+# firmware cache that prepare.sh reads (EOS_FIRMWARE_MODE=cache: the newest cached release
+# goes into vendor/google/cheetah through update-firmware.sh at the start of each build).
+# Run it when Google ships a new monthly release: runner action expressiveos-firmware.
+# Moved here from evolution-cheetah/fetch-firmware.sh (2026-11-02), unchanged but for the
+# paths, when Evolution X left the build server.
 #
 #   fetch-firmware.sh [--check]     # --check: print the newest release, download nothing
 #
@@ -11,7 +15,7 @@ set -euo pipefail
 dev=cheetah
 dir=~/android-dt/firmware/$dev; mkdir -p "$dir"
 here="$(cd "$(dirname "$0")" && pwd)"
-conf="$here/firmware.conf"
+conf="$here/../firmware/$dev.conf"
 # Newest generic (not carrier-specific) Android 17 release. Rows look like
 #   <tr id="cheetahcp3a.261005.005"><td>17.0.0 (CP3A.261005.005, Oct 2026)</td>
 #   <td><a href="https://dl.google.com/.../cheetah-cp3a.261005.005-factory-1a2b3c4d.zip">Link</a></td><td>sha256</td>
@@ -24,7 +28,7 @@ if [[ -f "$conf" ]]; then
     # accepting Google's terms there: the newest generic Android 17 release's link and SHA-256.
     url=$(sed -n 's/^url=//p' "$conf" | head -1); sha=$(sed -n 's/^sha256=//p' "$conf" | head -1)
     build=$(sed -E -n "s#^https://dl\.google\.com/dl/android/aosp/$dev-([a-z0-9]{4}\.[0-9]{6}\.[0-9]{3}(\.[a-z0-9]+)?)-factory-[0-9a-f]{8}\.zip\$#\1#p" <<<"$url")
-    [[ -n "$build" && "$sha" =~ ^[0-9a-f]{64}$ ]] || { echo "firmware.conf needs url=<generic $dev factory zip link> and sha256=<64 hex>" >&2; exit 1; }
+    [[ -n "$build" && "$sha" =~ ^[0-9a-f]{64}$ ]] || { echo "firmware/$dev.conf needs url=<generic $dev factory zip link> and sha256=<64 hex>" >&2; exit 1; }
 else
 read -r url sha build < <(python3 -I - "$dev" <<'PY'
 import html as H, re, sys, urllib.parse, urllib.request
