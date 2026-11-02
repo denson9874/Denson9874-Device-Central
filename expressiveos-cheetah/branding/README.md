@@ -1,19 +1,27 @@
 # ExpressiveOS branding
 
 Daryl, 2026-10-27: "ExpressiveOS only, no mention". Every screen a user sees says ExpressiveOS, and
-Evolution X's people, links and logo are gone from the UI. Copyright and SPDX lines in the sources
-stay, and so do internal names (`org.evolution.*` packages, class and resource names, `ro.evolution.*`
-properties). The Evolver is "Expressive Studio", subtitle "Make your device yours" (Daryl,
+Evolution X's people, links and logo are gone from the UI. Daryl, 2026-11-01: every Evolution
+reference in ExpressiveOS becomes Expressive, the internal names included (`org.evolution.*`
+packages, class and resource names, `ro.evolution.*` properties, `vendor/evolution-priv`, the
+`evolution` make goal). Only copyright, licence and credit lines stay: the 276 upstream files with
+an Evolution X copyright or SPDX header keep it verbatim (Apache-2.0 section 4(c)), and headers
+move unchanged when their file is renamed. The rename lands in phases: A (2026-11-01) outbound
+links, fonts, wrong headers and this gate; B labels and dead code; C code namespaces; D the
+load-bearing props, make goal, keys path and manifest paths, as a staged rename with one
+transition release. The Evolver is "Expressive Studio", subtitle "Make your device yours" (Daryl,
 2026-10-27): two strings in `packages_apps_Evolver` 0001.
 
 The patches are in `../patches/` (the table in [the kit's README](../README.md)), made at the build
 server's revisions of 2026-10-26 and applied by `apply.sh` like the others. `tools/brand-check.py`
-(run by `eos-verify.sh`) fails the build if any app, framework string, APEX or tombstone header still
-names Evolution X, apart from the links it lists on purpose:
-
-- Settings' photo of the phone and the Theme Store catalog, both on Evolution X's GitHub;
-- the Expressive Studio HTTP user agent and `paste.evolution-x.org` in PastyUtils, which nothing calls
-  any more: the crash dialog's Copy button copies the log itself.
+(run by `eos-verify.sh`) fails the build if any app, framework string, APEX, tombstone header or
+build.prop value still names Evolution X. Nothing outbound is allowed any more: phase A moved
+Settings' photo of the phone to `denson9874/expressiveos_ota` (`devices/images/`), the Theme Store
+catalog to `ExpressiveOS/vendor_themes`, the Expressive Studio HTTP user agent to
+`ExpressiveOS/HardwareInfo`, deleted PastyUtils (`paste.evolution-x.org`; the crash dialog's Copy
+button copies the log itself), dropped the `ro.evolutionlegal.url` property and the Evo Sans and
+Evolve Sans font overlays. The only allowlist entries left are internal class names, which phase C
+removes.
 
 The keybox downloads (`AxSpoofManager` in `services.jar` and Expressive Studio's `TrickyStore` settings)
 fetch from `EOS_KEYBOX_URL` (`../eos.conf`, uploaded by `../tools/eos-keybox.py`), and `brand-check.py`

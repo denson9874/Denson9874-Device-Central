@@ -1,6 +1,6 @@
 # ExpressiveOS for cheetah (Pixel 7 Pro) and the other phones
 
-ExpressiveOS is its own ROM, built on Evolution X (cnb) like any standard custom ROM (Daryl,
+ExpressiveOS is its own ROM, built from its own sources like any standard custom ROM (Daryl,
 2026-10-25 and 2026-10-26):
 
 - its own name and version: `ExpressiveOS-17.0-<date>-cheetah-1.0-Official.zip`, "ExpressiveOS 1.0"
@@ -8,7 +8,7 @@ ExpressiveOS is its own ROM, built on Evolution X (cnb) like any standard custom
 - its own release keys, update feed (`denson9874/expressiveos_ota`, branch `main`), release folder
   (`~/releases/expressiveos-cheetah`), SourceForge folder (`expressiveos/cheetah`) and R2 prefix
   (`expressiveos/cheetah/`), all set in `eos.conf` and `devices/cheetah.conf`;
-- a clean install only: updates from other ROMs, Evolution X included, never install on it;
+- a clean install only: updates from other ROMs never install on it;
 - no root out of the box: root is the user's choice (Daryl, 2026-11-01). `EOS_KSU=lkm` in a
   phone's `devices/<device>.conf` still builds KernelSU Next with susfs and NeoZygisk into it
   ([`ksu/`](ksu/README.md)); every phone ships `EOS_KSU=none` today. ViPER4Android RE ([`viper4android/`](viper4android/README.md)), its
