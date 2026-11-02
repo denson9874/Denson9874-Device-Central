@@ -202,6 +202,7 @@ on:
           - expressiveos-keys
           - expressiveos-build
           - expressiveos-pack
+          - expressiveos-flasher-husky
       tree_ref:
         description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -keys, -build, -pack, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
@@ -289,7 +290,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-kit|expressiveos-pins|expressiveos-devices)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-husky)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -817,6 +818,20 @@ jobs:
           export PATH=~/bin:$PATH
           read -r -a q <<< "$QUERY"
           bash expressiveos-cheetah/sources/update.sh "${q[@]}"
+
+      - name: Check out the flasher publish script
+        if: inputs.action == 'expressiveos-flasher-husky'
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/expressiveos_flasher/publish
+          fetch-depth: 1
+
+      # One-off: husky's packed 11-02 build to R2, the web installer's main list
+      - name: Publish husky to the web installer
+        if: inputs.action == 'expressiveos-flasher-husky'
+        run: |
+          python3 -I tools/expressiveos_flasher/publish/flasher_publish.py husky \
+            ~/releases/expressiveos-husky/check/ExpressiveOS-17.0-20261102-husky-1.0-Unofficial-fastboot.zip
 
       - name: Check out expressiveos-cheetah
         if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack"]'), inputs.action)
