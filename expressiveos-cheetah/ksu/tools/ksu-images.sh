@@ -11,13 +11,17 @@
 # (ksu-check.sh images) and keep its target-files zip (tf_zip in lib.sh). Without KernelSU
 # Next (EOS_KSU=none: the Pixel 11s): lunch and one make pass, which must ship the stock
 # init_boot and keep its target-files zip too. Every phone gets EOS_PRODUCT_OUT's
-# ab_partitions.txt. The last line is MAKE_EXIT=0 or MAKE_EXIT=1.
+# ab_partitions.txt. A quick build (EOS_QUICK=1, lib.sh) runs m droid where these say
+# m evolution: the same images, and no OTA package or target-files zip, which it then must
+# not leave in out/ either. The last line is MAKE_EXIT=0 or MAKE_EXIT=1.
 #
 #   ksu-images.sh [top]                  # default ~/expressiveos; lunch target EOS_LUNCH (devices/<device>.conf)
 #   KERNEL_ONLY=1 ksu-images.sh [top]    # stop after build_kernel and kernelsu.ko (nothing to
 #                                        # build for a phone with a prebuilt kernel)
 #   EOS_INSTALLCLEAN=1 ksu-images.sh     # start with m installclean (a modules= compile check
-#                                        # asks the next full build for it itself)
+#                                        # asks the next build that makes images, full or
+#                                        # quick, for it itself)
+#   EOS_QUICK=1 ksu-images.sh            # images only: m droid, no OTA package or target-files
 #
 # The kernel (EOS_KERNEL=gs-6.1) source is pins/kernel.xml's (kernel_pinned in lib.sh): synced
 # to those commits when out-kernel/ has none yet or EOS_KERNEL_SYNC=1, checked against them
@@ -88,7 +92,7 @@ lunch "$EOS_LUNCH" || fail "lunch $EOS_LUNCH failed"
 # build-modules.sh writes <EOS_STATE>/installclean, and then (or with EOS_INSTALLCLEAN=1) the
 # build starts from m installclean: the product out's partitions, images and packaging go, the
 # intermediates stay. Before this script writes anything to $O; a kernel-only run leaves the
-# marker for the next full build
+# marker for the next build that makes images (full or quick)
 ic=$EOS_STATE/installclean
 if [[ "${KERNEL_ONLY:-0}" != 1 && ( "${EOS_INSTALLCLEAN:-0}" = 1 || -e $ic ) ]]; then
     if [[ -e $ic ]]; then why="a modules= compile check installed into $O since the last build"; else why="EOS_INSTALLCLEAN=1"; fi
@@ -143,8 +147,13 @@ if [[ "${KERNEL_ONLY:-0}" = 1 ]]; then done=1; echo "MAKE_EXIT=0"; exit 0; fi
 export BUILD_DATETIME=${BUILD_DATETIME:-$(date +%s)}
 export BUILD_NUMBER=${BUILD_NUMBER:-eng.$(whoami).$(date -ud "@$BUILD_DATETIME" +%Y%m%d.%H%M%S)}
 # Older builds' packages out of the way: after this run, out/ holds only this build's,
-# and the target-files zip m evolution keeps (patches/vendor_lineage/0003) is this build's
+# and the target-files zip m evolution keeps (patches/vendor_lineage/0003) is this build's.
+# A quick build leaves none: nothing in out/ can pass for its package
 tf=$(tf_zip)
+# m evolution is m droid (the images) plus the OTA package and its target-files zip
+# (vendor/lineage's build/tasks/evolution.mk: evolution: <package> $(DEFAULT_GOAL))
+goal=evolution
+[[ $EOS_QUICK != 1 ]] || goal=droid
 in_top "$top/${tf%/*}"
 pkgs() { rm -f -- "$O"/ExpressiveOS-*.zip "$O"/ExpressiveOS-*.zip.sha256sum "$O/$EOS_DEVICE.json" "$tf"; }
 pkgs
@@ -159,22 +168,29 @@ if [[ $EOS_KSU = lkm ]]; then
     m -j"$(nproc)" bootimage initbootimage vendorkernelbootimage || fail "make pass 1 failed"
     "$here/tools/cheetah-ksu.sh" "$top" || fail "cheetah-ksu.sh failed"
     export "$EOS_KSU_INIT_BOOT_VAR=$K/init_boot-ksu.img"
-    echo "== make pass 2 (KernelSU Next init_boot)"
-    m -j"$(nproc)" evolution || fail "make pass 2 failed"
+    echo "== make pass 2 (KernelSU Next init_boot): m $goal"
+    m -j"$(nproc)" "$goal" || fail "make pass 2 failed"
     pass="pass 2"
 else
     # No KernelSU Next (EOS_KSU=none): one pass, the build's own init_boot ships
-    echo "== make (stock init_boot, no KernelSU: EOS_KSU=none), BUILD_DATETIME $BUILD_DATETIME"
-    m -j"$(nproc)" evolution || fail "make failed"
+    echo "== make (stock init_boot, no KernelSU: EOS_KSU=none): m $goal, BUILD_DATETIME $BUILD_DATETIME"
+    m -j"$(nproc)" "$goal" || fail "make failed"
     pass="the build"
 fi
-zips=("$O"/ExpressiveOS-*.zip)
-[[ ${#zips[@]} = 1 && -f ${zips[0]} ]] || fail "$pass made no ExpressiveOS package in $O, or more than one"
-# patches/vendor_lineage/0001 names it after BUILD_DATETIME's day (UTC)
-want="ExpressiveOS-*-$(date -ud "@$BUILD_DATETIME" +%Y%m%d)-$EOS_DEVICE-$EOS_VERSION-$EOS_BUILD_TYPE.zip"
-# shellcheck disable=SC2053
-[[ ${zips[0]##*/} == $want ]] || fail "$pass made ${zips[0]##*/}, want $want"
-[[ -f $tf ]] || fail "$pass kept no target-files zip ($tf): is patches/vendor_lineage/0003 in vendor/lineage?"
+zips=()
+for z in "$O"/ExpressiveOS-*.zip; do if [[ -f $z ]]; then zips+=("$z"); fi; done
+if [[ $EOS_QUICK = 1 ]]; then
+    # m droid packages nothing; a package or target-files zip here isn't this build's
+    (( ${#zips[@]} == 0 )) || fail "$pass (quick: m droid) left ${zips[*]##*/} in $O, which isn't this build's"
+    [[ ! -e $tf ]] || fail "$pass (quick: m droid) left a target-files zip ($tf), which isn't this build's"
+else
+    [[ ${#zips[@]} = 1 ]] || fail "$pass made no ExpressiveOS package in $O, or more than one"
+    # patches/vendor_lineage/0001 names it after BUILD_DATETIME's day (UTC)
+    want="ExpressiveOS-*-$(date -ud "@$BUILD_DATETIME" +%Y%m%d)-$EOS_DEVICE-$EOS_VERSION-$EOS_BUILD_TYPE.zip"
+    # shellcheck disable=SC2053
+    [[ ${zips[0]##*/} == $want ]] || fail "$pass made ${zips[0]##*/}, want $want"
+    [[ -f $tf ]] || fail "$pass kept no target-files zip ($tf): is patches/vendor_lineage/0003 in vendor/lineage?"
+fi
 if [[ $EOS_KSU = lkm ]]; then
     "$here/tools/ksu-check.sh" images "$top/$O" "$top" || fail "pass 2 didn't ship the KernelSU Next init_boot"
 else
@@ -195,5 +211,9 @@ else
     echo "OK: $O/init_boot.img is the stock one (no KernelSU: EOS_KSU=none)"
 fi
 done=1
-echo "OK: ${zips[0]##*/}"
+if [[ $EOS_QUICK = 1 ]]; then
+    echo "OK: the images, quick (m droid): no OTA package or target-files zip"
+else
+    echo "OK: ${zips[0]##*/}"
+fi
 echo "MAKE_EXIT=0"

@@ -4,8 +4,13 @@
 # runs it as its last step; it can also run alone after a build.
 # Stops at the first problem. Prints "VERIFIED <OTA package>" and, last, VERIFY=OK;
 # otherwise the last line is VERIFY=FAIL.
+# A quick build (EOS_QUICK=1, lib.sh: the images only, m droid) has no OTA package or
+# target-files zip: everything below that reads them (the package in 1, its signatures in 3,
+# the payload and target-files in 4) is checked on out/'s own images instead, or not at all,
+# and it prints "VERIFIED_QUICK <the build's name>" instead.
 #
 #   eos-verify.sh [top]      # default ~/expressiveos
+#   EOS_QUICK=1 eos-verify.sh [top]
 #
 #   1. the package: one ExpressiveOS-17.x-<date>-<device>-<version>-<type>.zip in out/, the
 #      build's own, A/B, for the phone;
@@ -50,8 +55,11 @@ eos_top "${1:-}"
 cd "$top"
 O=$EOS_PRODUCT_OUT
 H=out/host/linux-x86/bin
-# check_ota_package_signature runs delta_generator from its own folder
-for t in avbtool ota_extractor check_ota_package_signature delta_generator unpack_bootimg; do
+# check_ota_package_signature runs delta_generator from its own folder. A quick build reads no
+# package, so it needs only the tools for out/'s images
+tools="avbtool ota_extractor check_ota_package_signature delta_generator unpack_bootimg"
+[[ $EOS_QUICK != 1 ]] || tools="avbtool unpack_bootimg"
+for t in $tools; do
     [[ -x $H/$t ]] || fail "no $H/$t (m evolution builds it)"
 done
 # Only a build in this tree changes out/ under the checks
@@ -84,16 +92,27 @@ echo "== package"
 ver=$(prop ro.evolution.build.version)
 [[ "$ver" =~ ^ExpressiveOS-17\.[0-9]+-[0-9]{8}-$EOS_DEVICE-${EOS_VERSION//./\\.}-$EOS_BUILD_TYPE$ ]] \
     || fail "ro.evolution.build.version is '$ver', not ExpressiveOS-17.x-<date>-$EOS_DEVICE-$EOS_VERSION-$EOS_BUILD_TYPE"
-ota=$O/$ver.zip
-[[ -f $ota ]] || fail "no $ota (m evolution makes it)"
-others=$(find "$O" -maxdepth 1 -name 'ExpressiveOS-*.zip' ! -name "$ver.zip" -printf '%f ')
-[[ -z "$others" ]] || fail "out/ also holds $others; it must hold only this build's package"
-unzip -p -- "$ota" META-INF/com/android/metadata > "$T/metadata" || fail "$ota has no OTA metadata"
-grep -qx "ota-type=AB" "$T/metadata" || fail "$ota isn't an A/B package"
-grep -qx "pre-device=$EOS_DEVICE" "$T/metadata" || fail "$ota isn't for $EOS_DEVICE"
-ts=$(sed -n 's/^post-timestamp=//p' "$T/metadata")
-[[ -n "$ts" && "$ts" = "$(prop ro.build.date.utc)" ]] || fail "$ota isn't from this build (post-timestamp '$ts', build date $(prop ro.build.date.utc))"
-echo "OK: $ver.zip ($(stat -c %s "$ota") bytes), A/B, $EOS_DEVICE, built $(date -ud "@$ts" '+%F %T') UTC"
+if [[ $EOS_QUICK = 1 ]]; then
+    # m droid packages nothing (ksu-images.sh removed the last build's): any package or
+    # target-files zip in out/ isn't this build's
+    others=$(find "$O" -maxdepth 1 -name 'ExpressiveOS-*.zip' -printf '%f ')
+    [[ -z "$others" ]] || fail "out/ holds $others, but this is a quick build (EOS_QUICK=1), which makes no package"
+    [[ ! -e $(tf_zip) ]] || fail "out/ holds a target-files zip ($(tf_zip)), but this is a quick build (EOS_QUICK=1), which makes none"
+    ts=$(prop ro.build.date.utc)
+    [[ $ts =~ ^[0-9]+$ ]] || fail "ro.build.date.utc is '$ts', not the build's time"
+    echo "OK: $ver, a quick build (EOS_QUICK=1: the images only, no OTA package or target-files), built $(date -ud "@$ts" '+%F %T') UTC"
+else
+    ota=$O/$ver.zip
+    [[ -f $ota ]] || fail "no $ota (m evolution makes it)"
+    others=$(find "$O" -maxdepth 1 -name 'ExpressiveOS-*.zip' ! -name "$ver.zip" -printf '%f ')
+    [[ -z "$others" ]] || fail "out/ also holds $others; it must hold only this build's package"
+    unzip -p -- "$ota" META-INF/com/android/metadata > "$T/metadata" || fail "$ota has no OTA metadata"
+    grep -qx "ota-type=AB" "$T/metadata" || fail "$ota isn't an A/B package"
+    grep -qx "pre-device=$EOS_DEVICE" "$T/metadata" || fail "$ota isn't for $EOS_DEVICE"
+    ts=$(sed -n 's/^post-timestamp=//p' "$T/metadata")
+    [[ -n "$ts" && "$ts" = "$(prop ro.build.date.utc)" ]] || fail "$ota isn't from this build (post-timestamp '$ts', build date $(prop ro.build.date.utc))"
+    echo "OK: $ver.zip ($(stat -c %s "$ota") bytes), A/B, $EOS_DEVICE, built $(date -ud "@$ts" '+%F %T') UTC"
+fi
 
 echo "== identity"
 for kv in "ro.product.product.device=$EOS_DEVICE" "ro.product.product.model=$EOS_MODEL" "ro.product.vendor.device=$EOS_DEVICE" \
@@ -177,23 +196,27 @@ checked "the build isn't signed with ExpressiveOS's own keys only" 'KEYS_CHECK=(
 unzip -q -o -d "$T/otacerts" -- "$O/system/etc/security/otacerts.zip"
 certs=("$T"/otacerts/*)
 [[ ${#certs[@]} = 1 && -f ${certs[0]} ]] || fail "expected one certificate in otacerts.zip, found ${#certs[@]}"
-"$H/check_ota_package_signature" "${certs[0]}" "$ota" > "$T/sig.log" 2>&1 || { tail -5 "$T/sig.log" >&2; fail "the package's signature doesn't verify against otacerts.zip"; }
-grep -q "Payload signatures VERIFIED" "$T/sig.log" || fail "the payload signatures aren't verified"
-echo "OK: the package's zip and payload signatures verify against the build's otacerts"
-# Evolution X's update_engine took any payload signature (59fbd47), and so did the host's
-# delta_generator, built from the same payload_verifier.cc, under the check above. So
-# payload-sig.py checks both signatures without update_engine's code, against the pinned
-# certificate, and delta_generator must refuse a key that didn't sign the payload.
-pin=${EOS_OTA_CERT_SHA256:-$(openssl x509 -in "${certs[0]}" -noout -fingerprint -sha256 | sed 's/.*=//; s/://g')}
-r=$(python3 -I "$kit/tools/payload-sig.py" "$ota" "$O/system/etc/security/otacerts.zip" 2>&1 | tail -1) || true
-[[ $r = "PAYLOAD_SIG=OK $pin" ]] || fail "payload.bin isn't signed with ExpressiveOS's OTA key $pin ($r)"
-unzip -p -- "$ota" payload.bin > "$T/payload.bin" || fail "can't extract payload.bin from $ota"
-openssl x509 -in build/make/target/product/security/testkey.x509.pem -noout -pubkey > "$T/aosp.pub.pem" \
-    || fail "can't read AOSP's test key (build/make/target/product/security/testkey.x509.pem)"
-if "$H/delta_generator" --in_file="$T/payload.bin" --public_key="$T/aosp.pub.pem" > "$T/dg.log" 2>&1; then
-    fail "delta_generator takes AOSP's test key for this payload: the tree's payload_verifier.cc checks no signature (patches/system_update_engine 0001)"
+if [[ $EOS_QUICK = 1 ]]; then
+    echo "note: a quick build has no package: its zip and payload signatures aren't checked"
+else
+    "$H/check_ota_package_signature" "${certs[0]}" "$ota" > "$T/sig.log" 2>&1 || { tail -5 "$T/sig.log" >&2; fail "the package's signature doesn't verify against otacerts.zip"; }
+    grep -q "Payload signatures VERIFIED" "$T/sig.log" || fail "the payload signatures aren't verified"
+    echo "OK: the package's zip and payload signatures verify against the build's otacerts"
+    # Evolution X's update_engine took any payload signature (59fbd47), and so did the host's
+    # delta_generator, built from the same payload_verifier.cc, under the check above. So
+    # payload-sig.py checks both signatures without update_engine's code, against the pinned
+    # certificate, and delta_generator must refuse a key that didn't sign the payload.
+    pin=${EOS_OTA_CERT_SHA256:-$(openssl x509 -in "${certs[0]}" -noout -fingerprint -sha256 | sed 's/.*=//; s/://g')}
+    r=$(python3 -I "$kit/tools/payload-sig.py" "$ota" "$O/system/etc/security/otacerts.zip" 2>&1 | tail -1) || true
+    [[ $r = "PAYLOAD_SIG=OK $pin" ]] || fail "payload.bin isn't signed with ExpressiveOS's OTA key $pin ($r)"
+    unzip -p -- "$ota" payload.bin > "$T/payload.bin" || fail "can't extract payload.bin from $ota"
+    openssl x509 -in build/make/target/product/security/testkey.x509.pem -noout -pubkey > "$T/aosp.pub.pem" \
+        || fail "can't read AOSP's test key (build/make/target/product/security/testkey.x509.pem)"
+    if "$H/delta_generator" --in_file="$T/payload.bin" --public_key="$T/aosp.pub.pem" > "$T/dg.log" 2>&1; then
+        fail "delta_generator takes AOSP's test key for this payload: the tree's payload_verifier.cc checks no signature (patches/system_update_engine 0001)"
+    fi
+    rm -f -- "$T/payload.bin"
 fi
-rm -f -- "$T/payload.bin"
 ue=$O/system/bin/update_engine
 [[ -f $ue ]] || fail "no $ue"
 ! grep -aqF 'Payload signature verification skipped' "$ue" || fail "$ue still skips payload signatures (patches/system_update_engine 0001)"
@@ -214,57 +237,87 @@ if compgen -G "$kit/patches/system_update_engine/0003-*.patch" > /dev/null; then
     fi
     ue_checks+=", and in recovery's sideload too"
 fi
-echo "OK: payload.bin is signed with the pinned OTA key, and update_engine checks $ue_checks"
-
-echo "== payload"
-off=$(python3 -I "$kit/tools/payload.py" offset "$ota") || fail "can't find payload.bin in $ota"
-python3 -I "$kit/tools/payload.py" partitions "$ota" > "$T/partitions" || fail "can't read $ota's payload manifest"
-need="boot init_boot vendor_boot vendor_kernel_boot dtbo vbmeta vbmeta_system vbmeta_vendor system system_ext product vendor"
-need+=" $FIRMWARE $(sed 's|^radio/||; s|\.img,.*||' <<<"$radio" | tr '\n' ' ')"
-# ksu-images.sh writes the build's AB_OTA_PARTITIONS here
-grep -qx init_boot "$O/ab_partitions.txt" 2>/dev/null || fail "no AB_OTA_PARTITIONS list in $O/ab_partitions.txt (ksu-images.sh writes it)"
-need+=" $(tr '\n' ' ' < "$O/ab_partitions.txt")"
-missing=$(for p in $need; do grep -qx "$p" "$T/partitions" || echo "$p"; done | sort -u | tr '\n' ' ')
-[[ -z "$missing" ]] || fail "the payload lacks: $missing"
-echo "OK: $(wc -l < "$T/partitions") partitions, the firmware and everything AB_OTA_PARTITIONS lists included"
-AVB="init_boot boot vbmeta vbmeta_system"
-mkdir -- "$T/x"
-"$H/ota_extractor" -payload "$ota" -payload_offset "$off" -output_dir "$T/x" -partitions "${AVB// /,}" > "$T/x.log" 2>&1 \
-    || { tail -3 "$T/x.log" >&2; fail "couldn't extract $AVB from the payload"; }
-ramdisk() { "$H/unpack_bootimg" --boot_img "$1" --out "$2" > /dev/null || fail "can't unpack $1"; }
-ramdisk "$T/x/init_boot.img" "$T/ib-ota"; ramdisk "$O/init_boot.img" "$T/ib-out"
-# With EOS_KSU=none out/'s init_boot is the build's own, which the KernelSU section checks is stock
-if [[ $EOS_KSU = lkm ]]; then
-    cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk" || fail "the payload's init_boot ramdisk isn't out/'s (KernelSU Next) one"
-    echo "OK: the payload's init_boot carries out/'s KernelSU Next ramdisk"
-elif cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk"; then
-    echo "OK: the payload's init_boot carries out/'s ramdisk (no KernelSU: EOS_KSU=none)"
+if [[ $EOS_QUICK = 1 ]]; then
+    echo "OK: update_engine checks $ue_checks"
 else
-    # target-files packs the build's own ramdisk again (mkbootfs with its fs_config), so the
-    # bytes may differ while every file, mode, owner and device node is the same: compare those
-    cpio_same "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk" \
-        || fail "the payload's init_boot ramdisk has other files than out/'s (above)"
-    echo "OK: the payload's init_boot ramdisk holds out/'s files, packed again (no KernelSU: EOS_KSU=none)"
+    echo "OK: payload.bin is signed with the pinned OTA key, and update_engine checks $ue_checks"
 fi
-checked "the payload's vbmeta isn't ExpressiveOS's" 'KEYS_CHECK=(OK|UNPINNED)' \
-    "$kit/tools/eos-keys-check.sh" vbmeta "$T/x/vbmeta.img" "$top"
-for i in init_boot boot vbmeta_system; do
-    checked "the payload's $i isn't signed with ExpressiveOS's key" 'KEYS_CHECK=(OK|UNPINNED)' \
-        "$kit/tools/eos-keys-check.sh" vbmeta "$T/x/$i.img" "$top"
-done
+
+ramdisk() { "$H/unpack_bootimg" --boot_img "$1" --out "$2" > /dev/null || fail "can't unpack $1"; }
 # gs201 and zuma chain boot and system: their patch levels are in boot.img's footer and
 # vbmeta_system. The Pixel 11 trees also put both in vbmeta itself (--prop: with --flags 3 the
 # bootloader reads no chained image's)
 props() { local i; for i in vbmeta vbmeta_system boot; do "$H/avbtool" info_image --image "$1/$i.img"; done |
     grep -oE "com\.android\.build\.(boot|system)\.security_patch -> '[0-9-]+'" | sort -u; }
-[[ "$(props "$T/x" | wc -l)" = 2 ]] || fail "the payload's vbmeta, vbmeta_system and boot lack the boot or system patch level"
-[[ "$(props "$T/x")" = "$(props "$O")" ]] || fail "the payload's patch levels differ from out/'s images"
-spl=$(props "$T/x" | sed -n "s/.*system.security_patch -> '\(.*\)'/\1/p")
-bspl=$(props "$T/x" | sed -n "s/.*boot.security_patch -> '\(.*\)'/\1/p")
-echo "OK: patch levels system $spl, boot $bspl"
-echo "== target-files"
-checked "the target-files zip kept with the package isn't its own (eos-target-files.sh)" 'TF_CHECK=OK' \
-    "$kit/tools/eos-target-files.sh" "$top/$ota" "$top"
+if [[ $EOS_QUICK = 1 ]]; then
+    # No payload: out/'s own images, which the fastboot zip takes, are what the phone gets
+    echo "== images (quick: no payload)"
+    for i in vbmeta init_boot boot vbmeta_system; do
+        [[ -f $O/$i.img ]] || fail "no $O/$i.img"
+        checked "out/'s $i isn't signed with ExpressiveOS's key" 'KEYS_CHECK=(OK|UNPINNED)' \
+            "$kit/tools/eos-keys-check.sh" vbmeta "$O/$i.img" "$top"
+    done
+    [[ "$(props "$O" | wc -l)" = 2 ]] || fail "out/'s vbmeta, vbmeta_system and boot lack the boot or system patch level"
+    spl=$(props "$O" | sed -n "s/.*system.security_patch -> '\(.*\)'/\1/p")
+    bspl=$(props "$O" | sed -n "s/.*boot.security_patch -> '\(.*\)'/\1/p")
+    echo "OK: out/'s vbmeta, init_boot, boot and vbmeta_system are ExpressiveOS's; patch levels system $spl, boot $bspl"
+    # What eos-target-files.sh checks in a full build: the fastboot zip flashes every dynamic
+    # partition (update-super leaves one it doesn't flash empty), from out/'s own misc_info.txt
+    # (m droid writes it) and fastboot-info.txt, parsed as eos-pack.sh does
+    [[ -f $O/misc_info.txt && -f $O/fastboot-info.txt ]] || fail "no $O/misc_info.txt or fastboot-info.txt"
+    dyn=$(sed -n 's/^dynamic_partition_list=//p' "$O/misc_info.txt" | tr ' ' '\n' | sed '/^$/d' | sort -u)
+    [[ -n "$dyn" ]] || fail "$O/misc_info.txt has no dynamic_partition_list"
+    flashed=$(awk '$1 == "flash" { i = $NF; sub(/\.img$/, "", i); print i }' "$O/fastboot-info.txt" | sort -u)
+    for p in $dyn; do
+        grep -qxF -- "$p" <<<"$flashed" || fail "$O/fastboot-info.txt doesn't flash the dynamic partition $p"
+    done
+    echo "OK: fastboot-info.txt flashes every dynamic partition: $(tr '\n' ' ' <<<"$dyn")"
+    echo "== target-files: none (a quick build makes no OTA package to keep them for)"
+else
+    echo "== payload"
+    off=$(python3 -I "$kit/tools/payload.py" offset "$ota") || fail "can't find payload.bin in $ota"
+    python3 -I "$kit/tools/payload.py" partitions "$ota" > "$T/partitions" || fail "can't read $ota's payload manifest"
+    need="boot init_boot vendor_boot vendor_kernel_boot dtbo vbmeta vbmeta_system vbmeta_vendor system system_ext product vendor"
+    need+=" $FIRMWARE $(sed 's|^radio/||; s|\.img,.*||' <<<"$radio" | tr '\n' ' ')"
+    # ksu-images.sh writes the build's AB_OTA_PARTITIONS here
+    grep -qx init_boot "$O/ab_partitions.txt" 2>/dev/null || fail "no AB_OTA_PARTITIONS list in $O/ab_partitions.txt (ksu-images.sh writes it)"
+    need+=" $(tr '\n' ' ' < "$O/ab_partitions.txt")"
+    missing=$(for p in $need; do grep -qx "$p" "$T/partitions" || echo "$p"; done | sort -u | tr '\n' ' ')
+    [[ -z "$missing" ]] || fail "the payload lacks: $missing"
+    echo "OK: $(wc -l < "$T/partitions") partitions, the firmware and everything AB_OTA_PARTITIONS lists included"
+    AVB="init_boot boot vbmeta vbmeta_system"
+    mkdir -- "$T/x"
+    "$H/ota_extractor" -payload "$ota" -payload_offset "$off" -output_dir "$T/x" -partitions "${AVB// /,}" > "$T/x.log" 2>&1 \
+        || { tail -3 "$T/x.log" >&2; fail "couldn't extract $AVB from the payload"; }
+    ramdisk "$T/x/init_boot.img" "$T/ib-ota"; ramdisk "$O/init_boot.img" "$T/ib-out"
+    # With EOS_KSU=none out/'s init_boot is the build's own, which the KernelSU section checks is stock
+    if [[ $EOS_KSU = lkm ]]; then
+        cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk" || fail "the payload's init_boot ramdisk isn't out/'s (KernelSU Next) one"
+        echo "OK: the payload's init_boot carries out/'s KernelSU Next ramdisk"
+    elif cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk"; then
+        echo "OK: the payload's init_boot carries out/'s ramdisk (no KernelSU: EOS_KSU=none)"
+    else
+        # target-files packs the build's own ramdisk again (mkbootfs with its fs_config), so the
+        # bytes may differ while every file, mode, owner and device node is the same: compare those
+        cpio_same "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk" \
+            || fail "the payload's init_boot ramdisk has other files than out/'s (above)"
+        echo "OK: the payload's init_boot ramdisk holds out/'s files, packed again (no KernelSU: EOS_KSU=none)"
+    fi
+    checked "the payload's vbmeta isn't ExpressiveOS's" 'KEYS_CHECK=(OK|UNPINNED)' \
+        "$kit/tools/eos-keys-check.sh" vbmeta "$T/x/vbmeta.img" "$top"
+    for i in init_boot boot vbmeta_system; do
+        checked "the payload's $i isn't signed with ExpressiveOS's key" 'KEYS_CHECK=(OK|UNPINNED)' \
+            "$kit/tools/eos-keys-check.sh" vbmeta "$T/x/$i.img" "$top"
+    done
+    [[ "$(props "$T/x" | wc -l)" = 2 ]] || fail "the payload's vbmeta, vbmeta_system and boot lack the boot or system patch level"
+    [[ "$(props "$T/x")" = "$(props "$O")" ]] || fail "the payload's patch levels differ from out/'s images"
+    spl=$(props "$T/x" | sed -n "s/.*system.security_patch -> '\(.*\)'/\1/p")
+    bspl=$(props "$T/x" | sed -n "s/.*boot.security_patch -> '\(.*\)'/\1/p")
+    echo "OK: patch levels system $spl, boot $bspl"
+    echo "== target-files"
+    checked "the target-files zip kept with the package isn't its own (eos-target-files.sh)" 'TF_CHECK=OK' \
+        "$kit/tools/eos-target-files.sh" "$top/$ota" "$top"
+fi
 
 stock_ib() {   # stock_ib <init_boot.img>: a stock init_boot (init, no kernelsu.ko) that verifies and is signed with the tree's key
     local stock=$1
@@ -424,5 +477,9 @@ else
 fi
 
 done=1
-echo "VERIFIED $top/$ota"
+if [[ $EOS_QUICK = 1 ]]; then
+    echo "VERIFIED_QUICK $ver"
+else
+    echo "VERIFIED $top/$ota"
+fi
 echo "VERIFY=OK"
