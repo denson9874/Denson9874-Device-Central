@@ -30,6 +30,20 @@ only while holding `~/.evolution-tree.lock` (the old name stays). The one except
 `tools/server-cleanup.sh` (Disk, below). Cheetah's firmware cache is filled by `tools/fetch-firmware.sh`
 (runner action `expressiveos-firmware`), which used to live in `evolution-cheetah/`.
 
+**Cheetah's firmware pin.** Google shows the factory image tables only after a visitor accepts its
+terms, so the fetcher can't read them unattended. When Google ships a monthly release, a person opens
+https://developers.google.com/android/images#cheetah, accepts the terms, and copies the newest generic
+Android 17 release (no carrier suffix) into `firmware/cheetah.conf`:
+
+```
+url=https://dl.google.com/dl/android/aosp/cheetah-<build>-factory-<8 hex>.zip
+sha256=<the 64-hex SHA-256 from the same row>
+```
+
+Merge it, then run the runner action `expressiveos-firmware` (query `check` only says what the pin and
+the cache hold). The next cheetah build's `prepare.sh` puts that bootloader and radio into
+`vendor/google/cheetah` through `update-firmware.sh`.
+
 ## What's here
 
 | Path | What it does |

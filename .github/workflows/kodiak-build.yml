@@ -507,14 +507,16 @@ jobs:
             esac
           done < <(LC_ALL=C comm -12 "$RUNNER_TEMP/ref.ls" "$RUNNER_TEMP/server.ls")
           bytes=${bytes%$'\n'} links=${links%$'\n'}
+          # (Long lists are cut with head reading a here-string, not a pipe: under pipefail an echo
+          # into a head that stops early would end the step, SIGPIPE, before the verdict)
           if [[ -z $names && -z $bytes && -z $links ]]; then
             echo "SAME: every folder, file, link and executable bit matches $TREE_REF@${sha:0:7}"
           else
-            [[ -z $names ]] || { echo "== names or types that differ"; echo "$names" | head -n 200; }
-            [[ -z $links ]] || { echo "== links that point somewhere else"; echo "$links" | head -n 200; }
+            [[ -z $names ]] || { echo "== names or types that differ ($(wc -l <<< "$names"), the first 200 shown)"; head -n 200 <<< "$names"; }
+            [[ -z $links ]] || { echo "== links that point somewhere else ($(wc -l <<< "$links"))"; head -n 200 <<< "$links"; }
             if [[ -n $bytes ]]; then
-              echo "== files whose contents differ ($(echo "$bytes" | wc -l))"
-              echo "$bytes" | head -n 200
+              echo "== files whose contents differ ($(wc -l <<< "$bytes"))"
+              head -n 200 <<< "$bytes"
               # Text the kit is made of, as a diff (ref first). A file whose name could be a key or
               # a keybox is named only, and any line that may hold a secret is hidden
               hide() { sed -E 's/^([-+ ]?).*(token|secret|passw|api[_-]?key|private|BEGIN [A-Z ]*KEY|authorization|bearer|cookie|keybox).*$/\1[line hidden: it may hold a secret]/I'; }
