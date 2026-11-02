@@ -177,7 +177,7 @@ generate_changelog() {
         echo
         echo "Notes:"
         echo "=============================="
-        echo "- Unofficial ExpressiveOS 1.0 build with Monet Bloom theme, Evolver studio, and TrickyStore keybox attestation."
+        echo "- ExpressiveOS 1.0 build with Monet Bloom theme, Evolver studio, and TrickyStore keybox attestation."
         echo "- Stock Pixel firmware and Trusty KeyMint supported."
         echo
         echo "Device changes:"

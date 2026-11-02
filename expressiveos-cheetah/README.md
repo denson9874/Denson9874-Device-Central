@@ -3,7 +3,7 @@
 ExpressiveOS is its own ROM, built on Evolution X (cnb) like any standard custom ROM (Daryl,
 2026-10-25 and 2026-10-26):
 
-- its own name and version: `ExpressiveOS-17.0-<date>-cheetah-1.0-Unofficial.zip`, "ExpressiveOS 1.0"
+- its own name and version: `ExpressiveOS-17.0-<date>-cheetah-1.0-Official.zip`, "ExpressiveOS 1.0"
   in Settings and the Updater;
 - its own release keys, update feed (`denson9874/expressiveos_ota`, branch `main`), release folder
   (`~/releases/expressiveos-cheetah`), SourceForge folder (`expressiveos/cheetah`) and R2 prefix
