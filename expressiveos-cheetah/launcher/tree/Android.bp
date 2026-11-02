@@ -28,7 +28,7 @@ license {
 }
 
 // /system_ext/priv-app/ExpressiveLauncher/ExpressiveLauncher.apk, byte for byte: targetSdk 37,
-// signed with Expressive's release certificate (v1, v2 and v3), dex and native libraries
+// signed with Expressive's release certificate, dex and native libraries
 // stored and aligned, so it is preprocessed (the build copies it and keeps its signature, and
 // newer releases from GitHub or the launcher's own updater install over it).
 android_app_import {

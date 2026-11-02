@@ -1,8 +1,10 @@
 # KernelSU Next for ExpressiveOS (cheetah)
 
-ExpressiveOS's cheetah (Pixel 7 Pro) builds ship [KernelSU Next](https://github.com/KernelSU-Next/KernelSU-Next)
-with susfs in `init_boot`, in the fastboot zip and in every OTA, with the manager preinstalled
-(Daryl, 2026-10-25). This folder is only the KernelSU Next part of the ExpressiveOS kit; the tree,
+**Off on every phone since 2026-11-01:** ExpressiveOS ships unrooted and root is the user's choice
+(Daryl), so `devices/cheetah.conf` and `husky.conf` say `EOS_KSU=none`. With `EOS_KSU=lkm`, a
+build ships [KernelSU Next](https://github.com/KernelSU-Next/KernelSU-Next) with susfs in
+`init_boot`, in the fastboot zip and in every OTA, with the manager preinstalled (Daryl,
+2026-10-25); everything below describes that mode. This folder is only the KernelSU Next part of the ExpressiveOS kit; the tree,
 keys, names and OTA feed are the kit's own. **None of it applies to the Evolution X cheetah build**
 (`evolution-cheetah/`), which stays unrooted: every script here refuses
 `~/evolution` and `~/derpfest`.

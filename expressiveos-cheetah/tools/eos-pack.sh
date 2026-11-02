@@ -145,6 +145,9 @@ if [[ "$mode" = --testers ]]; then
         || fail "the candidate was packed with ExpressiveOS's keys '$(po keys)', not pinned in eos.conf (KEYS_CHECK=OK) as testers' builds need (README.md, \"Keys\"): pin them, then run eos-pack.sh again"
     [[ "$(po incremental-base)" = OK ]] \
         || fail "the fastboot zip's images aren't its target-files' ($PO: incremental-base '$(po incremental-base)'): no incremental OTA could update phones installed from it"
+    # Rooted or not as the phone's .conf says now: the checks below and the stock image go by it
+    [[ "$(po ksu)" = "$EOS_KSU" ]] \
+        || fail "the candidate was packed with EOS_KSU='$(po ksu)', but devices/$EOS_DEVICE.conf has EOS_KSU=$EOS_KSU: build and pack one with today's setting first"
     # ...and its signer is the AVB key eos.conf pins today (keys restored or rotated since the pack)
     unzip -p -- "$CHECK/$NAME" vbmeta.img > "$T/vbmeta.img" 2> /dev/null || fail "can't read $NAME's vbmeta.img"
     "$kit/tools/eos-keys-check.sh" vbmeta "$T/vbmeta.img" "$top" > "$T/keys.log" 2>&1 || true
@@ -354,7 +357,7 @@ if [[ -z "$mode" ]]; then
     kv=$(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")
     [[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || kv+=" (with local changes)"
     find "$CHECK" -maxdepth 1 -type f -name '*.pack-ok' ! -name "$NAME.pack-ok" -delete
-    printf 'sha256 %s\nkeys %s\nincremental-base %s\nkit %s\ndate %s\n' "$zsha" "$keys" "$ib" "$kv" "$(date -u '+%F %T UTC')" \
+    printf 'sha256 %s\nkeys %s\nincremental-base %s\nksu %s\nkit %s\ndate %s\n' "$zsha" "$keys" "$ib" "$EOS_KSU" "$kv" "$(date -u '+%F %T UTC')" \
         > "$CHECK/.$NAME.pack-ok.part" && mv -f -- "$CHECK/.$NAME.pack-ok.part" "$CHECK/$NAME.pack-ok" \
         || fail "can't write $CHECK/$NAME.pack-ok"
     echo "== candidate: $CHECK/$NAME"

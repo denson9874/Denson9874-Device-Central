@@ -11,10 +11,13 @@ server's revisions of 2026-10-26 and applied by `apply.sh` like the others. `too
 (run by `eos-verify.sh`) fails the build if any app, framework string, APEX or tombstone header still
 names Evolution X, apart from the links it lists on purpose:
 
-- the keybox downloads (Expressive Studio's and AxSpoofManager's), which keep working as before;
 - Settings' photo of the phone and the Theme Store catalog, both on Evolution X's GitHub;
 - the Expressive Studio HTTP user agent and `paste.evolution-x.org` in PastyUtils, which nothing calls
   any more: the crash dialog's Copy button copies the log itself.
+
+The keybox downloads (`AxSpoofManager` in `services.jar` and Expressive Studio's `TrickyStore` settings)
+fetch from `EOS_KEYBOX_URL` (`../eos.conf`, uploaded by `../tools/eos-keybox.py`), and `brand-check.py`
+verifies both carry that URL and neither names Evolution X's keybox mirrors.
 
 ## The colours
 
