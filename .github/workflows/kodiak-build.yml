@@ -64,6 +64,20 @@
 # while the tree lock is free (it holds it while it removes); build output only
 # while nothing builds.
 #
+# evo-retire retires Evolution X and DerpFest on the server (Daryl, 2026-11-02: the server
+# builds ExpressiveOS only), reversibly (expressiveos-cheetah/tools/evo-retire.sh). query
+# list (read-only, the default) shows the scripts in ~ that build or publish them, what runs
+# and the marker; stop moves those scripts into ~/retired/evo-derp-<time>/, leaves a
+# ~/p11-routine.sh stub that prints ROUTINE_RESULT=RETIRED (so a Mac evox-parity task that
+# still fires ends at its first check) and writes ~/retired/EVO_DERP_RETIRED; undo puts them
+# back. check (read-only) shows what ExpressiveOS still reaches in ~/evolution or ~/derpfest
+# (tools, alternates, links, the Pixel 11 blob repos, unpushed feed commits, keys); keep
+# copies what outlives those trees out of them before a cleanup deletes them: the Pixel 11
+# blob repos into ~/expressiveos, the private signing keys into ~/retired/keys-<time>/.
+# While the marker exists, Preflight refuses the Evolution X build actions and
+# routine-install. The Evolution X actions that read ~/evolution check that it's there; no
+# other action needs it.
+#
 # The other expressiveos-* actions run the ExpressiveOS cheetah build in its own tree,
 # ~/expressiveos (expressiveos-cheetah/README.md), with tree_ref's kit installed as
 # ~/expressiveos-cheetah. setup (repo sync, then KernelSU Next's files), build and
@@ -188,7 +202,9 @@ on:
           server-usage: read-only: where the disk goes, per tree, product,
           release folder, cache and big file. server-cleanup-list: read-only: what
           server-cleanup.sh's groups hold now. server-cleanup: permanently remove
-          the groups in query. expressiveos-status: read-only: the ExpressiveOS
+          the groups in query. evo-retire: retire Evolution X and DerpFest, reversibly
+          (query: list or check, read-only, list the default; stop; undo; keep).
+          expressiveos-status: read-only: the ExpressiveOS
           sessions, logs, keys and every phone's build. expressiveos-setup: install tree_ref's
           expressiveos-cheetah, then setup.sh and ksu/fetch-ksu.sh in tmux.
           expressiveos-keys: make ExpressiveOS's keys (once) and a backup archive.
@@ -234,6 +250,7 @@ on:
           - server-usage
           - server-cleanup-list
           - server-cleanup
+          - evo-retire
           - expressiveos-status
           - expressiveos-pins
           - expressiveos-devices
@@ -244,9 +261,9 @@ on:
           - expressiveos-build
           - expressiveos-pack
       tree_ref:
-        description: Branch, tag or commit of this repo to take evolution-kodiak/device_google_kodiak (sync, round), evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, routine-install, release-checks) or expressiveos-cheetah (expressiveos-setup, -keys, -build, -pack) from
+        description: Branch, tag or commit of this repo to take expressiveos-cheetah (expressiveos-setup, -keys, -build, -pack) from, or, for the retired Evolution X actions, evolution-kodiak/device_google_kodiak (sync, round), evolution-cheetah and evolution-kodiak/tools (cheetah-setup, cheetah-verify, routine-install, release-checks)
         type: string
-        default: evolution/kodiak-port
+        default: main
       query:
         description: >-
           inspect only. Space-separated. A name (SELinux type, package, service)
@@ -314,9 +331,21 @@ jobs:
       - name: Preflight
         run: |
           [[ "$TREE_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "::error::bad tree_ref: $TREE_REF"; exit 1; }
-          for p in ~/evolution ~/android-dt/trees/device_google_kodiak ~/evolution/device/google/kodiak; do
-            [[ -d "$p" ]] || { echo "::error::missing $p"; exit 1; }
-          done
+          # Evolution X and DerpFest are retired (evo-retire): their build actions, and
+          # routine-install (which would put the routine scripts back in ~), stay refused
+          # until evo-retire undo. Only the Evolution X actions need ~/evolution; the
+          # ExpressiveOS and server-wide ones run without it.
+          evo_build='sync|extract|images|check-sepolicy|imgzip|round|ota|cheetah-setup|cheetah-firmware|cheetah-kernel|cheetah-build|cheetah-verify|routine-install|bp-repair'
+          evo_tree="$evo_build|status|inspect|cheetah-status|release-checks|bp-check|local-commits"
+          if [[ -f ~/retired/EVO_DERP_RETIRED && "$ACTION" =~ ^($evo_build)$ ]]; then
+            echo "::error::Evolution X and DerpFest are retired on this server: $(head -n 1 ~/retired/EVO_DERP_RETIRED). evo-retire with query undo brings their scripts back"
+            exit 1
+          fi
+          if [[ "$ACTION" =~ ^($evo_tree)$ ]]; then
+            for p in ~/evolution ~/android-dt/trees/device_google_kodiak ~/evolution/device/google/kodiak; do
+              [[ -d "$p" ]] || { echo "::error::missing $p (Evolution X's tree, which $ACTION reads)"; exit 1; }
+            done
+          fi
           # Builds started by hand (or by another agent) share ~/evolution with
           # this job, and the husky build too. Don't start on top of one. The
           # read-only actions run anyway, and so do expressiveos-setup (a repo sync
@@ -326,7 +355,7 @@ jobs:
           # expressiveos-update (the same, and pushes to GitHub)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-usage|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -339,7 +368,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-usage|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-pins|expressiveos-devices)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(status|inspect|cheetah-status|bp-check|local-commits|expressiveos-host|build-speed|routine-scripts|release-checks|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-pins|expressiveos-devices)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -995,6 +1024,22 @@ jobs:
             [[ -z "$QUERY" || "$QUERY" =~ ^[1-7](,[1-7])*$ ]] || { echo "::error::query is groups, e.g. 1,2,3"; exit 1; }
             bash "$script" list ${QUERY:+"$QUERY"}
           fi
+
+      # Moves scripts in ~ only (nothing is deleted), so it may run beside an ExpressiveOS
+      # build; keep takes ~/.expressiveos.lock and refuses while one runs
+      - name: Check out the retire script
+        if: inputs.action == 'evo-retire'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: expressiveos-cheetah/tools
+          fetch-depth: 1
+
+      - name: Retire Evolution X and DerpFest
+        if: inputs.action == 'evo-retire'
+        run: |
+          [[ "${QUERY:-list}" =~ ^(list|check|stop|undo|keep)$ ]] || { echo "::error::query is list, check, stop, undo or keep"; exit 1; }
+          bash expressiveos-cheetah/tools/evo-retire.sh "${QUERY:-list}"
 
       # ---- ExpressiveOS for cheetah: expressiveos-cheetah/README.md ---------------
 
