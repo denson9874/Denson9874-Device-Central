@@ -23,8 +23,39 @@
 #    repo's HEAD, remote named server), and one it has gets the server repo's refs fetched;
 #  - Evolution X's and DerpFest's private signing keys, copied (mode 600, folder 700) into
 #    ~/retired/keys-<UTC time>/{evolution,derpfest}: the only way to sign an update that their
-#    phones would install. It prints file counts and the platform certificate's SHA-256 only.
-# It holds ~/.expressiveos.lock, so it waits for no build: it refuses while one runs.
+#    phones would install. It prints file counts and the platform certificate's SHA-256 only;
+#  - work that exists only on this server, into ~/retired/saved-<UTC time>/<tree>/<project>/:
+#    every git repo in the two trees (repo's projects, the kernel's, and hand-made repos under
+#    device/, vendor/ and packages/) with commits no remote has gets a git bundle, uncommitted
+#    changes a diff, untracked files a tarball (up to 50 MB each); INDEX.tsv lists them. A
+#    repo with more than 300 such commits is listed, not bundled (a pinned revision, not hand
+#    work). The Pixel 11 blob repos are skipped: the first step copied them whole;
+#  - records, into ~/retired/records-<UTC time>/ (folder 700): repo's pinned manifests of both
+#    trees and of the kernel trees (the source record for the published builds' kernels), the
+#    DerpFest husky kernel manifest, every ~/releases folder that isn't ExpressiveOS's (the
+#    last-release records and personal builds; refused over 2 GiB), the installed Evolution X
+#    and DerpFest kits with their server-only notes, the feed clones, the backup folders, and
+#    a copy of every ~/*.sh and ~/*.py.
+# It writes ~/retired/KEPT, which delete reads. It holds ~/.expressiveos.lock, so it waits for
+# no build: it refuses while one runs.
+#
+# `delete <part>...` (permanent; Daryl chose it on 2026-11-02) deletes, in this order whatever
+# order they're named in:
+#   out        ~/evolution/out and ~/evolution/out-kernel (Evolution X's build output)
+#   evolution  the rest of ~/evolution
+#   derpfest   ~/derpfest
+#   research   ~/android-dt/ref/reeky, ~/android-dt/reeky, ~/android-dt/p11-diff{,-yogi}
+#   leftovers  ~/espada, ~/fw-cp3a, ~/husky-audit, the old kits, feed clones and backup
+#              folders keep copied, the ~/releases folders that aren't ExpressiveOS's (only
+#              those keep copied), the Evolution X and DerpFest logs and state files by exact
+#              name (never ~/.evolution-tree.lock, which ExpressiveOS's builds take), and their
+#              zips in /tmp
+# Every part needs stop and keep done, takes both build locks without waiting, and refuses
+# while anything builds (soong_ui, ninja, repo sync, an ExpressiveOS script or eos-* session).
+# evolution checks first that ExpressiveOS's copies of the Pixel 11 blob repos have the server
+# repos' HEAD and branches, that the keys copy matches, and that nothing in ~/expressiveos
+# borrows objects from or links into the tree; derpfest checks its keys and the same. It
+# deletes exact paths only, never through a link, never across file systems.
 #
 # `check` (read-only; names, commits and counts only, never file contents or secrets) answers
 # what has to be true before ~/evolution and ~/derpfest are deleted: tools in ~/bin and the
@@ -34,30 +65,42 @@
 # clones' unpushed commits, schedules, shell startup lines, the scripts in ~ that exist only
 # on the server, ~/.ssh and rclone's remote names, and the private keys and their copies.
 #
-# ExpressiveOS runs none of these scripts (its kit is ~/expressiveos-cheetah), and this touches
-# nothing else: not ~/evolution, ~/derpfest, ~/releases, ~/evolution_ota, the locks, the
-# SourceForge key, rclone or ccache.
+# ExpressiveOS runs none of these scripts (its kit is ~/expressiveos-cheetah). Only delete
+# touches ~/evolution, ~/derpfest, ~/releases or ~/evolution_ota, and nothing touches the
+# ExpressiveOS tree's own files, ~/.evolution-tree.lock, the SourceForge key, rclone or ccache.
 #
 #   evo-retire.sh list    # what stop would move, what runs, the marker; changes nothing
 #   evo-retire.sh stop
 #   evo-retire.sh undo
 #   evo-retire.sh keep
 #   evo-retire.sh check   # read-only: what ExpressiveOS still reaches in ~/evolution or ~/derpfest
+#   evo-retire.sh delete out evolution derpfest research leftovers
 #
 # The last line is RETIRE=LISTED, CHECKED, STOPPED, ALREADY (stop when already retired),
-# UNDONE, KEPT or FAIL.
+# UNDONE, KEPT, DELETED or FAIL.
 set -euo pipefail
 done=0
 trap '[[ $done = 1 ]] || echo "RETIRE=FAIL"' EXIT
 fail() { echo "ERROR: $*" >&2; exit 1; }
 
 mode=${1:-list}
-[[ $# -le 1 && $mode =~ ^(list|check|stop|undo|keep)$ ]] || fail "usage: evo-retire.sh list|check|stop|undo|keep"
+shift || true
+usage="usage: evo-retire.sh list|check|stop|undo|keep, or delete out|evolution|derpfest|research|leftovers..."
+[[ $mode =~ ^(list|check|stop|undo|keep|delete)$ ]] || fail "$usage"
+parts=()
+if [[ $mode = delete ]]; then
+    [[ $# -ge 1 ]] || fail "$usage"
+    for p in "$@"; do [[ $p =~ ^(out|evolution|derpfest|research|leftovers)$ ]] || fail "unknown part $p; $usage"; parts+=("$p"); done
+else
+    [[ $# -eq 0 ]] || fail "$usage"
+fi
 cd ~ || fail "no home folder"
-home=$PWD
+home=$(pwd -P)
 ret=$home/retired
 marker=$ret/EVO_DERP_RETIRED
+kept=$ret/KEPT
 stubtag='# EVO-RETIRE STUB'
+p11=(kodiak grizzly cubs yogi)
 
 # What builds or publishes Evolution X (the weekly routine and everything it runs, the hand-run
 # build and pack scripts) and DerpFest. Exact names; the dated release chains are listed by
@@ -107,7 +150,10 @@ report() {
     echo "== the Mac tasks' last routine logs (~/routine-logs/*-latest.out)"
     ls -l --time-style='+%F %T' "$home"/routine-logs/*-latest.out 2>/dev/null | awk '{print $6, $7, $8}' || true
     echo "== crontab"; crontab -l 2>/dev/null | grep -v '^#' | grep . || echo none
+    echo "== keep (what's been copied out of the old trees)"
+    if [[ -f $kept ]]; then cat "$kept"; else echo "not run"; fi
 }
+kv() { sed -n "s/^$1=//p" "$kept" 2>/dev/null | tail -n 1; }
 
 mask() { sed -E 's#(://)[^/@ ]*@#\1***@#g'; }   # credentials in a URL
 into_old() {   # into_old <path>: does it resolve into ~/evolution or ~/derpfest?
@@ -208,6 +254,182 @@ check() {
     done
     [[ $n -gt 0 ]] || echo "no testers builds"
 }
+
+# ---- keep's saves and records, delete's checks ----------------------------------------------
+save_tree() {   # save_tree <name>: what exists only in ~/<name>'s git repos, into $sd/<name>/
+    local name=$1 tree=$home/$1 out=$sd/$1 list p rel d n c u kind sz k nsaved=0 nrepos=0
+    [[ -d $tree ]] || { echo "$name: no ~/$name; nothing to save"; return 0; }
+    mkdir -p "$out"
+    list=$(mktemp)
+    {
+        [[ ! -f $tree/.repo/project.list ]] || sed "s#^#$tree/#" "$tree/.repo/project.list"
+        for k in "$tree"/out-kernel/*/*; do
+            [[ ! -f $k/.repo/project.list ]] || sed "s#^#$k/#" "$k/.repo/project.list"
+        done
+        find "$tree/device" "$tree/vendor" "$tree/packages" -mindepth 1 -maxdepth 4 -name .git -prune -printf '%h\n' 2>/dev/null || true
+    } | sort -u > "$list"
+    printf 'project\tcommits only here\tchanged files\tuntracked files\tsaved\n' > "$out/INDEX.tsv"
+    while IFS= read -r p; do
+        [[ -e $p/.git ]] || continue
+        rel=${p#"$tree"/}
+        case $rel in
+            vendor/google/kodiak|vendor/google/grizzly|vendor/google/cubs|vendor/google/yogi) continue ;;   # copied whole above
+            vendor/google/*-images) continue ;;   # extracted from the factory image zips, which stay
+        esac
+        nrepos=$((nrepos + 1))
+        n=$(git -C "$p" rev-list --count HEAD --branches --not --remotes 2>/dev/null) || n=0
+        c=$(git -C "$p" --no-optional-locks status --porcelain --untracked-files=no 2>/dev/null | wc -l)
+        u=$(git -C "$p" ls-files --others --exclude-standard 2>/dev/null | wc -l)
+        (( n + c + u > 0 )) || continue
+        d=$out/${rel//\//__}
+        mkdir -p "$d"
+        kind=""
+        if (( n > 300 )); then
+            kind+="not bundled ($n commits: a pinned revision, not hand work) "
+        elif (( n > 0 )); then
+            sz=$(git -C "$p" count-objects -v 2>/dev/null | awk '/^size-pack:/ {print $2}')
+            if [[ -z $(git -C "$p" for-each-ref --count=1 refs/remotes) ]] || (( ${sz:-0} < 524288 )); then
+                git -C "$p" bundle create -q "$d/repo.bundle" --all || fail "$name: $rel: git bundle failed"
+                kind+="bundle (whole repo) "
+            else
+                git -C "$p" bundle create -q "$d/repo.bundle" HEAD --branches --not --remotes || fail "$name: $rel: git bundle failed"
+                kind+="bundle (the $n commits only) "
+            fi
+            git -C "$p" bundle verify -q "$d/repo.bundle" >/dev/null 2>&1 || fail "$name: $rel: its bundle doesn't verify"
+            git -C "$p" log --oneline HEAD --branches --not --remotes > "$d/commits.txt" 2>/dev/null || true
+        fi
+        if (( c > 0 )); then
+            git -C "$p" --no-optional-locks status --porcelain --untracked-files=no > "$d/status.txt"
+            git -C "$p" diff HEAD --binary > "$d/changes.diff" || fail "$name: $rel: git diff failed"
+            kind+="changes.diff "
+        fi
+        if (( u > 0 )); then
+            sz=$(cd "$p" && git ls-files -z --others --exclude-standard | du -cb --files0-from=- 2>/dev/null | tail -n 1 | cut -f1)
+            if (( ${sz:-0} <= 52428800 )); then
+                (cd "$p" && git ls-files -z --others --exclude-standard | tar --null -T - -czf "$d/untracked.tar.gz") || fail "$name: $rel: tar failed"
+                kind+="untracked.tar.gz"
+            else
+                git -C "$p" ls-files --others --exclude-standard > "$d/untracked-NOT-SAVED.txt"
+                kind+="untracked list only ($((sz / 1048576)) MB)"
+            fi
+        fi
+        printf '%s\t%s\t%s\t%s\t%s\n' "$rel" "$n" "$c" "$u" "$kind" >> "$out/INDEX.tsv"
+        nsaved=$((nsaved + 1))
+        echo "saved     $name/$rel: $n commits only here, $c changed, $u untracked: $kind"
+    done < "$list"
+    rm -f "$list"
+    echo "$name: $nsaved of $nrepos repos had work only here ($(du -sh "$out" | cut -f1) in ${out#"$home"/})"
+}
+
+old_releases() {   # the ~/releases entries that aren't ExpressiveOS's
+    local d
+    for d in "$home"/releases/*; do
+        [[ -e $d && ! -L $d ]] || continue
+        [[ ${d##*/} = expressiveos-* ]] && continue
+        echo "${d##*/}"
+    done
+}
+records() {   # records: repo manifests, release records and the old kits into $rd
+    local t k kn f n sz nm
+    mkdir -p "$rd"; chmod 700 "$rd"
+    for t in evolution derpfest; do
+        for k in "$home/$t" "$home/$t"/out-kernel/*/*; do
+            [[ -d $k/.repo ]] || continue
+            kn=${k#"$home"/}; kn=${kn//\//_}
+            if (cd "$k" && PATH=$home/bin:$PATH repo manifest -r -o "$rd/$kn-manifest-pinned.xml" >/dev/null 2>&1); then
+                echo "record    ~/${k#"$home"/}: repo's pinned manifest -> ${rd#"$home"/}/$kn-manifest-pinned.xml"
+            else
+                echo "WARNING: repo manifest -r failed in ~/${k#"$home"/}"
+            fi
+        done
+    done
+    for f in derpfest-husky-kernel-manifest.xml evolution-cheetah evolution-husky derpfest-husky derpfest-backups yogi-overlays routine-backups bp-repair-backups evolution_ota derpfest_ota; do
+        [[ -e $home/$f && ! -L $home/$f ]] || continue
+        cp -a -- "$home/$f" "$rd/$f" || fail "can't copy ~/$f"
+        echo "record    ~/$f"
+    done
+    mapfile -t nm < <(old_releases)
+    if (( ${#nm[@]} > 0 )); then
+        sz=$(cd "$home/releases" && du -scb -- "${nm[@]}" | tail -n 1 | cut -f1)
+        (( sz <= 2147483648 )) || fail "the ~/releases folders that aren't ExpressiveOS's hold $((sz / 1048576)) MB, more than keep copies; look at them first: ${nm[*]}"
+        mkdir -p "$rd/releases"
+        for f in "${nm[@]}"; do cp -a -- "$home/releases/$f" "$rd/releases/$f" || fail "can't copy ~/releases/$f"; done
+        echo "record    ~/releases/{$(IFS=,; echo "${nm[*]}")} ($((sz / 1048576)) MB)"
+    fi
+    mkdir -p "$rd/home-scripts"
+    n=0
+    for f in "$home"/*.sh "$home"/*.py; do [[ -f $f && ! -L $f ]] && cp -a -- "$f" "$rd/home-scripts/" && n=$((n + 1)); done
+    echo "record    $n scripts from ~ (*.sh, *.py) -> ${rd#"$home"/}/home-scripts"
+    chmod -R go-rwx "$rd"
+}
+
+busy() {   # what builds now: soong_ui, ninja, repo sync, an ExpressiveOS script, an eos-* session
+    pgrep -a -u "$(id -u)" -f '(soong_ui|/ninja( |$)|repo sync|expressiveos-cheetah/[^ ]*\.sh)' \
+        | grep -v -e 'evo-retire\.sh' | cut -c1-160 || true
+    tmux ls -F '#S' 2>/dev/null | grep -E '^eos-' | sed 's/^/tmux session /' || true
+}
+verify_p11() {   # ExpressiveOS's copies of the Pixel 11 blob repos have the server repos' HEAD and branches
+    local d src dst sh b
+    for d in "${p11[@]}"; do
+        src=$home/evolution/vendor/google/$d dst=$home/expressiveos/vendor/google/$d
+        [[ -d $src/.git ]] || continue
+        sh=$(git -C "$src" rev-parse -q --verify 'HEAD^{commit}' 2>/dev/null) || continue
+        [[ -d $dst/.git ]] || fail "$d: ExpressiveOS has no copy of ~/evolution/vendor/google/$d; run keep again"
+        [[ ! -s $dst/.git/objects/info/alternates ]] || fail "$d: ExpressiveOS's copy borrows objects (objects/info/alternates)"
+        git -C "$dst" cat-file -e "$sh^{commit}" 2>/dev/null || fail "$d: ExpressiveOS's copy lacks the server repo's ${sh:0:12}; run keep again"
+        while IFS= read -r b; do
+            git -C "$dst" cat-file -e "$b^{commit}" 2>/dev/null || fail "$d: ExpressiveOS's copy lacks a server branch's ${b:0:12}; run keep again"
+        done < <(git -C "$src" for-each-ref --format='%(objectname)' refs/heads)
+        echo "ok        vendor/google/$d: ExpressiveOS's copy has the server repo's HEAD ${sh:0:12} and every branch"
+    done
+}
+verify_keys() {   # verify_keys <name>: keep's copy matches the tree's key folder
+    local name=$1 src kd n m
+    case $name in evolution) src=$home/evolution/vendor/evolution-priv/keys ;; derpfest) src=$home/derpfest/vendor/lineage-priv/keys ;; esac
+    [[ -d $src ]] || { echo "ok        no ~/${src#"$home"/}: no keys to keep"; return 0; }
+    kd=$(kv keys)
+    [[ -n $kd && -d $home/$kd/$name ]] || fail "keep made no copy of $name's keys; run keep again"
+    n=$(find -L "$src" -type f | wc -l); m=$(find "$home/$kd/$name" -type f | wc -l)
+    [[ $n -eq $m ]] || fail "$name: the tree has $n key files, keep's copy $m; run keep again"
+    diff -rq "$(readlink -f "$src")" "$home/$kd/$name" >/dev/null 2>&1 || fail "$name's keys differ from keep's copy; run keep again"
+    echo "ok        $name's keys: all $m files match the copy in $kd"
+}
+verify_saved() {   # verify_saved <name>: keep scanned the tree's repos
+    local sd; sd=$(kv saved)
+    [[ -n $sd && -f $home/$sd/$1/INDEX.tsv ]] || fail "keep didn't save ~/$1's server-only work; run keep again"
+    echo "ok        ~/$1's server-only work saved in $sd/$1 ($(($(wc -l < "$home/$sd/$1/INDEX.tsv") - 1)) repos)"
+}
+no_borrow() {   # nothing in ~/expressiveos borrows objects from, or links into, the old trees
+    local f l x eos=$home/expressiveos
+    while IFS= read -r f; do
+        while IFS= read -r l; do into_old "$l" && fail "${f#"$home"/} borrows objects from $l"; done < "$f"
+    done < <(find "$eos/.repo" "$eos"/out-kernel/*/*/.repo "$eos"/vendor -xdev -path '*/objects/info/alternates' -size +0 2>/dev/null)
+    x=$(nice -n 19 find "$eos" -xdev -path "$eos/out" -prune -o -type l \( -lname '*evolution*' -o -lname '*derpfest*' \) -print 2>/dev/null \
+        | while IFS= read -r f; do into_old "$f" && echo "${f#"$home"/}"; done | head -n 5)
+    [[ -z $x ]] || fail "links in ~/expressiveos point into the old trees: $x"
+    echo "ok        nothing in ~/expressiveos borrows objects from or links into ~/evolution or ~/derpfest"
+}
+zap() {   # zap <path>: delete it for good; never a link, never through one, never across file systems
+    local p=$1 r
+    [[ -e $p || -L $p ]] || { echo "absent    ${p/#"$home"\//\~/}"; return 0; }
+    [[ ! -L $p ]] || fail "$p is a link; not following it"
+    r=$(readlink -f -- "$p")
+    [[ $r = "$p" ]] || fail "$p resolves to $r (a link on the way); not deleting"
+    rm -rf --one-file-system -- "$p"
+    [[ ! -e $p ]] || fail "$p is still there"
+    echo "deleted   ${p/#"$home"\//\~/}"
+}
+old_links() {   # ~/android-dt/bin's links to Evolution X's host tools: nothing ExpressiveOS runs uses them, and they'd dangle
+    local f t
+    for f in "$home"/android-dt/bin/*; do
+        [[ -L $f ]] || continue
+        t=$(readlink -- "$f")
+        if into_old "$f" || [[ $t == "$home"/evolution/* || $t == "$home"/derpfest/* ]]; then
+            rm -f -- "$f"; echo "deleted   link ~/${f#"$home"/} -> $t"
+        fi
+    done
+}
+free_gb() { df -BG --output=avail "$home" | tail -n 1 | tr -dc '0-9'; }
 
 case $mode in
 check)
@@ -326,13 +548,103 @@ keep)
         src=$(readlink -f "$src")
         case $src in "$home"/evolution/*|"$home"/derpfest/*) ;; *) fail "$name's keys resolve outside its tree: ${src#"$home"/}";; esac
         mkdir -p "$kd"; chmod 700 "$ret" "$kd"
-        (umask 077; cp -a -- "$src" "$kd/$name")
+        # Links inside the key folder are copied as the files they point to: the copy has to
+        # outlive the tree
+        (umask 077; cp -RL --preserve=timestamps -- "$src" "$kd/$name")
         find "$kd/$name" -type d -exec chmod 700 {} + ; find "$kd/$name" -type f -exec chmod 600 {} +
         n=$(find "$kd/$name" -type f | wc -l)
-        [[ $n -eq $(find "$src" -type f | wc -l) ]] || fail "$name: copied $n files, the tree has $(find "$src" -type f | wc -l)"
+        [[ $n -eq $(find -L "$src" -type f | wc -l) ]] || fail "$name: copied $n files, the tree has $(find -L "$src" -type f | wc -l)"
+        diff -rq "$src" "$kd/$name" >/dev/null 2>&1 || fail "$name: the copy differs from the tree's keys"
         fp=none
         [[ -f $kd/$name/platform.x509.pem ]] && fp=$(openssl x509 -in "$kd/$name/platform.x509.pem" -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2 | tr -d : | tr 'A-F' 'a-f')
         echo "$name: $n files copied to ${kd#"$home"/}/$name (platform certificate SHA-256 $fp)"
     done
+    stamp=${kd##*/keys-}
+    sd=$ret/saved-$stamp rd=$ret/records-$stamp
+    echo "== work that exists only in the old trees' git repos"
+    mkdir -p "$sd"; chmod 700 "$sd"
+    save_tree evolution
+    save_tree derpfest
+    chmod -R go-rwx "$sd"
+    echo "== records: manifests, release records, the old kits and notes, the scripts in ~"
+    records
+    heads=""
+    for d in "${p11[@]}"; do
+        [[ -d $eos/vendor/google/$d/.git ]] && heads+="$d:$(git -C "$eos/vendor/google/$d" rev-parse --short HEAD) "
+    done
+    {
+        echo "when=$(date -u '+%F %H:%M UTC')"
+        echo "keys=$([[ -d $kd ]] && echo "${kd#"$home"/}" || echo none)"
+        echo "saved=${sd#"$home"/}"
+        echo "records=${rd#"$home"/}"
+        echo "p11=${heads% }"
+    } > "$kept.new"
+    mv -f "$kept.new" "$kept"
+    echo "--"; cat "$kept"
     done=1; echo "RETIRE=KEPT"; exit 0 ;;
+
+delete)
+    [[ -f $marker ]] || fail "Evolution X and DerpFest aren't retired: run stop first"
+    [[ -f $kept ]] || fail "keep hasn't run: nothing has been copied out of the old trees yet"
+    [[ $(( $(date +%s) - $(date -r "$kept" +%s) )) -lt 172800 ]] || fail "keep ran more than 2 days ago ($(kv when)); run it again first"
+    exec 8>>"$home/.expressiveos.lock"
+    flock -n 8 || fail "~/.expressiveos.lock is held: an ExpressiveOS build, pack or setup is running"
+    exec 9>>"$home/.evolution-tree.lock"
+    flock -n 9 || fail "~/.evolution-tree.lock is held: a build is running"
+    r=$(busy); [[ -z $r ]] || fail "something is building; delete waits for nothing:
+$r"
+    r=$(running); [[ -z $r ]] || fail "an Evolution X or DerpFest script is running: $r"
+    r=$(busy_locks); [[ -z $r ]] || fail "a publish lock is held: $r"
+    eos=$home/expressiveos
+    before=$(free_gb)
+    echo "== $before GB free before"
+    for part in out evolution derpfest research leftovers; do
+        [[ " ${parts[*]} " = *" $part "* ]] || continue
+        echo "== $part"
+        case $part in
+        out)
+            old_links
+            zap "$home/evolution/out"
+            zap "$home/evolution/out-kernel" ;;
+        evolution)
+            [[ -d $home/evolution ]] || { echo "absent    ~/evolution"; continue; }
+            verify_p11
+            verify_keys evolution
+            verify_saved evolution
+            no_borrow
+            old_links
+            zap "$home/evolution" ;;
+        derpfest)
+            [[ -d $home/derpfest ]] || { echo "absent    ~/derpfest"; continue; }
+            verify_keys derpfest
+            verify_saved derpfest
+            no_borrow
+            zap "$home/derpfest" ;;
+        research)
+            for f in android-dt/ref/reeky android-dt/reeky android-dt/p11-diff android-dt/p11-diff-yogi; do zap "$home/$f"; done ;;
+        leftovers)
+            rd=$home/$(kv records)
+            [[ -d $rd ]] || fail "keep's records folder ($(kv records)) is missing; run keep again"
+            for f in espada fw-cp3a husky-audit; do zap "$home/$f"; done
+            for f in evolution-husky derpfest-husky derpfest-backups yogi-overlays routine-backups bp-repair-backups evolution_ota derpfest_ota derpfest-husky-kernel-manifest.xml; do
+                if [[ -e $home/$f && ! -e $rd/$f ]]; then echo "kept      ~/$f (keep didn't copy it)"; continue; fi
+                zap "$home/$f"
+            done
+            while IFS= read -r f; do
+                if [[ ! -e $rd/releases/$f ]]; then echo "kept      ~/releases/$f (keep didn't copy it)"; continue; fi
+                zap "$home/releases/$f"
+            done < <(old_releases)
+            for f in cheetah-build.log husky-build.log kodiak-build.log grizzly-build.log cubs-build.log yogi-build.log \
+                     kodiak-release-build.log kodiak-personal-build.log derp-build.log derp-husky-build.log dl-p11.log \
+                     .evolution-ota.lock .evolution-queue .evolution-last-build .evolution-last-sync .kodiak-root; do
+                zap "$home/$f"
+            done
+            for f in "$home"/husky-build-*.out "$home"/.evolution-publish-*.lock /tmp/kodiak-evox-img*.zip /tmp/EvolutionX-*.zip /tmp/magiskpatch.*; do
+                [[ -e $f && -O $f ]] && zap "$f"
+            done ;;
+        esac
+    done
+    after=$(free_gb)
+    echo "== $after GB free now ($((after - before)) GB freed)"
+    done=1; echo "RETIRE=DELETED"; exit 0 ;;
 esac

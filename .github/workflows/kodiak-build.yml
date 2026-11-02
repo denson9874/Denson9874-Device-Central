@@ -73,7 +73,13 @@
 # back. check (read-only) shows what ExpressiveOS still reaches in ~/evolution or ~/derpfest
 # (tools, alternates, links, the Pixel 11 blob repos, unpushed feed commits, keys); keep
 # copies what outlives those trees out of them before a cleanup deletes them: the Pixel 11
-# blob repos into ~/expressiveos, the private signing keys into ~/retired/keys-<time>/.
+# blob repos into ~/expressiveos, the private signing keys into ~/retired/keys-<time>/, a git
+# bundle or diff of every repo with work found only on the server into ~/retired/saved-<time>/,
+# and the manifests, release records, old kits and scripts into ~/retired/records-<time>/.
+# delete <parts> (permanent; Daryl chose it on 2026-11-02) deletes, after keep and with both
+# build locks free and nothing building: out (~/evolution/out, out-kernel), evolution (the rest,
+# after checking keep's copies), derpfest, research (the reeky and p11-diff folders in
+# ~/android-dt) and leftovers (old kits, feed clones, non-ExpressiveOS ~/releases folders, logs).
 # While the marker exists, Preflight refuses the Evolution X build actions and
 # routine-install. The Evolution X actions that read ~/evolution check that it's there; no
 # other action needs it.
@@ -202,8 +208,9 @@ on:
           server-usage: read-only: where the disk goes, per tree, product,
           release folder, cache and big file. server-cleanup-list: read-only: what
           server-cleanup.sh's groups hold now. server-cleanup: permanently remove
-          the groups in query. evo-retire: retire Evolution X and DerpFest, reversibly
-          (query: list or check, read-only, list the default; stop; undo; keep).
+          the groups in query. evo-retire: retire Evolution X and DerpFest
+          (query: list or check, read-only, list the default; stop; undo; keep;
+          delete out evolution derpfest research leftovers, permanent).
           expressiveos-status: read-only: the ExpressiveOS
           sessions, logs, keys and every phone's build. expressiveos-setup: install tree_ref's
           expressiveos-cheetah, then setup.sh and ksu/fetch-ksu.sh in tmux.
@@ -1038,8 +1045,10 @@ jobs:
       - name: Retire Evolution X and DerpFest
         if: inputs.action == 'evo-retire'
         run: |
-          [[ "${QUERY:-list}" =~ ^(list|check|stop|undo|keep)$ ]] || { echo "::error::query is list, check, stop, undo or keep"; exit 1; }
-          bash expressiveos-cheetah/tools/evo-retire.sh "${QUERY:-list}"
+          part='(out|evolution|derpfest|research|leftovers)'
+          [[ "${QUERY:-list}" =~ ^(list|check|stop|undo|keep|delete( $part)+)$ ]] || { echo "::error::query is list, check, stop, undo, keep, or delete followed by parts: out evolution derpfest research leftovers"; exit 1; }
+          read -ra q <<< "${QUERY:-list}"
+          bash expressiveos-cheetah/tools/evo-retire.sh "${q[@]}"
 
       # ---- ExpressiveOS for cheetah: expressiveos-cheetah/README.md ---------------
 
