@@ -408,10 +408,15 @@ verify_saved() {   # verify_saved <name>: keep scanned the tree's repos
 no_borrow() {   # nothing in ~/expressiveos borrows objects from, or links into, the old trees
     local f l x eos=$home/expressiveos
     while IFS= read -r f; do
-        while IFS= read -r l; do into_old "$l" && fail "${f#"$home"/} borrows objects from $l"; done < "$f"
-    done < <(find "$eos/.repo" "$eos"/out-kernel/*/*/.repo "$eos"/vendor -xdev -path '*/objects/info/alternates' -size +0 2>/dev/null)
-    x=$(nice -n 19 find "$eos" -xdev -path "$eos/out" -prune -o -type l \( -lname '*evolution*' -o -lname '*derpfest*' \) -print 2>/dev/null \
-        | while IFS= read -r f; do into_old "$f" && echo "${f#"$home"/}"; done | head -n 5)
+        while IFS= read -r l; do
+            if into_old "$l"; then fail "${f#"$home"/} borrows objects from $l"; fi
+        done < "$f"
+    done < <(find "$eos/.repo" "$eos"/out-kernel/*/*/.repo "$eos"/vendor -xdev -path '*/objects/info/alternates' -size +0 2>/dev/null || true)
+    # The tree has many links whose text says evolution (vendor/evolution-priv, evolution/manifest);
+    # only those that resolve into ~/evolution or ~/derpfest count. Under pipefail the loop's
+    # status must not end the script: collect, then judge
+    x=$( { nice -n 19 find "$eos" -xdev -path "$eos/out" -prune -o -type l \( -lname '*evolution*' -o -lname '*derpfest*' \) -print 2>/dev/null || true; } \
+        | while IFS= read -r f; do if into_old "$f"; then echo "${f#"$home"/}"; fi; done | head -n 5 || true)
     [[ -z $x ]] || fail "links in ~/expressiveos point into the old trees: $x"
     echo "ok        nothing in ~/expressiveos borrows objects from or links into ~/evolution or ~/derpfest"
 }
