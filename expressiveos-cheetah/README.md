@@ -60,6 +60,7 @@ the cache hold). The next cheetah build's `prepare.sh` puts that bootloader and 
 | `tools/eos-verify.sh` | Checks a finished build offline |
 | `tools/eos-target-files.sh` | Checks the target-files zip kept with the build (`eos-verify.sh` runs it) |
 | `tools/eos-pack.sh` | The fastboot zip, the release gate, the SourceForge upload and testers' uploads |
+| `tools/eos-ota.sh` | A release's OTA packages for the Updater: the full one and an incremental from the feed's build, to R2 (Updates over the air, below; offline test `tools/tests/eos-ota-test.sh`) |
 | `tools/server-cleanup.sh` | Frees disk on the build server (runner actions `server-cleanup-list` and `server-cleanup`) |
 | `lib.sh`, `tools/payload.py`, `tools/payload-sig.py` | Shared guards and helpers; `payload-sig.py` checks a payload's signatures without update_engine's code |
 
@@ -527,6 +528,9 @@ cheetah's, as below; another phone's run the same with its own folders and board
    (`target-files/LATEST` names the newest), and `--upload` sends them to R2's
    `expressiveos/cheetah/target-files/` (`EOS_R2_REMOTE`, `~/bin/rclone`), or with `EOS_R2_REMOTE=` empty to
    SourceForge's `expressiveos/cheetah/target-files`: every incremental OTA from the release starts from them.
+   It also keeps out/'s OTA package, `ota/<release>.zip` with its `.sha256`, for the Updater (below).
+6. `tools/eos-ota.sh --upload` (the runner's `expressiveos-ota` with query `upload`, only when Daryl
+   says so) puts the release on the Updater: below.
 
 For a phone nobody has tested a build on yet, `tools/eos-pack.sh --testers` (the runner's
 `expressiveos-pack` with query `testers`, only when Daryl says so) uploads `check/`'s candidate for
@@ -548,7 +552,48 @@ no incremental OTA could update phones installed from it, and a release must be 
 tested. `--release`, `--upload` and `--testers` refuse it. When the change works, build again without
 `quick`, pack, flash and test that zip, and release it.
 
-The Updater feed stays `{"response": []}` until the OTA publish script exists (below).
+### Updates over the air
+
+Every release goes to the Updater as a full OTA package, plus one incremental from the build the feed
+offers when it's made (Daryl, 2026-11-02): phones on that build download the incremental, a fraction of the
+full package; every other phone takes the full one. `tools/eos-ota.sh` makes and checks both and writes the
+feed files; the feed itself (`denson9874/expressiveos_ota`, `builds/<device>.json` and
+`changelogs/<device>.txt`) changes only by a pull request, and phones see the update once it's merged.
+
+- The full package is the release's own (`ota/<release>.zip`, out/'s, which `eos-verify.sh` checked).
+- The incremental, `ota/<release>-incremental-from-<base date>.zip`, is `ota_from_target_files -i` from
+  the base build's target-files (`target-files/`, else R2's) to the release's, signed with the tree's
+  release key. The dynamic partitions (system, vendor, product...) are patched block by block: they're
+  the target-files' byte for byte on every phone of the base build, however it was installed (the
+  incremental base, which `--release` needs). Everything else (boot, init_boot, vbmeta, the firmware...)
+  is written whole (`--full_ota_partitions`): the fastboot zip flashes out/'s images, which target-files
+  signs again with its own AVB salts, and the firmware is whichever stock release the user flashed.
+- The base is the build the feed's full entry offers now; with none (the first release) there's no
+  incremental. A rerun of a release already in the feed makes the incremental from the same base again.
+- Both are checked: A/B, this phone, this build, signed with the pinned OTA key, every A/B partition;
+  the incremental from the base build. The Updater never goes back: a release older than the feed's
+  stops with `OTA_SUPERSEDED`.
+- The feed lists the incremental first, with `base_timestamp` (`packages_apps_Updater` 0005 offers it
+  only to the base build) and a timestamp one second after the build's: of the updates a phone may take
+  the Updater shows the newest by timestamp, so a phone on the base build gets the incremental, not the
+  full package of the same build. Then the full package, for every other phone.
+- R2's `expressiveos/<device>/ota/` keeps what the new feed and the one phones read now point at; the
+  OTA mirror (`EOS_OTA_MIRROR`) serves them.
+
+A release, start to finish, once the first one is in the feed (your phone on that build):
+
+1. Build and pack as usual (`expressiveos-build`), but don't flash the candidate: `tools/eos-ota.sh
+   --candidate` (runner: `expressiveos-ota` with `candidate`) makes the incremental from the feed's build
+   to it and puts it, with a test feed of its own, in R2's `ota/test/`.
+2. On the phone (root): `adb shell "su -c 'setprop evolution.updater.uri <the test feed's URL>'"`, then the
+   Updater's check for updates: it offers the incremental; install it and reboot. The setting goes with
+   the reboot. Test the build (Test and release, step 3) and write the candidate's `.device-ok`.
+3. Release it (`eos-pack.sh --upload`; runner: `expressiveos-pack` with `release`), then
+   `eos-ota.sh --upload` (runner: `expressiveos-ota` with `upload`), and open the feed's pull request with
+   the files it printed. Merge it, and phones get the update.
+
+Without `--upload` or `--candidate`, `eos-ota.sh` makes and checks the packages and the feed files and
+uploads nothing. The packages take a few GB in `ota/`; once they're on R2 an older release's can go.
 
 ## Other phones
 
@@ -628,10 +673,9 @@ too. An older release's can go once its `.uploaded` marker is there.
 
 ## Not done yet
 
-- The OTA publish script (feed JSON in Evolution X's Updater format, changelog, R2 upload), modelled on
-  `evolution-kodiak/tools/p11-ota.sh` with ExpressiveOS's own feed and folders. Don't publish
-  `ota_property_files` yet. With `system_update_engine` 0001, update_engine refuses a payload that isn't
-  signed with ExpressiveOS's key even when it streams one, but that has to be seen on a 1.0 phone first:
+- Streaming updates (the feed's `ota_property_files`, which `eos-ota.sh` doesn't publish yet). With
+  `system_update_engine` 0001, update_engine refuses a payload that isn't signed with ExpressiveOS's key
+  even when it streams one, but that has to be seen on a 1.0 phone first:
   `update_engine_client --verify` must refuse an Evolution X cheetah OTA's metadata
   (`kDownloadMetadataSignatureMismatch`) and take ExpressiveOS's ("Payload is applicable"). It writes
   no partition; root comes from KernelSU Next. A user build doesn't install `update_engine_client`, so
@@ -647,9 +691,6 @@ too. An older release's can go once its `.uploaded` marker is there.
   adb shell "su -c 'chmod 755 /data/local/tmp/update_engine_client; cp /data/local/tmp/meta.bin /data/ota_package/eos-meta.bin; /data/local/tmp/update_engine_client --verify --metadata=/data/ota_package/eos-meta.bin; echo rc=\$?; rm -f /data/ota_package/eos-meta.bin'"
   adb logcat -d | grep -E 'Failed to validate metadata signature|Payload is (not )?applicable'
   ```
-- The incremental OTA script: `ota_from_target_files -i` from a release's target-files to the next, signed
-  with the tree's release key, everything but the dynamic partitions in full (`--full_ota_partitions`), and
-  offered only to phones on that base build (`packages_apps_Updater` 0005's `base_timestamp`).
 - Root and ViPER4Android on the Pixel 11s: an android16-6.12 KernelSU Next module, and ViPER4Android
   on the AIDL effect HAL (husky's too).
 - Decisions still open: patch-level properties in cheetah's vbmeta, purging the old keystore from this
