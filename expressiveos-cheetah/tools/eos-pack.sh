@@ -29,6 +29,9 @@
 # source of any incremental OTA from it later: check/<name>-target_files.zip, then
 # target-files/ in the release folder, named after the release, with its .sha256.
 # target-files/LATEST names the newest release's, which server-cleanup.sh never removes.
+# A release also keeps out/'s OTA package (build.ok's, which eos-verify.sh checked), as
+# ota/<release>.zip with its .sha256: tools/eos-ota.sh publishes it for the Updater, with an
+# incremental from the release before it.
 #
 # The on-device gate, as on husky: after flashing and testing check/<zip>, write
 # check/<zip>.device-ok with the line "sha256 <its sha256>". --release and --upload also
@@ -48,8 +51,8 @@
 # The zip holds what out/fastboot-info.txt flashes (ROM partitions, super_empty: out/'s, or
 # with EOS_SUPER_EMPTY=factory the newest factory image zip's; vendor_kernel_boot too with
 # EOS_FLASH_VKB=1), not the bootloader and radio: users flash the latest stock firmware
-# first, and the OTA carries it. The OTA package itself is published for the Updater by its
-# own script, not this one.
+# first, and the OTA carries it. The OTA package itself is published for the Updater by
+# tools/eos-ota.sh, not this one.
 # The last line is PACK=OK or PACK=FAIL.
 set -euo pipefail
 # The same out/ packs into the same bytes whoever runs this: file modes, the order of the
@@ -114,7 +117,7 @@ eos_step pack
 [[ "$EOS_RELEASES" =~ ^releases/expressiveos-[a-z0-9-]+$ ]] || fail "devices/$EOS_DEVICE.conf's EOS_RELEASES ($EOS_RELEASES) isn't releases/expressiveos-<something>"
 DEST=$HOME/$EOS_RELEASES; CHECK=$DEST/check
 want=$(cd ~ && pwd -P)/$EOS_RELEASES
-dirs=("$DEST" "$CHECK" "$DEST/target-files")
+dirs=("$DEST" "$CHECK" "$DEST/target-files" "$DEST/ota")
 [[ "$mode" != --testers ]] || dirs+=("$DEST/testers")
 for f in "${dirs[@]}"; do
     d=$(realpath -m -- "$f") || fail "can't resolve $f"
@@ -428,7 +431,8 @@ if [[ -z "$mode" ]]; then
     # A check isn't a release: one candidate in check/, replaced each time
     if ! cmp -s -- "$T/$NAME" "$CHECK/$NAME" 2>/dev/null; then
         find "$CHECK" -maxdepth 1 -type f \( -name '*-fastboot.zip' -o -name '*.sha256' -o -name '*.img' \
-            -o -name '*-manifest.xml' -o -name '*-sources.txt' -o -name '*-changelog.txt' \) -delete
+            -o -name '*-manifest.xml' -o -name '*-sources.txt' -o -name '*-changelog.txt' \
+            -o -name '*-incremental-from-*' \) -delete
         cp -- "$T/$NAME" "$CHECK/$NAME"
     fi
     if [[ $EOS_KSU = lkm ]]; then
@@ -562,10 +566,23 @@ if [[ ! -e $TFD/$RTF ]]; then
 fi
 (cd "$TFD" && sha256sum -- "$RTF" > "$RTF.sha256")
 [[ "$(cut -d' ' -f1 "$TFD/$RTF.sha256")" = "$tfsha" ]] || fail "$TFD/$RTF isn't $tf"
+# The release's OTA package, out/'s (build.ok's: eos-verify.sh checked it), for eos-ota.sh
+# to publish: a hard link (the next build writes a new file, never into this one), else a
+# copy made under another name first
+OTAD=$DEST/ota ROTA=${REL%-fastboot.zip}.zip
+mkdir -p -- "$OTAD"
+if [[ -e $OTAD/$ROTA ]]; then
+    cmp -s -- "$ota" "$OTAD/$ROTA" || fail "$OTAD/$ROTA holds another package than $ota"
+elif ! ln -- "$ota" "$OTAD/$ROTA" 2>/dev/null; then
+    rm -f -- "$OTAD/.$ROTA.part"
+    { cp -- "$ota" "$OTAD/.$ROTA.part" && mv -- "$OTAD/.$ROTA.part" "$OTAD/$ROTA"; } || fail "can't copy $ota to $OTAD"
+fi
+(cd "$OTAD" && sha256sum -- "$ROTA" > "$ROTA.sha256")
+[[ "$(cut -d' ' -f1 "$OTAD/$ROTA.sha256")" = "$sha" ]] || fail "$OTAD/$ROTA isn't $ota"
 # The newest release's target-files, which server-cleanup.sh never removes
 printf '%s\n' "$RTF" > "$TFD/LATEST"
 for f in "${pub[@]}"; do [[ $f != *.sha256 ]] || cat "$DEST/$f"; done
-cat "$TFD/$RTF.sha256"
+cat "$TFD/$RTF.sha256" "$OTAD/$ROTA.sha256"
 echo "RELEASED $DEST/$REL"
 
 if [[ "$mode" = --upload ]]; then
@@ -599,6 +616,7 @@ if [[ "$mode" = --upload ]]; then
     echo "UPLOADED_TARGET_FILES $where"
     echo "UPLOADED https://sourceforge.net/projects/denson9874-s-user-builds/files/${EOS_SF_DIR#/home/frs/project/denson9874-s-user-builds/}/"
 fi
+echo "next: tools/eos-ota.sh (--upload) for the Updater: the OTA package and an incremental from the feed's build"
 eos_step end
 done=1
 echo "PACK=OK"

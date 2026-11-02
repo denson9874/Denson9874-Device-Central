@@ -71,8 +71,17 @@
 # free), routine builds don't pass clean: a phone's kept output makes its next build
 # incremental. expressiveos-pack's 'testers' runs eos-pack.sh --testers: check/'s
 # candidate, not yet tested on a phone, to SourceForge's expressiveos/<device>/testers (and
-# ~/releases/expressiveos-<device>/testers), with no device-ok. Only when Daryl says so. No
-# query token releases or uploads a release (eos-pack.sh --release, --upload).
+# ~/releases/expressiveos-<device>/testers), with no device-ok. Only when Daryl says so.
+# expressiveos-pack's 'release' runs eos-pack.sh --upload: check/'s tested candidate (its
+# device-ok) released and uploaded to SourceForge, its target-files to R2. Only when Daryl
+# says so, and never for a build with try= commits.
+# expressiveos-ota runs eos-ota.sh in this job (minutes to an hour; its log is the job's): the
+# newest release's full OTA package and an incremental from the build the Updater feed offers
+# now, checked, with the feed files printed. Query upload: both to R2, where the OTA mirror
+# serves them (only when Daryl says so); the feed files then go to denson9874/expressiveos_ota
+# as a pull request, and phones see the update once Daryl merges it. Query candidate: an
+# incremental to check/'s candidate, uploaded to R2's ota/test/ with a test feed, to try on a
+# phone on the feed's build before the release.
 # expressiveos-build's 'quick' (EOS_QUICK=1) builds the images only, m droid where a full build
 # runs m evolution (droid plus the OTA package and its target-files zip, about 5 minutes more):
 # for testing a change on a phone. eos-pack.sh packs it as check/<name>-quick-fastboot.zip, which
@@ -189,7 +198,9 @@ on:
           dispatch it on the branch that has the update's sources/updates/<id>).
           expressiveos-build: install the kit, then eos-images.sh and eos-pack.sh in
           tmux (cheetah, or the phone or phones in query). expressiveos-pack: install
-          the kit, then eos-pack.sh in tmux (query: the phone; testers).
+          the kit, then eos-pack.sh in tmux (query: the phone; testers; release).
+          expressiveos-ota: install the kit, then eos-ota.sh in this job: the newest
+          release's OTA packages, full and incremental (query: the phone; upload; candidate).
         type: choice
         default: expressiveos-status
         options:
@@ -214,8 +225,9 @@ on:
           - expressiveos-keys
           - expressiveos-build
           - expressiveos-pack
+          - expressiveos-ota
       tree_ref:
-        description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -keys, -build, -pack, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
+        description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -keys, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
         default: main
       query:
@@ -243,7 +255,12 @@ on:
           modules= are for one phone. expressiveos-pack (optional): device=<phone>, testers
           (eos-pack.sh --testers: check/'s untested candidate to SourceForge's
           expressiveos/<phone>/testers; only when Daryl says so), try-ok (testers may
-          send a candidate built with try=). build-explain
+          send a candidate built with try=), release (eos-pack.sh --upload: check/'s tested
+          candidate released, to SourceForge, its target-files to R2; only when Daryl says
+          so). expressiveos-ota (optional): device=<phone>, upload (eos-ota.sh --upload: the
+          newest release's full and incremental OTA packages to R2, then the feed files for
+          its pull request; only when Daryl says so), candidate (eos-ota.sh --candidate: an
+          incremental to check/'s candidate on R2's ota/test/, for a phone test). build-explain
           (required): tree, product, then up to two products to compare, e.g.
           'expressiveos lineage_cheetah lineage_husky'. expressiveos-kit (optional): diff
           (the default) or adopt. expressiveos-firmware (optional): check.
@@ -850,7 +867,7 @@ jobs:
           bash expressiveos-cheetah/sources/update.sh "${q[@]}"
 
       - name: Check out expressiveos-cheetah
-        if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack"]'), inputs.action)
+        if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack","expressiveos-ota"]'), inputs.action)
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tree_ref }}
@@ -858,7 +875,7 @@ jobs:
           fetch-depth: 1
 
       - name: ExpressiveOS
-        if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack"]'), inputs.action)
+        if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack","expressiveos-ota"]'), inputs.action)
         run: |
           fail() { echo "::error::$*"; exit 1; }
           kit=~/expressiveos-cheetah jobs=~/expressiveos-jobs
@@ -871,7 +888,7 @@ jobs:
           phone() {   # phone <name>: fail unless the kit has devices/<name>.conf
             [[ $1 =~ ^[a-z0-9]+$ && $known == *" $1 "* ]] || fail "'$1' isn't one of tree_ref's phones (expressiveos-cheetah/devices/*.conf):${known% }"
           }
-          envs=() dev= devs=() free_out=0 testers=0 tries=() mods= tryok=0
+          envs=() dev= devs=() free_out=0 testers=0 tries=() mods= tryok=0 release=0 otamode=
           for o in ${opts[@]+"${opts[@]}"}; do
             case "$ACTION:$o" in
               expressiveos-build:kernel-only) envs+=(KERNEL_ONLY=1) ;;
@@ -881,6 +898,10 @@ jobs:
               expressiveos-build:clean) free_out=1 ;;
               expressiveos-pack:testers) testers=1 ;;
               expressiveos-pack:try-ok) tryok=1 ;;
+              expressiveos-pack:release) release=1 ;;
+              expressiveos-ota:upload|expressiveos-ota:candidate)
+                [[ -z $otamode ]] || fail "expressiveos-ota takes one of upload and candidate"
+                otamode=--${o} ;;
               expressiveos-build:try=*)
                 t=${o#try=}
                 [[ $t =~ ^[A-Za-z0-9_][A-Za-z0-9._-]*(/[A-Za-z0-9_][A-Za-z0-9._-]*)*@[0-9a-f]{40}$ && /${t%@*}/ != */../* ]] \
@@ -901,7 +922,7 @@ jobs:
                       fail "modules=$m is a build goal, not a module" ;;
                   esac
                 done ;;
-              expressiveos-build:device=*|expressiveos-pack:device=*)
+              expressiveos-build:device=*|expressiveos-pack:device=*|expressiveos-ota:device=*)
                 [[ -z $dev && ${#devs[@]} = 0 ]] || fail "query names the phone twice ($o)"
                 dev=${o#device=}; phone "$dev" ;;
               expressiveos-build:devices=*)
@@ -914,9 +935,10 @@ jobs:
                   [[ $seen != *" $d "* ]] || fail "devices= names $d twice"
                   seen+="$d "
                 done ;;
-              *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, installclean, quick, clean, try=<path>@<commit>, modules=<module>,...; expressiveos-pack takes device=<phone>, testers, try-ok)" ;;
+              *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, installclean, quick, clean, try=<path>@<commit>, modules=<module>,...; expressiveos-pack takes device=<phone>, testers, try-ok, release; expressiveos-ota takes device=<phone>, upload, candidate)" ;;
             esac
           done
+          (( testers + release < 2 )) || fail "testers and release are two different packs: one at a time"
           if (( ${#tries[@]} )) || [[ -n $mods ]]; then
             (( ${#devs[@]} == 0 && free_out == 0 )) || fail "try= and modules= are for one phone (device=, cheetah unless named), not with devices= or clean"
           fi
@@ -1167,6 +1189,19 @@ jobs:
             tail -n 5 "$log" || true
             echo "started tmux session $s, kit $TREE_REF@${sha:0:7}: expressiveos-status shows how it's going (on the server: tmux attach -t $s, log ~/expressiveos-jobs/$1.log)" | tee -a "$GITHUB_STEP_SUMMARY"
           }
+          if [[ $ACTION = expressiveos-ota ]]; then
+            # In this job, not tmux: making the incremental takes minutes to an hour, well within
+            # the job's limit, and its log (the feed files at the end) is the job's. eos-ota.sh
+            # takes ~/.expressiveos.lock itself, as the packs do
+            ph=${dev:-cheetah}
+            rc=0
+            "${clean[@]}" EOS_DEVICE="$ph" bash --noprofile --norc "$kit/tools/eos-ota.sh" ${otamode:+"$otamode"} 2>&1 | tee -- "$jobs/ota.log" || rc=$?
+            {
+              echo "expressiveos-ota $ph ${otamode:-(preview)}, kit $TREE_REF@${sha:0:7}: $(tail -n 1 "$jobs/ota.log")"
+              grep -aE '^(OTA_|UPLOADED_OTA )' "$jobs/ota.log" | cut -c1-300 || true
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+            exit "$rc"
+          fi
           e=
           (( ${#envs[@]} == 0 )) || printf -v e '%q ' "${envs[@]}"
           phones=${dev:-cheetah}
@@ -1338,7 +1373,8 @@ jobs:
                 launch build "$rec && env ${e}$kit/tools/eos-images.sh$pack"
               fi ;;
             # testers: eos-pack.sh --testers (check/'s candidate to SourceForge's testers folder,
-            # no device-ok), only when Daryl says so. --release and --upload aren't run from here
+            # no device-ok), only when Daryl says so. release: eos-pack.sh --upload (check/'s
+            # tested candidate released), only when Daryl says so
             expressiveos-pack)
               ph=${dev:-cheetah}
               st=$(state_of "$ph") ck=$(check_of "$ph")
@@ -1350,6 +1386,13 @@ jobs:
                   [[ $tryok = 1 ]] || fail "not sending a candidate with unmerged commits to testers: merge them and build again, or add try-ok to the query"
                 fi
                 t=" --testers"
+              elif [[ $release = 1 ]]; then
+                # A release is the tested zip, from ExpressiveOS's manifest only: never try= commits
+                if [[ -f $ck/try.txt || -f $st/try.txt ]]; then
+                  { echo "the $ph build was built with try= commits that aren't in ExpressiveOS's manifest:"; cat -- "$ck/try.txt" "$st/try.txt" 2>/dev/null | sed 's/^/  /'; } | tee -a "$GITHUB_STEP_SUMMARY"
+                  fail "not releasing a build with unmerged commits: merge them, build again, test that zip"
+                fi
+                t=" --upload"
               else
                 if [[ -f $st/try.txt ]]; then
                   { echo "note: the $ph build in out/ was built with try= commits that aren't in ExpressiveOS's manifest:"; sed 's/^/  /' "$st/try.txt"; } | tee -a "$GITHUB_STEP_SUMMARY"
