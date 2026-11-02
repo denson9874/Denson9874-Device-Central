@@ -383,6 +383,12 @@ verify_p11() {   # ExpressiveOS's copies of the Pixel 11 blob repos have the ser
         echo "ok        vendor/google/$d: ExpressiveOS's copy has the server repo's HEAD ${sh:0:12} and every branch"
     done
 }
+keys_match() {   # keys_match <tree's key folder> <copy>: every file the folder holds (through links) is the same in the copy
+    local f
+    while IFS= read -r -d '' f; do
+        cmp -s -- "$1/$f" "$2/$f" || return 1
+    done < <(find -L "$1" -type f -printf '%P\0')
+}
 verify_keys() {   # verify_keys <name>: keep's copy matches the tree's key folder
     local name=$1 src kd n m
     case $name in evolution) src=$home/evolution/vendor/evolution-priv/keys ;; derpfest) src=$home/derpfest/vendor/lineage-priv/keys ;; esac
@@ -391,7 +397,7 @@ verify_keys() {   # verify_keys <name>: keep's copy matches the tree's key folde
     [[ -n $kd && -d $home/$kd/$name ]] || fail "keep made no copy of $name's keys; run keep again"
     n=$(find -L "$src" -type f | wc -l); m=$(find "$home/$kd/$name" -type f | wc -l)
     [[ $n -eq $m ]] || fail "$name: the tree has $n key files, keep's copy $m; run keep again"
-    diff -rq "$(readlink -f "$src")" "$home/$kd/$name" >/dev/null 2>&1 || fail "$name's keys differ from keep's copy; run keep again"
+    keys_match "$src" "$home/$kd/$name" || fail "$name's keys differ from keep's copy; run keep again"
     echo "ok        $name's keys: all $m files match the copy in $kd"
 }
 verify_saved() {   # verify_saved <name>: keep scanned the tree's repos
@@ -548,13 +554,18 @@ keep)
         src=$(readlink -f "$src")
         case $src in "$home"/evolution/*|"$home"/derpfest/*) ;; *) fail "$name's keys resolve outside its tree: ${src#"$home"/}";; esac
         mkdir -p "$kd"; chmod 700 "$ret" "$kd"
-        # Links inside the key folder are copied as the files they point to: the copy has to
-        # outlive the tree
-        (umask 077; cp -RL --preserve=timestamps -- "$src" "$kd/$name")
+        # A link inside the key folder becomes a copy of what it points to, since the copy has
+        # to outlive the tree; a link to nothing (repo's BUILD.bazel linkfile) stays a link
+        (umask 077; cp -a -- "$src" "$kd/$name")
+        while IFS= read -r -d '' l; do
+            [[ -e $src/$l ]] || { echo "$name: $l is a link to nothing; kept as a link"; continue; }
+            rm -f -- "$kd/$name/$l"
+            (umask 077; cp -RL --preserve=timestamps -- "$src/$l" "$kd/$name/$l")
+        done < <(find "$kd/$name" -type l -printf '%P\0')
         find "$kd/$name" -type d -exec chmod 700 {} + ; find "$kd/$name" -type f -exec chmod 600 {} +
         n=$(find "$kd/$name" -type f | wc -l)
         [[ $n -eq $(find -L "$src" -type f | wc -l) ]] || fail "$name: copied $n files, the tree has $(find -L "$src" -type f | wc -l)"
-        diff -rq "$src" "$kd/$name" >/dev/null 2>&1 || fail "$name: the copy differs from the tree's keys"
+        keys_match "$src" "$kd/$name" || fail "$name: the copy differs from the tree's keys"
         fp=none
         [[ -f $kd/$name/platform.x509.pem ]] && fp=$(openssl x509 -in "$kd/$name/platform.x509.pem" -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2 | tr -d : | tr 'A-F' 'a-f')
         echo "$name: $n files copied to ${kd#"$home"/}/$name (platform certificate SHA-256 $fp)"
