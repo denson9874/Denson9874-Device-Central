@@ -35,8 +35,9 @@
 # ~/evolution-cheetah now that expressiveos-firmware fetches cheetah's firmware.
 #
 # expressiveos-kit (read-only by default) compares the installed kit, ~/expressiveos-cheetah,
-# with tree_ref's expressiveos-cheetah: files, links and modes, then the text files' diffs
-# (a file whose name could be a key is named only; a line that may hold a secret is hidden).
+# with tree_ref's expressiveos-cheetah: every folder, file and link, executable bits (the only
+# mode git keeps), any git repository inside the kit, then the text files' diffs (a file whose
+# name could be a key is named only; a line that may hold a secret is hidden).
 # The runner installs over a kit only if it installed it (INSTALLED_FROM), so a kit copied in
 # by hand stops expressiveos-setup, -build and -pack; query adopt writes INSTALLED_FROM for
 # such a kit, and only when it matches tree_ref's exactly, so nothing in it is lost when the
@@ -198,7 +199,7 @@ on:
           - expressiveos-build
           - expressiveos-pack
       tree_ref:
-        description: Branch, tag or commit of this repo to take expressiveos-cheetah (expressiveos-setup, -keys, -build, -pack, -kit, -firmware) and the other actions' scripts from
+        description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -keys, -build, -pack, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
         default: main
       query:
@@ -484,18 +485,33 @@ jobs:
           sha=$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)
           echo "== installed: $(cat "$kit/INSTALLED_FROM" 2>/dev/null || echo "some other way (no INSTALLED_FROM)")"
           echo "== compared with: $TREE_REF@${sha:0:7}"
-          # Every file and link on each side, with its type and mode (INSTALLED_FROM aside)
-          list() { (cd "$1" && find . -mindepth 1 \( -name .git -o -name INSTALLED_FROM \) -prune -o \( -type f -o -type l \) -printf '%y %m %P\n' | LC_ALL=C sort); }
+          # Everything on each side: folders, files, links and anything else, by type, and for a
+          # file whether it's executable (the only mode bit git keeps, so a kit copied under
+          # another umask still matches). Left out: the kit's own INSTALLED_FROM, Python's
+          # __pycache__ folders, and .git (listed apart below: the ref never has one)
+          list() { (cd "$1" && find . -mindepth 1 \( -path ./INSTALLED_FROM -o -name .git -o \( -name __pycache__ -type d \) \) -prune \
+                      -o \( -type f -perm -u=x -printf 'fx %P\n' \) -o \( -type f -printf 'f- %P\n' \) -o -printf '%y %P\n' | LC_ALL=C sort); }
           list "$src" > "$RUNNER_TEMP/ref.ls"; list "$kit" > "$RUNNER_TEMP/server.ls"
-          names=$(diff "$RUNNER_TEMP/ref.ls" "$RUNNER_TEMP/server.ls" | sed -n 's/^< /only in the ref, or another type or mode: /p; s/^> /only on the server, or another type or mode: /p' || true)
-          # Then the files both have whose bytes differ
-          paths() { cut -d' ' -f3- "$1" | LC_ALL=C sort; }
-          bytes=$(LC_ALL=C comm -12 <(paths "$RUNNER_TEMP/ref.ls") <(paths "$RUNNER_TEMP/server.ls") \
-            | while IFS= read -r f; do if ! cmp -s -- "$src/$f" "$kit/$f"; then echo "$f"; fi; done || true)
-          if [[ -z $names && -z $bytes ]]; then
-            echo "SAME: every file, link and mode matches $TREE_REF@${sha:0:7}"
+          names=$(diff "$RUNNER_TEMP/ref.ls" "$RUNNER_TEMP/server.ls" | sed -n 's/^< /only in the ref, or another type: /p; s/^> /only on the server, or another type: /p' || true)
+          # A git repository anywhere in the kit holds history the ref doesn't, and the next
+          # install deletes it with the old kit
+          gits=$(cd "$kit" && find . -mindepth 1 -name .git -prune -printf 'a git repository on the server (its history is not in the ref): %P\n' | LC_ALL=C sort || true)
+          if [[ -n $gits ]]; then names=$(printf '%s\n%s' "$gits" "$names" | sed '/^$/d'); fi
+          # Then the files both have whose bytes differ, and the links whose targets differ
+          bytes="" links=""
+          while IFS= read -r e; do
+            t=${e%% *} f=${e#* }
+            case $t in
+              f?) cmp -s -- "$src/$f" "$kit/$f" || bytes+="$f"$'\n' ;;
+              l) [[ "$(readlink -- "$src/$f")" == "$(readlink -- "$kit/$f")" ]] || links+="$f"$'\n' ;;
+            esac
+          done < <(LC_ALL=C comm -12 "$RUNNER_TEMP/ref.ls" "$RUNNER_TEMP/server.ls")
+          bytes=${bytes%$'\n'} links=${links%$'\n'}
+          if [[ -z $names && -z $bytes && -z $links ]]; then
+            echo "SAME: every folder, file, link and executable bit matches $TREE_REF@${sha:0:7}"
           else
-            [[ -z $names ]] || { echo "== names, types or modes that differ"; echo "$names" | head -n 200; }
+            [[ -z $names ]] || { echo "== names or types that differ"; echo "$names" | head -n 200; }
+            [[ -z $links ]] || { echo "== links that point somewhere else"; echo "$links" | head -n 200; }
             if [[ -n $bytes ]]; then
               echo "== files whose contents differ ($(echo "$bytes" | wc -l))"
               echo "$bytes" | head -n 200
@@ -518,7 +534,7 @@ jobs:
           # adopt: from now on the runner installs over this kit as over its own. Only an exact
           # match: a kit with other files would be replaced (and its changes lost) by the next
           # expressiveos-setup or -build
-          [[ -z $names && -z $bytes ]] || { echo "::error::not adopted: the installed kit differs from $TREE_REF@${sha:0:7} (above). Put those changes in a branch and adopt from it, or move the kit away"; exit 1; }
+          [[ -z $names && -z $bytes && -z $links ]] || { echo "::error::not adopted: the installed kit differs from $TREE_REF@${sha:0:7} (above). Put those changes in a branch and adopt from it, or move the kit away"; exit 1; }
           exec 8>~/.expressiveos.lock
           flock -n 8 || { echo "::error::~/.expressiveos.lock is held (an ExpressiveOS setup, build or pack is running)"; exit 1; }
           if [[ -f $kit/INSTALLED_FROM ]]; then echo "already the runner's: $(cat "$kit/INSTALLED_FROM")"; exit 0; fi

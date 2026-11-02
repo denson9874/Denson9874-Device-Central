@@ -95,18 +95,19 @@ others() {
     for f in "$top"/external/avb/test/data/testkey_rsa*.pem; do
         [[ -f "$f" ]] && c=$(key_sha1 "$f") && printf '%s\tthe AOSP AVB test key %s\n' "$c" "${f##*/}" >> "$work/avb"
     done
-    # Their trees' keys, and, once those trees are gone (evo-retire, 2026-11-02), the copy that
-    # evo-retire keep made of both in ~/retired/keys-<time>/ (~/retired/KEPT's keys= line)
-    local kd dirs=("$evo/vendor/evolution-priv/keys:Evolution X" "$derp/vendor/lineage-priv/keys:DerpFest")
-    kd=$(sed -n 's/^keys=//p' "$HOME/retired/KEPT" 2>/dev/null | tail -n 1 || true)
-    if [[ $kd =~ ^retired/keys-[0-9-]+$ ]]; then
-        dirs+=("$HOME/$kd/evolution:Evolution X" "$HOME/$kd/derpfest:DerpFest")
-    fi
+    # Their trees' keys, and, once those trees are gone (evo-retire, 2026-11-02), every copy
+    # evo-retire keep made of them in ~/retired/keys-<time>/. Every copy, not KEPT's keys= line:
+    # a later keep run with the trees gone has nothing to copy
+    local kd seen=0 dirs=("$evo/vendor/evolution-priv/keys:Evolution X" "$derp/vendor/lineage-priv/keys:DerpFest")
+    for kd in "$HOME"/retired/keys-[0-9]*; do
+        if [[ -d $kd && ! -L $kd ]]; then dirs+=("$kd/evolution:Evolution X" "$kd/derpfest:DerpFest"); fi
+    done
     for d in "${dirs[@]}"; do
         label="${d##*:}'s"; d=${d%:*}
         [[ "$d" != /vendor/* ]] || continue        # that tree isn't on this server
         if [[ ! -d "$d" ]]; then continue; fi
         if [[ ! -r "$d" || ! -x "$d" ]]; then echo "note: can't read $d; relying on eos.conf's pins for $label keys"; continue; fi
+        seen=$((seen + 1))
         for f in "$d"/*.x509.pem; do
             [[ -f "$f" ]] && c=$(cert_fp "$f") && printf '%s\t%s %s\n' "$c" "$label" "${f##*/}" >> "$work/certs"
         done
@@ -118,6 +119,7 @@ others() {
             else echo "note: can't read $f; its public half (avb_custom_key.bin) and the pins still count"; fi
         done
     done
+    if [[ $seen = 0 ]]; then echo "note: no Evolution X or DerpFest keys on this server (no tree, no copy in ~/retired); only eos.conf's pins stand for them"; fi
     return 0
 }
 whose() {   # whose certs|avb <fingerprint>: who else holds it, or nothing

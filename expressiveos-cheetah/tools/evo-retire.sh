@@ -556,6 +556,7 @@ keep)
         git -C "$dst" cat-file -e "$sh^{commit}" || fail "vendor/google/$d: ${sh:0:12} didn't arrive"
     done
     echo "== Evolution X's and DerpFest's private signing keys"
+    prevkeys=$(kv keys || true)
     kd=$ret/keys-$(date -u +%Y%m%d-%H%M%S)
     for pair in "evolution:$home/evolution/vendor/evolution-priv/keys" "derpfest:$home/derpfest/vendor/lineage-priv/keys"; do
         name=${pair%%:*} src=${pair#*:}
@@ -594,7 +595,10 @@ keep)
     done
     {
         echo "when=$(date -u '+%F %H:%M UTC')"
-        echo "keys=$([[ -d $kd ]] && echo "${kd#"$home"/}" || echo none)"
+        # With the trees gone there's nothing new to copy: the last copy stays the one named
+        if [[ -d $kd ]]; then echo "keys=${kd#"$home"/}"
+        elif [[ $prevkeys =~ ^retired/keys-[0-9-]+$ && -d $home/$prevkeys ]]; then echo "keys=$prevkeys"
+        else echo "keys=none"; fi
         echo "saved=${sd#"$home"/}"
         echo "records=${rd#"$home"/}"
         echo "p11=${heads% }"

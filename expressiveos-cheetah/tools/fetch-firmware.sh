@@ -28,7 +28,7 @@ if [[ -f "$conf" ]]; then
     # accepting Google's terms there: the newest generic Android 17 release's link and SHA-256.
     url=$(sed -n 's/^url=//p' "$conf" | head -1); sha=$(sed -n 's/^sha256=//p' "$conf" | head -1)
     build=$(sed -E -n "s#^https://dl\.google\.com/dl/android/aosp/$dev-([a-z0-9]{4}\.[0-9]{6}\.[0-9]{3}(\.[a-z0-9]+)?)-factory-[0-9a-f]{8}\.zip\$#\1#p" <<<"$url")
-    [[ -n "$build" && "$sha" =~ ^[0-9a-f]{64}$ ]] || { echo "firmware.conf needs url=<generic $dev factory zip link> and sha256=<64 hex>" >&2; exit 1; }
+    [[ -n "$build" && "$sha" =~ ^[0-9a-f]{64}$ ]] || { echo "firmware/$dev.conf needs url=<generic $dev factory zip link> and sha256=<64 hex>" >&2; exit 1; }
 else
 read -r url sha build < <(python3 -I - "$dev" <<'PY'
 import html as H, re, sys, urllib.parse, urllib.request
