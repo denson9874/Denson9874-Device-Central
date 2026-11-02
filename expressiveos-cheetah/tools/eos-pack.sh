@@ -155,11 +155,15 @@ taken() {   # taken <name> <file>: <name> already holds something other than <fi
 }
 
 generate_changelog() {
-    local out=$1 bname=$2
+    local out=$1 bname=$2 spl
+    # The build's own security patch level, not the day it was packed (a release packs out/,
+    # which it first checks is the tested candidate)
+    spl=$(sed -n 's/^ro\.build\.version\.security_patch=//p' "$O/system/build.prop" 2> /dev/null | head -1 || true)
+    [[ "$spl" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || fail "no security patch level (ro.build.version.security_patch) in $O/system/build.prop"
     mkdir -p -- "$(dirname -- "$out")"
     {
         echo "ExpressiveOS 1.0 (Android 17) for the Google Pixel 7 Pro ($EOS_DEVICE), build $bname"
-        echo "Security patch: $(date -u '+%Y-%m-%d'). ExpressiveOS release build."
+        echo "Security patch: $spl. ExpressiveOS release build."
         echo
         echo "Notes:"
         echo "=============================="
