@@ -192,9 +192,7 @@ generate_changelog() {
         echo "ROM changes:"
         echo "=============================="
         echo "- Play Integrity and TrickyStore attestation fixes (AUTO leaf-hack tag filtering, StrongBox support)"
-        echo "- Private Compute Services (as.oss) and Android System Intelligence association allowlist restored"
         echo "- Holiday theme scheduling and screen-off reconciliation"
-        echo "- Updater and Studio local changelog fallbacks"
     } > "$out"
 }
 
@@ -267,12 +265,14 @@ if [[ "$mode" = --testers ]]; then
     # Names only, so testers can run sha256sum -c
     (cd "$TD" && sha256sum -- "$TREL" > "$TREL.sha256")
     [[ "$(cut -d' ' -f1 "$TD/$TREL.sha256")" = "$zsha" ]] || fail "$TD/$TREL isn't $CHECK/$NAME"
-    up=("$TREL" "$TREL.sha256")
+    # Each .sha256 before its file: a cut-short upload leaves a matching .sha256 beside a partial
+    # file, so taken() keeps the name and the rerun's put replaces it (not a new -rN beside it)
+    up=("$TREL.sha256" "$TREL")
     if [[ $EOS_KSU = lkm ]]; then
         [[ -e $TD/$TSTOCK ]] || cp -- "$CHECK/$STOCK" "$TD/$TSTOCK"
         (cd "$TD" && sha256sum -- "$TSTOCK" > "$TSTOCK.sha256")
         cmp -s -- "$CHECK/$STOCK" "$TD/$TSTOCK" || fail "$TD/$TSTOCK isn't $CHECK/$STOCK"
-        up+=("$TSTOCK" "$TSTOCK.sha256")
+        up+=("$TSTOCK.sha256" "$TSTOCK")
     fi
     # -b: any failed put fails the upload
     {
@@ -542,10 +542,10 @@ done
 if [[ $EOS_KSU = lkm ]]; then
     [[ -e $DEST/$RSTOCK ]] || cp -- "$SRCSTOCK" "$DEST/$RSTOCK"
     (cd "$DEST" && sha256sum -- "$REL" > "$REL.sha256" && sha256sum -- "$RSTOCK" > "$RSTOCK.sha256")
-    pub=("$REL" "$REL.sha256" "$RSTOCK" "$RSTOCK.sha256")
+    pub=("$REL.sha256" "$REL" "$RSTOCK.sha256" "$RSTOCK")
 else
     (cd "$DEST" && sha256sum -- "$REL" > "$REL.sha256")
-    pub=("$REL" "$REL.sha256")
+    pub=("$REL.sha256" "$REL")
 fi
 for f in manifest.xml kernel-manifest.xml sources.txt; do cp -- "$EOS_STATE/$f" "$DEST/${REL%-fastboot.zip}-$f"; done
 mkdir -p -- "$DEST/changelogs"

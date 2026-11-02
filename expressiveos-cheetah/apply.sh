@@ -10,8 +10,8 @@
 #   device_google_pantah 0003-0009,         evolution-cheetah's, copied unchanged
 #   device_google_gs201 0001-0004,
 #   vendor_google_cheetah
-#   device_google_gs201 0005-0006           ExpressiveOS's own: target-files takes the built
-#                                           images; resolve gxp/hwc/bluetooth SELinux denials
+#   device_google_gs201 0005                ExpressiveOS's own: target-files takes the built
+#                                           system, vendor, product... images (incrementals)
 #   frameworks_base                         the fixes the Evolution X tree carries for
 #                                           every build there (evolution-kodiak's copies)
 #   vendor_lineage 0001                     ExpressiveOS 1.0 names and the build's own date
@@ -24,9 +24,6 @@
 #   packages_apps_Settings 0005,            the Bloom colours: the glowing wordmark and the
 #   packages_apps_Updater 0006,             egg's stars take the logo's petals, not neon
 #   packages_apps_EvoEgg 0003
-#   packages_services_Iwlan 0001            ExpressiveOS's own: declare IWLAN attribution tag
-#   packages_modules_Connectivity 0001      ExpressiveOS's own: treat XCAP as mutable capability
-#   frameworks_opt_telephony 0001           ExpressiveOS's own: guard getSubId against null info
 #   system_update_engine 0001-0003          OTA payloads must be signed again (ExpressiveOS's
 #                                           key; recovery's sideload also takes LineageOS's
 #                                           release key, in its otacerts), never older

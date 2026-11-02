@@ -324,6 +324,17 @@ class FlasherPublishTest(unittest.TestCase):
         self.assertTrue(all(c[1] == "--s3-no-check-bucket" for c in self.calls() if c[0] == "copyto"))
         self.assertIn(f"PUBLISHED {base} release {REMOTE}/expressiveos/cheetah/flasher.json", p.stdout)
 
+    def test_refuses_check_and_testers_on_release(self):
+        # A check/ candidate is untested (maybe try= commits or unpinned keys): never published,
+        # with or without --testers. A testers/ zip goes only to the testers channel
+        for folder, args, part in (("check", (), "is a check/ candidate"),
+                                   ("check", ("--testers",), "is a check/ candidate"),
+                                   ("testers", (), "publish it with --testers")):
+            with self.subTest(folder=folder, args=args):
+                z = self.make_release(folder=folder)
+                self.assertFAIL(self.run_publish("cheetah", z, *args), part)
+                self.assertEqual(self.uploads(), [])
+
     def test_testers_channel(self):
         # Its files go to flasher/testers/, which the Worker serves as /dl/<device>/testers/<file>
         z = self.make_release(date="20261030", folder="testers")
