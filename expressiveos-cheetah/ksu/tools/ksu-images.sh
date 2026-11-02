@@ -71,12 +71,17 @@ if [[ $EOS_KSU = lkm ]]; then
     [[ -f vendor/extra/ksu/Android.mk ]] || fail "no vendor/extra/ksu/Android.mk (run apply-ksu.sh)"
 fi
 
+# eos_step (lib.sh): with EOS_KERNEL=gs-6.1 the kernel step is the kernel source's sync and
+# check, lunch, build_kernel (and an m installclean); then the make, lunch's on the other phones
 if [[ $EOS_KERNEL = gs-6.1 ]]; then
+    eos_step kernel
     # Before lunch, which runs build_kernel
     kernel_pinned
 elif [[ "${KERNEL_ONLY:-0}" = 1 ]]; then
     echo "KERNEL_ONLY=1: $EOS_DEVICE builds no kernel (EOS_KERNEL=$EOS_KERNEL: its tree's prebuilt boot image) and no kernelsu.ko (EOS_KSU=$EOS_KSU): nothing to build"
     done=1; echo "MAKE_EXIT=0"; exit 0
+else
+    eos_step make
 fi
 export EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
 if command -v ccache >/dev/null; then export USE_CCACHE=1 CCACHE_EXEC; CCACHE_EXEC=$(command -v ccache); fi
@@ -140,8 +145,9 @@ fi
 if [[ $EOS_KSU = lkm ]]; then
     "$here/tools/ksu-module.sh" "$top" || fail "ksu-module.sh failed"
 fi
-if [[ "${KERNEL_ONLY:-0}" = 1 ]]; then done=1; echo "MAKE_EXIT=0"; exit 0; fi
+if [[ "${KERNEL_ONLY:-0}" = 1 ]]; then eos_step end; done=1; echo "MAKE_EXIT=0"; exit 0; fi
 
+eos_step make
 # Both passes must stamp the same build date and number, or pass 2 rebuilds every
 # partition whose build.prop changed (and names another zip after midnight)
 export BUILD_DATETIME=${BUILD_DATETIME:-$(date +%s)}
@@ -210,6 +216,7 @@ else
     ) || fail "the build didn't ship a stock init_boot"
     echo "OK: $O/init_boot.img is the stock one (no KernelSU: EOS_KSU=none)"
 fi
+eos_step end
 done=1
 if [[ $EOS_QUICK = 1 ]]; then
     echo "OK: the images, quick (m droid): no OTA package or target-files zip"

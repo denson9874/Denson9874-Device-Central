@@ -189,6 +189,31 @@ before is kept as `.1`); the last line is `BUILD_EXIT=0` or `BUILD_EXIT=1`.
   11 minutes. `eos-verify.sh` checks everything but the package, its payload and the target-files,
   and the run writes `quick.ok` instead of `build.ok` (Test and release, "Quick builds").
 
+### Progress
+
+The runner's `expressiveos-progress` (`tools/eos-progress.py`) is read-only and takes a few seconds, so
+it runs fine while a build does. It tells you how the running `eos-build` or `eos-pack` session is
+going, or how the last one went. It prints a `PROGRESS` line per phone: its state, its step (wait,
+prepare, kernel, make, target_files, ota_zip, verify, pack, done), the make's actions done out of the
+total (Soong's own `out/build_progress.pb`), and an ETA for when the phone should be built and packed.
+Then come a `SESSION` line, the log's last 40 lines as `LOG` lines, and `PROGRESS_OK`, followed by the
+same in words with US Eastern times. The docstring at the top of the script spells out every field.
+
+To know where a build is, `lib.sh`'s `eos_step` prints a line as each step begins, such as
+`STEP make device=husky kind=full fresh=0 at=<UTC>`. `eos-images.sh` prints prepare and verify,
+`ksu-images.sh` prints kernel (lunch and `build_kernel`, on the phones that build theirs) and make,
+and `eos-pack.sh` prints pack. As each step ends, `eos_step` writes how long it took to
+`~/expressiveos-build-times.txt`, one `TIME` line per step for every phone. `fresh=1` means
+`out/target/product/<device>` wasn't there when the build began, so the build made all of it again.
+The make's ETA comes from the first of these that is known:
+
+- Soong's own estimate in its progress lines, based on how long the same actions took last time.
+- The make's pace so far.
+- The median of the last 5 recorded makes like this one (same phone, same kind, same fresh).
+- This server's measured times.
+
+The other steps' ETAs come from their recorded times, or from typical times.
+
 ## Sources
 
 ExpressiveOS builds its own sources (Daryl, 2026-10-28: fully independent of Evolution X, whose

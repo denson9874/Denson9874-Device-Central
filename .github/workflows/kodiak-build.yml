@@ -89,6 +89,14 @@
 # expressiveos-status shows every phone's build.ok, verify.log, check/, testers/ and build
 # log, cheetah's where they always were (out/eos, ~/expressiveos-build.log), the others'
 # (out/eos-<device>, ~/expressiveos-build-<device>.log) once they exist.
+# expressiveos-progress (read-only, a few seconds, fine while a build runs) says how the
+# running eos-build or eos-pack session is going, or how the last one went
+# (expressiveos-cheetah/tools/eos-progress.py): a PROGRESS line per phone (its state and step,
+# the make's actions done of the total from Soong's out/build_progress.pb, and when it should
+# be done), a SESSION line, the log's last 40 lines (LOG lines), PROGRESS_OK, then the same in
+# words with US Eastern times. Its estimates come from Soong's own (from how long the same
+# actions took before), the make's pace, the kit's record of past builds' step times
+# (~/expressiveos-build-times.txt, lib.sh's eos_step), or this server's typical times.
 #
 # expressiveos-pins (read-only) prints the exact upstream commit every project of the
 # ExpressiveOS tree was synced to (repo's m/<manifest branch>, not HEAD: HEAD carries the
@@ -169,7 +177,10 @@ on:
           (query: list or check, read-only, list the default; stop; undo; keep;
           delete out evolution derpfest research leftovers cheetah-kit, permanent).
           expressiveos-status: read-only: the ExpressiveOS
-          sessions, logs, keys and every phone's build. expressiveos-kit: read-only
+          sessions, logs, keys and every phone's build. expressiveos-progress: read-only,
+          a few seconds, fine while a build runs: each phone of the running (or last)
+          eos-build or eos-pack session, its step, the make's actions done and when it
+          should be done (PROGRESS lines, then in words, US Eastern). expressiveos-kit: read-only
           diff of the installed kit against tree_ref's (query adopt: hand the runner a
           kit installed some other way, only when it matches tree_ref's exactly).
           expressiveos-firmware: cheetah's newest Google factory bootloader and radio
@@ -203,6 +214,7 @@ on:
           - server-cleanup
           - evo-retire
           - expressiveos-status
+          - expressiveos-progress
           - expressiveos-kit
           - expressiveos-firmware
           - expressiveos-pins
@@ -293,7 +305,7 @@ jobs:
           # expressiveos-update (the same, and pushes to GitHub)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -306,7 +318,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-kit|expressiveos-pins|expressiveos-devices)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -714,6 +726,25 @@ jobs:
             echo "-- last lines"
             tail -c 200000 "$log" | tr '\r' '\n' | grep -av '^[[:space:]]*$' | tail -n 15 | cut -c1-300 || true
           done
+
+      # Read-only and quick (a few seconds), so it runs beside a build: this ref's script reads
+      # the sessions' logs, Soong's out/build_progress.pb and this user's processes
+      - name: Check out the progress script
+        if: inputs.action == 'expressiveos-progress'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: expressiveos-cheetah/tools
+          fetch-depth: 1
+
+      - name: ExpressiveOS progress (read-only)
+        if: inputs.action == 'expressiveos-progress'
+        run: |
+          out=$RUNNER_TEMP/progress.txt rc=0
+          python3 -I expressiveos-cheetah/tools/eos-progress.py > "$out" || rc=$?
+          cat -- "$out"
+          { echo '```'; cat -- "$out"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$rc"
 
       - name: ExpressiveOS pins (read-only)
         if: inputs.action == 'expressiveos-pins'
@@ -1138,6 +1169,8 @@ jobs:
             {
               echo '#!/bin/bash'
               echo "# $ACTION from the runner, kit $TREE_REF@${sha:0:7}, $(date -u '+%F %T') UTC"
+              # The phones it builds or packs, for expressiveos-progress
+              [[ -z ${phones:-} ]] || echo "# phones: $phones"
               echo 'cd ~ || exit 1'
               echo "{ echo \"== $s, \$(date -u '+%F %T') UTC\"; $2; echo \"SESSION_EXIT=\$?\"; } 2>&1 | tee -- $(printf %q "$log")"
             } > "$job"
@@ -1171,8 +1204,10 @@ jobs:
           fi
           e=
           (( ${#envs[@]} == 0 )) || printf -v e '%q ' "${envs[@]}"
+          phones=${dev:-cheetah}
           if [[ $ACTION = expressiveos-build ]] && (( ${#devs[@]} || free_out )); then
             (( ${#devs[@]} )) || devs=("$dev")
+            phones=${devs[*]}
             echo "phones, in turn: ${devs[*]}$( (( ! free_out )) || echo "; clean: each one's out/target/product/<phone> removed once it's packed, cheetah's kept")" | tee -a "$GITHUB_STEP_SUMMARY"
             # The phones in turn, in the one eos-build session: written here, run there. Nothing of
             # ExpressiveOS's runs now (checked above), so no session is reading the old copy
@@ -1261,7 +1296,7 @@ jobs:
             echo "phone: $dev" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
           case $ACTION in
-            expressiveos-setup) launch setup "$kit/setup.sh && $kit/ksu/fetch-ksu.sh" ;;
+            expressiveos-setup) phones=; launch setup "$kit/setup.sh && $kit/ksu/fetch-ksu.sh" ;;
             expressiveos-build)
               if [[ -n $mods ]]; then
                 # Written here, run in the eos-build session (nothing of ExpressiveOS's runs now)

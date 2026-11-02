@@ -66,8 +66,16 @@ rm -f -- "$EOS_STATE/build.ok" "$EOS_STATE/target-files.ok" "$EOS_STATE/quick.ok
 export EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
 kind="full build (m evolution: the images, the OTA package and its target-files)"
 [[ $EOS_QUICK != 1 ]] || kind="quick build (EOS_QUICK=1: the images only, m droid; for testing, never released)"
+# What the STEP and TIME lines (lib.sh's eos_step) say this build is; ksu-images.sh's too
+EOS_RUN_KIND=full EOS_RUN_FRESH=0
+[[ $EOS_QUICK != 1 ]] || EOS_RUN_KIND=quick
+[[ "${KERNEL_ONLY:-0}" != 1 ]] || EOS_RUN_KIND=kernel
+[[ -d $EOS_PRODUCT_OUT ]] || EOS_RUN_FRESH=1
+export EOS_RUN_KIND EOS_RUN_FRESH
 echo "== ExpressiveOS $EOS_VERSION $EOS_BUILD_TYPE for $EOS_DEVICE in $top, $(date -u '+%F %T') UTC: a $kind"
+[[ $EOS_RUN_FRESH = 0 ]] || echo "note: no $EOS_PRODUCT_OUT: this build makes all of it again, the longest kind of build"
 wait_builds
+eos_step prepare
 step() {   # step <title> <regex> <command>...: run it; its last line must match <regex>
     local title=$1 want=$2 rc=0
     shift 2
@@ -190,13 +198,17 @@ fi
 cat "$EOS_STATE/sources.txt"
 
 # Kernel source (EOS_KERNEL=gs-6.1): ksu-images.sh syncs it to pins/kernel.xml when it's
-# missing or EOS_KERNEL_SYNC=1, and checks it's on them otherwise
+# missing or EOS_KERNEL_SYNC=1, and checks it's on them otherwise. Its kernel and make steps
+# are its own (eos_step)
+eos_step end
 step "make (ksu-images.sh)" 'MAKE_EXIT=0' "$kit/ksu/tools/ksu-images.sh" "$top"
 if [[ "${KERNEL_ONLY:-0}" = 1 ]]; then
     echo "OK: kernel only (KERNEL_ONLY=1): nothing to pack"
     done=1; echo "BUILD_EXIT=0"; exit 0
 fi
+eos_step verify
 step "verify (eos-verify.sh)" 'VERIFY=OK' "$kit/tools/eos-verify.sh" "$top"
+eos_step end
 if [[ $EOS_QUICK = 1 ]]; then
     ver=$(sed -n 's/^VERIFIED_QUICK //p' "$work/step.log" | tail -1)
     [[ -n $ver ]] || fail "eos-verify.sh didn't verify a quick build (no VERIFIED_QUICK line)"

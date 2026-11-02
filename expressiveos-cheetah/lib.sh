@@ -83,6 +83,26 @@ else
     EOS_BUILD_LOG=$HOME/expressiveos-build-$EOS_DEVICE.log EOS_KSU_INIT_BOOT_VAR=EOS_KSU_INIT_BOOT
 fi
 
+# For the runner's expressiveos-progress (tools/eos-progress.py): a STEP line in the log as a
+# phone's build or pack reaches each step (prepare, kernel, make, verify, pack), and each
+# finished step's time in EOS_TIMES (every phone's, one file), which its estimates start from.
+# EOS_RUN_KIND (full, quick or kernel; eos-pack.sh: full, quick, testers, release or upload) and
+# EOS_RUN_FRESH (1: the product out wasn't there when the build began, so every module was
+# built; - when it doesn't apply) say what the times are of
+EOS_TIMES=$HOME/expressiveos-build-times.txt
+eos_step() {   # eos_step <step>|end: say this run is at <step> now, after recording how long the step before took (a failure records nothing)
+    local now
+    now=$(date -u +%s)
+    [[ $1 != "${_eos_step:-}" ]] || return 0
+    if [[ -n ${_eos_step:-} ]]; then
+        echo "TIME $_eos_step device=$EOS_DEVICE kind=${EOS_RUN_KIND:--} fresh=${EOS_RUN_FRESH:--} at=$(date -ud "@$now" +%FT%TZ) secs=$((now - _eos_step_at))" \
+            >> "$EOS_TIMES" 2>/dev/null || true
+    fi
+    _eos_step=$1 _eos_step_at=$now
+    if [[ $1 = end ]]; then _eos_step=; return 0; fi
+    echo "STEP $1 device=$EOS_DEVICE kind=${EOS_RUN_KIND:--} fresh=${EOS_RUN_FRESH:--} at=$(date -ud "@$now" +%FT%TZ)"
+}
+
 kit_patch_dirs() {   # kit_patch_dirs: the kit's patch folders for EOS_DEVICE, one a line: the shared ones (patches/, ksu/patches/, viper4android/patches/), then devices/<device>/patches/ and ksu-patches/
     local d
     for d in "$kit"/patches/* "$kit"/ksu/patches/* "$kit"/viper4android/patches/* \
