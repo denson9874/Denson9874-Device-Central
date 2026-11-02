@@ -97,7 +97,7 @@ from), without a shell on the server:
 | `expressiveos-status` | Read-only: the sessions, locks, kit, tree, keys, build and the end of each log |
 | `expressiveos-setup` | Installs `tree_ref`'s kit as `~/expressiveos-cheetah`, then runs `setup.sh` and `ksu/fetch-ksu.sh` in tmux session `eos-setup` |
 | `expressiveos-keys` | "Keys" below, once, never over an existing `vendor/evolution-priv`, and a backup archive `~/expressiveos-keys-<time>.tar.gz` (mode 600) to copy off the server |
-| `expressiveos-build` | Installs the kit, then `tools/eos-images.sh` and `tools/eos-pack.sh` in `eos-build` (query: `device=<phone>` or `devices=<phone>,<phone>,...`, `kernel-only`, `kernel-sync`, `clean`) |
+| `expressiveos-build` | Installs the kit, then `tools/eos-images.sh` and `tools/eos-pack.sh` in `eos-build` (query: `device=<phone>` or `devices=<phone>,<phone>,...`, `kernel-only`, `kernel-sync`, `installclean`, `quick`, `clean`, `try=`, `modules=`) |
 | `expressiveos-pack` | Installs the kit, then `tools/eos-pack.sh` in `eos-pack` (query: `device=<phone>`, `testers`) |
 
 The sessions run outside the job (a first build outlasts its 4 hours) with a fresh login's environment, and
@@ -164,6 +164,11 @@ before is kept as `.1`); the last line is `BUILD_EXIT=0` or `BUILD_EXIT=1`.
   build syncs it, and later ones check it's still on the pins.
 - `EOS_INSTALLCLEAN=1`: start the make with `m installclean` (the runner's `installclean`). A
   `modules=` compile check asks the next full build for it itself; a kernel-only run skips it.
+- `EOS_QUICK=1`: a quick build (the runner's `quick`), to test a change on a phone: the images only,
+  `m droid` where a full build runs `m evolution`, which is `droid` plus the OTA package and its
+  target-files zip (`vendor/lineage`'s `build/tasks/evolution.mk`), about 5 of a cheetah build's 8 to
+  11 minutes. `eos-verify.sh` checks everything but the package, its payload and the target-files,
+  and the run writes `quick.ok` instead of `build.ok` (Test and release, "Quick builds").
 
 ## Sources
 
@@ -234,6 +239,9 @@ package's sha256, which `eos-pack.sh` needs),
 (the kit's commit, the KernelSU Next and Expressive Launcher sources, and each patched project's
 upstream revision and HEAD).
 They're the record of what the build was made from, for the GPL source offer.
+A quick build (`EOS_QUICK=1`) writes `quick.ok` in place of `build.ok` and `target-files.ok`: the
+sha256 of every file its fastboot zip takes (`fastboot_files` in `lib.sh`) and, with KernelSU Next,
+of the stock init_boot.
 
 `eos-verify.sh` checks, without a phone: the package (the build's own, A/B, for cheetah), the identity
 (cheetah, Pixel 7 Pro, user build, every kit patch in, the Updater on ExpressiveOS's feed), the keys
@@ -253,7 +261,10 @@ patch it on phones installed from the fastboot zip, so `eos-pack.sh --release` r
 though it still packs as a candidate; a note lists the other images, which target-files signs again
 with its own AVB salts and an incremental writes whole). Another phone's build is checked the same way
 against its `devices/<device>.conf`: its model, firmware, and what it ships or doesn't (KernelSU Next,
-ViPER4Android).
+ViPER4Android). A quick build has no package, payload or target-files: `eos-verify.sh` (and
+`eos-keys-check.sh out`) checks out/'s own vbmeta, init_boot, boot and vbmeta_system and their
+patch levels instead, that out/ holds no package or target-files zip, and everything else as above,
+and prints `VERIFIED_QUICK <name>`.
 
 ## The monthly update
 
@@ -506,6 +517,18 @@ The fastboot zip, its `.sha256` and (with KernelSU Next) the stock init_boot go 
 `expressiveos/<device>/testers/` and `~/releases/expressiveos-<device>/testers/`, never over another
 file; never to the release folder itself, target-files or the feed. It ends with
 `UPLOADED_TESTERS <url>`.
+
+### Quick builds
+
+To try a change on a phone, `EOS_QUICK=1 tools/eos-images.sh` (the runner's `expressiveos-build`
+with query `quick`, with `try=` or `device=` as usual) builds the images only, about 5 minutes
+sooner. `tools/eos-pack.sh` then packs it by itself as a quick candidate:
+`check/<name>-quick-fastboot.zip` (and `<name>-quick-init_boot-stock.img` with KernelSU Next), flashed
+the same way (step 2), with its `.sha256` and `.pack-ok` (`build quick`). It replaces `check/`'s
+candidate, as any candidate does, and it is never released or sent to testers: with no target-files,
+no incremental OTA could update phones installed from it, and a release must be the very zip that was
+tested. `--release`, `--upload` and `--testers` refuse it. When the change works, build again without
+`quick`, pack, flash and test that zip, and release it.
 
 The Updater feed stays `{"response": []}` until the OTA publish script exists (below).
 

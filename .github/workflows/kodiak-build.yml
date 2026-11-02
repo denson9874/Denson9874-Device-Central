@@ -109,6 +109,10 @@
 # candidate, not yet tested on a phone, to SourceForge's expressiveos/<device>/testers (and
 # ~/releases/expressiveos-<device>/testers), with no device-ok. Only when Daryl says so. No
 # query token releases or uploads a release (eos-pack.sh --release, --upload).
+# expressiveos-build's 'quick' (EOS_QUICK=1) builds the images only, m droid where a full build
+# runs m evolution (droid plus the OTA package and its target-files zip, about 5 minutes more):
+# for testing a change on a phone. eos-pack.sh packs it as check/<name>-quick-fastboot.zip, which
+# it never releases or sends to testers; a release needs a full build, packed, flashed and tested.
 # expressiveos-status shows every phone's build.ok, verify.log, check/, testers/ and build
 # log, cheetah's where they always were (out/eos, ~/expressiveos-build.log), the others'
 # (out/eos-<device>, ~/expressiveos-build-<device>.log) once they exist.
@@ -297,7 +301,9 @@ on:
           ExpressiveOS's own projects, e.g. a branch before it's merged; it must have
           the project's pinned commit under it, and stays checked out until a build
           that doesn't name it: name every tried project each time; the build and its
-          check/ candidate record it), modules=<module>,<module>,... (lunch and m on just those
+          check/ candidate record it), quick (the images only, m droid, about 5 minutes
+          sooner: packed as check/'s <name>-quick-fastboot.zip to flash and test, never
+          released or sent to testers), modules=<module>,<module>,... (lunch and m on just those
           modules, a compile check: nothing packed; with try= or alone; the phone's next
           full build starts with m installclean). try= and
           modules= are for one phone. expressiveos-pack (optional): device=<phone>, testers
@@ -1116,13 +1122,18 @@ jobs:
           # others' in out/eos-<device>, once they exist
           for d in $devs; do
             if [[ $d = cheetah ]]; then st=out/eos l=build; else st=out/eos-$d l="build, $d"; [[ -d $top/$st ]] || continue; fi
-            echo "== $l: $(cat "$top/$st/build.ok" 2>/dev/null || echo "no complete build ($st/build.ok)")"
+            if [[ -f $top/$st/quick.ok ]]; then
+              # eos-images.sh's quick build (EOS_QUICK=1): the images only, packed to test, never released
+              echo "== $l: a quick build (images only, $st/quick.ok: $(wc -l < "$top/$st/quick.ok") files), $(date -r "$top/$st/quick.ok" '+%F %T')"
+            else
+              echo "== $l: $(cat "$top/$st/build.ok" 2>/dev/null || echo "no complete build ($st/build.ok)")"
+            fi
             # Written by a modules= compile check, removed by the m installclean it asks for
             if [[ -e $top/$st/installclean ]]; then
               echo "   $st/installclean: the next full build starts with m installclean"
             fi
             # expressiveos-build's clean removes a packed phone's product out (never cheetah's)
-            if [[ -f $top/$st/build.ok && ! -d $top/out/target/product/$d ]]; then
+            if [[ ( -f $top/$st/build.ok || -f $top/$st/quick.ok ) && ! -d $top/out/target/product/$d ]]; then
               echo "   out/target/product/$d is gone (clean?): check/ has its candidate; eos-pack.sh can't pack this build again"
             fi
             # eos-verify.sh's whole log stays on the server: its warnings and notes, and the
@@ -1333,6 +1344,7 @@ jobs:
               expressiveos-build:kernel-only) envs+=(KERNEL_ONLY=1) ;;
               expressiveos-build:kernel-sync) envs+=(EOS_KERNEL_SYNC=1) ;;
               expressiveos-build:installclean) envs+=(EOS_INSTALLCLEAN=1) ;;
+              expressiveos-build:quick) envs+=(EOS_QUICK=1) ;;
               expressiveos-build:clean) free_out=1 ;;
               expressiveos-pack:testers) testers=1 ;;
               expressiveos-pack:try-ok) tryok=1 ;;
@@ -1369,17 +1381,20 @@ jobs:
                   [[ $seen != *" $d "* ]] || fail "devices= names $d twice"
                   seen+="$d "
                 done ;;
-              *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, installclean, clean, try=<path>@<commit>, modules=<module>,...; expressiveos-pack takes device=<phone>, testers, try-ok)" ;;
+              *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, installclean, quick, clean, try=<path>@<commit>, modules=<module>,...; expressiveos-pack takes device=<phone>, testers, try-ok)" ;;
             esac
           done
           if (( ${#tries[@]} )) || [[ -n $mods ]]; then
             (( ${#devs[@]} == 0 && free_out == 0 )) || fail "try= and modules= are for one phone (device=, cheetah unless named), not with devices= or clean"
           fi
           if [[ -n $mods ]]; then
-            (( ${#envs[@]} == 0 )) || fail "modules= runs m on those modules alone: not with kernel-only, kernel-sync or installclean"
+            (( ${#envs[@]} == 0 )) || fail "modules= runs m on those modules alone: not with kernel-only, kernel-sync, installclean or quick"
           fi
           if [[ " ${envs[*]-} " == *" EOS_INSTALLCLEAN=1 "* && " ${envs[*]-} " == *" KERNEL_ONLY=1 "* ]]; then
             fail "installclean is for builds that make images, not kernel-only"
+          fi
+          if [[ " ${envs[*]-} " == *" EOS_QUICK=1 "* && " ${envs[*]-} " == *" KERNEL_ONLY=1 "* ]]; then
+            fail "quick is for builds that make images, not kernel-only"
           fi
           if [[ $free_out = 1 ]]; then
             [[ " ${envs[*]-} " != *" KERNEL_ONLY=1 "* ]] || fail "clean is for builds that are packed, not kernel-only"
@@ -1633,8 +1648,9 @@ jobs:
           # server), a phone's product out, out/target/product/<device>, is removed once its pack
           # ended PACK=OK (check/ keeps the candidate and its target-files); never cheetah's.
           #   build-devices.sh <kit> <clean: 0 or 1> [NAME=value]... -- <device>...
-          # The NAME=value pairs (KERNEL_ONLY=1, EOS_KERNEL_SYNC=1, EOS_INSTALLCLEAN=1) are eos-images.sh's, as for one
-          # phone; with KERNEL_ONLY=1 nothing is packed.
+          # The NAME=value pairs (KERNEL_ONLY=1, EOS_KERNEL_SYNC=1, EOS_INSTALLCLEAN=1, EOS_QUICK=1) are eos-images.sh's,
+          # as for one phone; with KERNEL_ONLY=1 nothing is packed, and eos-pack.sh packs a quick build
+          # (EOS_QUICK=1) as a quick candidate by itself.
           kit=$1 clean=$2
           shift 2
           envs=() konly=0
@@ -1718,7 +1734,7 @@ jobs:
           # try= branch, say), written by the runner and run in the eos-build session. The tree,
           # lunch and locks are a build's (ksu/tools/ksu-images.sh); nothing is signed, packed or
           # recorded. m installs the modules into the product out, which then no longer matches the
-          # last full build, so its build.ok and target-files.ok go first: that build can't be
+          # last build, so its build.ok and target-files.ok (or a quick build's quick.ok) go first: that build can't be
           # packed or verified again, and the next pack needs eos-images.sh. A module the product
           # doesn't install (Settings, which SettingsGoogle overrides) would stay in the product
           # out, which eos-verify.sh reads and the next target-files zip copies (the images take
@@ -1751,8 +1767,8 @@ jobs:
           [[ "$(cd "$(gettop)" && pwd -P)" = "$top" ]] || fail "lunch picked the tree $(gettop), not $top"
           # out/eos with a kit from before EOS_STATE (cheetah's only)
           st=${EOS_STATE:-out/eos}
-          rm -f -- "$st/build.ok" "$st/target-files.ok" || fail "can't remove $st/build.ok"
-          echo "note: $st/build.ok and target-files.ok removed: the product out won't match the last full build, so packing needs eos-images.sh again"
+          rm -f -- "$st/build.ok" "$st/target-files.ok" "$st/quick.ok" || fail "can't remove $st/build.ok"
+          echo "note: $st/build.ok, target-files.ok and quick.ok removed: the product out won't match the last build, so packing needs eos-images.sh again"
           # Before m: an m that fails or is stopped half way may have installed some of them
           mkdir -p -- "$st" && touch -- "$st/installclean" || fail "can't write $st/installclean"
           echo "note: $st/installclean written: the next full build starts with m installclean, so these modules' installs don't stay in its out/ or target-files zip"

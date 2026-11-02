@@ -12,6 +12,16 @@
 #   eos-pack.sh --testers   # check/'s candidate, not yet tested on a phone, to testers:
 #                           # SourceForge's <EOS_SF_DIR>/testers and ~/<EOS_RELEASES>/testers
 #
+# After a quick build (EOS_QUICK=1 eos-images.sh: the images only, m droid, no OTA package or
+# target-files; lib.sh), eos-pack.sh packs a quick candidate into check/ instead:
+# <name>-quick-fastboot.zip (and <name>-quick-init_boot-stock.img), to flash and test a change
+# on a phone. It needs EOS_STATE's quick.ok (only a complete quick eos-images.sh run writes it:
+# the sha256 of every file the zip takes, which must all still match) and runs eos-verify.sh
+# again as a quick build. Its .pack-ok says "build quick", and --release, --upload and --testers
+# all refuse it: phones installed from it could take no incremental OTA, and a release must be
+# the very zip that was tested, from a full build. It replaces check/'s candidate, as any
+# candidate run does.
+#
 # Each candidate and release keeps the target-files zip its OTA package was made from
 # (EOS_STATE's target-files.ok, out/eos/ for cheetah; patches/vendor_lineage/0003), the
 # source of any incremental OTA from it later: check/<name>-target_files.zip, then
@@ -22,14 +32,14 @@
 # check/<zip>.device-ok with the line "sha256 <its sha256>". --release and --upload also
 # need ExpressiveOS's keys pinned in eos.conf (KEYS_CHECK=OK, not UNPINNED), and pack the
 # zip again from out/: it must come out byte for byte the zip that was tested.
-# Every run but --testers needs EOS_STATE's build.ok naming out/'s OTA package (only a
-# complete eos-images.sh run writes it) and runs eos-verify.sh again. A released name is
-# never overwritten: a second release on the same day gets -r2, -r3...
+# Every run but --testers (and a quick candidate's, above) needs EOS_STATE's build.ok naming
+# out/'s OTA package (only a complete eos-images.sh run writes it) and runs eos-verify.sh
+# again. A released name is never overwritten: a second release on the same day gets -r2, -r3...
 # A candidate run also writes check/<zip>.pack-ok: the zip's sha256, whether the keys were
 # pinned (keys OK or UNPINNED), whether its images are its target-files' (incremental-base
-# OK or NO), the kit and the date. --testers works from check/ alone (out/ may be gone
-# since): it needs the candidate's zip to match its .sha256 and .pack-ok, and keys OK and
-# incremental-base OK there, but no .device-ok; it uploads the zip, its .sha256 and (EOS_KSU=lkm)
+# OK or NO), the build (full or quick), the kit and the date. --testers works from check/
+# alone (out/ may be gone since): it needs the candidate's zip to match its .sha256 and
+# .pack-ok, a full build, and keys OK and incremental-base OK there, but no .device-ok; it uploads the zip, its .sha256 and (EOS_KSU=lkm)
 # the stock init_boot to <EOS_SF_DIR>/testers, copied to ~/<EOS_RELEASES>/testers, never over
 # another file of the same name (-r2, -r3...), and never touches the release folder's own
 # files, the target-files or a feed. Only ever on that explicit flag.
@@ -68,6 +78,17 @@ flock -n 8 || fail "an ExpressiveOS build or setup is running (~/.expressiveos.l
 if [[ "$mode" != --testers ]]; then
     b=$(tree_build); [[ -z "$b" ]] || fail "a build is running in $top: $b"
 fi
+# What the last eos-images.sh run built: a full build (build.ok) or a quick one (quick.ok,
+# EOS_QUICK=1: the images only), whatever EOS_QUICK says here. The checks below (eos-verify.sh,
+# eos-keys-check.sh out) are told which. --testers reads check/ alone
+quick=0
+if [[ "$mode" != --testers && -f $EOS_STATE/quick.ok ]]; then
+    [[ ! -f $EOS_STATE/build.ok ]] || fail "$EOS_STATE holds both build.ok and quick.ok: run eos-images.sh again"
+    [[ -z "$mode" ]] || fail "the last build was a quick one ($EOS_STATE/quick.ok: the images only, no OTA package or target-files): $mode needs a full build (eos-images.sh without EOS_QUICK), packed with eos-pack.sh, flashed and tested"
+    quick=1
+fi
+EOS_QUICK=$quick
+export EOS_QUICK
 
 # ExpressiveOS's own release folder, never Evolution X's: ~/releases/expressiveos-*/ and
 # its check/, as named, with no symlink anywhere on the way. Checked before anything is made
@@ -171,6 +192,10 @@ if [[ "$mode" = --testers ]]; then
     [[ -f $PO ]] || fail "no $PO: pack the candidate again with eos-pack.sh (out/ is needed for that), which writes it"
     po() { sed -n "s/^$1 //p" "$PO" | head -1; }
     [[ "$(po sha256)" = "$zsha" ]] || fail "$PO is another zip's (sha256 '$(po sha256)'): run eos-pack.sh again"
+    # A quick candidate (images only) never goes to testers; a .pack-ok from before quick
+    # builds has no build line, and those were all full builds
+    [[ "$(po build)" != quick ]] \
+        || fail "$CHECK/$NAME is a quick build (images only, no OTA package or target-files): testers get full builds only, whose phones can take incremental OTAs. Build without quick, pack, then send that"
     [[ "$(po keys)" = OK ]] \
         || fail "the candidate was packed with ExpressiveOS's keys '$(po keys)', not pinned in eos.conf (KEYS_CHECK=OK) as testers' builds need (README.md, \"Keys\"): pin them, then run eos-pack.sh again"
     [[ "$(po incremental-base)" = OK ]] \
@@ -237,23 +262,42 @@ if [[ "$mode" = --testers ]]; then
     exit 0
 fi
 
-echo "== the build"
-[[ -f $EOS_STATE/build.ok ]] || fail "no $EOS_STATE/build.ok: the last eos-images.sh run didn't finish (or ran KERNEL_ONLY)"
-read -r sha name < "$EOS_STATE/build.ok" || true
-ota=$O/$name
-[[ -f $ota && "$(sha256sum -- "$ota" | cut -d' ' -f1)" = "$sha" ]] || fail "$ota isn't the package eos-images.sh built and verified (out/ changed since)"
-"$kit/tools/eos-verify.sh" "$top" > "$EOS_STATE/verify.log" 2>&1 || true
-tail -1 "$EOS_STATE/verify.log" | grep -qx VERIFY=OK || { grep -E '^FAIL' "$EOS_STATE/verify.log" >&2 || tail -5 "$EOS_STATE/verify.log" >&2; fail "eos-verify.sh failed ($EOS_STATE/verify.log)"; }
-[[ "$(sed -n 's/^VERIFIED //p' "$EOS_STATE/verify.log")" = "$top/$ota" ]] || fail "eos-verify.sh checked another package"
-echo "OK: $name verified ($EOS_STATE/verify.log)"
-# The target-files zip eos-images.sh kept with it (eos-verify.sh checked it's the package's)
-tf=$(tf_zip)
-[[ -f $EOS_STATE/target-files.ok ]] || fail "no $EOS_STATE/target-files.ok: the last eos-images.sh run kept no target-files (patches/vendor_lineage/0003)"
-read -r tfsha tfname < "$EOS_STATE/target-files.ok" || true
-[[ "${tfname:-}" = "${tf##*/}" && -f $tf && "$(sha256sum -- "$tf" | cut -d' ' -f1)" = "$tfsha" ]] \
-    || fail "$tf isn't the target-files eos-images.sh kept with $name (out/ changed since)"
-echo "OK: ${tf##*/} is its target-files ($EOS_STATE/target-files.ok)"
-base=${name%.zip}
+if [[ $quick = 1 ]]; then
+    echo "== the build: quick (EOS_QUICK=1: the images only, no OTA package or target-files)"
+    "$kit/tools/eos-verify.sh" "$top" > "$EOS_STATE/verify.log" 2>&1 || true
+    tail -1 "$EOS_STATE/verify.log" | grep -qx VERIFY=OK || { grep -E '^FAIL' "$EOS_STATE/verify.log" >&2 || tail -5 "$EOS_STATE/verify.log" >&2; fail "eos-verify.sh failed ($EOS_STATE/verify.log)"; }
+    ver=$(sed -n 's/^VERIFIED_QUICK //p' "$EOS_STATE/verify.log" | tail -1)
+    [[ -n $ver ]] || fail "eos-verify.sh didn't check a quick build ($EOS_STATE/verify.log)"
+    # Every file the zip takes is the one eos-images.sh built and verified: quick.ok names
+    # exactly those (fastboot_files, and with EOS_KSU=lkm the stock init_boot) and they match
+    mapfile -t qfiles < <(fastboot_files)
+    qfiles=("${qfiles[@]/#/$EOS_PRODUCT_OUT/}")
+    [[ $EOS_KSU != lkm ]] || qfiles+=("$EOS_KSU_OUT/init_boot-stock.img")
+    [[ "$(printf '%s\n' "${qfiles[@]}" | sort)" = "$(sed -E 's/^[0-9a-f]{64}  //' "$EOS_STATE/quick.ok" | sort)" ]] \
+        || fail "$EOS_STATE/quick.ok doesn't name exactly the files the fastboot zip takes now (fastboot-info.txt or devices/$EOS_DEVICE.conf changed since the build?): run eos-images.sh again"
+    sha256sum --quiet --strict -c -- "$EOS_STATE/quick.ok" >&2 \
+        || fail "out/ isn't the quick build eos-images.sh built and verified (out/ changed since, above): run eos-images.sh again"
+    echo "OK: $ver verified, quick ($EOS_STATE/verify.log); the ${#qfiles[@]} files in $EOS_STATE/quick.ok unchanged"
+    base=$ver-quick
+else
+    echo "== the build"
+    [[ -f $EOS_STATE/build.ok ]] || fail "no $EOS_STATE/build.ok: the last eos-images.sh run didn't finish (or ran KERNEL_ONLY)"
+    read -r sha name < "$EOS_STATE/build.ok" || true
+    ota=$O/$name
+    [[ -f $ota && "$(sha256sum -- "$ota" | cut -d' ' -f1)" = "$sha" ]] || fail "$ota isn't the package eos-images.sh built and verified (out/ changed since)"
+    "$kit/tools/eos-verify.sh" "$top" > "$EOS_STATE/verify.log" 2>&1 || true
+    tail -1 "$EOS_STATE/verify.log" | grep -qx VERIFY=OK || { grep -E '^FAIL' "$EOS_STATE/verify.log" >&2 || tail -5 "$EOS_STATE/verify.log" >&2; fail "eos-verify.sh failed ($EOS_STATE/verify.log)"; }
+    [[ "$(sed -n 's/^VERIFIED //p' "$EOS_STATE/verify.log")" = "$top/$ota" ]] || fail "eos-verify.sh checked another package"
+    echo "OK: $name verified ($EOS_STATE/verify.log)"
+    # The target-files zip eos-images.sh kept with it (eos-verify.sh checked it's the package's)
+    tf=$(tf_zip)
+    [[ -f $EOS_STATE/target-files.ok ]] || fail "no $EOS_STATE/target-files.ok: the last eos-images.sh run kept no target-files (patches/vendor_lineage/0003)"
+    read -r tfsha tfname < "$EOS_STATE/target-files.ok" || true
+    [[ "${tfname:-}" = "${tf##*/}" && -f $tf && "$(sha256sum -- "$tf" | cut -d' ' -f1)" = "$tfsha" ]] \
+        || fail "$tf isn't the target-files eos-images.sh kept with $name (out/ changed since)"
+    echo "OK: ${tf##*/} is its target-files ($EOS_STATE/target-files.ok)"
+    base=${name%.zip}
+fi
 NAME=$base-fastboot.zip
 STOCK=$base-init_boot-stock.img
 TFN=$base-target_files.zip
@@ -358,8 +402,9 @@ if [[ -z "$mode" ]]; then
     "$kit/tools/eos-keys-check.sh" out "$top" > "$T/keys.log" 2>&1 || true
     keys=$(tail -1 "$T/keys.log" | sed -n 's/^KEYS_CHECK=\(OK\|UNPINNED\)$/\1/p')
     keys=${keys:-FAIL}
-    ib=NO
-    if grep -q '^OK: incremental base:' "$EOS_STATE/verify.log"; then ib=OK; fi
+    ib=NO build=full
+    if [[ $quick = 1 ]]; then build=quick
+    elif grep -q '^OK: incremental base:' "$EOS_STATE/verify.log"; then ib=OK; fi
     # A check isn't a release: one candidate in check/, replaced each time
     if ! cmp -s -- "$T/$NAME" "$CHECK/$NAME" 2>/dev/null; then
         find "$CHECK" -maxdepth 1 -type f \( -name '*-fastboot.zip' -o -name '*.sha256' -o -name '*.img' \
@@ -378,30 +423,42 @@ if [[ -z "$mode" ]]; then
     generate_changelog "$CHECK/changelogs/$EOS_DEVICE.txt" "$base"
     cp -- "$CHECK/changelogs/$EOS_DEVICE.txt" "$CHECK/$base-changelog.txt"
     # Its target-files, removed before they're replaced and never written over: a release
-    # folder may hold a hard link to check/'s copy
+    # folder may hold a hard link to check/'s copy. A quick candidate has none: an older
+    # candidate's go, with their .sha256
     find "$CHECK" -maxdepth 1 -type f -name '*-target_files.zip' ! -name "$TFN" -delete
-    if ! cmp -s -- "$tf" "$CHECK/$TFN" 2>/dev/null; then
-        rm -f -- "$CHECK/$TFN"
-        cp -- "$tf" "$CHECK/$TFN"
+    if [[ $quick = 1 ]]; then
+        find "$CHECK" -maxdepth 1 -type f -name '*-target_files.zip.sha256' -delete
+    else
+        if ! cmp -s -- "$tf" "$CHECK/$TFN" 2>/dev/null; then
+            rm -f -- "$CHECK/$TFN"
+            cp -- "$tf" "$CHECK/$TFN"
+        fi
+        (cd "$CHECK" && sha256sum -- "$TFN" > "$TFN.sha256")
+        [[ "$(cut -d' ' -f1 "$CHECK/$TFN.sha256")" = "$tfsha" ]] || fail "$CHECK/$TFN isn't a whole copy of $tf"
     fi
-    (cd "$CHECK" && sha256sum -- "$TFN" > "$TFN.sha256")
-    [[ "$(cut -d' ' -f1 "$CHECK/$TFN.sha256")" = "$tfsha" ]] || fail "$CHECK/$TFN isn't a whole copy of $tf"
     # A copy the runner installed (rsync, no .git) names the commit it came from
     kv=$(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")
     [[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || kv+=" (with local changes)"
     find "$CHECK" -maxdepth 1 -type f -name '*.pack-ok' ! -name "$NAME.pack-ok" -delete
-    printf 'sha256 %s\nkeys %s\nincremental-base %s\nksu %s\nkit %s\ndate %s\n' "$zsha" "$keys" "$ib" "$EOS_KSU" "$kv" "$(date -u '+%F %T UTC')" \
+    printf 'sha256 %s\nkeys %s\nincremental-base %s\nksu %s\nbuild %s\nkit %s\ndate %s\n' "$zsha" "$keys" "$ib" "$EOS_KSU" "$build" "$kv" "$(date -u '+%F %T UTC')" \
         > "$CHECK/.$NAME.pack-ok.part" && mv -f -- "$CHECK/.$NAME.pack-ok.part" "$CHECK/$NAME.pack-ok" \
         || fail "can't write $CHECK/$NAME.pack-ok"
     echo "== candidate: $CHECK/$NAME"
-    cat "$CHECK/$NAME.sha256" "$CHECK/$TFN.sha256"
-    M=$CHECK/$NAME.device-ok
-    if [[ -f "$M" ]] && grep -qF -- "$zsha" "$M"; then
-        echo "on-device check: $(head -c 300 "$M")"
+    if [[ $quick = 1 ]]; then
+        cat "$CHECK/$NAME.sha256"
+        echo "a quick build: flash and test $CHECK/$NAME on a phone; it's never released or sent to testers (no OTA package or target-files): for that, build again without quick, pack, flash and test that zip"
     else
-        echo "not verified on a phone yet: flash and test $CHECK/$NAME, then write $M with the line \"sha256 $zsha\""
+        cat "$CHECK/$NAME.sha256" "$CHECK/$TFN.sha256"
+        M=$CHECK/$NAME.device-ok
+        if [[ -f "$M" ]] && grep -qF -- "$zsha" "$M"; then
+            echo "on-device check: $(head -c 300 "$M")"
+        else
+            echo "not verified on a phone yet: flash and test $CHECK/$NAME, then write $M with the line \"sha256 $zsha\""
+        fi
     fi
-    if [[ $keys = OK && $ib = OK ]]; then
+    if [[ $quick = 1 ]]; then
+        echo "testers: never (a quick build, $CHECK/$NAME.pack-ok)"
+    elif [[ $keys = OK && $ib = OK ]]; then
         echo "testers: eos-pack.sh --testers can send it ($CHECK/$NAME.pack-ok)"
     else
         echo "testers: not yet (keys $keys, incremental base $ib in $CHECK/$NAME.pack-ok): --testers needs both OK"

@@ -35,6 +35,16 @@ EOS_DEVICE=${EOS_DEVICE:-cheetah}
 [[ $EOS_DEVICE =~ ^[a-z0-9]+$ && -f $kit/devices/$EOS_DEVICE.conf ]] \
     || fail "EOS_DEVICE '$EOS_DEVICE' isn't one of the kit's devices: $(cd "$kit/devices" 2>/dev/null && printf '%s ' *.conf | sed 's/\.conf//g')"
 export EOS_DEVICE
+# A quick build (EOS_QUICK=1; the runner's expressiveos-build query quick) makes the images
+# only: m droid where a full build runs m evolution, which is droid plus the OTA package and
+# its target-files zip (vendor/lineage's build/tasks/evolution.mk), about 5 minutes more.
+# eos-verify.sh and eos-keys-check.sh out skip only what reads those two, eos-images.sh
+# writes quick.ok instead of build.ok, and eos-pack.sh packs it as a quick candidate
+# (<name>-quick-fastboot.zip in check/) to flash and test, which it never releases, uploads
+# or sends to testers. eos-pack.sh sets it itself, from the build it packs
+EOS_QUICK=${EOS_QUICK:-0}
+[[ $EOS_QUICK = 0 || $EOS_QUICK = 1 ]] || fail "EOS_QUICK is '$EOS_QUICK': 1 for a quick build (images only, m droid), 0 or unset for a full one"
+export EOS_QUICK
 # eos.conf's own values of the keys cheetah's file restates, which must agree (sources/update.py
 # reads eos.conf's EOS_LUNCH); then none of the device keys from the caller's environment
 _eosc="$EOS_LUNCH|$EOS_RELEASES|$EOS_SF_DIR|$EOS_R2_PREFIX"
@@ -334,6 +344,23 @@ for n in bad[:20]:
     print(f"  differs: {n} ({'only one side' if n not in a or n not in b else 'mode, owner or bytes'})", file=sys.stderr)
 sys.exit(1 if bad else 0)
 PY
+}
+
+fastboot_files() {   # fastboot_files: what the fastboot zip takes from the product out, relative to it, one a line: fastboot-info.txt, android-info.txt, each image fastboot-info.txt flashes, super_empty.img (EOS_SUPER_EMPTY=out) and vendor_kernel_boot.img (EOS_FLASH_VKB=1)
+    local O=$top/$EOS_PRODUCT_OUT cmd rest img
+    [[ -f $O/fastboot-info.txt ]] || fail "no $EOS_PRODUCT_OUT/fastboot-info.txt"
+    {
+        echo fastboot-info.txt
+        echo android-info.txt
+        while read -r cmd rest; do
+            [[ $cmd = flash ]] || continue
+            img=${rest##* }; [[ $img == *.img ]] || img=$img.img
+            # No dexpreopt to the other slot: no system_other to flash (eos-pack.sh skips it too)
+            [[ $img = system_other.img && ! -f $O/$img ]] || echo "$img"
+        done < "$O/fastboot-info.txt"
+        [[ $EOS_SUPER_EMPTY != out ]] || echo super_empty.img
+        [[ $EOS_FLASH_VKB != 1 ]] || echo vendor_kernel_boot.img
+    } | awk '!seen[$0]++'
 }
 
 eos_lock() {   # eos_lock <script> [arg]...: run <script> holding ~/.expressiveos.lock and ~/.evolution-tree.lock (shared with the build server routines), waiting up to 8 h for each
