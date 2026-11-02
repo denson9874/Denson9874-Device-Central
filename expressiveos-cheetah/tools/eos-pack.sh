@@ -121,6 +121,36 @@ taken() {   # taken <name> <file>: <name> already holds something other than <fi
     [[ "$(cut -d' ' -f1 "$T/remote.sha256" 2>/dev/null)" != "$(sha256sum -- "$2" | cut -d' ' -f1)" ]]
 }
 
+generate_changelog() {
+    local out=$1 bname=$2
+    mkdir -p -- "$(dirname -- "$out")"
+    {
+        echo "ExpressiveOS 1.0 (Android 17) for the Google Pixel 7 Pro ($EOS_DEVICE), build $bname"
+        echo "Security patch: $(date -u '+%Y-%m-%d'). ExpressiveOS release build."
+        echo
+        echo "Notes:"
+        echo "=============================="
+        echo "- Unofficial ExpressiveOS 1.0 build with Monet Bloom theme, Evolver studio, and TrickyStore keybox attestation."
+        echo "- Stock Pixel firmware and Trusty KeyMint supported."
+        echo
+        echo "Device changes:"
+        echo "=============================="
+        if [[ -d "$kit/patches/device_google_gs201" ]]; then
+            for p in "$kit/patches/device_google_gs201"/*.patch; do
+                [[ -f "$p" ]] || continue
+                sed -n 's/^Subject: \[PATCH[^]]*\] /- /p' "$p"
+            done
+        fi
+        echo
+        echo "ROM changes:"
+        echo "=============================="
+        echo "- Play Integrity and TrickyStore attestation fixes (AUTO leaf-hack tag filtering, StrongBox support)"
+        echo "- Private Compute Services (as.oss) and Android System Intelligence association allowlist restored"
+        echo "- Holiday theme scheduling and screen-off reconciliation"
+        echo "- Updater and Studio local changelog fallbacks"
+    } > "$out"
+}
+
 if [[ "$mode" = --testers ]]; then
     # Untested builds for testers, from check/ alone: out/ may be gone since the candidate
     # run, which recorded what this needs in <zip>.pack-ok. Nothing here reads out/,
@@ -344,6 +374,9 @@ if [[ -z "$mode" ]]; then
         (cd "$CHECK" && sha256sum -- "$NAME" > "$NAME.sha256")
     fi
     for r in manifest.xml kernel-manifest.xml sources.txt; do cp -- "$EOS_STATE/$r" "$CHECK/$base-$r"; done
+    mkdir -p -- "$CHECK/changelogs"
+    generate_changelog "$CHECK/changelogs/$EOS_DEVICE.txt" "$base"
+    cp -- "$CHECK/changelogs/$EOS_DEVICE.txt" "$CHECK/$base-changelog.txt"
     # Its target-files, removed before they're replaced and never written over: a release
     # folder may hold a hard link to check/'s copy
     find "$CHECK" -maxdepth 1 -type f -name '*-target_files.zip' ! -name "$TFN" -delete
@@ -423,6 +456,13 @@ else
     pub=("$REL" "$REL.sha256")
 fi
 for f in manifest.xml kernel-manifest.xml sources.txt; do cp -- "$EOS_STATE/$f" "$DEST/${REL%-fastboot.zip}-$f"; done
+mkdir -p -- "$DEST/changelogs"
+generate_changelog "$DEST/changelogs/$EOS_DEVICE.txt" "$base"
+cp -- "$DEST/changelogs/$EOS_DEVICE.txt" "$DEST/${REL%-fastboot.zip}-changelog.txt"
+if [[ -d "$HOME/expressiveos_ota" ]]; then
+    mkdir -p -- "$HOME/expressiveos_ota/changelogs"
+    cp -- "$DEST/changelogs/$EOS_DEVICE.txt" "$HOME/expressiveos_ota/changelogs/$EOS_DEVICE.txt"
+fi
 # The target-files the release's OTA package was made from: a hard link to check/'s copy
 # when that's this build's (no second copy on the disk), else a copy of out/'s, made
 # under another name first (a copy cut short must not take the release's name)

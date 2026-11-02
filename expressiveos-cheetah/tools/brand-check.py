@@ -191,6 +191,6 @@ if not header:
 for (s, why), wheres in sorted(kept.items()):
     print(f"note: kept {s!r} ({why}) in {', '.join(sorted(wheres))}")
 print(f"OK: {len(apks)} APKs and {napex} APEX payloads, {n} entries scanned" if bad == 0
-      else f"{bad} Evolution X strings found")
+      else f"{bad} branding issues found")
 print("BRAND_CHECK=OK" if bad == 0 else "BRAND_CHECK=FAIL")
 sys.exit(1 if bad else 0)

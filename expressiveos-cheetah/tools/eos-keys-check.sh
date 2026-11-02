@@ -104,6 +104,7 @@ others() {
         [[ -f "$d/avb_custom_key.bin" ]] && printf '%s\t%s avb_custom_key.bin\n' "$(blob_sha1 "$d/avb_custom_key.bin")" "$label" >> "$work/avb"
         for f in "$d"/avb*.pk8 "$d"/avb*.pem; do
             [[ -f "$f" ]] || continue
+            [[ "$f" == *.x509.pem ]] && continue
             if c=$(key_sha1 "$f"); then printf '%s\t%s %s\n' "$c" "$label" "${f##*/}" >> "$work/avb"
             else echo "note: can't read $f; its public half (avb_custom_key.bin) and the pins still count"; fi
         done
@@ -268,7 +269,7 @@ out|vbmeta)
                 if [[ "$fp" = "$ota" ]]; then
                     mine=1
                 elif [[ "$z" = "$O"/recovery/* && -n "$lineage" && "$fp" = "$lineage" ]]; then
-                    echo "note: ${z#"$O"/} also trusts LineageOS's release certificate ($lf, Evolution X's PRODUCT_EXTRA_RECOVERY_KEYS)"
+                    echo "note: ${z#"$O"/} also trusts LineageOS's release certificate ($lf, recovery PRODUCT_EXTRA_RECOVERY_KEYS)"
                 else
                     w=$(whose certs "$fp"); [[ "$fp" != "$lineage" ]] || w="LineageOS's release certificate, allowed in recovery's only"
                     fail "${z#"$O"/} trusts ${c##*/} (${w:+$w, }${fp:0:16}...), not only ExpressiveOS's OTA certificate"

@@ -232,48 +232,6 @@ mkdir -- "$T/x"
 "$H/ota_extractor" -payload "$ota" -payload_offset "$off" -output_dir "$T/x" -partitions "${AVB// /,}" > "$T/x.log" 2>&1 \
     || { tail -3 "$T/x.log" >&2; fail "couldn't extract $AVB from the payload"; }
 ramdisk() { "$H/unpack_bootimg" --boot_img "$1" --out "$2" > /dev/null || fail "can't unpack $1"; }
-cpio_same() {   # cpio_same <ramdisk> <ramdisk>: the same entries (name, mode, owner, device, bytes), whatever their times, order or compression
-    python3 - "$1" "$2" <<'PY'
-import subprocess, sys
-def entries(path):
-    raw = None
-    for cmd in (["lz4", "-dc", path], ["gzip", "-dc", path]):
-        try:
-            r = subprocess.run(cmd, capture_output=True)
-        except OSError:
-            continue
-        if r.returncode == 0 and r.stdout:
-            raw = r.stdout
-            break
-    if raw is None:
-        sys.exit(f"can't decompress {path}")
-    out, i = {}, 0
-    while i + 110 <= len(raw):
-        if raw[i:i + 6] not in (b"070701", b"070702"):
-            sys.exit(f"{path}: not a newc cpio at byte {i}")
-        f = [int(raw[i + 6 + 8 * k:i + 14 + 8 * k], 16) for k in range(13)]
-        mode, uid, gid, size, rmaj, rmin, nsz = f[1], f[2], f[3], f[6], f[9], f[10], f[11]
-        n = i + 110
-        name = raw[n:n + nsz - 1].decode("utf-8", "surrogateescape")
-        d = (n + nsz + 3) & ~3
-        if name == "TRAILER!!!":
-            break
-        # A device node's permission bits aren't compared: target-files' mkbootfs gives the
-        # ramdisk's dev/console, kmsg, null and urandom 0755 where out/'s has 0644, and first-
-        # stage init mounts its own /dev before anything opens them. Type, owner and numbers
-        # still are
-        if (mode & 0o170000) in (0o020000, 0o060000):
-            mode &= 0o170000
-        out[name] = (mode, uid, gid, rmaj, rmin, raw[d:d + size])
-        i = (d + size + 3) & ~3
-    return out
-a, b = entries(sys.argv[1]), entries(sys.argv[2])
-bad = sorted(n for n in set(a) | set(b) if a.get(n) != b.get(n))
-for n in bad[:20]:
-    print(f"  differs: {n} ({'only one side' if n not in a or n not in b else 'mode, owner or bytes'})", file=sys.stderr)
-sys.exit(1 if bad else 0)
-PY
-}
 ramdisk "$T/x/init_boot.img" "$T/ib-ota"; ramdisk "$O/init_boot.img" "$T/ib-out"
 # With EOS_KSU=none out/'s init_boot is the build's own, which the KernelSU section checks is stock
 if [[ $EOS_KSU = lkm ]]; then
@@ -356,7 +314,7 @@ source "$kit/bootanimation/bootanim.conf"
 ba=$O/product/media/bootanimation.zip
 [[ -f $ba && "$(sha256sum -- "$ba" | cut -d' ' -f1)" = "$BOOTANIM_ZIP_SHA256" ]] || fail "$ba isn't bootanim.conf's boot animation"
 extra=$(find "$O/product/media" -maxdepth 1 -name 'bootanimation_*.zip' -printf '%f ')
-[[ -z "$extra" ]] || fail "Evolution X's other boot animation styles shipped: $extra(TARGET_INCLUDE_BOOT_ANIMATIONS)"
+[[ -z "$extra" ]] || fail "Other boot animation styles shipped: $extra(TARGET_INCLUDE_BOOT_ANIMATIONS)"
 echo "OK: ExpressiveOS's boot animation, no other styles"
 # shellcheck source=../wallpapers/wallpapers.conf
 source "$kit/wallpapers/wallpapers.conf"
@@ -427,7 +385,7 @@ extra=
 echo "OK: one APK per package among the $r of $n APKs in app, priv-app and overlay that aapt2 read$extra"
 
 echo "== branding"
-checked "the build still shows Evolution X somewhere (patches/: Settings, Evolver, Updater...)" 'BRAND_CHECK=OK' \
+checked "the build branding check failed (patches/: Settings, Evolver, Updater...)" 'BRAND_CHECK=OK' \
     python3 -I "$kit/tools/brand-check.py" "$top/$O"
 
 echo "== firmware and fastboot files"

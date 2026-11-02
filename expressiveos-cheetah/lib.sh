@@ -177,7 +177,7 @@ am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local co
                 rm -f -- "$log"
                 fail "$label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change, and ${d#"$top"/} is ExpressiveOS's own repo ($own): change it with a new commit there, never by editing a kit patch (README.md, \"Sources\")"
             elif [[ $rc = 1 ]]; then
-                echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change. If apply.sh or apply-ksu.sh made it (an older version of the patch): repo sync -d ${d#"$top"/}, then build again (tools/eos-images.sh puts the kit's patches back). If it came with Evolution X's source: compare the two, then drop or regenerate the patch"
+                echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change. If apply.sh or apply-ksu.sh made it (an older version of the patch): repo sync -d ${d#"$top"/}, then build again (tools/eos-images.sh puts the kit's patches back). If it came with upstream source: compare the two, then drop or regenerate the patch"
             elif [[ $rc != 0 ]]; then
                 echo "note: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/}, but its change can't be compared with the patch here (no parent in this clone, or git failed)"
             fi
@@ -293,10 +293,53 @@ tf_zip() {   # tf_zip: the target-files zip m evolution keeps (patches/vendor_li
     printf '%s\n' "$EOS_PRODUCT_OUT/obj/PACKAGING/target_files_intermediates/${EOS_LUNCH%%-*}-target_files.zip"
 }
 
-eos_lock() {   # eos_lock <script> [arg]...: run <script> holding ~/.expressiveos.lock and ~/.evolution-tree.lock (shared with the Evolution X routines), waiting up to 8 h for each
+cpio_same() {   # cpio_same <ramdisk> <ramdisk>: the same entries (name, mode, owner, device, bytes), whatever their times, order or compression
+    python3 - "$1" "$2" <<'PY'
+import subprocess, sys
+def entries(path):
+    raw = None
+    for cmd in (["lz4", "-dc", path], ["gzip", "-dc", path]):
+        try:
+            r = subprocess.run(cmd, capture_output=True)
+        except OSError:
+            continue
+        if r.returncode == 0 and r.stdout:
+            raw = r.stdout
+            break
+    if raw is None:
+        sys.exit(f"can't decompress {path}")
+    out, i = {}, 0
+    while i + 110 <= len(raw):
+        if raw[i:i + 6] not in (b"070701", b"070702"):
+            sys.exit(f"{path}: not a newc cpio at byte {i}")
+        f = [int(raw[i + 6 + 8 * k:i + 14 + 8 * k], 16) for k in range(13)]
+        mode, uid, gid, size, rmaj, rmin, nsz = f[1], f[2], f[3], f[6], f[9], f[10], f[11]
+        n = i + 110
+        name = raw[n:n + nsz - 1].decode("utf-8", "surrogateescape")
+        d = (n + nsz + 3) & ~3
+        if name == "TRAILER!!!":
+            break
+        # A device node's permission bits aren't compared: target-files' mkbootfs gives the
+        # ramdisk's dev/console, kmsg, null and urandom 0755 where out/'s has 0644, and first-
+        # stage init mounts its own /dev before anything opens them. Type, owner and numbers
+        # still are
+        if (mode & 0o170000) in (0o020000, 0o060000):
+            mode &= 0o170000
+        out[name] = (mode, uid, gid, rmaj, rmin, raw[d:d + size])
+        i = (d + size + 3) & ~3
+    return out
+a, b = entries(sys.argv[1]), entries(sys.argv[2])
+bad = sorted(n for n in set(a) | set(b) if a.get(n) != b.get(n))
+for n in bad[:20]:
+    print(f"  differs: {n} ({'only one side' if n not in a or n not in b else 'mode, owner or bytes'})", file=sys.stderr)
+sys.exit(1 if bad else 0)
+PY
+}
+
+eos_lock() {   # eos_lock <script> [arg]...: run <script> holding ~/.expressiveos.lock and ~/.evolution-tree.lock (shared with the build server routines), waiting up to 8 h for each
     local rc=0
     # Its own lock first: waiting for an ExpressiveOS run (eos-pack.sh) never holds up the routines
-    echo "== waiting for ~/.expressiveos.lock, then ~/.evolution-tree.lock (the Evolution X routines and builds share the server)"
+    echo "== waiting for ~/.expressiveos.lock, then ~/.evolution-tree.lock (ExpressiveOS build locks)"
     env EOS_HOLDS_LOCK=1 flock -o -E 75 -w 28800 "$HOME/.expressiveos.lock" \
         flock -o -E 75 -w 28800 "$HOME/.evolution-tree.lock" "$@" || rc=$?
     [[ $rc != 75 ]] || echo "FAIL: a lock was held for 8 hours; nothing was built" >&2
