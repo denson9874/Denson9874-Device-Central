@@ -4,7 +4,7 @@
 # (apply.sh), then the firmware its EOS_FIRMWARE_MODE says (devices/<device>.conf):
 #   cache   the newest cached Google firmware into its vendor repo unless that already ships
 #           newer (cheetah). The cache, ~/android-dt/firmware/<device>, is the one
-#           evolution-cheetah/fetch-firmware.sh fills; it's only read here;
+#           tools/fetch-firmware.sh fills (runner action expressiveos-firmware); only read here;
 #   blobs   the vendor repo's own (husky: TheMuppets' blobs carry the factory firmware);
 #   images  vendor/google/<device>-images made by the device tree's extract-images.sh from the
 #           newest ~/android-dt/firmware/image-<device>-*.zip, again only when that zip

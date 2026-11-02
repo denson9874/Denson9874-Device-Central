@@ -12,6 +12,8 @@
 #                                          and the OTA package's certificate
 #   eos-keys-check.sh vbmeta <img> [top]   one image's AVB signer is the tree's key
 #
+# Evolution X's and DerpFest's keys are read from their trees or, since those were deleted,
+# from evo-retire keep's copy in ~/retired (eos.conf's EVO_* pins count either way).
 # Pins: once the keys exist and are backed up, eos.conf's EOS_AVB_PUBKEY_SHA1 and
 # EOS_OTA_CERT_SHA256 hold their public fingerprints (README.md, "Keys"), and a tree whose
 # keys differ fails. While they are empty the checks pass with UNPINNED, and eos-pack.sh
@@ -93,7 +95,14 @@ others() {
     for f in "$top"/external/avb/test/data/testkey_rsa*.pem; do
         [[ -f "$f" ]] && c=$(key_sha1 "$f") && printf '%s\tthe AOSP AVB test key %s\n' "$c" "${f##*/}" >> "$work/avb"
     done
-    for d in "$evo/vendor/evolution-priv/keys:Evolution X" "$derp/vendor/lineage-priv/keys:DerpFest"; do
+    # Their trees' keys, and, once those trees are gone (evo-retire, 2026-11-02), the copy that
+    # evo-retire keep made of both in ~/retired/keys-<time>/ (~/retired/KEPT's keys= line)
+    local kd dirs=("$evo/vendor/evolution-priv/keys:Evolution X" "$derp/vendor/lineage-priv/keys:DerpFest")
+    kd=$(sed -n 's/^keys=//p' "$HOME/retired/KEPT" 2>/dev/null | tail -n 1 || true)
+    if [[ $kd =~ ^retired/keys-[0-9-]+$ ]]; then
+        dirs+=("$HOME/$kd/evolution:Evolution X" "$HOME/$kd/derpfest:DerpFest")
+    fi
+    for d in "${dirs[@]}"; do
         label="${d##*:}'s"; d=${d%:*}
         [[ "$d" != /vendor/* ]] || continue        # that tree isn't on this server
         if [[ ! -d "$d" ]]; then continue; fi

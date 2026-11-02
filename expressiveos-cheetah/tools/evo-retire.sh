@@ -50,7 +50,10 @@
 #              those keep copied), the Evolution X and DerpFest logs and state files by exact
 #              name (never ~/.evolution-tree.lock, which ExpressiveOS's builds take), and their
 #              zips in /tmp
-# Every part needs stop and keep done, takes both build locks without waiting, and refuses
+#   cheetah-kit ~/evolution-cheetah (cheetah's firmware fetcher, now tools/fetch-firmware.sh
+#              beside this script), only while it's the same as keep's copy in records
+# Every part needs stop and keep done (out, evolution, derpfest and leftovers: keep within the
+# last 2 days), takes both build locks without waiting, and refuses
 # while anything builds (soong_ui, ninja, repo sync, an ExpressiveOS script or eos-* session).
 # evolution checks first that ExpressiveOS's copies of the Pixel 11 blob repos have the server
 # repos' HEAD and branches, that the keys copy matches, and that nothing in ~/expressiveos
@@ -74,7 +77,7 @@
 #   evo-retire.sh undo
 #   evo-retire.sh keep
 #   evo-retire.sh check   # read-only: what ExpressiveOS still reaches in ~/evolution or ~/derpfest
-#   evo-retire.sh delete out evolution derpfest research leftovers
+#   evo-retire.sh delete out evolution derpfest research leftovers cheetah-kit
 #
 # The last line is RETIRE=LISTED, CHECKED, STOPPED, ALREADY (stop when already retired),
 # UNDONE, KEPT, DELETED or FAIL.
@@ -85,15 +88,16 @@ fail() { echo "ERROR: $*" >&2; exit 1; }
 
 mode=${1:-list}
 shift || true
-usage="usage: evo-retire.sh list|check|stop|undo|keep, or delete out|evolution|derpfest|research|leftovers..."
+usage="usage: evo-retire.sh list|check|stop|undo|keep, or delete out|evolution|derpfest|research|leftovers|cheetah-kit..."
 [[ $mode =~ ^(list|check|stop|undo|keep|delete)$ ]] || fail "$usage"
 parts=()
 if [[ $mode = delete ]]; then
     [[ $# -ge 1 ]] || fail "$usage"
-    for p in "$@"; do [[ $p =~ ^(out|evolution|derpfest|research|leftovers)$ ]] || fail "unknown part $p; $usage"; parts+=("$p"); done
+    for p in "$@"; do [[ $p =~ ^(out|evolution|derpfest|research|leftovers|cheetah-kit)$ ]] || fail "unknown part $p; $usage"; parts+=("$p"); done
 else
     [[ $# -eq 0 ]] || fail "$usage"
 fi
+here=$(dirname -- "$(readlink -f -- "$0")")
 cd ~ || fail "no home folder"
 home=$(pwd -P)
 ret=$home/retired
@@ -602,7 +606,12 @@ keep)
 delete)
     [[ -f $marker ]] || fail "Evolution X and DerpFest aren't retired: run stop first"
     [[ -f $kept ]] || fail "keep hasn't run: nothing has been copied out of the old trees yet"
-    [[ $(( $(date +%s) - $(date -r "$kept" +%s) )) -lt 172800 ]] || fail "keep ran more than 2 days ago ($(kv when)); run it again first"
+    # Copies of trees that may still change must be fresh; research and cheetah-kit check their own
+    fresh=0
+    for p in "${parts[@]}"; do if [[ $p =~ ^(out|evolution|derpfest|leftovers)$ ]]; then fresh=1; fi; done
+    if [[ $fresh = 1 && $(( $(date +%s) - $(date -r "$kept" +%s) )) -ge 172800 ]]; then
+        fail "keep ran more than 2 days ago ($(kv when)); run it again first"
+    fi
     exec 8>>"$home/.expressiveos.lock"
     flock -n 8 || fail "~/.expressiveos.lock is held: an ExpressiveOS build, pack or setup is running"
     exec 9>>"$home/.evolution-tree.lock"
@@ -614,7 +623,7 @@ $r"
     eos=$home/expressiveos
     before=$(free_gb)
     echo "== $before GB free before"
-    for part in out evolution derpfest research leftovers; do
+    for part in out evolution derpfest research leftovers cheetah-kit; do
         [[ " ${parts[*]} " = *" $part "* ]] || continue
         echo "== $part"
         case $part in
@@ -658,6 +667,15 @@ $r"
             for f in "$home"/husky-build-*.out "$home"/.evolution-publish-*.lock /tmp/kodiak-evox-img*.zip /tmp/EvolutionX-*.zip /tmp/magiskpatch.*; do
                 [[ -e $f && -O $f ]] && zap "$f"
             done ;;
+        cheetah-kit)
+            [[ -e $home/evolution-cheetah || -L $home/evolution-cheetah ]] || { echo "absent    ~/evolution-cheetah"; continue; }
+            [[ -f $here/fetch-firmware.sh ]] || fail "this kit has no tools/fetch-firmware.sh: ~/evolution-cheetah still holds cheetah's only firmware fetcher"
+            rd=$home/$(kv records)
+            [[ -n $(kv records) && -d $rd/evolution-cheetah ]] || fail "keep's records have no copy of ~/evolution-cheetah; run keep again"
+            diff -rq --no-dereference -- "$home/evolution-cheetah" "$rd/evolution-cheetah" > /dev/null \
+                || fail "~/evolution-cheetah differs from keep's copy in $(kv records); run keep again"
+            echo "ok        ~/evolution-cheetah is the same as keep's copy in $(kv records)"
+            zap "$home/evolution-cheetah" ;;
         esac
     done
     after=$(free_gb)
