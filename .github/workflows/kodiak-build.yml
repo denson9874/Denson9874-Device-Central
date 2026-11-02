@@ -226,6 +226,7 @@ on:
           - expressiveos-build
           - expressiveos-pack
           - expressiveos-ota
+          - expressiveos-bootanim-greps
       tree_ref:
         description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -keys, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
@@ -305,7 +306,7 @@ jobs:
           # expressiveos-update (the same, and pushes to GitHub)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys|expressiveos-bootanim-greps)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -865,6 +866,17 @@ jobs:
           export PATH=~/bin:$PATH
           read -r -a q <<< "$QUERY"
           bash expressiveos-cheetah/sources/update.sh "${q[@]}"
+
+      # One-off, read-only: the holiday boot animation strings eos-verify.sh (PR #41) will look for
+      - name: Boot animation greps (cheetah, read-only)
+        if: inputs.action == 'expressiveos-bootanim-greps'
+        run: |
+          cd ~/expressiveos/out/target/product/cheetah
+          ls -l --time-style=+%FT%T system_ext/etc/selinux/system_ext_sepolicy.cil system_ext/etc/selinux/system_ext_file_contexts system/lib64/libbootanimation*.so system/bin/bootanimation || true
+          echo "== 1"; grep -c '(allow bootanim bootanim_metadata_file (file ' system_ext/etc/selinux/system_ext_sepolicy.cil || true
+          echo "== 2"; grep -c 'u:object_r:bootanim_metadata_file:s0' system_ext/etc/selinux/system_ext_file_contexts || true
+          echo "== 3"; grep -caF /metadata/bootanim system/lib64/libbootanimation*.so system/bin/bootanimation || true
+          echo "== the modules build's log"; ls -l --time-style=+%FT%T ~/expressiveos-jobs/build.log || true
 
       - name: Check out expressiveos-cheetah
         if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack","expressiveos-ota"]'), inputs.action)
