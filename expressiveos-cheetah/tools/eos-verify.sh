@@ -261,6 +261,17 @@ if [[ $EOS_QUICK = 1 ]]; then
     spl=$(props "$O" | sed -n "s/.*system.security_patch -> '\(.*\)'/\1/p")
     bspl=$(props "$O" | sed -n "s/.*boot.security_patch -> '\(.*\)'/\1/p")
     echo "OK: out/'s vbmeta, init_boot, boot and vbmeta_system are ExpressiveOS's; patch levels system $spl, boot $bspl"
+    # What eos-target-files.sh checks in a full build: the fastboot zip flashes every dynamic
+    # partition (update-super leaves one it doesn't flash empty), from out/'s own misc_info.txt
+    # (m droid writes it) and fastboot-info.txt, parsed as eos-pack.sh does
+    [[ -f $O/misc_info.txt && -f $O/fastboot-info.txt ]] || fail "no $O/misc_info.txt or fastboot-info.txt"
+    dyn=$(sed -n 's/^dynamic_partition_list=//p' "$O/misc_info.txt" | tr ' ' '\n' | sed '/^$/d' | sort -u)
+    [[ -n "$dyn" ]] || fail "$O/misc_info.txt has no dynamic_partition_list"
+    flashed=$(awk '$1 == "flash" { i = $NF; sub(/\.img$/, "", i); print i }' "$O/fastboot-info.txt" | sort -u)
+    for p in $dyn; do
+        grep -qxF -- "$p" <<<"$flashed" || fail "$O/fastboot-info.txt doesn't flash the dynamic partition $p"
+    done
+    echo "OK: fastboot-info.txt flashes every dynamic partition: $(tr '\n' ' ' <<<"$dyn")"
     echo "== target-files: none (a quick build makes no OTA package to keep them for)"
 else
     echo "== payload"

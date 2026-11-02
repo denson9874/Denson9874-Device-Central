@@ -20,7 +20,7 @@
 # Only a run that gets through all six writes build.ok and target-files.ok there (the
 # sha256 of the OTA package and of the target-files zip kept with it), which eos-pack.sh needs.
 # A quick one (EOS_QUICK=1: the images only, m droid; lib.sh) writes quick.ok instead (the
-# sha256 of every file the fastboot zip takes, and with EOS_KSU=lkm the stock init_boot),
+# sha256 of every file the fastboot zip takes from out/, and with EOS_KSU=lkm the stock init_boot),
 # which eos-pack.sh packs as a quick candidate to test on a phone, never to release.
 # Holds ~/.evolution-tree.lock (the Evolution X routines' lock) and ~/.expressiveos.lock
 # for the whole run, and first waits for any build already running. Everything also goes
@@ -203,13 +203,16 @@ if [[ $EOS_QUICK = 1 ]]; then
     # What the quick candidate takes from out/, as eos-verify.sh checked it: eos-pack.sh
     # packs it only while every one of them is still this build's
     mapfile -t files < <(fastboot_files)
-    (( ${#files[@]} > 2 )) || fail "fastboot-info.txt flashes nothing"
+    # As eos-pack.sh checks the zip (fastboot_files always adds super_empty.img or vendor_kernel_boot.img)
+    for need in init_boot.img vbmeta.img; do
+        printf '%s\n' "${files[@]}" | grep -qxF -- "$need" || fail "$EOS_PRODUCT_OUT/fastboot-info.txt doesn't flash ${need%.img}"
+    done
     files=("${files[@]/#/$EOS_PRODUCT_OUT/}")
     [[ $EOS_KSU != lkm ]] || files+=("$EOS_KSU_OUT/init_boot-stock.img")
     for f in "${files[@]}"; do [[ -f $f ]] || fail "no $f (eos-verify.sh checked it)"; done
     { sha256sum -- "${files[@]}" > "$EOS_STATE/.quick.ok.part" && mv -f -- "$EOS_STATE/.quick.ok.part" "$EOS_STATE/quick.ok"; } \
         || fail "can't write $EOS_STATE/quick.ok"
-    echo "OK: quick build $ver: $EOS_STATE/quick.ok holds the sha256 of the ${#files[@]} files its fastboot zip takes"
+    echo "OK: quick build $ver: $EOS_STATE/quick.ok holds the sha256 of the ${#files[@]} files its fastboot zip takes from out/"
     echo "OK: no OTA package or target-files (quick): eos-pack.sh packs it to test on a phone, never to release or send to testers"
     done=1
     echo "BUILD_EXIT=0"

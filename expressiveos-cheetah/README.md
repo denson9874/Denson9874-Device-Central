@@ -163,7 +163,8 @@ before is kept as `.1`); the last line is `BUILD_EXIT=0` or `BUILD_EXIT=1`.
 - `EOS_KERNEL_SYNC=1`: sync the kernel source to `pins/kernel.xml` again. Otherwise only the first
   build syncs it, and later ones check it's still on the pins.
 - `EOS_INSTALLCLEAN=1`: start the make with `m installclean` (the runner's `installclean`). A
-  `modules=` compile check asks the next full build for it itself; a kernel-only run skips it.
+  `modules=` compile check asks the next build that makes images (full or quick) for it itself; a
+  kernel-only run skips it.
 - `EOS_QUICK=1`: a quick build (the runner's `quick`), to test a change on a phone: the images only,
   `m droid` where a full build runs `m evolution`, which is `droid` plus the OTA package and its
   target-files zip (`vendor/lineage`'s `build/tasks/evolution.mk`), about 5 of a cheetah build's 8 to
@@ -240,8 +241,8 @@ package's sha256, which `eos-pack.sh` needs),
 upstream revision and HEAD).
 They're the record of what the build was made from, for the GPL source offer.
 A quick build (`EOS_QUICK=1`) writes `quick.ok` in place of `build.ok` and `target-files.ok`: the
-sha256 of every file its fastboot zip takes (`fastboot_files` in `lib.sh`) and, with KernelSU Next,
-of the stock init_boot.
+sha256 of every file its fastboot zip takes from out/ (`fastboot_files` in `lib.sh`) and, with
+KernelSU Next, of the stock init_boot.
 
 `eos-verify.sh` checks, without a phone: the package (the build's own, A/B, for cheetah), the identity
 (cheetah, Pixel 7 Pro, user build, every kit patch in, the Updater on ExpressiveOS's feed), the keys
@@ -565,7 +566,7 @@ only, since a release repacks from `out/`; to release it, build again without `c
 zip); `expressiveos-pack` with `device=<phone>`. `try=<path>@<commit>` builds an unmerged commit of
 one of ExpressiveOS's own projects (it stays checked out until a build without `try=`), and
 `modules=<module>,...` is a compile check of just those modules (it removes the last build's
-`build.ok`: pack needs a full build after it, and that build starts with `m installclean`, since
+`build.ok`: pack needs another build after it, full or quick, and that build starts with `m installclean`, since
 `m` would leave a module the product doesn't install, like Settings beside SettingsGoogle, in `out/`
 and the target-files zip, though not in the images, which take only the build's file list;
 `installclean` asks any build that makes images for it, and `eos-verify.sh` refuses two APKs with

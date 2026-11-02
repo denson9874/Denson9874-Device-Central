@@ -305,7 +305,7 @@ on:
           sooner: packed as check/'s <name>-quick-fastboot.zip to flash and test, never
           released or sent to testers), modules=<module>,<module>,... (lunch and m on just those
           modules, a compile check: nothing packed; with try= or alone; the phone's next
-          full build starts with m installclean). try= and
+          build that makes images, full or quick, starts with m installclean). try= and
           modules= are for one phone. expressiveos-pack (optional): device=<phone>, testers
           (eos-pack.sh --testers: check/'s untested candidate to SourceForge's
           expressiveos/<phone>/testers; only when Daryl says so), try-ok (testers may
@@ -1122,15 +1122,17 @@ jobs:
           # others' in out/eos-<device>, once they exist
           for d in $devs; do
             if [[ $d = cheetah ]]; then st=out/eos l=build; else st=out/eos-$d l="build, $d"; [[ -d $top/$st ]] || continue; fi
-            if [[ -f $top/$st/quick.ok ]]; then
-              # eos-images.sh's quick build (EOS_QUICK=1): the images only, packed to test, never released
+            # eos-images.sh's quick build (EOS_QUICK=1): the images only, packed to test, never released.
+            # A quick.ok older than build.ok is stale: a kit from before quick builds made a full build since
+            if [[ -f $top/$st/quick.ok && ! $top/$st/build.ok -nt $top/$st/quick.ok ]]; then
               echo "== $l: a quick build (images only, $st/quick.ok: $(wc -l < "$top/$st/quick.ok") files), $(date -r "$top/$st/quick.ok" '+%F %T')"
             else
+              [[ ! -f $top/$st/quick.ok ]] || echo "   $st/quick.ok is older than build.ok (stale: eos-pack.sh removes it)"
               echo "== $l: $(cat "$top/$st/build.ok" 2>/dev/null || echo "no complete build ($st/build.ok)")"
             fi
             # Written by a modules= compile check, removed by the m installclean it asks for
             if [[ -e $top/$st/installclean ]]; then
-              echo "   $st/installclean: the next full build starts with m installclean"
+              echo "   $st/installclean: the next build that makes images (full or quick) starts with m installclean"
             fi
             # expressiveos-build's clean removes a packed phone's product out (never cheetah's)
             if [[ ( -f $top/$st/build.ok || -f $top/$st/quick.ok ) && ! -d $top/out/target/product/$d ]]; then
@@ -1738,7 +1740,7 @@ jobs:
           # packed or verified again, and the next pack needs eos-images.sh. A module the product
           # doesn't install (Settings, which SettingsGoogle overrides) would stay in the product
           # out, which eos-verify.sh reads and the next target-files zip copies (the images take
-          # only the build's file list), so <state>/installclean marks it: the next full build
+          # only the build's file list), so <state>/installclean marks it: the next build that makes images
           # starts with m installclean (ksu-images.sh). The last line is MODULES_EXIT=0 or
           # MODULES_EXIT=1.
           #   build-modules.sh <kit> <module>...
@@ -1771,7 +1773,7 @@ jobs:
           echo "note: $st/build.ok, target-files.ok and quick.ok removed: the product out won't match the last build, so packing needs eos-images.sh again"
           # Before m: an m that fails or is stopped half way may have installed some of them
           mkdir -p -- "$st" && touch -- "$st/installclean" || fail "can't write $st/installclean"
-          echo "note: $st/installclean written: the next full build starts with m installclean, so these modules' installs don't stay in its out/ or target-files zip"
+          echo "note: $st/installclean written: the next build that makes images (full or quick) starts with m installclean, so these modules' installs don't stay in its out/ or target-files zip"
           echo "== m $*, $(date -u '+%F %T') UTC"
           if ! m -j"$(nproc)" "$@"; then
               # soong_ui keeps the failed build's output in out/error.log

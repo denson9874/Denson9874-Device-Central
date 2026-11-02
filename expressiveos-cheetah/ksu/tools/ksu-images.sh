@@ -19,7 +19,8 @@
 #   KERNEL_ONLY=1 ksu-images.sh [top]    # stop after build_kernel and kernelsu.ko (nothing to
 #                                        # build for a phone with a prebuilt kernel)
 #   EOS_INSTALLCLEAN=1 ksu-images.sh     # start with m installclean (a modules= compile check
-#                                        # asks the next full build for it itself)
+#                                        # asks the next build that makes images, full or
+#                                        # quick, for it itself)
 #   EOS_QUICK=1 ksu-images.sh            # images only: m droid, no OTA package or target-files
 #
 # The kernel (EOS_KERNEL=gs-6.1) source is pins/kernel.xml's (kernel_pinned in lib.sh): synced
@@ -91,7 +92,7 @@ lunch "$EOS_LUNCH" || fail "lunch $EOS_LUNCH failed"
 # build-modules.sh writes <EOS_STATE>/installclean, and then (or with EOS_INSTALLCLEAN=1) the
 # build starts from m installclean: the product out's partitions, images and packaging go, the
 # intermediates stay. Before this script writes anything to $O; a kernel-only run leaves the
-# marker for the next full build
+# marker for the next build that makes images (full or quick)
 ic=$EOS_STATE/installclean
 if [[ "${KERNEL_ONLY:-0}" != 1 && ( "${EOS_INSTALLCLEAN:-0}" = 1 || -e $ic ) ]]; then
     if [[ -e $ic ]]; then why="a modules= compile check installed into $O since the last build"; else why="EOS_INSTALLCLEAN=1"; fi

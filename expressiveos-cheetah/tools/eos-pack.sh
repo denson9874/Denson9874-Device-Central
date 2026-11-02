@@ -14,9 +14,11 @@
 #
 # After a quick build (EOS_QUICK=1 eos-images.sh: the images only, m droid, no OTA package or
 # target-files; lib.sh), eos-pack.sh packs a quick candidate into check/ instead:
-# <name>-quick-fastboot.zip (and <name>-quick-init_boot-stock.img), to flash and test a change
-# on a phone. It needs EOS_STATE's quick.ok (only a complete quick eos-images.sh run writes it:
-# the sha256 of every file the zip takes, which must all still match) and runs eos-verify.sh
+# <name>-quick-fastboot.zip (and with EOS_KSU=lkm <name>-quick-init_boot-stock.img), to flash
+# and test a change on a phone. It needs EOS_STATE's quick.ok (only a complete quick
+# eos-images.sh run writes it: the sha256 of every file the zip takes from out/, which must all
+# still match; with EOS_SUPER_EMPTY=factory its super_empty.img is the newest factory zip's, as
+# for a full build) and runs eos-verify.sh
 # again as a quick build. Its .pack-ok says "build quick", and --release, --upload and --testers
 # all refuse it: phones installed from it could take no incremental OTA, and a release must be
 # the very zip that was tested, from a full build. It replaces check/'s candidate, as any
@@ -82,8 +84,15 @@ fi
 # EOS_QUICK=1: the images only), whatever EOS_QUICK says here. The checks below (eos-verify.sh,
 # eos-keys-check.sh out) are told which. --testers reads check/ alone
 quick=0
+if [[ "$mode" != --testers && -f $EOS_STATE/quick.ok && -f $EOS_STATE/build.ok ]]; then
+    # This kit's eos-images.sh removes all three records before it builds, so both are there
+    # only when a kit from before quick builds (which leaves quick.ok) made a full build since
+    [[ $EOS_STATE/build.ok -nt $EOS_STATE/quick.ok ]] \
+        || fail "$EOS_STATE holds both build.ok and quick.ok, quick.ok the newer: run eos-images.sh again"
+    rm -f -- "$EOS_STATE/quick.ok" || fail "can't remove $EOS_STATE/quick.ok"
+    echo "note: removed $EOS_STATE/quick.ok, older than build.ok: a kit from before quick builds made a full build since the quick one"
+fi
 if [[ "$mode" != --testers && -f $EOS_STATE/quick.ok ]]; then
-    [[ ! -f $EOS_STATE/build.ok ]] || fail "$EOS_STATE holds both build.ok and quick.ok: run eos-images.sh again"
     [[ -z "$mode" ]] || fail "the last build was a quick one ($EOS_STATE/quick.ok: the images only, no OTA package or target-files): $mode needs a full build (eos-images.sh without EOS_QUICK), packed with eos-pack.sh, flashed and tested"
     quick=1
 fi
