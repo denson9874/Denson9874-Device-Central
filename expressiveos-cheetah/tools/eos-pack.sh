@@ -164,32 +164,67 @@ taken() {   # taken <name> <file>: <name> already holds something other than <fi
     [[ "$(cut -d' ' -f1 "$T/remote.sha256" 2>/dev/null)" != "$(sha256sum -- "$2" | cut -d' ' -f1)" ]]
 }
 
-generate_changelog() {
-    local out=$1 bname=$2 spl
+generate_changelog() {   # generate_changelog <changelog.txt> <announcement.md> <build name> <fastboot zip>
+    local out=$1 ann=$2 bname=$3 zip=$4 spl notes
     # The build's own security patch level, not the day it was packed (a release packs out/,
     # which it first checks is the tested candidate)
     spl=$(sed -n 's/^ro\.build\.version\.security_patch=//p' "$O/system/build.prop" 2> /dev/null | head -1 || true)
     [[ "$spl" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || fail "no security patch level (ro.build.version.security_patch) in $O/system/build.prop"
     [[ -n "${EOS_MODEL:-}" ]] || fail "devices/$EOS_DEVICE.conf has no EOS_MODEL for the release notes"
-    mkdir -p -- "$(dirname -- "$out")"
-    # What users read in What's new and the Updater, from a public repo: plain words, true on
-    # every phone the kit builds, no build plumbing (patch subjects), no old Evolution names,
-    # and no claim either way about attestation, Play Integrity or what depends on them (Google
-    # Wallet tap to pay): Google's checks can change without a ROM update
-    {
-        echo "ExpressiveOS 1.0 (Android 17) for the Google $EOS_MODEL ($EOS_DEVICE)"
-        echo "Build: $bname"
-        echo "Security patch: $spl"
-        echo
-        echo "What's in ExpressiveOS 1.0"
-        echo "=============================="
-        echo "- Expressive Launcher is the home screen."
-        echo "- Studio lets you theme the phone, with the Monet Bloom palette."
-        echo "- Holiday themes dress up the phone for each holiday, if you turn them on."
-        echo "- Updates arrive over the air through the built-in Updater."
-        echo "- No root out of the box: rooting is your choice."
-        echo "- Runs on the stock Pixel firmware."
-    } > "$out"
+    # This release's notes, written by hand in Expressive Launcher's announcement format (see
+    # the file's own header): the same text goes to the phone, XDA and Telegram
+    notes=$kit/release-notes/$EOS_VERSION.md
+    [[ -f "$notes" ]] || fail "no release notes for ExpressiveOS $EOS_VERSION: write $notes (copy the last release's)"
+    mkdir -p -- "$(dirname -- "$out")" "$(dirname -- "$ann")"
+    python3 -I - "$notes" "$out" "$ann" "$EOS_DEVICE" "$EOS_VERSION" "$EOS_MODEL" "$bname" "$spl" \
+        "$(sha256sum -- "$zip" | cut -d' ' -f1)" "$(git -C "$kit" rev-parse HEAD 2>/dev/null || echo unknown)" \
+        "https://sourceforge.net/projects/$(cut -d/ -f5 <<< "$EOS_SF_DIR")/files/$(cut -d/ -f6- <<< "$EOS_SF_DIR")/" <<'EOF' \
+        || fail "can't write the release notes from $notes"
+import re, sys
+notes, out, ann, dev, version, model, build, spl, sha, kitrev, downloads = sys.argv[1:]
+values = {'VERSION': version, 'MODEL': model, 'DEVICE': dev, 'BUILD': build, 'SPL': spl,
+          'SHA256': sha, 'KIT_REV': kitrev, 'DOWNLOADS': downloads}
+text = re.sub(r'<!--[\s\S]*?-->\n?', '', open(notes, encoding='utf-8').read()).strip() + '\n'
+lines = []
+for line in text.split('\n'):
+    m = re.match(r'@([a-z0-9]+) (.*)$', line)
+    if m:
+        if m.group(1) == dev:
+            lines.append(m.group(2))
+        continue
+    lines.append(line)
+text = re.sub(r'\{\{([A-Z0-9_]+)\}\}', lambda m: values.get(m.group(1), m.group(0)), '\n'.join(lines))
+left = sorted(set(re.findall(r'\{\{[^}]*\}\}', text)))
+if left:
+    sys.exit('unknown placeholders: ' + ' '.join(left))
+open(ann, 'w', encoding='utf-8').write(text)
+
+# The phone's copy: Studio's What's new shows plain text (a run of 20 "=" in its accent
+# colour), the Updater renders Markdown, so plain lines that read well both ways
+def answer(m):
+    return 'Answer: ' + re.sub(r'</?b>', '', m.group(1)).strip()
+plain = re.sub(r'<details>\s*<summary>[\s\S]*?</summary>([\s\S]*?)</details>', answer, text)
+rule = '=' * 30
+res = []
+for line in plain.split('\n'):
+    if re.match(r'#{1,3} ', line):
+        line = line.split(' ', 1)[1] + '\n' + rule
+    elif line.startswith('#### '):
+        line = line[5:]
+    elif line.strip() == '---':
+        line = '─' * 23
+    elif line.startswith('> '):
+        line = line[2:].strip()
+        if len(line) > 1 and line.startswith('*') and line.endswith('*'):
+            line = line[1:-1]
+    line = re.sub(r'\[([^\]]+)\]\(([^)\s]+)\)', lambda m: m.group(2) if m.group(1) == m.group(2) else m.group(1) + ' (' + m.group(2) + ')', line)
+    line = line.replace('**', '').replace('`', '')
+    res.append(re.sub(r'\*([^*\n]+)\*', r'\1', line))
+plain = re.sub(r'\n{3,}', '\n\n', '\n'.join(res)).strip() + '\n'
+if plain.count('\n') > 200:
+    sys.exit("the phone's copy is %d lines; the Updater shows 200" % plain.count('\n'))
+open(out, 'w', encoding='utf-8').write(plain)
+EOF
 }
 
 if [[ "$mode" = --testers ]]; then
@@ -431,7 +466,7 @@ if [[ -z "$mode" ]]; then
     # A check isn't a release: one candidate in check/, replaced each time
     if ! cmp -s -- "$T/$NAME" "$CHECK/$NAME" 2>/dev/null; then
         find "$CHECK" -maxdepth 1 -type f \( -name '*-fastboot.zip' -o -name '*.sha256' -o -name '*.img' \
-            -o -name '*-manifest.xml' -o -name '*-sources.txt' -o -name '*-changelog.txt' \
+            -o -name '*-manifest.xml' -o -name '*-sources.txt' -o -name '*-changelog.txt' -o -name '*-announcement.md' \
             -o -name '*-incremental-from-*' \) -delete
         cp -- "$T/$NAME" "$CHECK/$NAME"
     fi
@@ -449,7 +484,7 @@ if [[ -z "$mode" ]]; then
         rmdir -- "$CHECK/changelogs" 2>/dev/null || true
     else
         mkdir -p -- "$CHECK/changelogs"
-        generate_changelog "$CHECK/changelogs/$EOS_DEVICE.txt" "$base"
+        generate_changelog "$CHECK/changelogs/$EOS_DEVICE.txt" "$CHECK/$base-announcement.md" "$base" "$CHECK/$NAME"
         cp -- "$CHECK/changelogs/$EOS_DEVICE.txt" "$CHECK/$base-changelog.txt"
     fi
     # Its target-files, removed before they're replaced and never written over: a release
@@ -545,7 +580,7 @@ else
 fi
 for f in manifest.xml kernel-manifest.xml sources.txt; do cp -- "$EOS_STATE/$f" "$DEST/${REL%-fastboot.zip}-$f"; done
 mkdir -p -- "$DEST/changelogs"
-generate_changelog "$DEST/changelogs/$EOS_DEVICE.txt" "$base"
+generate_changelog "$DEST/changelogs/$EOS_DEVICE.txt" "$DEST/${REL%-fastboot.zip}-announcement.md" "$base" "$DEST/$REL"
 cp -- "$DEST/changelogs/$EOS_DEVICE.txt" "$DEST/${REL%-fastboot.zip}-changelog.txt"
 if [[ -d "$HOME/expressiveos_ota" ]]; then
     mkdir -p -- "$HOME/expressiveos_ota/changelogs"
