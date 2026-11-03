@@ -279,7 +279,7 @@ describe("a build without a stock init_boot (every Pixel 11 build)", () => {
 		publish([b]);
 		const fake = phone({ product: "cubs" });
 		await start("Pixel 11", "cubs");
-		expect(text()).toContain("this build installs without root");
+		expect(text()).toContain("ExpressiveOS installs without root");
 		await toConnected();
 		expect(text()).toContain("Ready to install");
 		await press("Continue");
