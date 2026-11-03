@@ -226,6 +226,7 @@ on:
           - expressiveos-build
           - expressiveos-pack
           - expressiveos-ota
+          - expressiveos-flasher
       tree_ref:
         description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -keys, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
@@ -305,7 +306,7 @@ jobs:
           # expressiveos-update (the same, and pushes to GitHub)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys|expressiveos-flasher)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -318,7 +319,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -865,6 +866,26 @@ jobs:
           export PATH=~/bin:$PATH
           read -r -a q <<< "$QUERY"
           bash expressiveos-cheetah/sources/update.sh "${q[@]}"
+
+      - name: Check out the flasher publish script
+        if: inputs.action == 'expressiveos-flasher'
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/expressiveos_flasher/publish
+          fetch-depth: 1
+
+      # A phone's packed full build (check/'s candidate) to R2, the web installer's main list.
+      # query: device=<phone>. Never a quick build or one built with try=
+      - name: Publish to the web installer
+        if: inputs.action == 'expressiveos-flasher'
+        run: |
+          [[ "$QUERY" =~ ^device=(cheetah|husky|kodiak|grizzly|cubs|yogi)$ ]] || { echo "::error::query must be device=<phone>"; exit 1; }
+          d=${QUERY#device=} c=~/releases/expressiveos-$d/check
+          [[ ! -e $c/try.txt ]] || { echo "::error::$c's candidate was built with try= commits"; exit 1; }
+          mapfile -t z < <(ls "$c"/ExpressiveOS-*-"$d"-*-fastboot.zip 2>/dev/null | grep -v -- '-quick-fastboot\.zip$')
+          (( ${#z[@]} == 1 )) || { echo "::error::expected one full fastboot zip in $c, found ${#z[@]}"; exit 1; }
+          grep -qx 'build full' "${z[0]}.pack-ok" || { echo "::error::${z[0]}.pack-ok doesn't say build full"; exit 1; }
+          python3 -I tools/expressiveos_flasher/publish/flasher_publish.py "$d" "${z[0]}"
 
       - name: Check out expressiveos-cheetah
         if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack","expressiveos-ota"]'), inputs.action)
