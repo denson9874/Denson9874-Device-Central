@@ -174,7 +174,8 @@ generate_changelog() {
     mkdir -p -- "$(dirname -- "$out")"
     # What users read in What's new and the Updater, from a public repo: plain words, true on
     # every phone the kit builds, no build plumbing (patch subjects), no old Evolution names,
-    # and no claim of attestation or Play Integrity results the ROM can't honestly give
+    # and no claim either way about attestation, Play Integrity or what depends on them (Google
+    # Wallet tap to pay): Google's checks can change without a ROM update
     {
         echo "ExpressiveOS 1.0 (Android 17) for the Google $EOS_MODEL ($EOS_DEVICE)"
         echo "Build: $bname"
@@ -188,10 +189,6 @@ generate_changelog() {
         echo "- Updates arrive over the air through the built-in Updater."
         echo "- No root out of the box: rooting is your choice."
         echo "- Runs on the stock Pixel firmware."
-        echo
-        echo "Known limits"
-        echo "=============================="
-        echo "- Google Wallet tap to pay doesn't work."
     } > "$out"
 }
 
