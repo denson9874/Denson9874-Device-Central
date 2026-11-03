@@ -174,7 +174,7 @@ if [[ $mode = list ]]; then
     if [[ -z $DRIVE ]]; then
         echo "note: eos.conf sets no EOS_DRIVE_BACKUP"
     elif ! has_remote "${DRIVE%%:*}"; then
-        echo "note: rclone has no ${DRIVE%%:*}: remote (the runner makes it from the RCLONE_GDRIVE_TOKEN secret)"
+        echo "note: rclone has no ${DRIVE%%:*}: remote (the runner makes it from the RCLONE_DRIVE_TOKEN secret)"
     else
         rc about "${DRIVE%%:*}:" 2>&1 | grep -E '^(Total|Used|Free|Trashed|Other):' || echo "note: rclone about ${DRIVE%%:*}: failed (signed out?)"
         echo "-- $DRIVE (bytes, time, name)"
@@ -203,7 +203,7 @@ if [[ $mode = drive ]]; then
         phone_conf "$p" || fail "$p's configuration"
         [[ -n $DRIVE ]] || fail "eos.conf sets no EOS_DRIVE_BACKUP"
         [[ $DRIVE =~ ^[A-Za-z0-9_-]+:[A-Za-z0-9\ _./-]+$ && $DRIVE != *..* ]] || fail "EOS_DRIVE_BACKUP ($DRIVE) isn't <rclone remote>:<folder>"
-        has_remote "${DRIVE%%:*}" || fail "rclone has no ${DRIVE%%:*}: remote (the runner makes it from the RCLONE_GDRIVE_TOKEN secret)"
+        has_remote "${DRIVE%%:*}" || fail "rclone has no ${DRIVE%%:*}: remote (the runner makes it from the RCLONE_DRIVE_TOKEN secret)"
         newest || fail "$p has no release here ($DEST/target-files/LATEST)"
         [[ -f $DEST/$REL.uploaded ]] || fail "$REL isn't released (eos-pack.sh --upload)"
         files=("$DEST/$REL" "$DEST/ota/$BASE.zip" "$DEST/target-files/$RTF")
