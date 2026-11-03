@@ -41,6 +41,12 @@ if [[ ${1:-} = more ]]; then
     source "$(dirname -- "$(readlink -f -- "$0")")/devices-more.sh"
     exit 0
 fi
+# Query "recovery": the Pixel 11s' stock boot chain beside ExpressiveOS's (recovery-check.sh)
+if [[ ${1:-} = recovery ]]; then
+    # shellcheck source=recovery-check.sh
+    source "$(dirname -- "$(readlink -f -- "$0")")/recovery-check.sh"
+    exit 0
+fi
 
 h "disk"
 df -BG ~ | sed 1d
