@@ -438,6 +438,9 @@ done < "$T/apks.txt"
 known_dups=(
     "com.android.theme.font.poppins product/overlay/ClockFontPoppins/ClockFontPoppinsSourceOverlay.apk product/overlay/FontPoppins/FontPoppinsSourceOverlay.apk"
     "com.google.android.wallpaper.picker.overlay product/overlay/WallpaperPicker2Overlay.apk product/overlay/WallpaperPicker2PixelOverlay.apk"
+    # yogi (Pixel 11 Pro Fold): vendor/gms's PixelWallpapers2026 and the Fold's own
+    # PixelWallpapers2026Foldable from its stock blobs (proprietary-files.txt), as Evolution X ships them
+    "com.google.android.apps.wallpaper.pixel product/app/PixelWallpapers2026/PixelWallpapers2026.apk product/app/PixelWallpapers2026Foldable/PixelWallpapers2026Foldable.apk"
 )
 dups=$(cut -d' ' -f1 "$T/pkgs.txt" | LC_ALL=C sort | uniq -d)
 bad=0 k=0
