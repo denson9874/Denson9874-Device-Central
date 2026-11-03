@@ -226,6 +226,8 @@ on:
           - expressiveos-build
           - expressiveos-pack
           - expressiveos-ota
+          - expressiveos-device-ok-husky-1103
+          - expressiveos-flasher-release
       tree_ref:
         description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -keys, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
@@ -305,7 +307,7 @@ jobs:
           # expressiveos-update (the same, and pushes to GitHub)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys|expressiveos-flasher-release)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -318,7 +320,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -865,6 +867,54 @@ jobs:
           export PATH=~/bin:$PATH
           read -r -a q <<< "$QUERY"
           bash expressiveos-cheetah/sources/update.sh "${q[@]}"
+
+      # One-off (Daryl's decision card, 2026-11-03 12:39 UTC, "Release both now": the Nov 3
+      # cheetah and husky builds, husky not tested on a phone, as the card said). Writes husky's
+      # check/ candidate's .device-ok, saying plainly that no phone tested it, so eos-pack.sh
+      # --upload releases it. Only that one zip, only its packed sha256, never over a record
+      - name: Record husky's Nov 3 candidate as released without a phone test
+        if: inputs.action == 'expressiveos-device-ok-husky-1103'
+        run: |
+          c=~/releases/expressiveos-husky/check n=ExpressiveOS-17.0-20261103-husky-1.0-Official-fastboot.zip
+          z=$c/$n m=$c/$n.device-ok
+          [[ -f $z && -f $z.sha256 && -f $z.pack-ok ]] || { echo "::error::no $z with its .sha256 and .pack-ok"; exit 1; }
+          [[ ! -e $m ]] || { echo "::error::$m exists already:"; cat -- "$m"; exit 1; }
+          [[ ! -e $c/try.txt ]] || { echo "::error::$c's candidate was built with try= commits"; exit 1; }
+          want=$(cut -d' ' -f1 "$z.sha256")
+          [[ $want == d4051ae2* && $want == *ab8b ]] || { echo "::error::$n.sha256 says $want, not the d4051ae2...ab8b candidate packed 2026-11-03"; exit 1; }
+          grep -qx "sha256 $want" "$z.pack-ok" || { echo "::error::$z.pack-ok doesn't name $want"; exit 1; }
+          grep -qx 'build full' "$z.pack-ok" || { echo "::error::$z.pack-ok doesn't say build full"; exit 1; }
+          got=$(sha256sum -- "$z" | cut -d' ' -f1)
+          [[ $got = "$want" ]] || { echo "::error::$n hashes to $got, not $want"; exit 1; }
+          printf '%s\n' "sha256 $got" \
+            "NOT tested on a phone: there is no Pixel 8 Pro to test it on." \
+            "Released on Daryl's go: decision card 2026-11-03 12:39 UTC, \"Release both now\" (cheetah and husky, husky not phone tested)." \
+            "Basis: built from the same sources as the Nov 3 cheetah build, which passed its Pixel 7 Pro soak and re-check (cheetah check/ device-ok, 2026-11-03 12:36 UTC); this build: VERIFY=OK, PACK=OK." \
+            > "$m.part" && mv -- "$m.part" "$m"
+          cat -- "$m"
+          echo DEVICE_OK_WRITTEN
+
+      - name: Check out the flasher publish script
+        if: inputs.action == 'expressiveos-flasher-release'
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/expressiveos_flasher/publish
+          fetch-depth: 1
+
+      # A phone's newest release (eos-pack.sh --upload: the release folder's copy, which nothing
+      # writes into, never check/'s) to R2, the web installer's main list. query: device=<phone>
+      - name: Publish the newest release to the web installer
+        if: inputs.action == 'expressiveos-flasher-release'
+        run: |
+          [[ "$QUERY" =~ ^device=(cheetah|husky|kodiak|grizzly|cubs|yogi)$ ]] || { echo "::error::query must be device=<phone>"; exit 1; }
+          d=${QUERY#device=} r=~/releases/expressiveos-${QUERY#device=}
+          l=$(cat -- "$r/target-files/LATEST" 2>/dev/null) || { echo "::error::no $r/target-files/LATEST: $d has no release"; exit 1; }
+          [[ $l == *-target_files.zip ]] || { echo "::error::$r/target-files/LATEST names $l"; exit 1; }
+          z=$r/${l%-target_files.zip}-fastboot.zip
+          [[ -f $z && -f $z.sha256 ]] || { echo "::error::no $z with its .sha256"; exit 1; }
+          [[ -f $z.uploaded ]] || { echo "::error::$z isn't uploaded to SourceForge yet (eos-pack.sh --upload)"; exit 1; }
+          echo "release: $z"
+          python3 -I tools/expressiveos_flasher/publish/flasher_publish.py "$d" "$z"
 
       - name: Check out expressiveos-cheetah
         if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack","expressiveos-ota"]'), inputs.action)
