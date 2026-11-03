@@ -920,11 +920,16 @@ jobs:
         if: inputs.action == 'expressiveos-storage'
         env:
           # Google Drive's sign-in for the backup (rclone's drive.file scope: only the folders
-          # rclone made itself), as the gdrive: remote from the environment, never on the disk
+          # rclone made itself), as the gdrive: remote from the environment. rclone saves a
+          # refreshed token to its config file, so this step's rclone uses a private copy of it
+          # (r2: is there) that goes at the end: the token stays off the server's own config
           GDRIVE_TOKEN: ${{ secrets.RCLONE_GDRIVE_TOKEN }}
         run: |
           if [[ -n ${GDRIVE_TOKEN:-} ]]; then
-            export RCLONE_CONFIG_GDRIVE_TYPE=drive RCLONE_CONFIG_GDRIVE_SCOPE=drive.file RCLONE_CONFIG_GDRIVE_TOKEN=$GDRIVE_TOKEN
+            src=$(~/bin/rclone config file | tail -n 1)
+            cfg=$(mktemp) && trap 'rm -f -- "$cfg"' EXIT
+            [[ ! -f $src ]] || cp -- "$src" "$cfg"
+            export RCLONE_CONFIG=$cfg RCLONE_CONFIG_GDRIVE_TYPE=drive RCLONE_CONFIG_GDRIVE_SCOPE=drive.file RCLONE_CONFIG_GDRIVE_TOKEN=$GDRIVE_TOKEN
           fi
           unset GDRIVE_TOKEN
           p='(cheetah|husky|kodiak|grizzly|cubs|yogi)'
