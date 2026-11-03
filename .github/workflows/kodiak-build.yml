@@ -73,7 +73,8 @@
 # candidate, not yet tested on a phone, to SourceForge's expressiveos/<device>/testers (and
 # ~/releases/expressiveos-<device>/testers), with no device-ok. Only when Daryl says so.
 # expressiveos-pack's 'release' runs eos-pack.sh --upload: check/'s tested candidate (its
-# device-ok) released and uploaded to SourceForge, its target-files to R2. Only when Daryl
+# device-ok) released, its target-files to R2 (no SourceForge since 2026-11-03; the zip goes
+# to the web installer with expressiveos-flasher-release). Only when Daryl
 # says so, and never for a build with try= commits.
 # expressiveos-ota runs eos-ota.sh in this job (minutes to an hour; its log is the job's): the
 # newest release's full OTA package and an incremental from the build the Updater feed offers
@@ -226,6 +227,7 @@ on:
           - expressiveos-build
           - expressiveos-pack
           - expressiveos-ota
+          - expressiveos-flasher-release
       tree_ref:
         description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -keys, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
@@ -256,7 +258,7 @@ on:
           (eos-pack.sh --testers: check/'s untested candidate to SourceForge's
           expressiveos/<phone>/testers; only when Daryl says so), try-ok (testers may
           send a candidate built with try=), release (eos-pack.sh --upload: check/'s tested
-          candidate released, to SourceForge, its target-files to R2; only when Daryl says
+          candidate released, its target-files to R2, no SourceForge; only when Daryl says
           so). expressiveos-ota (optional): device=<phone>, upload (eos-ota.sh --upload: the
           newest release's full and incremental OTA packages to R2, then the feed files for
           its pull request; only when Daryl says so), candidate (eos-ota.sh --candidate: an
@@ -305,7 +307,7 @@ jobs:
           # expressiveos-update (the same, and pushes to GitHub)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys|expressiveos-flasher-release)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -318,7 +320,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -864,6 +866,29 @@ jobs:
           export PATH=~/bin:$PATH
           read -r -a q <<< "$QUERY"
           bash expressiveos-cheetah/sources/update.sh "${q[@]}"
+
+      - name: Check out the flasher publish script
+        if: inputs.action == 'expressiveos-flasher-release'
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/expressiveos_flasher/publish
+          fetch-depth: 1
+
+      # A phone's newest release (eos-pack.sh --upload: the release folder's copy, which nothing
+      # writes into, never check/'s) to R2, the web installer's main list. query: device=<phone>.
+      # Releases go to R2 only (no SourceForge since 2026-11-03): pack release, ota upload, this
+      - name: Publish the newest release to the web installer
+        if: inputs.action == 'expressiveos-flasher-release'
+        run: |
+          [[ "$QUERY" =~ ^device=(cheetah|husky|kodiak|grizzly|cubs|yogi)$ ]] || { echo "::error::query must be device=<phone>"; exit 1; }
+          d=${QUERY#device=} r=~/releases/expressiveos-${QUERY#device=}
+          l=$(cat -- "$r/target-files/LATEST" 2>/dev/null) || { echo "::error::no $r/target-files/LATEST: $d has no release"; exit 1; }
+          [[ $l == *-target_files.zip ]] || { echo "::error::$r/target-files/LATEST names $l"; exit 1; }
+          z=$r/${l%-target_files.zip}-fastboot.zip
+          [[ -f $z && -f $z.sha256 ]] || { echo "::error::no $z with its .sha256"; exit 1; }
+          [[ -f $z.uploaded ]] || { echo "::error::$z isn't released yet (eos-pack.sh --upload)"; exit 1; }
+          echo "release: $z"
+          python3 -I tools/expressiveos_flasher/publish/flasher_publish.py "$d" "$z"
 
       - name: Check out expressiveos-cheetah
         if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack","expressiveos-ota"]'), inputs.action)
