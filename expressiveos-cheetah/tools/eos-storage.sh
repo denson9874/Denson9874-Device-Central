@@ -10,6 +10,10 @@
 #                                                then only the newest two release folders stay
 #                                                there (older ones go to Drive's trash)
 #   eos-storage.sh prune [<phone>] [--dry-run]   R2 keeps each phone's current release only
+#   eos-storage.sh retired [--dry-run]           removes Evolution X's and DerpFest's update files
+#                                                from R2 (Daryl, 2026-11-03): the EvolutionX-* and
+#                                                DerpFest-* files in the bucket's top-level folders
+#                                                other than expressiveos/
 #
 # What prune keeps in R2's expressiveos/<phone>/ (it never touches anything else in the bucket):
 #   ota/           the packages the live feed names and the newest release's (its full package,
@@ -39,7 +43,7 @@ trap cleanup EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 kit="$(cd "$(dirname -- "$(readlink -f -- "$0")")/.." && pwd)"
 PHONES="cheetah husky kodiak grizzly cubs yogi"
-usage="usage: eos-storage.sh list | drive <phone>|all [--dry-run] | prune [<phone>] [--dry-run]"
+usage="usage: eos-storage.sh list | drive <phone>|all [--dry-run] | prune [<phone>] [--dry-run] | retired [--dry-run]"
 mode=${1:-list}; [[ $# -gt 0 ]] && shift
 dry=0 which=''
 for a in "$@"; do
@@ -53,6 +57,7 @@ case $mode in
     list) [[ -z $which && $dry = 0 ]] || fail "$usage" ;;
     drive) [[ -n $which ]] || fail "$usage" ;;
     prune) which=${which:-$PHONES} ;;
+    retired) [[ -z $which ]] || fail "$usage" ;;
     *) fail "$usage" ;;
 esac
 RC=~/bin/rclone
@@ -227,8 +232,27 @@ if [[ $mode = drive ]]; then
     done=1; echo "STORAGE=OK"; exit 0
 fi
 
-# prune
 freed=0
+if [[ $mode = retired ]]; then
+    phone_conf cheetah || fail "cheetah's configuration"
+    echo "== R2, $BUCKET: Evolution X's and DerpFest's files$([[ $dry = 1 ]] && echo ' (dry run: nothing is removed)')"
+    rc lsf --dirs-only "$BUCKET" > "$T/top" 2> "$T/rclone.log" || { tail -3 "$T/rclone.log" >&2; fail "can't list $BUCKET"; }
+    while IFS= read -r d; do
+        [[ $d != expressiveos/ ]] || continue
+        rc lsf -R --files-only --format sp --separator '|' "$BUCKET/$d" > "$T/ls" 2> "$T/rclone.log" || { tail -2 "$T/rclone.log" >&2; echo "note: can't list $d"; continue; }
+        while IFS='|' read -r size f; do
+            [[ -n $f ]] || continue
+            if [[ ${f##*/} != EvolutionX-* && ${f##*/} != DerpFest-* ]]; then echo "  left as is: $d$f"; continue; fi
+            if [[ $dry = 1 ]]; then echo "  would remove $d$f ($(human "$size"))"; freed=$((freed + size))
+            elif rc deletefile "$BUCKET/$d$f" > "$T/rclone.log" 2>&1; then echo "  removed $d$f ($(human "$size"))"; freed=$((freed + size))
+            else tail -2 "$T/rclone.log" >&2; echo "  note: couldn't remove $d$f"; fi
+        done < "$T/ls"
+    done < "$T/top"
+    echo "R2_RETIRED $([[ $dry = 1 ]] && echo 'would free' || echo freed) $(human "$freed")"
+    done=1; echo "STORAGE=OK"; exit 0
+fi
+
+# prune
 for p in $which; do
     echo "== $p: R2 keeps the current release only$([[ $dry = 1 ]] && echo ' (dry run: nothing is removed)')"
     phone_conf "$p" || { echo "skipped $p"; continue; }

@@ -87,8 +87,9 @@
 # each phone's current release only, Google Drive the last two): list (read-only, the default)
 # shows R2's bucket, Drive's backup folder and each phone's newest release; drive device=<phone>
 # (or all) copies that release to Drive and leaves the newest two there; prune (device=<phone>
-# for one) removes from R2 what neither the live feed nor the newest release names. dry-run with
-# either says what it would do. A release: pack release, ota upload, flasher-release, storage
+# for one) removes from R2 what neither the live feed nor the newest release names; retired
+# removes Evolution X's and DerpFest's update files from R2 (Daryl's go, 2026-11-03). dry-run
+# with any of them says what it would do. A release: pack release, ota upload, flasher-release, storage
 # drive; storage prune once Daryl has merged the feed pull request.
 # expressiveos-build's 'quick' (EOS_QUICK=1) builds the images only, m droid where a full build
 # runs m evolution (droid plus the OTA package and its target-files zip, about 5 minutes more):
@@ -276,8 +277,9 @@ on:
           (the default) or adopt. expressiveos-firmware (optional): check.
           expressiveos-storage (optional): list (read-only, the default), drive
           device=<phone>|all (the newest release to Google Drive, the newest two kept
-          there) or prune [device=<phone>] (R2 keeps the current release only, permanent),
-          each with dry-run to say what it would do.
+          there), prune [device=<phone>] (R2 keeps the current release only, permanent) or
+          retired (Evolution X's and DerpFest's update files off R2, permanent), each with
+          dry-run to say what it would do.
           expressiveos-update (required):
           token (read-only: may the push token push to every ExpressiveOS repo?),
           lint [ref] (read-only: a change of ExpressiveOS's manifest, e.g. pull/2, read
@@ -918,8 +920,8 @@ jobs:
         if: inputs.action == 'expressiveos-storage'
         run: |
           p='(cheetah|husky|kodiak|grizzly|cubs|yogi)'
-          [[ "$QUERY" =~ ^(|list|drive\ device=($p|all)(\ dry-run)?|prune(\ device=$p)?(\ dry-run)?)$ ]] \
-            || { echo "::error::query must be: list, drive device=<phone>|all [dry-run] or prune [device=<phone>] [dry-run]"; exit 1; }
+          [[ "$QUERY" =~ ^(|list|drive\ device=($p|all)(\ dry-run)?|prune(\ device=$p)?(\ dry-run)?|retired(\ dry-run)?)$ ]] \
+            || { echo "::error::query must be: list, drive device=<phone>|all [dry-run], prune [device=<phone>] [dry-run] or retired [dry-run]"; exit 1; }
           read -r -a q <<< "${QUERY:-list}"
           a=("${q[0]}")
           for w in "${q[@]:1}"; do
