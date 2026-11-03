@@ -577,6 +577,23 @@ no incremental OTA could update phones installed from it, and a release must be 
 tested. `--release`, `--upload` and `--testers` refuse it. When the change works, build again without
 `quick`, pack, flash and test that zip, and release it.
 
+### Release notes
+
+Each release's notes are written by hand in `release-notes/<EOS_VERSION>.md` (for example
+`release-notes/1.0.md`), in Expressive Launcher's announcement format (its
+`docs/release_notes/<version>_announcement.md`), so one text serves the phone, XDA and Telegram. For a
+new release, copy the last file and rewrite it. `eos-pack.sh` fills in each phone's values (`{{MODEL}}`,
+`{{BUILD}}`, `{{SPL}}`, `{{SHA256}}`...), keeps a line that starts with `@<device> ` only for that phone,
+and writes two files next to the zip:
+
+- `<build>-announcement.md`: the Markdown, for Expressive Launcher's `scripts/format_xda.py` (XDA) and
+  `scripts/post_telegram.py` (Telegram).
+- `<build>-changelog.txt`: a plain-text copy that reads well in Studio's What's new (plain text) and the
+  Updater (Markdown). It becomes the feed's `changelogs/<device>.txt`.
+
+The notes never say whether Play Integrity, attestation or Wallet pass or fail: Google's checks change
+without a ROM update. A pack fails if the notes file is missing or has an unknown `{{...}}`.
+
 ### Updates over the air
 
 Every release goes to the Updater as a full OTA package, plus one incremental from the build the feed
