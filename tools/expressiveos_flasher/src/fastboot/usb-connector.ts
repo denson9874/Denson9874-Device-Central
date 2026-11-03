@@ -90,25 +90,31 @@ export interface ReconnectUi {
  * How long the page waits for a phone back from a restart before it asks the user to choose it
  * again on a computer (Chrome on Android always needs the user), and at all, by where it went.
  * fastbootd is Android's recovery starting in its fastboot mode: the phone shows the G logo
- * while the kernel and recovery start, which takes longer than the bootloader does, and longer
- * still on the Pixel 11s. A computer's browser usually finds the phone again on its own when
- * fastbootd comes up (the same USB ids and serial number as in the bootloader), so asking at 20
- * seconds asked users to choose a phone that was still on the G logo and not in the list yet.
+ * while the kernel and recovery start, which takes longer than the bootloader does. A computer's
+ * browser usually finds the phone again on its own when fastbootd comes up (the same USB ids and
+ * serial number as in the bootloader), so asking at 20 seconds asked users to choose a phone that
+ * was still on the G logo and not in the list yet.
  */
-export const RESTART_WAIT: Record<Mode, { askAfterMs: number; timeoutMs: number; timeoutMessage: string }> = {
-	fastbootd: {
-		askAfterMs: 60_000,
-		timeoutMs: 5 * 60_000,
-		timeoutMessage:
-			"The phone didn't come back in fastbootd within 5 minutes. If it shows FASTBOOTD, the browser lost it: plug it straight into the computer (no hub), then try again. " +
-			"If it's still on the G logo, fastbootd didn't start. If that happens again, flash the latest factory image with Google's Android Flash Tool, then install ExpressiveOS again.",
-	},
-	bootloader: {
-		askAfterMs: 20_000,
-		timeoutMs: 3 * 60_000,
-		timeoutMessage: "The phone didn't come back. Check the cable and that it shows Fastboot Mode, then try again.",
-	},
+export const RESTART_WAIT: Record<Mode, { askAfterMs: number; timeoutMs: number }> = {
+	fastbootd: { askAfterMs: 60_000, timeoutMs: 5 * 60_000 },
+	bootloader: { askAfterMs: 20_000, timeoutMs: 3 * 60_000 },
 };
+
+/** What the install says when the phone doesn't come back from a restart in time (`android`: Chrome on Android). */
+export function restartTimeoutMessage(target: Mode, android: boolean): string {
+	if (target === "bootloader") return "The phone didn't come back. Check the cable and that it shows Fastboot Mode, then try again.";
+	const minutes = RESTART_WAIT.fastbootd.timeoutMs / 60_000;
+	// The install goes on from fastbootd, so a phone that got there only needs connecting again.
+	// One still on the G logo didn't start the recovery in the vendor_boot this build just wrote
+	const there = android
+		? "If it shows FASTBOOTD, it just wasn't chosen in the list in time: leave it on that screen, press Try again, connect it and choose it. The install goes on from there."
+		: "If it shows FASTBOOTD, the browser lost it: leave it on that screen, plug it straight into the computer (no hub), press Try again and connect it. The install goes on from there.";
+	return (
+		`The phone didn't come back in fastbootd within ${minutes} minutes. ${there} ` +
+		"If it's still on the G logo, fastbootd didn't start, and this build may not start on this phone: please report it in the ExpressiveOS Telegram group or XDA thread, with a screenshot of this page with Details open. " +
+		"Google's Android Flash Tool puts the phone back on stock Android (leave Lock bootloader unticked)."
+	);
+}
 
 export class WebUsbConnector implements Connector {
 	private reconnector = new Reconnector();
@@ -136,7 +142,7 @@ export class WebUsbConnector implements Connector {
 				needsUserAfterMs: android ? 0 : wait.askAfterMs,
 				needsUser: () => this.ui.needsReconnect(true),
 				signal,
-				timeoutMessage: wait.timeoutMessage,
+				timeoutMessage: restartTimeoutMessage(target, android),
 			});
 			this.ui.needsReconnect(false);
 			return await linkTo(d, { afterRestart: true });

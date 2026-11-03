@@ -69,8 +69,8 @@ The six steps:
    (resized to each image), then erase userdata and metadata for a clean install. Images bigger than the phone's
    download buffer go in sparse pieces of at most 1 GiB, and a raw image's AVB footer is moved to the end of its
    partition, both as AOSP fastboot does. Without root, the stock `init_boot` goes to both slots. The page keeps the
-   screen awake. While the phone restarts, the page says what it shows: on the way to fastbootd, the G logo (on the Pixel
-   11s for a minute or more), then a black screen with FASTBOOTD in blue under the ExpressiveOS mark and a menu that starts
+   screen awake. While the phone restarts, the page says what it shows: on the way to fastbootd, the unlocked-bootloader
+   warning and the G logo, which can stay for a while, then a black screen with FASTBOOTD in blue under the ExpressiveOS mark and a menu that starts
    with Reboot system now. When the phone comes back as a device the browser doesn't know yet (Chrome on Android always
    does this), it shows a Reconnect button: at once on Chrome on Android, and on a computer only after a minute for
    fastbootd (20 seconds for the bootloader), since a computer's browser usually finds the phone in fastbootd on its own.

@@ -2126,16 +2126,21 @@ export class App {
 
 	/** Reconnect pressed: the user picks the phone in the browser's list. */
 	private async reconnect() {
+		const target = this.restartTarget;
+		// Emptied (which isn't said), so that the same reason for another empty list is said again
+		this.live.textContent = "";
 		try {
 			await this.connector.pick();
 		} catch (e) {
-			if (!(e instanceof UsbError)) return;
+			// The page may have found the phone on its own while the list was open (or stopped
+			// waiting): what was or wasn't picked then no longer matters
+			if (!(e instanceof UsbError) || !this.reconnectBox || this.reconnectBox.hidden) return;
 			// The list was closed with nothing chosen. Most often it was empty, because the phone
-			// hadn't got there yet: the Pixel 11s stay on the G logo for a while on the way to fastbootd
+			// hadn't got there yet: it stays on the G logo for a while on the way to fastbootd
 			const none = e.message === "No phone was chosen";
 			const note = !none
 				? e.message
-				: this.restartTarget === "fastbootd"
+				: target === "fastbootd"
 					? "No phone was chosen. If the list was empty, fastbootd hasn't started yet: wait until the phone shows FASTBOOTD, then press Reconnect again."
 					: "No phone was chosen. If the list was empty, the phone isn't back yet: wait until it shows Fastboot Mode, then press Reconnect again.";
 			this.setReconnectNote(note);
@@ -2160,7 +2165,7 @@ export class App {
 				? notice(
 						"info",
 						"Your phone is starting fastbootd",
-						"First it shows the G logo, sometimes for a minute or more. Then fastbootd comes up: a black screen with FASTBOOTD in blue under the ExpressiveOS mark, a few lines about the phone, and a menu that starts with Reboot system now.",
+						"First the warning that the bootloader is unlocked (don't press Power there), then the G logo, which can stay for a while. Then fastbootd comes up: a black screen with FASTBOOTD in blue under the ExpressiveOS mark, a few lines about the phone, and a menu that starts with Reboot system now.",
 						`Don't press anything on the phone: the install goes on from that screen.${hostOs() === "android" ? "" : " This page usually finds the phone again on its own."}`,
 						`If nothing changes for ${minutes} minutes, the page stops and says what to do.`,
 					)
@@ -2366,7 +2371,7 @@ export class App {
 				"Restart the phone into Fastboot Mode first: hold Power and Volume down until it restarts. Then connect it and install again. Nothing is lost by trying again, and the phone won't start ExpressiveOS until an install finishes.";
 		} else if (wrote) {
 			next =
-				"Nothing is lost by trying again: put the phone in Fastboot Mode if it isn't (hold Power and Volume down), connect it and install again. The phone won't start ExpressiveOS until an install finishes.";
+				"Nothing is lost by trying again: leave the phone on FASTBOOTD or Fastboot Mode if it shows either, or else put it in Fastboot Mode (hold Power and Volume down), then connect it and install again. The phone won't start ExpressiveOS until an install finishes.";
 		} else if (broken) {
 			next = "Nothing was written to the phone. Restart it into Fastboot Mode before you try again: hold Power and Volume down until it restarts.";
 		} else {

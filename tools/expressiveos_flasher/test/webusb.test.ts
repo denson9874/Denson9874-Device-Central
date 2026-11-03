@@ -3,7 +3,7 @@
 // a stand-in that fails the way Chrome does (Blink's usb_device.cc).
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RESTART_WAIT, WebUsbConnector, linkTo } from "../src/fastboot/usb-connector.ts";
+import { WebUsbConnector, linkTo, restartTimeoutMessage } from "../src/fastboot/usb-connector.ts";
 import { FASTBOOT_FILTER, UsbError, UsbTransport, hostOs, openFailure } from "../src/fastboot/webusb.ts";
 
 type Hook = () => Promise<void>;
@@ -445,10 +445,17 @@ describe("a phone restarted into Fastboot Mode over USB debugging", () => {
 			back.catch(() => {}).finally(() => (settled = true));
 			await vi.advanceTimersByTimeAsync(4 * 60_000 + 50_000);
 			expect(settled).toBe(false);
-			const failed = expect(back).rejects.toThrow(RESTART_WAIT.fastbootd.timeoutMessage);
+			const failed = expect(back).rejects.toThrow(restartTimeoutMessage("fastbootd", false));
 			await vi.advanceTimersByTimeAsync(15_000);
 			await failed;
-			expect(RESTART_WAIT.fastbootd.timeoutMessage).toContain("If it's still on the G logo, fastbootd didn't start.");
+			const computer = restartTimeoutMessage("fastbootd", false);
+			expect(computer).toContain("within 5 minutes");
+			expect(computer).toContain("plug it straight into the computer (no hub)");
+			expect(computer).toContain("If it's still on the G logo, fastbootd didn't start, and this build may not start on this phone");
+			// Chrome on Android: the phone hangs off this one, and the page never finds it on its own
+			const android = restartTimeoutMessage("fastbootd", true);
+			expect(android).toContain("it just wasn't chosen in the list in time");
+			expect(android).not.toContain("computer");
 		});
 
 		it("gives the bootloader 3 minutes, with its own message", async () => {
