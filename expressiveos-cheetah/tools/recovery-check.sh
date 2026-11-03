@@ -5,8 +5,15 @@
 # ExpressiveOS fastboot zip flashes: header fields, vendor ramdisk tables, the file names in
 # each ramdisk and how the two sides differ, and the kernel module lists (module names and
 # counts). With devices-check.sh's helpers and rules: never a proprietary file's contents.
+#
+# By hand, to set another build in stock's place (e.g. an Evolution X fastboot zip whose
+# fastbootd worked): RC_STOCK_ZIP=<zip> RC_STOCK_LABEL=<name>. RC_CAP=<n> caps each list
+# (default 150, 0 for none). RC_TEXT_DIFF=1 also prints diffs of the differing rc, prop and
+# contexts files: only for two builds of our own sources, never with Google's stock zip.
 # shellcheck shell=bash
 unb=$eos/system/tools/mkbootimg/unpack_bootimg.py
+cap=${RC_CAP:-150}
+capped() { if [[ $cap = 0 ]]; then cat; else head -n "$cap"; fi; }
 
 ours_zip() {  # <phone>: the newest ExpressiveOS fastboot zip on the server for it
     find ~/releases/expressiveos-"$1" -maxdepth 2 -name "*-$1-*-fastboot.zip" ! -name '*-quick-*' \
@@ -34,17 +41,25 @@ names() {  # <dir>: its entries, one a line, sorted
 side_by_side() {  # <label> <stock dir> <ours dir>: entries only one side has, then files that differ
     local s=$work/s.$$ o=$work/o.$$
     names "$2" > "$s"; names "$3" > "$o"
-    echo "  $1: stock $(wc -l < "$s") entries, ExpressiveOS $(wc -l < "$o")"
-    echo "  only in stock:"
-    comm -23 "$s" "$o" | head -150 | sed 's/^/    /'
+    echo "  $1: $sl $(wc -l < "$s") entries, ExpressiveOS $(wc -l < "$o")"
+    echo "  only in $sl:"
+    comm -23 "$s" "$o" | capped | sed 's/^/    /'
     echo "  only in ExpressiveOS:"
-    comm -13 "$s" "$o" | head -150 | sed 's/^/    /'
+    comm -13 "$s" "$o" | capped | sed 's/^/    /'
     echo "  in both, contents differ:"
     comm -12 "$s" "$o" | while read -r f; do
         [[ -f $2/$f && -f $3/$f ]] || continue
-        cmp -s -- "$2/$f" "$3/$f" || echo "    $f"
-    done | head -80
-    rm -f "$s" "$o"
+        cmp -s -- "$2/$f" "$3/$f" || echo "$f"
+    done | grep -v '^res/images/' > "$work/differ.$$"
+    capped < "$work/differ.$$" | sed 's/^/    /'
+    echo "    (and $(comm -12 "$s" "$o" | grep -c '^res/images/') res/images files, not compared)"
+    if [[ ${RC_TEXT_DIFF:-0} = 1 ]]; then
+        grep -E '(\.rc|\.prop|prop\.default|_contexts|fstab\.[^/]*|\.xml)$' "$work/differ.$$" | while read -r f; do
+            echo "  diff $f ($sl, ExpressiveOS):"
+            diff -u -- "$2/$f" "$3/$f" | sed 1,2d | head -60 | sed 's/^/    /'
+        done
+    fi
+    rm -f "$s" "$o" "$work/differ.$$"
 }
 modules() {  # <label> <ramdisk dir>: its module lists, counts and recovery-only modules
     local d m
@@ -67,9 +82,10 @@ modules() {  # <label> <ramdisk dir>: its module lists, counts and recovery-only
 
 for d in "${P11[@]}"; do
     h "$d"
-    fz=$(find ~/android-dt/firmware -maxdepth 1 -name "image-$d-*.zip" 2> /dev/null | sort | tail -1)
+    fz=${RC_STOCK_ZIP:-$(find ~/android-dt/firmware -maxdepth 1 -name "image-$d-*.zip" 2> /dev/null | sort | tail -1)}
+    sl=${RC_STOCK_LABEL:-stock}
     oz=$(ours_zip "$d")
-    echo "stock: ${fz:-none}"
+    echo "$sl: ${fz:-none}"
     po=$eos/out/target/product/$d
     echo "ExpressiveOS: ${oz:-none, so the images in $po}"
     [[ -n $fz ]] || { echo "skipped: no stock factory image zip"; continue; }
@@ -82,12 +98,12 @@ for d in "${P11[@]}"; do
         elif [[ -f $po/$img.img ]]; then cp -- "$po/$img.img" "$work/o-$img.img"; fi
         s=$( [[ -f $work/s-$img.img ]] && sha256sum < "$work/s-$img.img" | cut -c1-16 || echo none)
         o=$( [[ -f $work/o-$img.img ]] && sha256sum < "$work/o-$img.img" | cut -c1-16 || echo none)
-        echo "$img.img: stock $s, ExpressiveOS $o$([[ $s = "$o" ]] && echo ' (same)')"
+        echo "$img.img: $sl $s, ExpressiveOS $o$([[ $s = "$o" ]] && echo ' (same)')"
     done
     for img in vendor_boot vendor_kernel_boot init_boot; do
         for side in s o; do
             [[ -f $work/$side-$img.img ]] || continue
-            echo "-- $img.img header ($([[ $side = s ]] && echo stock || echo ExpressiveOS))"
+            echo "-- $img.img header ($([[ $side = s ]] && echo "$sl" || echo ExpressiveOS))"
             unpack "$work/$side-$img.img" "$work/$side-$img"
             rm -rf "$work/$side-$img.root"; mkdir -p "$work/$side-$img.root"
             for r in "$work/$side-$img"/vendor_ramdisk* "$work/$side-$img"/ramdisk; do
@@ -101,17 +117,17 @@ for d in "${P11[@]}"; do
     done
     for side in s o; do
         for img in vendor_kernel_boot vendor_boot; do
-            [[ -d $work/$side-$img.root ]] && modules "$img ($([[ $side = s ]] && echo stock || echo ExpressiveOS))" "$work/$side-$img.root"
+            [[ -d $work/$side-$img.root ]] && modules "$img ($([[ $side = s ]] && echo "$sl" || echo ExpressiveOS))" "$work/$side-$img.root"
         done
         # Recovery boots from all of them in one root: vendor_boot's files, then vendor_kernel_boot's over them
         rm -rf "$work/$side-both"; mkdir -p "$work/$side-both"
         cp -a "$work/$side-vendor_boot.root/." "$work/$side-vendor_kernel_boot.root/." "$work/$side-both/" 2> /dev/null || true
-        modules "vendor_boot + vendor_kernel_boot ($([[ $side = s ]] && echo stock || echo ExpressiveOS))" "$work/$side-both"
+        modules "vendor_boot + vendor_kernel_boot ($([[ $side = s ]] && echo "$sl" || echo ExpressiveOS))" "$work/$side-both"
     done
     echo "USB and recovery properties in vendor_boot's ramdisk:"
     for side in s o; do
         [[ -d $work/$side-vendor_boot.root ]] || continue
-        echo "  $([[ $side = s ]] && echo stock || echo ExpressiveOS):"
+        echo "  $([[ $side = s ]] && echo "$sl" || echo ExpressiveOS):"
         find "$work/$side-vendor_boot.root" -maxdepth 3 \( -name '*.prop' -o -name prop.default -o -name default.prop \) -type f \
             -exec grep -hE '^(ro\.recovery\.usb|ro\.boot\.|ro\.hardware|ro\.product\.(device|board)|ro\.build\.version\.(release|sdk))' {} + 2> /dev/null \
             | sort -u | sed 's/^/    /'
