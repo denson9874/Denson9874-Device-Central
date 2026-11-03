@@ -226,7 +226,10 @@ if [[ $mode = drive ]]; then
         for f in "${list[@]}"; do echo "  ${f##*/} ($(human "$(stat -c %s -- "$f")"))"; done
         if [[ $dry = 0 ]]; then
             for f in "${list[@]}"; do
-                rc copyto --drive-chunk-size 64M "$f" "$to/${f##*/}" > "$T/rclone.log" 2>&1 || { tail -5 "$T/rclone.log" >&2; fail "the copy of ${f##*/} to $to failed"; }
+                # Up to 2 hours a file: Drive slows uploads down when it's busy (rateLimitExceeded)
+                timeout 7200 "$RC" copyto --drive-chunk-size 64M "$f" "$to/${f##*/}" > "$T/rclone.log" 2>&1 || {
+                    grep -E 'ERROR|NOTICE|rateLimit' "$T/rclone.log" | tail -3 | cut -c1-300 >&2
+                    fail "the copy of ${f##*/} to $to failed (a re-run copies only what isn't there yet)"; }
             done
             # All of each: Drive has its size (rclone checked its MD5 on the upload)
             rc lsf --files-only --format sp --separator '|' "$to/" > "$T/drive.ls" 2> "$T/rclone.log" || { tail -3 "$T/rclone.log" >&2; fail "can't list $to"; }
