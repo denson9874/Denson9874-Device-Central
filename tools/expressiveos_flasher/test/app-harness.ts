@@ -4,7 +4,7 @@
 // Android (fake-adb.ts) can be plugged in as well: the page talks to it with the real ADB code.
 
 import type { Transport } from "../src/fastboot/client.ts";
-import type { Link } from "../src/fastboot/device.ts";
+import type { Link, Mode } from "../src/fastboot/device.ts";
 import type { Reconnector } from "../src/fastboot/webusb.ts";
 import type { Release } from "../src/releases.ts";
 import type { Held, Progress } from "../src/store/store.ts";
@@ -315,6 +315,8 @@ export const world = {
 	/** How long the page waits for a phone back in Fastboot Mode before asking the user to choose it (Choose the phone again), and at all. */
 	askAfterMs: 0,
 	reconnectTimeoutMs: 5000,
+	/** Runs while the phone is off USB in a restart during the install, before it comes back. */
+	duringRestart: null as ((target: Mode | undefined, ui: HarnessUi) => Promise<void>) | null,
 	usb: new EventTarget(),
 	bloom: null as FakeBloom | null,
 	/** Finished downloads in the browser, by store name. */
@@ -392,18 +394,31 @@ export async function linkTo(device: FakeUsbDevice): Promise<Link> {
  * restarted into Fastboot Mode over USB debugging is waited for with the page's own Reconnector,
  * on the fake navigator.usb, with world's timings.
  */
+/** What the page gives its WebUsbConnector to show (usb-connector.ts's ReconnectUi). */
+export interface HarnessUi {
+	needsReconnect(show: boolean): void;
+	restarting?(on: boolean, target?: Mode): void;
+}
+
 export class WebUsbConnector {
 	private reconnector: Reconnector | null = null;
 
-	constructor(private readonly ui: { needsReconnect(show: boolean): void }) {}
+	constructor(private readonly ui: HarnessUi) {}
 
-	async restart(link: Link, send: () => Promise<void>): Promise<Link> {
+	async restart(link: Link, send: () => Promise<void>, _signal?: AbortSignal, target?: Mode): Promise<Link> {
 		const phone = (link.transport as FakeUsbTransport).device.phone;
-		await send();
-		await link.close();
-		phone.boot();
-		if (phone.mode === "android") throw new Error("the phone started Android instead of fastboot");
-		return linkTo(plugIn(phone));
+		this.ui.restarting?.(true, target);
+		try {
+			await send();
+			await link.close();
+			await world.duringRestart?.(target, this.ui);
+			phone.boot();
+			if (phone.mode === "android") throw new Error("the phone started Android instead of fastboot");
+			return await linkTo(plugIn(phone));
+		} finally {
+			this.ui.needsReconnect(false);
+			this.ui.restarting?.(false);
+		}
 	}
 
 	async release(link: Link, send: () => Promise<void>): Promise<void> {

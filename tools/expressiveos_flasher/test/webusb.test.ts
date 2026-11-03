@@ -3,7 +3,7 @@
 // a stand-in that fails the way Chrome does (Blink's usb_device.cc).
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { WebUsbConnector, linkTo } from "../src/fastboot/usb-connector.ts";
+import { RESTART_WAIT, WebUsbConnector, linkTo } from "../src/fastboot/usb-connector.ts";
 import { FASTBOOT_FILTER, UsbError, UsbTransport, hostOs, openFailure } from "../src/fastboot/webusb.ts";
 
 type Hook = () => Promise<void>;
@@ -380,5 +380,85 @@ describe("a phone restarted into Fastboot Mode over USB debugging", () => {
 		await expect(cancelled).rejects.toMatchObject({ name: "AbortError" });
 		ac.abort();
 		await expect(new WebUsbConnector(ui()).waitForFastboot(SERIAL, { timeoutMessage, signal: ac.signal })).rejects.toMatchObject({ name: "AbortError" });
+	});
+	describe("during the install", () => {
+		/** The phone connected in Fastboot Mode, and a restart that takes it off USB. */
+		async function connected(b: ReturnType<typeof browser>) {
+			storage();
+			const first = fakeDevice().device;
+			b.allowed.push(first);
+			const link = await linkTo(first);
+			const off = async () => void b.allowed.splice(b.allowed.indexOf(first), 1);
+			return { link, off };
+		}
+
+		it("waits a minute on a computer for fastbootd before asking for the phone, and finds it on its own when it comes up", async () => {
+			vi.useFakeTimers();
+			const b = browser(UA.windows);
+			const { link, off } = await connected(b);
+			const u = ui();
+			const back = new WebUsbConnector(u).restart(link, off, undefined, "fastbootd");
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(u.restarting).toHaveBeenLastCalledWith(true, "fastbootd");
+			// The phone is on the G logo: asking now would ask for a phone that isn't in the list
+			await vi.advanceTimersByTimeAsync(55_000);
+			expect(u.needsReconnect).not.toHaveBeenCalledWith(true);
+			await vi.advanceTimersByTimeAsync(6000);
+			expect(u.needsReconnect).toHaveBeenLastCalledWith(true);
+			// fastbootd comes up with the bootloader's USB ids and serial number: the site may use it
+			b.allowed.push(fakeDevice().device);
+			await vi.advanceTimersByTimeAsync(1000);
+			await expect(back).resolves.toMatchObject({ serial: SERIAL });
+			expect(u.needsReconnect).toHaveBeenLastCalledWith(false);
+			expect(u.restarting).toHaveBeenLastCalledWith(false);
+		});
+
+		it("asks for the phone after 20 seconds on a restart into the bootloader, as before", async () => {
+			vi.useFakeTimers();
+			const b = browser(UA.linux);
+			const { link, off } = await connected(b);
+			const u = ui();
+			new WebUsbConnector(u).restart(link, off, undefined, "bootloader").catch(() => {});
+			await vi.advanceTimersByTimeAsync(19_000);
+			expect(u.needsReconnect).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(2000);
+			expect(u.needsReconnect).toHaveBeenLastCalledWith(true);
+			expect(u.restarting).toHaveBeenCalledWith(true, "bootloader");
+		});
+
+		it("asks at once on Chrome on Android, on the way to fastbootd too", async () => {
+			vi.useFakeTimers();
+			const b = browser(UA.android);
+			const { link, off } = await connected(b);
+			const u = ui();
+			new WebUsbConnector(u).restart(link, off, undefined, "fastbootd").catch(() => {});
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(u.needsReconnect).toHaveBeenLastCalledWith(true);
+		});
+
+		it("gives fastbootd 5 minutes, then says what to do", async () => {
+			vi.useFakeTimers();
+			const b = browser(UA.mac);
+			const { link, off } = await connected(b);
+			const back = new WebUsbConnector(ui()).restart(link, off, undefined, "fastbootd");
+			let settled = false;
+			back.catch(() => {}).finally(() => (settled = true));
+			await vi.advanceTimersByTimeAsync(4 * 60_000 + 50_000);
+			expect(settled).toBe(false);
+			const failed = expect(back).rejects.toThrow(RESTART_WAIT.fastbootd.timeoutMessage);
+			await vi.advanceTimersByTimeAsync(15_000);
+			await failed;
+			expect(RESTART_WAIT.fastbootd.timeoutMessage).toContain("If it's still on the G logo, fastbootd didn't start.");
+		});
+
+		it("gives the bootloader 3 minutes, with its own message", async () => {
+			vi.useFakeTimers();
+			const b = browser(UA.mac);
+			const { link, off } = await connected(b);
+			const back = new WebUsbConnector(ui()).restart(link, off, undefined, "bootloader");
+			const failed = expect(back).rejects.toThrow("The phone didn't come back. Check the cable and that it shows Fastboot Mode, then try again.");
+			await vi.advanceTimersByTimeAsync(3 * 60_000 + 2000);
+			await failed;
+		});
 	});
 });

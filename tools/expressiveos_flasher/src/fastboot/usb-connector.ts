@@ -2,7 +2,7 @@
 // the site may not use yet, the page shows a Reconnect button (the browser's chooser needs a click).
 // A phone restarted into Fastboot Mode over USB debugging is waited for the same way.
 
-import type { Connector, Link } from "./device.ts";
+import type { Connector, Link, Mode } from "./device.ts";
 import { Reconnector, UsbError, UsbTransport } from "./webusb.ts";
 
 /** Where the page notes, by serial number, the phones it opened in Fastboot Mode in this browser. */
@@ -82,19 +82,44 @@ function waitForDisconnect(device: USBDevice, timeoutMs: number): { promise: Pro
 export interface ReconnectUi {
 	/** Show or hide the "Reconnect" prompt. */
 	needsReconnect(show: boolean): void;
-	/** The phone is restarting (true) or back (false). */
-	restarting(on: boolean): void;
+	/** The phone is restarting (true) into `target`, or back (false). */
+	restarting(on: boolean, target?: Mode): void;
 }
+
+/**
+ * How long the page waits for a phone back from a restart before it asks the user to choose it
+ * again on a computer (Chrome on Android always needs the user), and at all, by where it went.
+ * fastbootd is Android's recovery starting in its fastboot mode: the phone shows the G logo
+ * while the kernel and recovery start, which takes longer than the bootloader does, and longer
+ * still on the Pixel 11s. A computer's browser usually finds the phone again on its own when
+ * fastbootd comes up (the same USB ids and serial number as in the bootloader), so asking at 20
+ * seconds asked users to choose a phone that was still on the G logo and not in the list yet.
+ */
+export const RESTART_WAIT: Record<Mode, { askAfterMs: number; timeoutMs: number; timeoutMessage: string }> = {
+	fastbootd: {
+		askAfterMs: 60_000,
+		timeoutMs: 5 * 60_000,
+		timeoutMessage:
+			"The phone didn't come back in fastbootd within 5 minutes. If it shows FASTBOOTD, the browser lost it: plug it straight into the computer (no hub), then try again. " +
+			"If it's still on the G logo, fastbootd didn't start. If that happens again, flash the latest factory image with Google's Android Flash Tool, then install ExpressiveOS again.",
+	},
+	bootloader: {
+		askAfterMs: 20_000,
+		timeoutMs: 3 * 60_000,
+		timeoutMessage: "The phone didn't come back. Check the cable and that it shows Fastboot Mode, then try again.",
+	},
+};
 
 export class WebUsbConnector implements Connector {
 	private reconnector = new Reconnector();
 
 	constructor(private readonly ui: ReconnectUi) {}
 
-	async restart(link: Link, send: () => Promise<void>, signal?: AbortSignal): Promise<Link> {
+	async restart(link: Link, send: () => Promise<void>, signal?: AbortSignal, target: Mode = "bootloader"): Promise<Link> {
 		const device = (link.transport as UsbTransport).device;
+		const wait = RESTART_WAIT[target];
 		const gone = waitForDisconnect(device, 30_000);
-		this.ui.restarting(true);
+		this.ui.restarting(true, target);
 		try {
 			try {
 				await send();
@@ -106,11 +131,12 @@ export class WebUsbConnector implements Connector {
 			if (!(await gone.promise)) throw new UsbError("The phone didn't restart. Unplug it, check it shows Fastboot Mode, plug it back in and try again.");
 			const android = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 			const d = await this.reconnector.wait(link.serial, {
-				timeoutMs: 3 * 60_000,
+				timeoutMs: wait.timeoutMs,
 				// Chrome on Android can't recognise the phone again without the user picking it
-				needsUserAfterMs: android ? 0 : 20_000,
+				needsUserAfterMs: android ? 0 : wait.askAfterMs,
 				needsUser: () => this.ui.needsReconnect(true),
 				signal,
+				timeoutMessage: wait.timeoutMessage,
 			});
 			this.ui.needsReconnect(false);
 			return await linkTo(d, { afterRestart: true });

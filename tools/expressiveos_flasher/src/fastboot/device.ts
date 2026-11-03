@@ -14,9 +14,9 @@ export interface Link {
 export interface Connector {
 	/**
 	 * Runs `send` (the restart command), waits for the phone to drop off USB and to come back in
-	 * fastboot mode, and returns the new connection.
+	 * fastboot mode (`target`: the bootloader or fastbootd), and returns the new connection.
 	 */
-	restart(link: Link, send: () => Promise<void>, signal?: AbortSignal): Promise<Link>;
+	restart(link: Link, send: () => Promise<void>, signal?: AbortSignal, target?: Mode): Promise<Link>;
 	/** Sends a final restart (into Android) and lets go of the phone. */
 	release(link: Link, send: () => Promise<void>): Promise<void>;
 }
@@ -104,7 +104,7 @@ export class Phone {
 		// The slot this session has been writing (partitionName reads the same cached value)
 		const before = await this.slots();
 		this.log("note", `Restarting into ${target === "fastbootd" ? "fastbootd" : "the bootloader"}`);
-		const link = await this.connector.restart(this.link, () => this.sendRestart(cmd), signal);
+		const link = await this.connector.restart(this.link, () => this.sendRestart(cmd), signal, target);
 		this.reset(link);
 		const sn = await this.getVar("serialno");
 		if (serial && sn && sn !== serial) throw new ProtocolError(`A different phone (${sn}) answered after the restart`);
