@@ -176,8 +176,10 @@ generate_changelog() {   # generate_changelog <changelog.txt> <announcement.md> 
     notes=$kit/release-notes/$EOS_VERSION.md
     [[ -f "$notes" ]] || fail "no release notes for ExpressiveOS $EOS_VERSION: write $notes (copy the last release's)"
     mkdir -p -- "$(dirname -- "$out")" "$(dirname -- "$ann")"
+    # {{KIT_REV}}: the kit's commit; a copy the runner installed (rsync, no .git) names it in
+    # INSTALLED_FROM as <ref>@<commit>
     python3 -I - "$notes" "$out" "$ann" "$EOS_DEVICE" "$EOS_VERSION" "$EOS_MODEL" "$bname" "$spl" \
-        "$(sha256sum -- "$zip" | cut -d' ' -f1)" "$(git -C "$kit" rev-parse HEAD 2>/dev/null || echo unknown)" \
+        "$(sha256sum -- "$zip" | cut -d' ' -f1)" "$(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^[^@]*@//p' "$kit/INSTALLED_FROM" 2>/dev/null | grep . || echo unknown)" \
         "https://sourceforge.net/projects/$(cut -d/ -f5 <<< "$EOS_SF_DIR")/files/$(cut -d/ -f6- <<< "$EOS_SF_DIR")/" <<'EOF' \
         || fail "can't write the release notes from $notes"
 import re, sys
