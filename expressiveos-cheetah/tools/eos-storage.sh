@@ -64,6 +64,11 @@ RC=~/bin/rclone
 [[ -x $RC ]] || fail "no ~/bin/rclone (tools/ota_mirror/README.md)"
 rc() { timeout 3600 "$RC" "$@"; }
 T=$(mktemp -d) || fail "can't make a temp folder"
+# has_remote <name>: rclone has that remote, from its config or from RCLONE_CONFIG_<NAME>_TYPE
+has_remote() {
+    local v="RCLONE_CONFIG_${1^^}_TYPE"
+    [[ -n ${!v:-} ]] || rc listremotes 2> /dev/null | grep -qx -- "$1:"
+}
 human() { numfmt --to=iec --suffix=B "${1:-0}" 2>/dev/null || echo "${1:-0} bytes"; }
 
 # phone_conf <phone>: DEST (its release folder), R2 (its part of the bucket), FEED (its live
@@ -143,7 +148,7 @@ if [[ $mode = list ]]; then
     echo "== Google Drive"
     if [[ -z $DRIVE ]]; then
         echo "note: eos.conf sets no EOS_DRIVE_BACKUP"
-    elif ! rc listremotes 2> /dev/null | grep -qx -- "${DRIVE%%:*}:"; then
+    elif ! has_remote "${DRIVE%%:*}"; then
         echo "note: ~/bin/rclone has no ${DRIVE%%:*}: remote. Where an rclone Drive remote is (names and types only):"
         for b in $(type -ap rclone); do echo "  $b: $(timeout 60 "$b" listremotes 2> /dev/null | tr '\n' ' ')"; done
         find ~/.config/rclone ~/retired -maxdepth 3 -name '*.conf' -path '*rclone*' 2> /dev/null | while IFS= read -r f; do
@@ -180,7 +185,7 @@ if [[ $mode = drive ]]; then
         phone_conf "$p" || fail "$p's configuration"
         [[ -n $DRIVE ]] || fail "eos.conf sets no EOS_DRIVE_BACKUP"
         [[ $DRIVE =~ ^[A-Za-z0-9_-]+:[A-Za-z0-9\ _./-]+$ && $DRIVE != *..* ]] || fail "EOS_DRIVE_BACKUP ($DRIVE) isn't <rclone remote>:<folder>"
-        rc listremotes 2> /dev/null | grep -qx -- "${DRIVE%%:*}:" || fail "rclone has no ${DRIVE%%:*}: remote"
+        has_remote "${DRIVE%%:*}" || fail "rclone has no ${DRIVE%%:*}: remote (the runner makes it from the RCLONE_GDRIVE_TOKEN secret)"
         newest || fail "$p has no release here ($DEST/target-files/LATEST)"
         [[ -f $DEST/$REL.uploaded ]] || fail "$REL isn't released (eos-pack.sh --upload)"
         files=("$DEST/$REL" "$DEST/ota/$BASE.zip" "$DEST/target-files/$RTF")
