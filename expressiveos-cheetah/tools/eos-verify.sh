@@ -23,13 +23,11 @@
 #      update_engine checks payload signatures again (and refuses older builds, and checks
 #      in recovery too, with patches/system_update_engine 0002 and 0003);
 #   4. the payload: every partition the build lists plus the firmware (EOS_FIRMWARE); its
-#      init_boot carries the same ramdisk as out/ (KernelSU Next's, or with EOS_KSU=none
-#      the build's own); its vbmeta (and every partition it chains), boot, init_boot and
+#      init_boot carries the same ramdisk as out/ (the build's own); its vbmeta (and every
+#      partition it chains), boot, init_boot and
 #      vbmeta_system are ExpressiveOS's; its patch levels are the build's; the
 #      target-files zip kept with it, for incremental OTAs, is its own (eos-target-files.sh);
-#   5. EOS_KSU=lkm: KernelSU Next (ksu-check.sh manager and images), and the stock
-#      init_boot kept for users who want no root (no kernelsu.ko, signed with the tree's
-#      key); EOS_KSU=none: out/'s init_boot is that stock one;
+#   5. no root: out/'s init_boot is the stock one (no kernelsu.ko, signed with the tree's key);
 #   6. ViPER4Android (v4a-check.sh out; with EOS_V4A=0, none of its files shipped), the
 #      boot animation (bootanim.conf's zips, the everyday one and the holiday one with its
 #      /metadata hint rc, a BootAnimation that reads the hint and its SELinux label, and no
@@ -95,7 +93,7 @@ ver=$(prop ro.evolution.build.version)
 [[ "$ver" =~ ^ExpressiveOS-17\.[0-9]+-[0-9]{8}-$EOS_DEVICE-${EOS_VERSION//./\\.}-$EOS_BUILD_TYPE$ ]] \
     || fail "ro.evolution.build.version is '$ver', not ExpressiveOS-17.x-<date>-$EOS_DEVICE-$EOS_VERSION-$EOS_BUILD_TYPE"
 if [[ $EOS_QUICK = 1 ]]; then
-    # m droid packages nothing (ksu-images.sh removed the last build's): any package or
+    # m droid packages nothing (eos-make.sh removed the last build's): any package or
     # target-files zip in out/ isn't this build's
     others=$(find "$O" -maxdepth 1 -name 'ExpressiveOS-*.zip' -printf '%f ')
     [[ -z "$others" ]] || fail "out/ holds $others, but this is a quick build (EOS_QUICK=1), which makes no package"
@@ -127,16 +125,12 @@ done
 grep -qE '^(require )?board=' "$O/android-info.txt" || fail "no 'require board=' or 'board=' in $O/android-info.txt"
 echo "OK: $EOS_DEVICE, $EOS_MODEL, user build"
 n=0
-# The shared patches/, ksu/ and viper4android/ ones, then the phone's own devices/<device>/
+# The shared patches/ and viper4android/ ones, then the phone's own devices/<device>/
 mapfile -t dirs < <(kit_patch_dirs)
 for d in "${dirs[@]}"; do
     [[ -d $d ]] || continue
-    # Only those this phone's build applies: KernelSU Next's as apply-ksu.sh picks them
-    # (cheetah's ksu/patches/, another phone's devices/<device>/ksu-patches/, none with
-    # EOS_KSU=none), ViPER4Android's with EOS_V4A=1 only (eos-images.sh)
+    # Only those this phone's build applies: ViPER4Android's with EOS_V4A=1 only (eos-images.sh)
     case $d in
-        "$kit"/ksu/patches/*) [[ $EOS_KSU = lkm && $EOS_DEVICE = cheetah ]] || continue ;;
-        "$kit/devices/$EOS_DEVICE"/ksu-patches/*) [[ $EOS_KSU = lkm && $EOS_DEVICE != cheetah ]] || continue ;;
         "$kit"/viper4android/patches/*) [[ $EOS_V4A = 1 ]] || continue ;;
     esac
     p=$(patch_project "$d")
@@ -281,8 +275,8 @@ else
     python3 -I "$kit/tools/payload.py" partitions "$ota" > "$T/partitions" || fail "can't read $ota's payload manifest"
     need="boot init_boot vendor_boot vendor_kernel_boot dtbo vbmeta vbmeta_system vbmeta_vendor system system_ext product vendor"
     need+=" $FIRMWARE $(sed 's|^radio/||; s|\.img,.*||' <<<"$radio" | tr '\n' ' ')"
-    # ksu-images.sh writes the build's AB_OTA_PARTITIONS here
-    grep -qx init_boot "$O/ab_partitions.txt" 2>/dev/null || fail "no AB_OTA_PARTITIONS list in $O/ab_partitions.txt (ksu-images.sh writes it)"
+    # eos-make.sh writes the build's AB_OTA_PARTITIONS here
+    grep -qx init_boot "$O/ab_partitions.txt" 2>/dev/null || fail "no AB_OTA_PARTITIONS list in $O/ab_partitions.txt (eos-make.sh writes it)"
     need+=" $(tr '\n' ' ' < "$O/ab_partitions.txt")"
     missing=$(for p in $need; do grep -qx "$p" "$T/partitions" || echo "$p"; done | sort -u | tr '\n' ' ')
     [[ -z "$missing" ]] || fail "the payload lacks: $missing"
@@ -292,18 +286,15 @@ else
     "$H/ota_extractor" -payload "$ota" -payload_offset "$off" -output_dir "$T/x" -partitions "${AVB// /,}" > "$T/x.log" 2>&1 \
         || { tail -3 "$T/x.log" >&2; fail "couldn't extract $AVB from the payload"; }
     ramdisk "$T/x/init_boot.img" "$T/ib-ota"; ramdisk "$O/init_boot.img" "$T/ib-out"
-    # With EOS_KSU=none out/'s init_boot is the build's own, which the KernelSU section checks is stock
-    if [[ $EOS_KSU = lkm ]]; then
-        cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk" || fail "the payload's init_boot ramdisk isn't out/'s (KernelSU Next) one"
-        echo "OK: the payload's init_boot carries out/'s KernelSU Next ramdisk"
-    elif cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk"; then
-        echo "OK: the payload's init_boot carries out/'s ramdisk (no KernelSU: EOS_KSU=none)"
+    # out/'s init_boot is the build's own, which the init_boot section below checks is stock
+    if cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk"; then
+        echo "OK: the payload's init_boot carries out/'s ramdisk"
     else
         # target-files packs the build's own ramdisk again (mkbootfs with its fs_config), so the
         # bytes may differ while every file, mode, owner and device node is the same: compare those
         cpio_same "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk" \
             || fail "the payload's init_boot ramdisk has other files than out/'s (above)"
-        echo "OK: the payload's init_boot ramdisk holds out/'s files, packed again (no KernelSU: EOS_KSU=none)"
+        echo "OK: the payload's init_boot ramdisk holds out/'s files, packed again"
     fi
     checked "the payload's vbmeta isn't ExpressiveOS's" 'KEYS_CHECK=(OK|UNPINNED)' \
         "$kit/tools/eos-keys-check.sh" vbmeta "$T/x/vbmeta.img" "$top"
@@ -334,21 +325,10 @@ stock_ib() {   # stock_ib <init_boot.img>: a stock init_boot (init, no kernelsu.
     "$H/avbtool" verify_image --image "$T/sv/init_boot.img" > "$T/stock.log" 2>&1 || { tail -3 "$T/stock.log" >&2; fail "$stock doesn't verify"; }
     checked "$stock isn't signed with ExpressiveOS's key" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vbmeta "$stock" "$top"
 }
-if [[ $EOS_KSU = lkm ]]; then
-    echo "== KernelSU Next"
-    checked "KernelSU Next manager" 'KSU_CHECK=OK' "$kit/ksu/tools/ksu-check.sh" manager "$top"
-    checked "KernelSU Next images" 'KSU_CHECK=OK' "$kit/ksu/tools/ksu-check.sh" images "$top/$O" "$top"
-    stock=$EOS_KSU_OUT/init_boot-stock.img
-    [[ -f $stock ]] || fail "no $stock (cheetah-ksu.sh keeps the stock init_boot for users who want no root)"
-    stock_ib "$stock"
-    echo "OK: $stock has no KernelSU Next, verifies and is signed with the tree's key"
-else
-    # No KernelSU (EOS_KSU=none): the build's own init_boot is the stock one, and no
-    # separate stock image is kept or published
-    echo "== init_boot (no KernelSU: EOS_KSU=none)"
-    stock_ib "$O/init_boot.img"
-    echo "OK: $O/init_boot.img has no KernelSU, verifies and is signed with the tree's key"
-fi
+# No root: the build's own init_boot is the stock one, and no separate stock image is kept
+echo "== init_boot (no root)"
+stock_ib "$O/init_boot.img"
+echo "OK: $O/init_boot.img has no KernelSU, verifies and is signed with the tree's key"
 
 echo "== ViPER4Android, boot animation and wallpaper"
 if [[ $EOS_V4A = 1 ]]; then

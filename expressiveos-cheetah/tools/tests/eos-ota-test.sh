@@ -157,7 +157,7 @@ echo "$B-target_files.zip" > "$D/target-files/LATEST"
 mktf "$D/check/$C-target_files.zip" "$C" 1765300000 eng.c
 (cd "$D/check" && sha256sum -- "$C-target_files.zip" > "$C-target_files.zip.sha256")
 echo zz > "$D/check/$C-fastboot.zip"
-printf 'sha256 %s\nkeys OK\nincremental-base OK\nksu none\nbuild full\n' "$(sha256sum "$D/check/$C-fastboot.zip" | cut -d' ' -f1)" > "$D/check/$C-fastboot.zip.pack-ok"
+printf 'sha256 %s\nkeys OK\nincremental-base OK\nbuild full\n' "$(sha256sum "$D/check/$C-fastboot.zip" | cut -d' ' -f1)" > "$D/check/$C-fastboot.zip.pack-ok"
 echo old > "$D/check/ExpressiveOS-17.0-20261201-cheetah-1.0-Unofficial-incremental-from-20261103.zip"
 : > "$HOME/otf.log"
 rc=$(ota --candidate); ok "--candidate: incremental B->C to R2 test/ with a test feed" '[[ $rc = 0 ]] && [[ -f $D/check/$C-incremental-from-20261203.zip && -f $W/r2/expressiveos/cheetah/ota/test/$C-incremental-from-20261203.zip && -f $W/r2/expressiveos/cheetah/ota/test/cheetah.json ]] && grep -q "^OTA_TEST https://ota-mirror.daryldenson-apps.workers.dev/expressiveos/cheetah/ota/test/cheetah.json" "$W/out.log"'

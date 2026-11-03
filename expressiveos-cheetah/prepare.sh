@@ -13,8 +13,8 @@
 #           files, never pushed anywhere): the first build copies the build server's own repo
 #           of them, ~/evolution's, which is only read, and a later one moves to its newer
 #           commits; eos-images.sh records the commit in sources.txt.
-# eos-images.sh runs this before the KernelSU Next, ViPER4Android, boot animation and
-# wallpaper kits.
+# eos-images.sh runs this before the ViPER4Android, boot animation, wallpaper and launcher
+# kits.
 #
 #   prepare.sh [top]      # default ~/expressiveos
 set -euo pipefail

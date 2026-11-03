@@ -5,22 +5,19 @@
 #   2. eos-keys-check.sh tree and vars: ExpressiveOS's own keys are in
 #      vendor/evolution-priv/keys and the build will sign with them, not with test keys
 #      or Evolution X's;
-#   3. the kits: ksu/fetch-ksu.sh (checks what it downloaded before, fetches only what's new
-#      in ksu.conf, and KernelSU Next's current risk rules when GitHub answers) and
-#      apply-ksu.sh on a phone with EOS_KSU=lkm, viper4android/apply-v4a.sh on one with
-#      EOS_V4A=1, bootanimation/apply-bootanim.sh, wallpapers/apply-wallpapers.sh,
+#   3. the kits: viper4android/apply-v4a.sh on a phone with EOS_V4A=1,
+#      bootanimation/apply-bootanim.sh, wallpapers/apply-wallpapers.sh,
 #      launcher/apply-launcher.sh (Expressive Launcher in Pixel Launcher's place);
 #   4. the name and version the build will carry (dumpvars), and a record of its sources
 #      in EOS_STATE (out/eos/ for cheetah, out/eos-<device>/ for the others: the tree's repo
 #      manifest -r, each patched project's upstream revision, the kit's commit, and the
-#      Google files that aren't in the manifest; ksu-images.sh adds the kernel's);
-#   5. ksu/tools/ksu-images.sh: lunch, build_kernel, kernelsu.ko, the two make passes (as
-#      many of them as the phone's EOS_KERNEL and EOS_KSU need);
+#      Google files that aren't in the manifest; eos-make.sh adds the kernel's);
+#   5. tools/eos-make.sh: lunch, build_kernel (on a phone with EOS_KERNEL=gs-6.1), the make;
 #   6. eos-verify.sh: the finished build, offline.
 # Only a run that gets through all six writes build.ok and target-files.ok there (the
 # sha256 of the OTA package and of the target-files zip kept with it), which eos-pack.sh needs.
 # A quick one (EOS_QUICK=1: the images only, m droid; lib.sh) writes quick.ok instead (the
-# sha256 of every file the fastboot zip takes from out/, and with EOS_KSU=lkm the stock init_boot),
+# sha256 of every file the fastboot zip takes from out/),
 # which eos-pack.sh packs as a quick candidate to test on a phone, never to release.
 # Holds ~/.evolution-tree.lock (the Evolution X routines' lock) and ~/.expressiveos.lock
 # for the whole run, and first waits for any build already running. Everything also goes
@@ -29,10 +26,10 @@
 #
 #   eos-images.sh [top]                  # default ~/expressiveos
 #   EOS_DEVICE=husky eos-images.sh       # another phone (devices/husky.conf)
-#   KERNEL_ONLY=1 eos-images.sh [top]    # steps 1-4, then build_kernel and kernelsu.ko only
+#   KERNEL_ONLY=1 eos-images.sh [top]    # steps 1-4, then build_kernel only
 #   EOS_KERNEL_SYNC=1 eos-images.sh      # sync the kernel source to pins/kernel.xml again
 #                                        # (otherwise only the first build syncs it)
-#   EOS_INSTALLCLEAN=1 eos-images.sh     # start the make with m installclean (ksu-images.sh)
+#   EOS_INSTALLCLEAN=1 eos-images.sh     # start the make with m installclean (eos-make.sh)
 #   EOS_QUICK=1 eos-images.sh            # a quick build: the images only (m droid), about 5
 #                                        # minutes sooner; packed for testing, never released
 set -o pipefail
@@ -66,7 +63,7 @@ rm -f -- "$EOS_STATE/build.ok" "$EOS_STATE/target-files.ok" "$EOS_STATE/quick.ok
 export EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
 kind="full build (m evolution: the images, the OTA package and its target-files)"
 [[ $EOS_QUICK != 1 ]] || kind="quick build (EOS_QUICK=1: the images only, m droid; for testing, never released)"
-# What the STEP and TIME lines (lib.sh's eos_step) say this build is; ksu-images.sh's too
+# What the STEP and TIME lines (lib.sh's eos_step) say this build is; eos-make.sh's too
 EOS_RUN_KIND=full EOS_RUN_FRESH=0
 [[ $EOS_QUICK != 1 ]] || EOS_RUN_KIND=quick
 [[ "${KERNEL_ONLY:-0}" != 1 ]] || EOS_RUN_KIND=kernel
@@ -90,14 +87,7 @@ trap 'rc=$?; rm -rf -- "$work"; [[ $done = 1 ]] || { echo "BUILD_EXIT=1"; exit $
 step "prepare.sh" 'PREPARE_OK.*' "$kit/prepare.sh" "$top"
 step "keys: tree" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" tree "$top"
 step "keys: build variables" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vars "$top"
-# KernelSU Next and ViPER4Android only where devices/<device>.conf turns them on: there's no
-# android16-6.12 KernelSU Next module yet, and ViPER4Android needs gs201's HIDL effect HAL
-if [[ $EOS_KSU = lkm ]]; then
-    step "KernelSU Next downloads" 'FETCH_KSU_OK.*' "$kit/ksu/fetch-ksu.sh"
-    step "KernelSU Next" 'APPLY_KSU_OK.*' "$kit/ksu/apply-ksu.sh" "$top"
-else
-    echo "== KernelSU Next: off for $EOS_DEVICE (EOS_KSU=$EOS_KSU, devices/$EOS_DEVICE.conf): the build's own init_boot, no root"
-fi
+# ViPER4Android only where devices/<device>.conf turns it on: it needs gs201's HIDL effect HAL
 if [[ $EOS_V4A = 1 ]]; then
     step "ViPER4Android" 'V4A_APPLY=OK.*' "$kit/viper4android/apply-v4a.sh" "$top"
 else
@@ -124,19 +114,18 @@ pkgs=" $(var_of "$vars" PRODUCT_PACKAGES) "
 [[ $pkgs = *" ExpressiveLauncher "* ]] \
     || fail "$EOS_LUNCH doesn't install ExpressiveLauncher: launcher/launcher.mk's product list must name ${EOS_LUNCH%%-*}"
 echo "OK: $EOS_LUNCH installs ExpressiveLauncher, in Pixel Launcher's place"
-# A phone with KernelSU Next or ViPER4Android off mustn't get them from the one tree all the
-# phones share: what an earlier cheetah build put there (vendor/extra) is still in it
-if [[ $EOS_KSU != lkm || $EOS_V4A != 1 ]]; then
-    [[ $EOS_KSU = lkm || $pkgs != *" KernelSUNext "* ]] \
-        || fail "$EOS_LUNCH would install KernelSUNext, but devices/$EOS_DEVICE.conf has EOS_KSU=$EOS_KSU: its device tree mustn't add the KernelSU Next manager"
+# No phone gets root, nor ViPER4Android where it's off, from what the one tree all the phones
+# share still holds of earlier builds (vendor/extra, the pantah fork's KernelSU lines)
+[[ $pkgs != *" KernelSUNext "* ]] \
+    || fail "$EOS_LUNCH would install KernelSUNext: ExpressiveOS ships no root, and its device tree mustn't add the KernelSU Next manager"
+if [[ $EOS_V4A != 1 ]]; then
     for m in ViPER4Android libv4a_re; do
         [[ $EOS_V4A = 1 || $pkgs != *" $m "* ]] \
             || fail "$EOS_LUNCH would install $m, but devices/$EOS_DEVICE.conf has EOS_V4A=0: vendor/extra/product.mk (apply-v4a.sh, from a cheetah build) has every product inherit viper4android.mk, which must add it for the phones with EOS_V4A=1 only"
     done
-    off=()
-    [[ $EOS_KSU = lkm ]] || off+=("KernelSU Next")
-    [[ $EOS_V4A = 1 ]] || off+=(ViPER4Android)
-    echo "OK: $EOS_LUNCH installs no ${off[0]}${off[1]:+ or ${off[1]}}, as devices/$EOS_DEVICE.conf says"
+    echo "OK: $EOS_LUNCH installs no KernelSU Next or ViPER4Android, as devices/$EOS_DEVICE.conf says"
+else
+    echo "OK: $EOS_LUNCH installs no KernelSU Next"
 fi
 echo "OK: $name (the date is the build's own)"
 
@@ -180,12 +169,6 @@ fi
     echo "ExpressiveOS $EOS_VERSION $EOS_BUILD_TYPE, $EOS_DEVICE, $(date -u '+%F %T') UTC"
     # A copy the runner installed (rsync, no .git) names the commit it came from
     echo "kit: $(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")$([[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || echo " (with local changes)")"
-    if [[ $EOS_KSU = lkm ]]; then
-        echo "KernelSU Next: $(sed -n 's/^version=//p' "$kit/ksu/ksu.conf") $(sed -n 's/^src_commit=//p' "$kit/ksu/ksu.conf")"
-        echo "NeoZygisk (product/etc/eos/zygisk-provider.zip): $(sed -n 's/^zygisk_version=//p' "$kit/ksu/ksu.conf") $(sed -n 's/^zygisk_src_commit=//p' "$kit/ksu/ksu.conf"), LSPlt $(sed -n 's/^zygisk_lsplt_commit=//p' "$kit/ksu/ksu.conf")"
-    else
-        echo "KernelSU Next: none (EOS_KSU=$EOS_KSU)"
-    fi
     # GPL-3.0-or-later code ships in it (launcher/README.md, "Licence and credits")
     echo "Expressive Launcher: $(sed -n 's/^EL_VERSION=//p' "$kit/launcher/launcher.conf") ($(sed -n 's/^EL_VERSION_CODE=//p' "$kit/launcher/launcher.conf")), source $(sed -n 's/^EL_SRC=//p' "$kit/launcher/launcher.conf") $(sed -n 's/^EL_COMMIT=//p' "$kit/launcher/launcher.conf")"
     echo "Patched projects: upstream revision (repo's m/$EOS_MANIFEST_BRANCH), then HEAD with the kit's commits"
@@ -197,11 +180,11 @@ fi
 } > "$EOS_STATE/sources.txt"
 cat "$EOS_STATE/sources.txt"
 
-# Kernel source (EOS_KERNEL=gs-6.1): ksu-images.sh syncs it to pins/kernel.xml when it's
+# Kernel source (EOS_KERNEL=gs-6.1): eos-make.sh syncs it to pins/kernel.xml when it's
 # missing or EOS_KERNEL_SYNC=1, and checks it's on them otherwise. Its kernel and make steps
 # are its own (eos_step)
 eos_step end
-step "make (ksu-images.sh)" 'MAKE_EXIT=0' "$kit/ksu/tools/ksu-images.sh" "$top"
+step "make (eos-make.sh)" 'MAKE_EXIT=0' "$kit/tools/eos-make.sh" "$top"
 if [[ "${KERNEL_ONLY:-0}" = 1 ]]; then
     echo "OK: kernel only (KERNEL_ONLY=1): nothing to pack"
     done=1; echo "BUILD_EXIT=0"; exit 0
@@ -220,7 +203,6 @@ if [[ $EOS_QUICK = 1 ]]; then
         printf '%s\n' "${files[@]}" | grep -qxF -- "$need" || fail "$EOS_PRODUCT_OUT/fastboot-info.txt doesn't flash ${need%.img}"
     done
     files=("${files[@]/#/$EOS_PRODUCT_OUT/}")
-    [[ $EOS_KSU != lkm ]] || files+=("$EOS_KSU_OUT/init_boot-stock.img")
     for f in "${files[@]}"; do [[ -f $f ]] || fail "no $f (eos-verify.sh checked it)"; done
     { sha256sum -- "${files[@]}" > "$EOS_STATE/.quick.ok.part" && mv -f -- "$EOS_STATE/.quick.ok.part" "$EOS_STATE/quick.ok"; } \
         || fail "can't write $EOS_STATE/quick.ok"

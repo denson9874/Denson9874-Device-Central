@@ -46,12 +46,11 @@ eos_top "${1:-}"
 # The kit itself never points at Evolution X's feed. The other phones' patches may name it on
 # the lines they take out (a tree that read it), never on a line they add
 bad=$( { grep -l -- evolution_ota "$kit"/patches/*/*.patch
-         grep -lE -- '^\+.*evolution_ota' "$kit"/ksu/patches/*/*.patch "$kit"/devices/*/patches/*/*.patch \
-             "$kit"/devices/*/ksu-patches/*/*.patch 2>/dev/null; } || true)
+         grep -lE -- '^\+.*evolution_ota' "$kit"/devices/*/patches/*/*.patch 2>/dev/null; } || true)
 [[ -z "$bad" ]] || fail "kit patches mention evolution_ota, Evolution X's feed: $bad"
 
-# The shared patches/ (cheetah's among them), then this phone's own. ksu/ and viper4android/
-# patches are apply-ksu.sh's and apply-v4a.sh's
+# The shared patches/ (cheetah's among them), then this phone's own. viper4android/
+# patches are apply-v4a.sh's
 dirs=("$kit"/patches/*/ "$kit/devices/$EOS_DEVICE"/patches/*/)
 for dir in "${dirs[@]}"; do
     [[ -d $dir ]] || continue

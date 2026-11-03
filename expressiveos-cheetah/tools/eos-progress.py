@@ -435,9 +435,9 @@ class Run:
             return
         if t == '== prepare.sh':
             self.set_step(p, 'prepare', p.step_at)
-        elif t == '== make (ksu-images.sh)':
+        elif t in ('== make (eos-make.sh)', '== make (ksu-images.sh)'):   # the second: logs of builds before 2026-11-03
             self.set_step(p, 'kernel' if builds_kernel(p.d) else 'make')
-        elif t.startswith(('== m installclean', '== make pass', '== make (stock init_boot')):
+        elif t.startswith(('== m installclean', '== make: ', '== make pass', '== make (stock init_boot')):
             if p.step != 'make':
                 self.set_step(p, 'make')
         elif t == '== verify (eos-verify.sh)':

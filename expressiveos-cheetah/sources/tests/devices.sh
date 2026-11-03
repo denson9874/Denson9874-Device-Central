@@ -14,7 +14,7 @@
 #     moved past its merge
 #  b. the commits a fork's branch has past its pin are listed under its line (dry run and plan)
 #  c. a kit missing what the update reads: no pins/kernel.xml, an <include> in it, other projects
-#     in it, no ksu/ksu.conf: the dry run ends UPDATE_CHECK=INCOMPLETE naming it, no traceback; plan
+#     in it: the dry run ends UPDATE_CHECK=INCOMPLETE naming it, no traceback; plan
 #     READY with "kernel: no new pins proposed"; an eos.conf key missing or not a plain value: the
 #     dry run and plan stop with UPDATE_CHECK=FAILED / UPDATE_PLAN=NOT_READY (stopped: ...)
 #  d. a device's patches (devices/<dev>/patches) count as ExpressiveOS's own changes in a conflict
@@ -173,9 +173,7 @@ mv "$T/gh/LineageOS/android_device_google_zuma.git" "$T/gh/LineageOS/zuma-gone.g
 mv "$T/gh/TheMuppets/proprietary_vendor_google_husky.git" "$T/gh/TheMuppets/vh-gone.git"
 out=$(check 2>&1); rc=$?
 outs=$(section "Projects outside LineageOS's manifest" "$out")
-# (the test world can't reach KernelSU Next's and NeoZygisk's GitHub: their lines are its only problems)
-only_ksu() { [[ -z $(section "Couldn't check" "$1" | grep -vE '^(KernelSU Next|NeoZygisk): |^$') ]]; }
-want "check rc $rc, or problems besides KernelSU's" '[[ $rc = 0 ]] && has "$out" "UPDATE_CHECK=" && only_ksu "$out"'
+want "check rc $rc, or not OK" '[[ $rc = 0 ]] && has "$out" "UPDATE_CHECK=OK"'
 want "no outside block with 2 pinned" 'has "$out" "== Projects outside LineageOS'"'"'s manifest (4): 2 pinned (no upstream: never move), 2 follow their own upstream, unreviewed (1 move)"'
 want "no shusky-kernels move" 'has "$outs" "device/google/shusky-kernels <- android_device_google_shusky-kernels lineage-24.0: 1 new commit"'
 want "no zuma pinned line" 'has "$outs" "device/google/zuma: pinned at ${ZUMA:0:12} (android_device_google_zuma)"'
@@ -265,14 +263,6 @@ want "check rc $rc, not INCOMPLETE" '[[ $rc = 0 ]] && has "$out" "UPDATE_CHECK=I
 want "no 'plan won't propose new pins'" 'has "$out" "pins/kernel.xml has other projects than LineageOS'"'"'s kernel manifest (+[] -['"'"'private/extra'"'"']): plan won'"'"'t propose new pins"'
 verdict "c3. a project LineageOS's kernel manifest lacks in the pins: the dry run says plan won't propose" "$out"
 cp "$WD/kernel.xml" "$kit/pins/kernel.xml"
-
-mv "$kit/ksu/ksu.conf" "$WD/ksu.conf"
-out=$(check 2>&1); rc=$?
-want "check rc $rc, not INCOMPLETE" '[[ $rc = 0 ]] && has "$out" "UPDATE_CHECK=INCOMPLETE"'
-want "no 'ksu/ksu.conf:' problem" 'hasre "$out" "^ksu/ksu.conf: .*No such file"'
-want "a traceback" '! has "$out" "Traceback"'
-verdict "c4. no ksu/ksu.conf: the dry run finishes, INCOMPLETE" "$out"
-mv "$WD/ksu.conf" "$kit/ksu/ksu.conf"
 
 cp "$kit/eos.conf" "$WD/eos.conf"
 sed -i '/^EOS_KERNEL_MANIFEST_BRANCH=/d' "$kit/eos.conf"

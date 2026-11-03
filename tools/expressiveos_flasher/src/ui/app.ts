@@ -802,7 +802,7 @@ export class App {
 				),
 			);
 		} else {
-			out.push(notice("info", "No root option", `Root with KernelSU Next isn't available for the ${dev.model} yet, so this build installs without root.`));
+			out.push(notice("info", "No root", "ExpressiveOS installs without root. Rooting your phone afterwards is up to you."));
 		}
 		out.push(
 			h(

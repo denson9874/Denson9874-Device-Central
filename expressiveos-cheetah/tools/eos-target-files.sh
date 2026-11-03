@@ -11,8 +11,7 @@
 #      (ro.evolution.build.version), its ab_partitions.txt is the build's, and its
 #      misc_info.txt names the tree's own release key (what an incremental is signed with);
 #   2. it holds an image (IMAGES/ or RADIO/) of every partition the package's payload writes;
-#   3. its init_boot carries out/'s KernelSU Next ramdisk (pass 2's), on a phone with
-#      KernelSU Next (EOS_KSU=lkm); on the others a WARNING says when its ramdisk isn't out/'s;
+#   3. its init_boot carries out/'s ramdisk: a WARNING says when it isn't;
 #   4. for incrementals: the images of the dynamic partitions (system, vendor, product...:
 #      misc_info.txt's dynamic_partition_list, what an incremental patches block by block)
 #      are the fastboot zip's (out/'s) byte for byte: patches/device_google_gs201/0005 has
@@ -68,7 +67,7 @@ v=$(tfprop ro.build.date.utc)
 v=$(tfprop ro.evolution.build.version)
 [[ "$v" = "$ver" ]] || fail "${tf##*/} is $v's, not $ver's"
 unzip -p -- "$tf" META/ab_partitions.txt > "$T/ab0" || fail "can't read its META/ab_partitions.txt"
-[[ -f $O/ab_partitions.txt ]] || fail "no $O/ab_partitions.txt (ksu-images.sh writes it)"
+[[ -f $O/ab_partitions.txt ]] || fail "no $O/ab_partitions.txt (eos-make.sh writes it)"
 sed '/^$/d' "$T/ab0" | sort -u > "$T/ab"
 sed '/^$/d' "$O/ab_partitions.txt" | sort -u > "$T/ab-out"
 cmp -s -- "$T/ab" "$T/ab-out" || fail "its ab_partitions.txt isn't the build's AB_OTA_PARTITIONS ($O/ab_partitions.txt)"
@@ -92,15 +91,12 @@ for i in init_boot vbmeta vbmeta_system vbmeta_vendor; do
 done
 ramdisk() { "$H/unpack_bootimg" --boot_img "$1" --out "$2" > /dev/null || fail "can't unpack $1"; }
 ramdisk "$T/img/init_boot.img" "$T/ib-tf"; ramdisk "$O/init_boot.img" "$T/ib-out"
-if [[ $EOS_KSU = lkm ]]; then
-    cmp -s -- "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk" || fail "its init_boot ramdisk isn't out/'s (pass 2's KernelSU Next one)"
-    echo "OK: its init_boot carries out/'s KernelSU Next ramdisk"
-# No KernelSU Next on this phone (EOS_KSU=none): init_boot is the build's own, which
-# target-files packs again from the same ramdisk files rather than taking it as built
-elif cmp -s -- "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk"; then
-    echo "OK: its init_boot carries out/'s ramdisk (no KernelSU Next on $EOS_DEVICE)"
+# init_boot is the build's own, which target-files packs again from the same ramdisk files
+# rather than taking it as built
+if cmp -s -- "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk"; then
+    echo "OK: its init_boot carries out/'s ramdisk"
 elif cpio_same "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk"; then
-    echo "OK: its init_boot ramdisk holds out/'s files, packed again (no KernelSU: EOS_KSU=none)"
+    echo "OK: its init_boot ramdisk holds out/'s files, packed again"
 else
     echo "WARNING: its init_boot ramdisk isn't out/'s: phones updated by OTA would get another init_boot ramdisk than the fastboot zip's (compare the two with unpack_bootimg)"
 fi
