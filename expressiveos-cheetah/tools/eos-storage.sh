@@ -18,6 +18,8 @@
 #   target-files/  the newest release's and the live feed's release's: the next incremental's base
 #   flasher/       what flasher.json lists (the web installer: flasher_publish.py --keep 1 lists
 #                  each channel's newest only), in flasher/ and flasher/testers/
+#   the top level  flasher.json, and the newest release's own ExpressiveOS-* files (an older
+#                  release's loose files there go)
 # So between an OTA upload and its feed pull request's merge, both releases stay; the next
 # prune, once the feed is merged, leaves the new one only. A phone with no release here, or whose
 # live feed can't be read, is skipped. R2 deletes can't be undone: --dry-run says what would go.
@@ -137,7 +139,14 @@ if [[ $mode = list ]]; then
     if [[ -z $DRIVE ]]; then
         echo "note: eos.conf sets no EOS_DRIVE_BACKUP"
     elif ! rc listremotes 2> /dev/null | grep -qx -- "${DRIVE%%:*}:"; then
-        echo "note: rclone has no ${DRIVE%%:*}: remote"
+        echo "note: ~/bin/rclone has no ${DRIVE%%:*}: remote. Where an rclone Drive remote is (names and types only):"
+        for b in $(type -ap rclone); do echo "  $b: $(timeout 60 "$b" listremotes 2> /dev/null | tr '\n' ' ')"; done
+        find ~/.config/rclone ~/retired -maxdepth 3 -name '*.conf' -path '*rclone*' 2> /dev/null | while IFS= read -r f; do
+            echo "  $f: $(grep -E '^\[|^type *=' -- "$f" 2> /dev/null | tr '\n' ' ')"
+        done
+        find ~ ~/retired -maxdepth 3 -name 'upload-to-drive.sh' 2> /dev/null | while IFS= read -r f; do
+            echo "  $f:"; grep -n 'rclone' -- "$f" | sed -E 's/(token|secret|key)[^ ]*/\1=<hidden>/Ig' | cut -c1-200 | head -8
+        done
     else
         rc about "${DRIVE%%:*}:" 2>&1 | grep -E '^(Total|Used|Free|Trashed|Other):' || echo "note: rclone about ${DRIVE%%:*}: failed (signed out?)"
         echo "-- $DRIVE (bytes, time, name)"
@@ -248,8 +257,15 @@ for p in $which; do
             else tail -2 "$T/rclone.log" >&2; echo "  note: couldn't remove $d/$f"; fi
         done < "$T/ls"
     done
-    # Anything else in the phone's folder is left as it is
-    rc lsf "$R2/" 2> /dev/null | grep -vxE 'ota/|target-files/|flasher/|flasher\.json' | sed "s#^#  left as is: #" || true
+    # An older release's loose files in the phone's folder go too; anything else is left as it is
+    rc lsf --files-only --format sp --separator '|' "$R2/" > "$T/ls" 2> /dev/null || : > "$T/ls"
+    while IFS='|' read -r size f; do
+        [[ -n $f && $f != flasher.json ]] || continue
+        if [[ $f != ExpressiveOS-*-"$p"-* || $f = "$BASE"[-.]* ]]; then echo "  left as is: $f"; continue; fi
+        if [[ $dry = 1 ]]; then echo "  would remove $f ($(human "$size"))"; freed=$((freed + size))
+        elif rc deletefile "$R2/$f" > "$T/rclone.log" 2>&1; then echo "  removed $f ($(human "$size"))"; freed=$((freed + size))
+        else tail -2 "$T/rclone.log" >&2; echo "  note: couldn't remove $f"; fi
+    done < "$T/ls"
 done
 echo "R2_PRUNE $([[ $dry = 1 ]] && echo 'would free' || echo freed) $(human "$freed")"
 done=1; echo "STORAGE=OK"
