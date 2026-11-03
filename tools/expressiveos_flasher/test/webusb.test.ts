@@ -3,8 +3,8 @@
 // a stand-in that fails the way Chrome does (Blink's usb_device.cc).
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { linkTo } from "../src/fastboot/usb-connector.ts";
-import { UsbError, UsbTransport, hostOs, openFailure } from "../src/fastboot/webusb.ts";
+import { WebUsbConnector, linkTo } from "../src/fastboot/usb-connector.ts";
+import { FASTBOOT_FILTER, UsbError, UsbTransport, hostOs, openFailure } from "../src/fastboot/webusb.ts";
 
 type Hook = () => Promise<void>;
 
@@ -212,5 +212,173 @@ describe("a phone left part way through a command", () => {
 		oldCalls.length = 0;
 		await expect(UsbTransport.open(old)).resolves.toBeInstanceOf(UsbTransport);
 		expect(oldCalls).toEqual(["open", "claim"]);
+	});
+});
+
+describe("a phone restarted into Fastboot Mode over USB debugging", () => {
+	const SERIAL = "28161FDH2000AB";
+	const timeoutMessage = "The phone didn't come back in Fastboot Mode.";
+
+	/** navigator.usb with the devices the site may use, and the one the chooser offers. */
+	function browser(ua: string) {
+		const allowed: USBDevice[] = [];
+		const requests: USBDeviceRequestOptions[] = [];
+		let offered: USBDevice | null = null;
+		const usb = Object.assign(new EventTarget(), {
+			getDevices: async () => allowed.slice(),
+			requestDevice: async (o: USBDeviceRequestOptions) => {
+				requests.push(o);
+				if (!offered) throw new DOMException("No device selected.", "NotFoundError");
+				allowed.push(offered);
+				return offered;
+			},
+		});
+		vi.stubGlobal("navigator", { userAgent: ua, usb });
+		return { allowed, requests, offer: (d: USBDevice) => (offered = d) };
+	}
+
+	const ui = () => ({ needsReconnect: vi.fn<(show: boolean) => void>(), restarting: vi.fn<(on: boolean) => void>() });
+
+	/** The browser's localStorage. */
+	function storage() {
+		const data = new Map<string, string>();
+		vi.stubGlobal("localStorage", { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v) });
+		return data;
+	}
+
+	it("is found without the user when this browser opened it in Fastboot Mode before, and opened", async () => {
+		vi.useFakeTimers();
+		const data = storage();
+		const b = browser(UA.linux);
+		// An earlier visit opened it in Fastboot Mode, so the site may use it there
+		await (await linkTo(fakeDevice().device)).close();
+		expect(JSON.parse(data.get("eos-flasher-fastboot-opened")!)).toEqual([SERIAL]);
+		const u = ui();
+		const link = new WebUsbConnector(u).waitForFastboot(SERIAL, { timeoutMessage });
+		// A Pixel takes several seconds to get there: nobody is asked meanwhile
+		await vi.advanceTimersByTimeAsync(15_000);
+		const { device, calls } = fakeDevice();
+		b.allowed.push(device);
+		await vi.advanceTimersByTimeAsync(1000);
+		await expect(link).resolves.toMatchObject({ serial: SERIAL });
+		expect(calls).toEqual(["open", "configure", "claim"]);
+		expect(u.needsReconnect).not.toHaveBeenCalledWith(true);
+	});
+
+	it("asks the user to choose it again by 20 seconds on a computer when it isn't found though this browser opened it before", async () => {
+		vi.useFakeTimers();
+		const data = storage();
+		data.set("eos-flasher-fastboot-opened", JSON.stringify(["OTHERPHONE01", SERIAL]));
+		browser(UA.mac);
+		const u = ui();
+		const link = new WebUsbConnector(u).waitForFastboot(SERIAL, { timeoutMessage });
+		link.catch(() => {});
+		await vi.advanceTimersByTimeAsync(19_000);
+		expect(u.needsReconnect).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(1500);
+		expect(u.needsReconnect).toHaveBeenLastCalledWith(true);
+	});
+
+	it("asks the user to choose it again after about 10 seconds on a computer, and takes only that phone in Fastboot Mode", async () => {
+		vi.useFakeTimers();
+		const b = browser(UA.windows);
+		const u = ui();
+		const c = new WebUsbConnector(u);
+		const link = c.waitForFastboot(SERIAL, { timeoutMessage });
+		// A phone this browser never opened in Fastboot Mode can't be found without the user, who is
+		// asked about when it gets there, not before
+		await vi.advanceTimersByTimeAsync(9000);
+		expect(u.needsReconnect).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(1500);
+		expect(u.needsReconnect).toHaveBeenLastCalledWith(true);
+		// Another phone is chosen: the wait goes on
+		const other = fakeDevice().device;
+		(other as unknown as { serialNumber: string }).serialNumber = "OTHERPHONE01";
+		b.offer(other);
+		await expect(c.pick()).rejects.toThrow("That isn't the phone the page is waiting for, or it isn't in Fastboot Mode yet. Choose it again.");
+		await vi.advanceTimersByTimeAsync(2000);
+		// The chooser lists only phones in Fastboot Mode
+		expect(b.requests.at(-1)).toEqual({ filters: [FASTBOOT_FILTER] });
+		b.offer(fakeDevice().device);
+		await c.pick();
+		await expect(link).resolves.toMatchObject({ serial: SERIAL });
+		expect(u.needsReconnect).toHaveBeenLastCalledWith(false);
+	});
+
+	it("asks at once on Chrome on Android, which never finds it on its own", async () => {
+		vi.useFakeTimers();
+		browser(UA.android);
+		const u = ui();
+		const link = new WebUsbConnector(u).waitForFastboot(SERIAL, { timeoutMessage });
+		link.catch(() => {});
+		await vi.advanceTimersByTimeAsync(10);
+		expect(u.needsReconnect).toHaveBeenCalledWith(true);
+	});
+
+	/** requestDevice that stays open until the test picks a phone, or closes it with none. */
+	function slowList(b: ReturnType<typeof browser>) {
+		let answer: (d: USBDevice | null) => void = () => {};
+		(navigator.usb as unknown as { requestDevice: () => Promise<USBDevice> }).requestDevice = () =>
+			new Promise((resolve, reject) => {
+				answer = (d) => {
+					if (!d) return reject(new DOMException("No device selected.", "NotFoundError"));
+					b.allowed.push(d);
+					resolve(d);
+				};
+			});
+		return { pick: (d: USBDevice | null) => answer(d) };
+	}
+
+	it("doesn't run out of time while the user is choosing it in the browser's list, and takes the phone picked late", async () => {
+		vi.useFakeTimers();
+		const list = slowList(browser(UA.android));
+		const u = ui();
+		const c = new WebUsbConnector(u);
+		const link = c.waitForFastboot(SERIAL, { timeoutMessage });
+		let settled = false;
+		link.then(
+			() => (settled = true),
+			() => (settled = true),
+		);
+		await vi.advanceTimersByTimeAsync(100_000);
+		const picking = c.pick();
+		// The list is still open when the 2 minutes are up
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(settled).toBe(false);
+		list.pick(fakeDevice().device);
+		await picking;
+		await expect(link).resolves.toMatchObject({ serial: SERIAL });
+	});
+
+	it("runs out of time once the list closes with no phone picked after its time", async () => {
+		vi.useFakeTimers();
+		const list = slowList(browser(UA.android));
+		const c = new WebUsbConnector(ui());
+		const link = c.waitForFastboot(SERIAL, { timeoutMessage });
+		const failed = expect(link).rejects.toThrow(timeoutMessage);
+		await vi.advanceTimersByTimeAsync(100_000);
+		const picking = c.pick();
+		await vi.advanceTimersByTimeAsync(30_000);
+		list.pick(null);
+		await expect(picking).rejects.toThrow("No phone was chosen");
+		await failed;
+	});
+
+	it("fails with the page's message when it doesn't come back, and stops when the signal fires", async () => {
+		vi.useFakeTimers();
+		browser(UA.linux);
+		const u = ui();
+		const late = new WebUsbConnector(u).waitForFastboot(SERIAL, { timeoutMessage });
+		const failed = expect(late).rejects.toThrow(timeoutMessage);
+		await vi.advanceTimersByTimeAsync(2 * 60_000);
+		await failed;
+		expect(u.needsReconnect).toHaveBeenLastCalledWith(false);
+
+		const ac = new AbortController();
+		const cancelled = new WebUsbConnector(ui()).waitForFastboot(SERIAL, { timeoutMessage, signal: ac.signal });
+		ac.abort();
+		await expect(cancelled).rejects.toMatchObject({ name: "AbortError" });
+		ac.abort();
+		await expect(new WebUsbConnector(ui()).waitForFastboot(SERIAL, { timeoutMessage, signal: ac.signal })).rejects.toMatchObject({ name: "AbortError" });
 	});
 });

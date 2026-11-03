@@ -723,9 +723,14 @@ legend {
 	min-width: 0;
 }
 
-.notice-body strong {
+/* The title; bold words in its text stay in their line */
+.notice-body > strong {
 	display: block;
 	margin-bottom: 2px;
+}
+
+.notice-body .howto {
+	margin: 10px 0 0;
 }
 
 /* Lists of instructions */
@@ -738,16 +743,20 @@ legend {
 	gap: 10px;
 }
 
+/* The number beside the step's text, which flows as one block: as grid cells, each bold word in
+   it would be a cell of its own */
 .howto li {
 	counter-increment: howto;
-	display: grid;
-	grid-template-columns: 30px 1fr;
-	gap: 12px;
-	align-items: start;
+	position: relative;
+	min-height: 30px;
+	padding: 3px 0 0 42px;
 }
 
 .howto li::before {
 	content: counter(howto);
+	position: absolute;
+	left: 0;
+	top: 0;
 	width: 30px;
 	height: 30px;
 	border-radius: 50%;
@@ -770,6 +779,28 @@ legend {
 }
 .howto li:nth-child(4n + 4)::before {
 	border-color: var(--coral);
+}
+
+/* The steps into Fastboot Mode by Detect and Connect */
+.fastboot-howto {
+	margin: 18px 0 14px;
+}
+
+.fastboot-howto > p {
+	color: var(--muted);
+	margin-bottom: 0;
+}
+
+/* The name of each way into Fastboot Mode, over its steps */
+.fastboot-howto > p.howto-way,
+.howto-way {
+	color: var(--text);
+	margin: 16px 0 0;
+}
+
+/* A phone found running Android, where the steps into Fastboot Mode were */
+.android-panel {
+	margin: 18px 0 14px;
 }
 
 details.prep {
