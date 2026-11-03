@@ -20,6 +20,11 @@ export interface FakeOptions {
 	physical?: Record<string, number>;
 	unslotted?: Record<string, number>;
 	superSize?: number;
+	/**
+	 * A super the bootloader writes whole (as fastboot's optimized flash does): the size it
+	 * reports and the bytes kept of it, from its start.
+	 */
+	bootloaderSuper?: { reported: number; bytes: number };
 	/** Unlock prompt answer. */
 	unlockAnswer?: "yes" | "no";
 	unlockAbility?: 0 | 1;
@@ -38,6 +43,9 @@ export class FakePhone {
 	logical = new Map<string, Uint8Array>();
 	superNames: string[] = [];
 	superSize: number;
+	/** What the bootloader wrote to super, from its start (bootloaderSuper). */
+	superBytes: Uint8Array | null = null;
+	superReported = 0;
 	commands: string[] = [];
 	erased = new Set<string>();
 	snapshotStatus = "none";
@@ -58,6 +66,10 @@ export class FakePhone {
 		this.unlockAnswer = o.unlockAnswer ?? "yes";
 		this.unlockAbility = o.unlockAbility ?? 1;
 		this.failOnce = o.failOnce;
+		if (o.bootloaderSuper) {
+			this.superBytes = new Uint8Array(o.bootloaderSuper.bytes).fill(0xbb);
+			this.superReported = o.bootloaderSuper.reported;
+		}
 		const physical = o.physical ?? { boot: 256 * 1024, init_boot: 128 * 1024, vendor_boot: 256 * 1024, dtbo: 64 * 1024, vbmeta: 64 * 1024, vbmeta_system: 16 * 1024 };
 		for (const [p, size] of Object.entries(physical)) {
 			this.physical.set(`${p}_a`, new Uint8Array(size).fill(0xee));
@@ -111,6 +123,7 @@ export class FakePhone {
 			case "version-baseband":
 				return "g5300g-250909-251024-B-14326967";
 			case "partition-size": {
+				if (arg === "super" && this.superBytes && this.mode === "bootloader") return `0x${this.superReported.toString(16)}`;
 				const p = this.physical.get(arg) ?? (this.mode === "fastbootd" ? this.logical.get(arg) : undefined);
 				return p ? `0x${p.byteLength.toString(16)}` : null;
 			}
@@ -217,6 +230,7 @@ export class FakePhone {
 		if (!img) return ["FAILno data downloaded"];
 		const sparse = new DataView(img.buffer, img.byteOffset, img.byteLength).getUint32(0, true) === 0xed26ff3a;
 		let target = this.physical.get(name);
+		if (name === "super" && this.superBytes && this.mode === "bootloader") target = this.superBytes;
 		if (!target) {
 			if (this.logical.has(name) || this.superNames.includes(name)) {
 				if (this.mode !== "fastbootd") return [`FAILpartition (${name}) not found`];

@@ -2,8 +2,10 @@
 
 import { FastbootError } from "../fastboot/client.ts";
 import type { Phone } from "../fastboot/device.ts";
-import { flashPayloads, imageInfo, moveAvbFooter } from "../fastboot/images.ts";
-import type { ImageRef, Step } from "./plan.ts";
+import { RESPARSE_LIMIT, flashPayloads, imageInfo, moveAvbFooter } from "../fastboot/images.ts";
+import { splitSparse } from "../fastboot/sparse.ts";
+import { type SuperImage, SuperLayoutError, buildSuperImage } from "../fastboot/super-image.ts";
+import type { FlashSuperStep, ImageRef, Step } from "./plan.ts";
 
 export interface ImageSource {
 	image(ref: ImageRef): Promise<Blob>;
@@ -57,6 +59,8 @@ export function stepWeights(steps: Step[], images: ImageSource): number[] {
 				return 40 * MB;
 			case "update-super":
 				return 20 * MB;
+			case "flash-super":
+				return s.partitions.reduce((n, p) => n + Math.max(images.size({ kind: "zip", name: p.image }), MB), 0);
 			default:
 				return 2 * MB;
 		}
@@ -68,6 +72,23 @@ export function parseSize(v: string | null): number {
 	const s = v.trim();
 	const n = /^0x/i.test(s) ? parseInt(s, 16) : parseInt(s, 10);
 	return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * The sparse image of super for a flash-super step: the phone's own super partition, laid out
+ * with the step's images in the current slot (FlashTask::GetPartitionAndSlot names them so).
+ * Throws SuperLayoutError when super can't be written from the bootloader.
+ */
+export async function superImageFor(phone: Phone, s: FlashSuperStep, images: ImageSource): Promise<SuperImage> {
+	if ((await phone.mode()) !== "bootloader") throw new SuperLayoutError("the phone isn't in the bootloader");
+	const slots = await phone.slots();
+	if (!slots) throw new SuperLayoutError("the phone has no A/B slots");
+	const name = (await phone.getVar("super-partition-name")) || "super";
+	const size = parseSize(await phone.getVar(`partition-size:${name}`));
+	const parts: Array<{ name: string; blob: Blob }> = [];
+	for (const p of s.partitions) parts.push({ name: `${p.partition}_${slots.current}`, blob: await images.image({ kind: "zip", name: p.image }) });
+	const empty = new Uint8Array(await (await images.superEmpty()).arrayBuffer());
+	return buildSuperImage(empty, parts, name, size);
 }
 
 export async function runPlan(phone: Phone, steps: Step[], images: ImageSource, ev: RunEvents, signal?: AbortSignal): Promise<void> {
@@ -168,6 +189,19 @@ export async function runPlan(phone: Phone, steps: Step[], images: ImageSource, 
 						// phone would start into recovery's "Cannot load Android system" instead
 						if (!(e instanceof FastbootError)) throw e;
 						throw new EraseError(s.partition, e.reply);
+					}
+					break;
+				}
+				case "flash-super": {
+					const image = await superImageFor(phone, s, images);
+					const pieces = splitSparse(image.header, image.chunks, Math.min(await phone.maxDownload(), RESPARSE_LIMIT));
+					const total = pieces.reduce((n, p) => n + p.size, 0);
+					let done = 0;
+					for (const [k, piece] of pieces.entries()) {
+						if (pieces.length > 1) ev.note(`${image.name}: piece ${k + 1} of ${pieces.length}`);
+						await phone.client.download(piece, (n) => ev.progress(i, (done + n) / total), signal);
+						await phone.command(`flash:${image.name}`, { timeoutMs: 10 * 60_000 });
+						done += piece.size;
 					}
 					break;
 				}

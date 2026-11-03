@@ -65,8 +65,13 @@ The six steps:
    `android-info.txt` that isn't a requirement is a warning, as fastboot's "syntax error" is, and doesn't stop the
    install.
 5. **Install.** What `fastboot -w update` does with the zip's `fastboot-info.txt`: `set_active`, cancel a pending
-   snapshot update, the boot images in the bootloader, restart into fastbootd, `update-super`, the logical partitions
-   (resized to each image), then erase userdata and metadata for a clean install. Images bigger than the phone's
+   snapshot update, the boot images in the bootloader, erase userdata and metadata for a clean install, then the
+   logical partitions written into super whole from the bootloader, as fastboot's optimized super flash does
+   (`src/fastboot/super-image.ts`: super_empty.img's layout with each image given its space, the geometry and every
+   metadata copy, sent as one sparse image of super). The phone never restarts into fastbootd, which doesn't start on
+   the Pixel 11s. When super can't be written that way (a sparse system image, a phone not in the bootloader, a
+   super_empty.img that doesn't fit the phone), the install goes through fastbootd as before: restart into fastbootd,
+   `update-super`, then the logical partitions (resized to each image). Images bigger than the phone's
    download buffer go in sparse pieces of at most 1 GiB, and a raw image's AVB footer is moved to the end of its
    partition, both as AOSP fastboot does. Without root, the stock `init_boot` goes to both slots. The page keeps the
    screen awake. While the phone restarts, the page says what it shows: on the way to fastbootd, the unlocked-bootloader
@@ -110,8 +115,11 @@ npm run build && npm run test:e2e   # the built page in Chromium with a simulate
 ```
 
 - `test/fake-phone.ts` simulates a Pixel's bootloader and fastbootd: A/B slots, physical partitions, logical partitions
-  in super that `update-super` lays out and `resize-logical-partition` sizes (rounded up to 4 KiB, as liblp does), and
-  restarts that hand out a new connection. The install tests check every partition byte for byte afterwards.
+  in super that `update-super` lays out and `resize-logical-partition` sizes (rounded up to 4 KiB, as liblp does), a
+  super the bootloader writes whole (`bootloaderSuper`), and restarts that hand out a new connection. The install tests
+  check every partition byte for byte afterwards.
+- `test/super-image.test.ts` checks the super image against what AOSP fastboot 34.0.4 sent for the same images and an
+  ExpressiveOS kodiak `super_empty.img` (`test/fixtures/`): the same pieces, byte for byte.
 - `test/fake-adb.ts` simulates a Pixel running Android with USB debugging on: a composite USB device (MTP and ADB)
   whose adbd reads and checks messages as AOSP's does, asks "Allow USB debugging?" for an unknown key, and drops off
   USB on `reboot:bootloader`. `test/adb.test.ts` runs the ADB code against it, and the App tests (`test/app.test.ts`)

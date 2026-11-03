@@ -15,7 +15,10 @@ export type Step =
 	| { kind: "update-super"; wipe: boolean }
 	| { kind: "resize-to-zero"; partitions: string[] }
 	| { kind: "erase"; partition: string }
+	| { kind: "flash-super"; partitions: Array<{ partition: string; image: string }> }
 	| { kind: "start-android" };
+
+export type FlashSuperStep = Extract<Step, { kind: "flash-super" }>;
 
 export interface PlanOptions {
 	/** Erase userdata and metadata (fastboot -w): a clean install. */
@@ -24,6 +27,11 @@ export interface PlanOptions {
 	root: boolean;
 	/** Whether the release has a stock init_boot (it has root only when it does). */
 	hasStockInitBoot: boolean;
+	/**
+	 * Write the dynamic partitions into super whole from the bootloader, as AOSP fastboot does
+	 * when it can (OptimizedFlashSuperTask), instead of restarting into fastbootd for them.
+	 */
+	superFlash?: boolean;
 }
 
 export class PlanError extends Error {
@@ -95,6 +103,20 @@ export function buildPlan(fastbootInfo: string | null, has: (name: string) => bo
 		throw new PlanError("fastboot-info.txt doesn't write init_boot, so the no-root choice can't be applied");
 	}
 
+	// OptimizedFlashSuperTask::Initialize: when the steps restart into fastbootd, lay out super and
+	// write a logical partition (CanOptimize), the restarts into fastbootd, the layout and the
+	// logical partitions' writes become one write of super, after everything else
+	if (opts.superFlash) {
+		const logicalFlash = (s: Step | undefined): s is Extract<Step, { kind: "flash" }> => s?.kind === "flash" && s.logical;
+		const pattern = steps.some((s, i) => s.kind === "reboot" && s.target === "fastbootd" && steps[i + 1]?.kind === "update-super" && logicalFlash(steps[i + 2]));
+		const logical = steps.filter(logicalFlash);
+		const partitions = logical.flatMap((s) => (s.slot === "current" && s.image.kind === "zip" ? [{ partition: s.partition, image: s.image.name }] : []));
+		if (pattern && partitions.length === logical.length) {
+			const kept = steps.filter((s) => !(s.kind === "reboot" && s.target === "fastbootd") && s.kind !== "update-super" && !logicalFlash(s));
+			steps.splice(0, steps.length, ...kept, { kind: "flash-super", partitions });
+		}
+	}
+
 	// Before the first logical partition is written, every logical partition the plan writes is
 	// shrunk to nothing so each gets laid out afresh (AddResizeTasks in fastboot.cpp)
 	const firstLogical = steps.findIndex((s) => s.kind === "flash" && s.logical);
@@ -133,6 +155,8 @@ export function describe(s: Step): string {
 			return "Make room for the system images";
 		case "erase":
 			return `Erase ${s.partition}`;
+		case "flash-super":
+			return `Write ${s.partitions.map((p) => p.partition).join(", ")} into super`;
 		case "start-android":
 			return "Start ExpressiveOS";
 	}
