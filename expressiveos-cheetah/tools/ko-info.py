@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""What cheetah-ksu.sh and ksu-check.sh compare between our kernelsu.ko and Google's
-kernel. kernelsu.ko carries no symbol versions (ksuinit resolves its symbols itself), so
-Linux 6.1 loads it even when it was built for another struct module, and then crashes
-reading past it: the first ExpressiveOS build (2026-10-26), built without pahole, lost
-CONFIG_DEBUG_INFO_BTF_MODULES and shipped a 1,024-byte struct module to a kernel whose
-struct module is 1,088 bytes. Run it with python3 -I.
+"""Facts about kernel modules and kernel images, for tools/devices-check.sh (the gki probe:
+each phone's struct module size and kernel config). Born of the KernelSU Next work (removed
+2026-11-03): a module built for another struct module than the kernel's loads and then crashes
+reading past it, so the size its .gnu.linkonce.this_module section gives is worth knowing.
+Run it with python3 -I.
 
   ko-info.py this-module <ko>...
       prints "<bytes> <ko>" for each module: the size of its .gnu.linkonce.this_module
@@ -12,11 +11,6 @@ struct module is 1,088 bytes. Run it with python3 -I.
   ko-info.py same-struct <ko> <dir>
       checks that <ko> is built for the struct module that every module under <dir> (the
       build's own, made with the kernel's config) shares; prints "<bytes> <modules>"
-  ko-info.py embedded <file> <module name> <kernel release prefix> <out.ko>
-      writes out the kernel module <file> carries inside it, DEFLATE-compressed, whose
-      .modinfo names <module name> and whose vermagic starts with <kernel release prefix>:
-      libksud.so's susfs guard module, which ksud loads by itself (susfs load or auto-load),
-      found the way rust-embed stores its assets; prints "<bytes> <vermagic>"
   ko-info.py config <kernel Image>
       prints the .config built into an uncompressed kernel image (CONFIG_IKCONFIG)
   ko-info.py config-diff <kernel Image> <.config>
@@ -32,9 +26,8 @@ import zlib
 # Not compared: version numbers of the tools (each feature they decide has its own
 # option, which is compared); whether the compiler can link user programs, which only
 # Google's build sysroot can and which only gates the UAPI header test; and the export
-# trimming of Google's own build (it keeps only the exports its symbol lists name; ksuinit
-# resolves kernelsu.ko's symbols itself). Measured on 2026-10-26: these were the only
-# differences besides the pahole ones that broke the module.
+# trimming of Google's own build (it keeps only the exports its symbol lists name). Measured
+# on 2026-10-26: these were the only differences besides the pahole ones that broke a module.
 IGNORED = {
     'CC_VERSION_TEXT', 'CLANG_VERSION', 'GCC_VERSION', 'LD_VERSION', 'LLD_VERSION', 'AS_VERSION',
     'PAHOLE_VERSION', 'RUSTC_VERSION', 'RUSTC_LLVM_VERSION', 'BINDGEN_VERSION',
@@ -72,28 +65,6 @@ def this_module(path):
 def modinfo(d):
     offset, size = sections(d).get('.modinfo', (0, 0))
     return dict(f.split(b'=', 1) for f in d[offset:offset + size].split(b'\0') if b'=' in f)
-
-
-def embedded(path, name, release):
-    """The kernel module stored DEFLATE-compressed (raw, as include-flate does) in a file."""
-    with open(path, 'rb') as f:
-        d = f.read()
-    found = []
-    for o in range(len(d)):
-        if d[o] & 6 not in (2, 4):   # a fixed or dynamic Huffman block starts the stream
-            continue
-        try:
-            if not zlib.decompressobj(-15).decompress(d[o:o + 512], 64).startswith(b'\x7fELF'):
-                continue
-            ko = zlib.decompressobj(-15).decompress(d[o:])
-            info = modinfo(ko)
-        except (zlib.error, ValueError, struct.error):
-            continue
-        if info.get(b'name') == name.encode() and info.get(b'vermagic', b'').startswith(release.encode()):
-            found.append((ko, info[b'vermagic'].decode('ascii', 'replace')))
-    if len(found) != 1:
-        raise ValueError('%s carries %d kernel modules named %s for %s*, want 1' % (path, len(found), name, release))
-    return found[0]
 
 
 def same_struct(ko, top):
@@ -149,11 +120,6 @@ def main():
                 print(this_module(ko), ko)
         elif len(args) == 3 and args[0] == 'same-struct':
             print('%d %d' % same_struct(args[1], args[2]))
-        elif len(args) == 5 and args[0] == 'embedded':
-            ko, vermagic = embedded(args[1], args[2], args[3])
-            with open(args[4], 'wb') as f:
-                f.write(ko)
-            print(len(ko), vermagic)
         elif len(args) == 2 and args[0] == 'config':
             sys.stdout.write(ikconfig(args[1]))
         elif len(args) == 3 and args[0] == 'config-diff':

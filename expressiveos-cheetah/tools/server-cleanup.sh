@@ -188,10 +188,9 @@ keep=(
     # Candidates in use: cheetah's integrity test build (on the 7 Pro), kodiak's root test build
     "$R/expressiveos-cheetah/check/"
     "$R/expressiveos-kodiak/check/"
-    # Gate records, the KernelSU Next DDK, the stock dumps, ccache's cache
+    # Gate records, the stock dumps, ccache's cache
     "$R/husky/check/EvolutionX-17.0-20261024-husky-12.3-Unofficial.zip.device-ok"
     "$R/cheetah/check/EvolutionX-17.0-20261024-cheetah-12.3-Unofficial.zip.device-ok"
-    "$A/ddk/"
     "$A/dumps/"
     .ccache/
 )

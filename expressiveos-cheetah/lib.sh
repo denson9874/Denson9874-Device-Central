@@ -17,7 +17,7 @@ source "$kit/eos.conf" || fail "can't read $kit/eos.conf"
 # Nothing in it can move the keys, the feed or the manifest, which stay eos.conf's.
 EOS_DEVICE_KEYS=" EOS_LUNCH EOS_MODEL EOS_BOARD EOS_RELEASES EOS_SF_DIR EOS_R2_PREFIX EOS_DEVICE_TREE \
 EOS_BOARDCONFIG EOS_VENDOR_DIR EOS_RADIO_MK EOS_FIRMWARE EOS_FIRMWARE_MODE EOS_LFS_PROJECTS EOS_UPDATER_OVERLAY \
-EOS_SENTINEL EOS_KERNEL EOS_KMI EOS_KSU EOS_V4A EOS_SUPER_EMPTY EOS_FLASH_VKB EOS_SCONE_PATCH EOS_SYSUI_ODEX "
+EOS_SENTINEL EOS_KERNEL EOS_KMI EOS_V4A EOS_SUPER_EMPTY EOS_FLASH_VKB EOS_SCONE_PATCH EOS_SYSUI_ODEX "
 device_conf() {   # device_conf <file>: set the device keys it names (EOS_DEVICE_KEYS), checked
     local f=$1 line k v n=0 rel=${1#"$kit"/}
     [[ -f $f && -r $f ]] || fail "can't read $rel"
@@ -68,19 +68,17 @@ for _v in "$EOS_DEVICE_TREE" "$EOS_BOARDCONFIG" "$EOS_VENDOR_DIR" "$EOS_RADIO_MK
 done
 unset _v
 _e() { [[ " $2 " == *" ${!1} "* ]] || fail "devices/$EOS_DEVICE.conf: $1 is '${!1}', not one of: $2"; }
-_e EOS_FIRMWARE_MODE "cache blobs images"; _e EOS_KERNEL "gs-6.1 prebuilt"; _e EOS_KSU "lkm none"
+_e EOS_FIRMWARE_MODE "cache blobs images"; _e EOS_KERNEL "gs-6.1 prebuilt"
 _e EOS_V4A "0 1"; _e EOS_SUPER_EMPTY "out factory"; _e EOS_FLASH_VKB "0 1"; _e EOS_SYSUI_ODEX "0 1"
 _e EOS_KMI "android14-6.1 android16-6.12"
 unset -f _e
-[[ $EOS_KSU = none || $EOS_KERNEL = gs-6.1 ]] || fail "devices/$EOS_DEVICE.conf: KernelSU Next (EOS_KSU=lkm) is built only against the gs-6.1 kernel source so far"
 # Where a device's build keeps its own records: cheetah's are where they always were, so its
 # builds, packs and logs don't move; the other phones' sit beside them in the one tree
 EOS_PRODUCT_OUT=out/target/product/$EOS_DEVICE
 if [[ $EOS_DEVICE = cheetah ]]; then
-    EOS_STATE=out/eos EOS_KSU_OUT=out/ksu EOS_BUILD_LOG=$HOME/expressiveos-build.log EOS_KSU_INIT_BOOT_VAR=CHEETAH_KSU_INIT_BOOT
+    EOS_STATE=out/eos EOS_BUILD_LOG=$HOME/expressiveos-build.log
 else
-    EOS_STATE=out/eos-$EOS_DEVICE EOS_KSU_OUT=out/ksu-$EOS_DEVICE
-    EOS_BUILD_LOG=$HOME/expressiveos-build-$EOS_DEVICE.log EOS_KSU_INIT_BOOT_VAR=EOS_KSU_INIT_BOOT
+    EOS_STATE=out/eos-$EOS_DEVICE EOS_BUILD_LOG=$HOME/expressiveos-build-$EOS_DEVICE.log
 fi
 
 # For the runner's expressiveos-progress (tools/eos-progress.py): a STEP line in the log as a
@@ -103,10 +101,9 @@ eos_step() {   # eos_step <step>|end: say this run is at <step> now, after recor
     echo "STEP $1 device=$EOS_DEVICE kind=${EOS_RUN_KIND:--} fresh=${EOS_RUN_FRESH:--} at=$(date -ud "@$now" +%FT%TZ)"
 }
 
-kit_patch_dirs() {   # kit_patch_dirs: the kit's patch folders for EOS_DEVICE, one a line: the shared ones (patches/, ksu/patches/, viper4android/patches/), then devices/<device>/patches/ and ksu-patches/
+kit_patch_dirs() {   # kit_patch_dirs: the kit's patch folders for EOS_DEVICE, one a line: the shared ones (patches/, viper4android/patches/), then devices/<device>/patches/
     local d
-    for d in "$kit"/patches/* "$kit"/ksu/patches/* "$kit"/viper4android/patches/* \
-             "$kit/devices/$EOS_DEVICE"/patches/* "$kit/devices/$EOS_DEVICE"/ksu-patches/*; do
+    for d in "$kit"/patches/* "$kit"/viper4android/patches/* "$kit/devices/$EOS_DEVICE"/patches/*; do
         [[ -d $d ]] && printf '%s\n' "$d"
     done
     return 0
@@ -136,7 +133,7 @@ eos_top() {   # eos_top [path]: sets top to the ExpressiveOS tree (default ~/exp
     # The build writes here before anything else checks: a linked out/ or out-kernel/ would
     # build into another tree (Evolution X's kernel output is the same gs-6.1 source)
     local p
-    for p in out out-kernel out-kernel/google out-kernel/google/gs-6.1 "$EOS_STATE" "$EOS_KSU_OUT" "$EOS_PRODUCT_OUT"; do
+    for p in out out-kernel out-kernel/google out-kernel/google/gs-6.1 "$EOS_STATE" "$EOS_PRODUCT_OUT"; do
         in_top "$top/$p"
     done
 }
@@ -207,7 +204,7 @@ am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local co
                 rm -f -- "$log"
                 fail "$label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change, and ${d#"$top"/} is ExpressiveOS's own repo ($own): change it with a new commit there, never by editing a kit patch (README.md, \"Sources\")"
             elif [[ $rc = 1 ]]; then
-                echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change. If apply.sh or apply-ksu.sh made it (an older version of the patch): repo sync -d ${d#"$top"/}, then build again (tools/eos-images.sh puts the kit's patches back). If it came with upstream source: compare the two, then drop or regenerate the patch"
+                echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change. If apply.sh made it (an older version of the patch): repo sync -d ${d#"$top"/}, then build again (tools/eos-images.sh puts the kit's patches back). If it came with upstream source: compare the two, then drop or regenerate the patch"
             elif [[ $rc != 0 ]]; then
                 echo "note: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/}, but its change can't be compared with the patch here (no parent in this clone, or git failed)"
             fi
@@ -299,6 +296,8 @@ has_subject() {   # has_subject <dir> <subject>: the project's log has a commit 
 }
 
 clean_env() {   # drop what a shell set up for another tree: soong_ui and envsetup follow these
+    # (CHEETAH_KSU_INIT_BOOT and EOS_KSU_INIT_BOOT too: the pantah fork's device tree still ships
+    # a KernelSU init_boot when one names an image, and ExpressiveOS ships no root)
     unset TOP ANDROID_BUILD_TOP ANDROID_PRODUCT_OUT ANDROID_HOST_OUT OUT OUT_DIR OUT_DIR_COMMON_BASE \
         TARGET_PRODUCT TARGET_RELEASE TARGET_BUILD_VARIANT CHEETAH_KSU_INIT_BOOT EOS_KSU_INIT_BOOT KODIAK_PERSONAL \
         KERNEL_REPO_PROJECT_OBJECTS_DIR KERNEL_REPO_PROJECTS_DIR

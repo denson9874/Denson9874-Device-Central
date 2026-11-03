@@ -8,8 +8,8 @@
 # tree can sync it too, since each commit is on the branch named as its upstream.
 # evolution/manifest stays at Evolution X's last manifest (its 1.0 pin): build_kernel reads
 # the LineageOS version from it, and a manifest can't name its own next commit.
-# A fork the kit has patches for (patches/, ksu/patches/, viper4android/patches/, and each
-# phone's own devices/<device>/patches/ and ksu-patches/) must have each of them as a commit
+# A fork the kit has patches for (patches/, viper4android/patches/, and each
+# phone's own devices/<device>/patches/) must have each of them as a commit
 # above its 1.0 pin (by subject, as apply.sh's am_patches looks for them), and gets its full
 # history (no clone-depth): in a clone one commit deep, apply.sh and eos-verify.sh couldn't
 # see the kit's commits under the top one. A phone's patches for a project the 1.0 sources
@@ -74,11 +74,11 @@ def kit_patches():
     # tree path -> [(patch, subject)] for each kit patch dir, mapped as lib.sh's patch_project does:
     # the shared ones, then every phone's own (lib.sh's kit_patch_dirs, for all the phones at once)
     out = {}
-    subs = ["patches", "ksu/patches", "viper4android/patches"]
+    subs = ["patches", "viper4android/patches"]
     dev = os.path.join(kit, "devices")
     for d in sorted(os.listdir(dev)) if os.path.isdir(dev) else []:
         if os.path.isdir(os.path.join(dev, d)):
-            subs += [f"devices/{d}/patches", f"devices/{d}/ksu-patches"]
+            subs += [f"devices/{d}/patches"]
     for sub in subs:
         root = os.path.join(kit, sub)
         for d in sorted(os.listdir(root)) if os.path.isdir(root) else []:

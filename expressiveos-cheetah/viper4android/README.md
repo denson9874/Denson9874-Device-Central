@@ -92,8 +92,7 @@ husky's effect HAL is AIDL, and the Pixel 11s' stock vendor images have no HIDL 
 
 ## How to run
 
-On the build server, with the kit copied to `~/expressiveos-cheetah` (the KernelSU Next part sits next
-to it in `ksu/`):
+On the build server, with the kit copied to `~/expressiveos-cheetah`:
 
 ```bash
 K=~/expressiveos-cheetah/viper4android
@@ -210,8 +209,8 @@ exactly one v4a library line. Not done, because it isn't needed today.
 - ViPER4Android is built in. The app is in `/system_ext/priv-app` and the driver in
   `/vendor/lib64/soundfx`, and Android's audio framework loads the driver itself.
 - Don't flash the ViPER4Android RE Magisk/KernelSU module, its AIDL variant, or any ViPER4AndroidFX
-  module. If you installed one, remove it in KernelSU Next and reboot. ExpressiveOS ignores its second
-  registration, but under KernelSU the module still remounts the effects config and restarts audio at
+  module. If you installed one, remove it in your root manager and reboot. ExpressiveOS ignores its second
+  registration, but under root the module still remounts the effects config and restarts audio at
   every boot. The AIDL zip refuses to install on this phone anyway. Quick check that nothing patches the
   config: `adb shell grep -c v4a /vendor/etc/audio_effects.xml` should print `0`.
 - Is the driver working? Open ViPER4Android, then menu > Driver Status: it should show Version v2.1.1,
@@ -232,7 +231,7 @@ exactly one v4a library line. Not done, because it isn't needed today.
   GitHub, ROM updates keep your copy, because upstream always uses versionCode 1. Settings > Apps >
   ViPER4Android > Uninstall updates goes back to the ROM's version. A newer app may expect a newer
   driver than the ROM ships.
-- The app's debug driver-log view needs root: allow ViPER4Android in KernelSU Next if you want it.
+- The app's debug driver-log view needs root: if you rooted your phone, allow ViPER4Android there.
   Everything else works without root.
 - Credits and licence: the app is GPL-3.0 (likelikeslike). The driver is the reverse-engineered ViPER
   DSP (pittvandewitt, MrWhite214, Zackptg5, Martmists, Iscle, llsl; original work by Zhuhang and

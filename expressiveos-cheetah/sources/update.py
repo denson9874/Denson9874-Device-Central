@@ -22,8 +22,7 @@
 # Then what LineageOS's manifest itself changed since --lineage-base (projects added, removed,
 # moved to another repo or branch; Google's AOSP tag), the platform security patch level before
 # and after, the kernel (the kit's pins/kernel.xml against LineageOS's gs-6.1 kernel manifest
-# today) and KernelSU Next's and NeoZygisk's newest releases against ksu/ksu.conf. Google's
-# factory images (cheetah's firmware and vendor blobs) aren't checked here.
+# today). Google's factory images (cheetah's firmware and vendor blobs) aren't checked here.
 #
 # Ends with UPDATE_CHECK=OK, or UPDATE_CHECK=INCOMPLETE and what couldn't be checked.
 import argparse, base64, concurrent.futures, datetime, hashlib, json, os, platform, re, shutil, subprocess, sys
@@ -98,7 +97,7 @@ def printable(line):
     return re.sub(r"[\x00-\x08\x0a-\x1f\x7f]", lambda m: f"\\x{ord(m.group()):02x}", line)
 
 def conf(path):
-    # NAME=value lines (eos.conf, ksu.conf), nothing sourced
+    # NAME=value lines (eos.conf), nothing sourced
     out = {}
     for line in open(path):
         m = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*)=(.*)", line.strip())
@@ -322,12 +321,11 @@ def merge_tree(gd, ours, theirs):
 
 def kit_files():
     # tree path -> the files the kit's patches change there (patch dirs as lib.sh maps them),
-    # every device's (devices/<device>/patches and ksu-patches) as well as the shared ones
+    # every device's (devices/<device>/patches) as well as the shared ones
     out = {}
     devices = os.path.join(kit, "devices")
-    subs = ["patches", "ksu/patches", "viper4android/patches"]
-    subs += [os.path.join("devices", d, s) for d in (sorted(os.listdir(devices)) if os.path.isdir(devices) else [])
-             for s in ("patches", "ksu-patches")]
+    subs = ["patches", "viper4android/patches"]
+    subs += [os.path.join("devices", d, "patches") for d in (sorted(os.listdir(devices)) if os.path.isdir(devices) else [])]
     for sub in subs:
         root = os.path.join(kit, sub)
         for d in sorted(os.listdir(root)) if os.path.isdir(root) else []:
@@ -368,12 +366,6 @@ def check(a):
     def out(s=""):
         lines.append(s)
         print(s, flush=True)
-    try:
-        ksu = conf(os.path.join(kit, "ksu", "ksu.conf"))
-    except OSError as e:
-        ksu = None
-        problems.append(f"ksu/ksu.conf: {e}")
-
     ours_rev = git("-C", os.path.dirname(a.manifest), "rev-parse", "HEAD").stdout.strip()
     gh = ls_remote(eos["EOS_MANIFEST_URL"], "refs/heads/" + eos["EOS_MANIFEST_BRANCH"])
     ours, _, odefault = flatten(lambda n: open(os.path.join(os.path.dirname(a.manifest), n)).read(),
@@ -703,17 +695,6 @@ def check(a):
     except (ET.ParseError, RecursionError, KeyError, ValueError, OSError) as e:
         problems.append(f"kernel: {type(e).__name__}: {e}")
 
-    # KernelSU Next and NeoZygisk: newest release tags
-    out()
-    out("== KernelSU Next and NeoZygisk (ksu/ksu.conf)")
-    for label, url, have in () if ksu is None else (("KernelSU Next", ksu.get("src_url"), ksu.get("version")),
-                                                    ("NeoZygisk", ksu.get("zygisk_src_url"), ksu.get("zygisk_version"))):
-        try:
-            tags = re.findall(r"refs/tags/(v?\d+(?:\.\d+)+)$", git("ls-remote", "--tags", url, timeout=180).stdout, re.M)
-            newest = max(tags, key=lambda t: tuple(int(x) for x in t.lstrip("v").split("."))) if tags else None
-            out(f"{label}: ksu.conf has {have}, newest release tag {newest}" + ("" if newest == have else " (newer)"))
-        except (Fail, ValueError) as e:
-            problems.append(f"{label}: {e}")
     out()
     out("Not checked here: Google's factory images (each device's firmware and vendor blobs; update-firmware.sh), "
         "and what the pinned projects outside LineageOS's manifest have upstream")

@@ -33,7 +33,7 @@ kernel_image() {  # <boot image> <out Image>: the uncompressed kernel of a boot 
     else cp "$t/kernel" "$2"; fi
     rm -rf "$t"
 }
-koinfo() { python3 -I "$kit/ksu/tools/ko-info.py" "$@"; }
+koinfo() { python3 -I "$kit/tools/ko-info.py" "$@"; }
 
 # Query "more": the second round (devices-more.sh), with these helpers
 if [[ ${1:-} = more ]]; then
@@ -144,20 +144,13 @@ for d in cheetah husky kodiak grizzly cubs yogi; do
             { lz4 -dcq "$r" 2> /dev/null || gzip -dc "$r" 2> /dev/null || cat "$r"; } | (cd "$t/m" && cpio -id --quiet --no-absolute-filenames '*.ko' 2> /dev/null)
         done
         n=$(find "$t/m" -name '*.ko' | wc -l)
-        s=$(find "$t/m" -name '*.ko' -print0 | xargs -0 -r python3 -I "$kit/ksu/tools/ko-info.py" this-module 2> /dev/null | awk '{print $1}' | sort | uniq -c | tr '\n' ' ')
+        s=$(find "$t/m" -name '*.ko' -print0 | xargs -0 -r python3 -I "$kit/tools/ko-info.py" this-module 2> /dev/null | awk '{print $1}' | sort | uniq -c | tr '\n' ' ')
         echo "$d: ${v#"$HOME"/}: $n modules, struct module sizes (count bytes): $s"
     else
         echo "$d: couldn't unpack ${v#"$HOME"/}"
     fi
     rm -rf "$t"
 done
-
-h "KernelSU Next: KMIs ksud can patch, and its source's susfs"
-for k in ~/android-dt/ksu/*/ksud; do
-    [[ -f $k ]] && echo "${k#"$HOME"/}: $(strings "$k" | grep -oE 'android1[2-9]-[0-9]+\.[0-9]+' | sort -u | tr '\n' ' ')"
-done
-cat ~/android-dt/ksu/CURRENT 2> /dev/null
-ls ~/android-dt/ksu/*/src/kernel 2> /dev/null | grep -iE 'susfs|Kbuild|Makefile' | head
 
 h "firmware: factory and image zips, cached firmware"
 ls -l ~/android-dt/firmware/*.zip 2> /dev/null | awk '{print $5, $9}' | numfmt --to=iec --field=1 | sed "s#$HOME/##"

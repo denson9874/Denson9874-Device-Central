@@ -48,7 +48,7 @@
 #
 # The expressiveos-* actions run the ExpressiveOS builds in their own tree,
 # ~/expressiveos (expressiveos-cheetah/README.md), with tree_ref's kit installed as
-# ~/expressiveos-cheetah. setup (repo sync, then KernelSU Next's files), build and
+# ~/expressiveos-cheetah. setup (repo sync), build and
 # pack run for hours, past this job's limit, so each runs in a tmux session of its own
 # (eos-setup, eos-build, eos-pack) with a clean environment, outside the job: the job
 # starts it and returns, and expressiveos-status (read-only) shows how it's going.
@@ -108,7 +108,7 @@
 # expressiveos-devices (read-only) prints what ExpressiveOS builds for husky and the four Pixel
 # 11 phones need from the server (expressiveos-cheetah/tools/devices-check.sh): disk per product,
 # Evolution X's device and vendor projects (commits, remotes, local commits), whether the Pixel 11
-# repos are public, kernel versions, config facts and struct module sizes, KernelSU Next's KMIs,
+# repos are public, kernel versions, config facts and struct module sizes,
 # firmware zips, fastboot files and board names, AVB and Updater makefile lines, the audio effect
 # HAL type, Evolution X's commits on shared projects, build times, device-ok records and the
 # release folders' names. Names, sizes, SHAs, versions and build-file lines only. query "more":
@@ -120,7 +120,7 @@
 # update (expressiveos-cheetah/sources/update-check.sh): what LineageOS has added since the
 # commits ExpressiveOS's manifest pins, LineageOS's commits merged into each of ExpressiveOS's
 # forks in memory (clean, or which files conflict), the security patch level before and after,
-# the kernel's pins and KernelSU Next's release. Its fetches and merges stay in its own work
+# and the kernel's pins. Its fetches and merges stay in its own work
 # folder (~/expressiveos-update), borrowing the tree's git objects; nothing is committed or
 # pushed. Paths, commit counts and dates only, never file contents.
 #
@@ -186,7 +186,7 @@ on:
           expressiveos-firmware: cheetah's newest Google factory bootloader and radio
           into ~/android-dt/firmware/cheetah (query check: read-only).
           expressiveos-setup: install tree_ref's
-          expressiveos-cheetah, then setup.sh and ksu/fetch-ksu.sh in tmux.
+          expressiveos-cheetah, then setup.sh in tmux.
           expressiveos-keys: make ExpressiveOS's keys (once) and a backup archive.
           expressiveos-pins: read-only: the upstream commit of every project in the
           ExpressiveOS tree, as a manifest, plus its kernel tree and LFS files.
@@ -238,7 +238,7 @@ on:
           expressiveos-cheetah/devices: cheetah husky kodiak grizzly cubs yogi;
           default cheetah) or devices=<phone>,<phone>,... (each in turn in one tmux
           session, eos-images.sh then eos-pack.sh, stopping at the first failure),
-          kernel-only (build_kernel and kernelsu.ko, no pack), kernel-sync (sync the
+          kernel-only (build_kernel, no pack), kernel-sync (sync the
           kernel source to its pins again), installclean (m installclean before the
           build, which a build after modules= does anyway), clean (once a phone's pack ends PACK=OK,
           remove its out/target/product/<phone> and print what that freed; never
@@ -391,10 +391,9 @@ jobs:
           done
           echo "groups: $(id -nG) (installing packages needs an admin, or sudo in these)"
           echo "== ExpressiveOS folders"
-          for p in ~/expressiveos ~/expressiveos/.repo ~/expressiveos-cheetah ~/releases/expressiveos-cheetah ~/android-dt/ksu ~/android-dt/firmware/cheetah; do
+          for p in ~/expressiveos ~/expressiveos/.repo ~/expressiveos-cheetah ~/releases/expressiveos-cheetah ~/android-dt/firmware/cheetah; do
             if [[ -e "$p" ]]; then echo "exists   $p"; else echo "absent   $p"; fi
           done
-          echo "KernelSU Next fetched: $(cat ~/android-dt/ksu/CURRENT 2>/dev/null || echo none)"
           echo "cheetah firmware cached: $(cat ~/android-dt/firmware/cheetah/CURRENT 2>/dev/null || echo none)"
           echo "== tree lock"; if flock -n ~/.evolution-tree.lock true; then echo free; else echo "held (a routine or build is running)"; fi
 
@@ -713,7 +712,7 @@ jobs:
             fi
             # ninja's progress lines (libthiserror:...) and the compilers' and aidl's own warnings
             # (WARNING: <file>:<line>) would bury the kit's lines
-            grep -aE '^(== |OK: |FAIL|WARNING|SETUP|FETCH_KSU|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|MODULES_EXIT|PACK=|VERIFY|SESSION_EXIT|DEVICE |CLEAN |CANDIDATE |UPLOADED_TESTERS )|FAILED:|error:' "$log" \
+            grep -aE '^(== |OK: |FAIL|WARNING|SETUP|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|MODULES_EXIT|PACK=|VERIFY|SESSION_EXIT|DEVICE |CLEAN |CANDIDATE |UPLOADED_TESTERS )|FAILED:|error:' "$log" \
               | grep -avE '^(\[ *[0-9]+% |WARNING: [^ ]+:[0-9])' | tail -n 25 | cut -c1-300 || true
             # The kit's warnings from the whole log (apply.sh's come long before the end), each once
             w=$(grep -aE '^WARNING' "$log" | grep -avE '^WARNING: [^ ]+:[0-9]' | sort | uniq -c | sort -rn | head -n 10 | cut -c1-300 || true)
@@ -1296,7 +1295,7 @@ jobs:
             echo "phone: $dev" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
           case $ACTION in
-            expressiveos-setup) phones=; launch setup "$kit/setup.sh && $kit/ksu/fetch-ksu.sh" ;;
+            expressiveos-setup) phones=; launch setup "$kit/setup.sh" ;;
             expressiveos-build)
               if [[ -n $mods ]]; then
                 # Written here, run in the eos-build session (nothing of ExpressiveOS's runs now)
@@ -1304,14 +1303,14 @@ jobs:
           #!/bin/bash
           # expressiveos-build modules=: lunch and m on those modules alone, a compile check (of a
           # try= branch, say), written by the runner and run in the eos-build session. The tree,
-          # lunch and locks are a build's (ksu/tools/ksu-images.sh); nothing is signed, packed or
+          # lunch and locks are a build's (tools/eos-make.sh); nothing is signed, packed or
           # recorded. m installs the modules into the product out, which then no longer matches the
           # last build, so its build.ok and target-files.ok (or a quick build's quick.ok) go first: that build can't be
           # packed or verified again, and the next pack needs eos-images.sh. A module the product
           # doesn't install (Settings, which SettingsGoogle overrides) would stay in the product
           # out, which eos-verify.sh reads and the next target-files zip copies (the images take
           # only the build's file list), so <state>/installclean marks it: the next build that makes images
-          # starts with m installclean (ksu-images.sh). The last line is MODULES_EXIT=0 or
+          # starts with m installclean (eos-make.sh). The last line is MODULES_EXIT=0 or
           # MODULES_EXIT=1.
           #   build-modules.sh <kit> <module>...
           set -o pipefail
