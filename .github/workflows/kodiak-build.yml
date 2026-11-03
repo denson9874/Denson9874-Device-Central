@@ -918,7 +918,15 @@ jobs:
       # release folders, never writes them, so it may run beside a build
       - name: Storage
         if: inputs.action == 'expressiveos-storage'
+        env:
+          # Google Drive's sign-in for the backup (rclone's drive.file scope: only the folders
+          # rclone made itself), as the gdrive: remote from the environment, never on the disk
+          GDRIVE_TOKEN: ${{ secrets.RCLONE_GDRIVE_TOKEN }}
         run: |
+          if [[ -n ${GDRIVE_TOKEN:-} ]]; then
+            export RCLONE_CONFIG_GDRIVE_TYPE=drive RCLONE_CONFIG_GDRIVE_SCOPE=drive.file RCLONE_CONFIG_GDRIVE_TOKEN=$GDRIVE_TOKEN
+          fi
+          unset GDRIVE_TOKEN
           p='(cheetah|husky|kodiak|grizzly|cubs|yogi)'
           [[ "$QUERY" =~ ^(|list|drive\ device=($p|all)(\ dry-run)?|prune(\ device=$p)?(\ dry-run)?|retired(\ dry-run)?)$ ]] \
             || { echo "::error::query must be: list, drive device=<phone>|all [dry-run], prune [device=<phone>] [dry-run] or retired [dry-run]"; exit 1; }
