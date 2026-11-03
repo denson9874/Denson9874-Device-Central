@@ -227,6 +227,7 @@ on:
           - expressiveos-pack
           - expressiveos-ota
           - expressiveos-device-ok-husky-1103
+          - expressiveos-device-ok-p11-1103
           - expressiveos-flasher-release
       tree_ref:
         description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -keys, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
@@ -892,6 +893,33 @@ jobs:
             "Basis: built from the same sources as the Nov 3 cheetah build, which passed its Pixel 7 Pro soak and re-check (cheetah check/ device-ok, 2026-11-03 12:36 UTC); this build: VERIFY=OK, PACK=OK." \
             > "$m.part" && mv -- "$m.part" "$m"
           cat -- "$m"
+          echo DEVICE_OK_WRITTEN
+
+      # The Pixel 11s' Nov 3 check/ candidates: a .device-ok that says plainly no phone tested
+      # them, on Daryl's go. query: devices=<phone>,<phone>,... (kodiak grizzly cubs yogi)
+      - name: Record the Pixel 11s' Nov 3 candidates as released without a phone test
+        if: inputs.action == 'expressiveos-device-ok-p11-1103'
+        run: |
+          [[ "$QUERY" =~ ^devices=(kodiak|grizzly|cubs|yogi)(,(kodiak|grizzly|cubs|yogi))*$ ]] || { echo "::error::query must be devices=<phone>,... (kodiak grizzly cubs yogi)"; exit 1; }
+          IFS=, read -r -a ds <<< "${QUERY#devices=}"
+          for d in "${ds[@]}"; do
+            c=~/releases/expressiveos-$d/check n=ExpressiveOS-17.0-20261103-$d-1.0-Official-fastboot.zip
+            z=$c/$n m=$c/$n.device-ok
+            [[ -f $z && -f $z.sha256 && -f $z.pack-ok ]] || { echo "::error::no $z with its .sha256 and .pack-ok"; exit 1; }
+            [[ ! -e $m ]] || { echo "::error::$m exists already:"; cat -- "$m"; exit 1; }
+            [[ ! -e $c/try.txt ]] || { echo "::error::$c's candidate was built with try= commits"; exit 1; }
+            want=$(cut -d' ' -f1 "$z.sha256")
+            grep -qx "sha256 $want" "$z.pack-ok" || { echo "::error::$z.pack-ok doesn't name $want"; exit 1; }
+            grep -qx 'build full' "$z.pack-ok" || { echo "::error::$z.pack-ok doesn't say build full"; exit 1; }
+            got=$(sha256sum -- "$z" | cut -d' ' -f1)
+            [[ $got = "$want" ]] || { echo "::error::$n hashes to $got, not $want"; exit 1; }
+            printf '%s\n' "sha256 $got" \
+              "NOT tested on a phone: there is no Pixel 11 to test it on." \
+              "Released on Daryl's go: 2026-11-03 12:28 UTC, \"We can go ahead with Pixel 11 series bring-up and release\" (ExpressiveOS is at parity with Evolution X, which users have confirmed working on these phones)." \
+              "Basis: built from the same sources as the Nov 3 cheetah build, which passed its Pixel 7 Pro soak and re-check; this build: VERIFY=OK, PACK=OK." \
+              > "$m.part" && mv -- "$m.part" "$m"
+            echo "== $d"; cat -- "$m"
+          done
           echo DEVICE_OK_WRITTEN
 
       - name: Check out the flasher publish script
