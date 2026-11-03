@@ -1,0 +1,59 @@
+# ExpressiveOS (expressiveos-cheetah/bootanimation): a copy of the boot animation's style and
+# colours in /metadata, for the next boot's animation. Installed to /product/etc/init by
+# bootanimation.mk together with /product/media/bootanimation_holiday.zip; the two ship together.
+#
+# The phone's vendor init starts bootanim at late-fs, before /data is mounted (init.gs201.rc,
+# "Start bootanimation class before mount"), and persist properties are only loaded later, in
+# post-fs-data. So at boot BootAnimation sees persist.sys.bootanim.name and
+# persist.bootanim.color1..4 empty. /metadata is mounted in init's first stage: while the real
+# properties are still empty, BootAnimation (frameworks_base) reads these files instead. It
+# never waits for them; it takes the name only if bootanimation_<name>.zip is there, and the
+# real colours replace these as soon as they load.
+#
+# Only init writes here, as root, labelled bootanim_metadata_file (device_evolution_sepolicy),
+# which bootanim may read:
+#   name           ${persist.sys.bootanim.name}, "default" when it's empty
+#   color1..color4 ${persist.bootanim.colorN} (signed decimal ARGB, as SystemUI writes them),
+#                  "none" when it's empty
+# An empty property can't be expanded without a default (init's ExpandProps). write creates a
+# file 0600, so each write is followed by a chmod for bootanim (uid graphics).
+#
+# Property triggers run from just after 'on boot': init then queues every action whose
+# properties already match, ro.persistent_properties.ready=true among them, which rewrites all
+# five files once per boot. After that each file follows its property; '=*' also matches a
+# property set to empty. Charger mode never loads persist properties, so nothing runs there.
+
+on post-fs
+    mkdir /metadata/bootanim 0755 root root
+
+on property:ro.persistent_properties.ready=true
+    write /metadata/bootanim/name ${persist.sys.bootanim.name:-default}
+    chmod 0644 /metadata/bootanim/name
+    write /metadata/bootanim/color1 ${persist.bootanim.color1:-none}
+    chmod 0644 /metadata/bootanim/color1
+    write /metadata/bootanim/color2 ${persist.bootanim.color2:-none}
+    chmod 0644 /metadata/bootanim/color2
+    write /metadata/bootanim/color3 ${persist.bootanim.color3:-none}
+    chmod 0644 /metadata/bootanim/color3
+    write /metadata/bootanim/color4 ${persist.bootanim.color4:-none}
+    chmod 0644 /metadata/bootanim/color4
+
+on property:persist.sys.bootanim.name=*
+    write /metadata/bootanim/name ${persist.sys.bootanim.name:-default}
+    chmod 0644 /metadata/bootanim/name
+
+on property:persist.bootanim.color1=*
+    write /metadata/bootanim/color1 ${persist.bootanim.color1:-none}
+    chmod 0644 /metadata/bootanim/color1
+
+on property:persist.bootanim.color2=*
+    write /metadata/bootanim/color2 ${persist.bootanim.color2:-none}
+    chmod 0644 /metadata/bootanim/color2
+
+on property:persist.bootanim.color3=*
+    write /metadata/bootanim/color3 ${persist.bootanim.color3:-none}
+    chmod 0644 /metadata/bootanim/color3
+
+on property:persist.bootanim.color4=*
+    write /metadata/bootanim/color4 ${persist.bootanim.color4:-none}
+    chmod 0644 /metadata/bootanim/color4
