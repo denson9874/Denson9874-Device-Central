@@ -316,7 +316,11 @@ try {
 		check(await page.getByRole("button", { name: "Install", exact: true }).isEnabled(), "keeping data needs no erase confirmation");
 		await page.getByRole("button", { name: "Install", exact: true }).click();
 		await page.getByRole("button", { name: "Reconnect" }).waitFor({ timeout: 60_000 });
+		// On the way to fastbootd the page says what the phone shows, and when to press Reconnect
+		check(await page.getByText("Your phone is starting fastbootd").isVisible(), "the page says what the phone shows on its way to fastbootd");
+		check(await page.getByText(/Once your phone shows FASTBOOTD, press Reconnect/).isVisible(), "the Reconnect box says to wait for FASTBOOTD");
 		await page.screenshot({ path: join(shots, "m3-reconnect.png") });
+		await page.screenshot({ path: join(shots, "m3b-restart-guide.png"), fullPage: true });
 		await page.getByRole("button", { name: "Reconnect" }).click();
 		await page.getByRole("heading", { name: "ExpressiveOS is installed" }).waitFor({ timeout: 120_000 });
 		await page.waitForTimeout(500);

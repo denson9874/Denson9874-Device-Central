@@ -5,10 +5,10 @@ import { ADB_FILTER, type AdbConnection, AdbError, connectAdb, isAdbDevice } fro
 import { type DeviceInfo, DEVICES, deviceByCodename } from "../devices.ts";
 import { parseRequirements } from "../fastboot/android-info.ts";
 import { FastbootClient, FastbootError, type LogKind, ProtocolError } from "../fastboot/client.ts";
-import { Phone } from "../fastboot/device.ts";
+import { type Mode, Phone } from "../fastboot/device.ts";
 import { FastbootInfoError } from "../fastboot/fastboot-info.ts";
 import { logicalPartitions } from "../fastboot/lp.ts";
-import { WebUsbConnector, linkTo } from "../fastboot/usb-connector.ts";
+import { RESTART_WAIT, WebUsbConnector, linkTo } from "../fastboot/usb-connector.ts";
 import { FASTBOOT_FILTER, USB_DRIVER_URL, UsbError, UsbTransport, hostOs, isFastbootDevice, requestPhone, webUsbSupported } from "../fastboot/webusb.ts";
 import { PlanError, type Step, buildPlan, describe } from "../flash/plan.ts";
 import { type PhoneReport, type Problem, canUnlock, checkBeforeInstall, inspectPhone, plausibleProduct, reportProblems, unlockBootloader } from "../flash/preflight.ts";
@@ -281,6 +281,13 @@ export class App {
 	private reportZip: File | null = null;
 	private connector: WebUsbConnector;
 	private reconnectBox: HTMLElement | null = null;
+	/** The Reconnect box's words, which say what the phone shows when it's ready to be chosen, and why a choice didn't work. */
+	private reconnectText: HTMLElement | null = null;
+	private reconnectNote: HTMLElement | null = null;
+	/** During the install, what the phone shows while it restarts. */
+	private restartGuide: HTMLElement | null = null;
+	/** Where the phone is restarting to during the install, while it is. */
+	private restartTarget: Mode | null = null;
 	/** The step's steps into Fastboot Mode, which a notice with them takes the place of. */
 	private howtoBox: HTMLElement | null = null;
 	private flash: Flash | null = null;
@@ -313,10 +320,12 @@ export class App {
 		document.getElementById("brand-mark")!.append(bloomMark(30));
 		this.connector = new WebUsbConnector({
 			needsReconnect: (show) => this.showReconnect(show),
-			restarting: (on) => {
+			restarting: (on, target) => {
 				if (this.step !== "install" || !this.busy) return;
+				this.restartTarget = on ? (target ?? null) : null;
+				this.showRestartGuide();
 				this.bloom.setMode(on ? "waiting" : "install");
-				if (on) this.setStatus(null, "Waiting for the phone to restart…");
+				if (on) this.setStatus(null, target === "fastbootd" ? "Waiting for fastbootd to start on the phone…" : "Waiting for the phone to restart…");
 			},
 		});
 		this.setupTheme();
@@ -527,6 +536,9 @@ export class App {
 		this.renderStepper();
 		this.logView = null;
 		this.reconnectBox = null;
+		this.reconnectText = null;
+		this.reconnectNote = null;
+		this.restartGuide = null;
 		this.howtoBox = null;
 		const body: Child[] = [];
 		switch (this.step) {
@@ -2093,9 +2105,72 @@ export class App {
 		if (!this.reconnectBox) return;
 		this.reconnectBox.hidden = !show;
 		if (show) {
-			this.setStatus(null, "Press Reconnect and choose the phone again");
+			const target = this.restartTarget;
+			this.reconnectText!.textContent =
+				target === null
+					? "The phone restarted, and the browser needs you to pick it again before it can go on."
+					: `Once your phone shows ${target === "fastbootd" ? "FASTBOOTD" : "Fastboot Mode"}, press Reconnect and choose it in the browser's list ` +
+						"(it may be called Pixel, Android or Fastboot). It isn't in the list until then.";
+			this.setReconnectNote(null);
+			this.setStatus(null, target === "fastbootd" ? "When the phone shows FASTBOOTD, press Reconnect" : "Press Reconnect and choose the phone again");
 			this.reconnectBox.querySelector("button")?.focus();
 		}
+	}
+
+	/** Why the last press of Reconnect didn't get the phone, under the box's words (null: nothing). */
+	private setReconnectNote(note: string | null) {
+		if (!this.reconnectNote) return;
+		this.reconnectNote.textContent = note ?? "";
+		this.reconnectNote.hidden = !note;
+	}
+
+	/** Reconnect pressed: the user picks the phone in the browser's list. */
+	private async reconnect() {
+		const target = this.restartTarget;
+		// Emptied (which isn't said), so that the same reason for another empty list is said again
+		this.live.textContent = "";
+		try {
+			await this.connector.pick();
+		} catch (e) {
+			// The page may have found the phone on its own while the list was open (or stopped
+			// waiting): what was or wasn't picked then no longer matters
+			if (!(e instanceof UsbError) || !this.reconnectBox || this.reconnectBox.hidden) return;
+			// The list was closed with nothing chosen. Most often it was empty, because the phone
+			// hadn't got there yet: it stays on the G logo for a while on the way to fastbootd
+			const none = e.message === "No phone was chosen";
+			const note = !none
+				? e.message
+				: target === "fastbootd"
+					? "No phone was chosen. If the list was empty, fastbootd hasn't started yet: wait until the phone shows FASTBOOTD, then press Reconnect again."
+					: "No phone was chosen. If the list was empty, the phone isn't back yet: wait until it shows Fastboot Mode, then press Reconnect again.";
+			this.setReconnectNote(note);
+			if (none) this.say(note);
+			else this.setStatus(null, note);
+		}
+	}
+
+	/** Shows, during the install, what the phone shows while it restarts (or hides it). */
+	private showRestartGuide() {
+		const box = this.restartGuide;
+		if (!box) return;
+		const target = this.restartTarget;
+		box.hidden = target === null;
+		if (target === null) {
+			box.replaceChildren();
+			return;
+		}
+		const minutes = RESTART_WAIT[target].timeoutMs / 60_000;
+		box.replaceChildren(
+			target === "fastbootd"
+				? notice(
+						"info",
+						"Your phone is starting fastbootd",
+						"First the warning that the bootloader is unlocked (don't press Power there), then the G logo, which can stay for a while. Then fastbootd comes up: a black screen with FASTBOOTD in blue under the ExpressiveOS mark, a few lines about the phone, and a menu that starts with Reboot system now.",
+						`Don't press anything on the phone: the install goes on from that screen.${hostOs() === "android" ? "" : " This page usually finds the phone again on its own."}`,
+						`If nothing changes for ${minutes} minutes, the page stops and says what to do.`,
+					)
+				: notice("info", "Your phone is restarting into Fastboot Mode", "It's back in a few seconds. Don't press anything on the phone."),
+		);
 	}
 
 	private async install() {
@@ -2118,25 +2193,17 @@ export class App {
 
 		const list = h("ol", { class: "steps" });
 		const bar = progressBar("Install");
+		this.restartTarget = null;
+		this.restartGuide = h("div", { class: "restart-guide", hidden: true });
+		this.reconnectText = h("p", null, "The phone restarted, and the browser needs you to pick it again before it can go on.");
+		this.reconnectNote = h("p", { class: "reconnect-note", hidden: true });
 		this.reconnectBox = h(
 			"div",
 			{ class: "reconnect", hidden: true },
 			h("strong", null, "Choose the phone again"),
-			h("p", null, "The phone restarted, and the browser needs you to pick it again before it can go on."),
-			h(
-				"button",
-				{
-					class: "btn btn-primary btn-attention",
-					type: "button",
-					on: {
-						click: () =>
-							void this.connector.pick().catch((e) => {
-								if (e instanceof UsbError && e.message !== "No phone was chosen") this.setStatus(null, e.message);
-							}),
-					},
-				},
-				"Reconnect",
-			),
+			this.reconnectText,
+			this.reconnectNote,
+			h("button", { class: "btn btn-primary btn-attention", type: "button", on: { click: () => void this.reconnect() } }, "Reconnect"),
 		);
 		const pre = h("pre");
 		this.logView = pre;
@@ -2147,6 +2214,7 @@ export class App {
 				h("h2", null, "Installing ExpressiveOS"),
 				h("p", { class: "lead" }, "Keep the phone plugged in and this tab open."),
 				bar,
+				this.restartGuide!,
 				this.reconnectBox!,
 				list,
 				h("details", { class: "log" }, h("summary", null, "Details"), pre),
@@ -2303,7 +2371,7 @@ export class App {
 				"Restart the phone into Fastboot Mode first: hold Power and Volume down until it restarts. Then connect it and install again. Nothing is lost by trying again, and the phone won't start ExpressiveOS until an install finishes.";
 		} else if (wrote) {
 			next =
-				"Nothing is lost by trying again: put the phone in Fastboot Mode if it isn't (hold Power and Volume down), connect it and install again. The phone won't start ExpressiveOS until an install finishes.";
+				"Nothing is lost by trying again: leave the phone on FASTBOOTD or Fastboot Mode if it shows either, or else put it in Fastboot Mode (hold Power and Volume down), then connect it and install again. The phone won't start ExpressiveOS until an install finishes.";
 		} else if (broken) {
 			next = "Nothing was written to the phone. Restart it into Fastboot Mode before you try again: hold Power and Volume down until it restarts.";
 		} else {
@@ -2318,6 +2386,8 @@ export class App {
 		// The Reconnect button may have had the keyboard: it goes to what went wrong
 		this.keepFocus(() => {
 			this.showReconnect(false);
+			this.restartTarget = null;
+			this.showRestartGuide();
 			this.panel.querySelector(".lead")?.after(box, actions);
 		}, box);
 	}

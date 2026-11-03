@@ -23,9 +23,9 @@ vi.mock("../src/ui/bloom.ts", async () => {
 	const h = await import("./app-harness.ts");
 	return { BloomStage: h.FakeBloom, bloomMark: () => new h.FakeElement("svg") };
 });
-vi.mock("../src/fastboot/usb-connector.ts", async () => {
+vi.mock("../src/fastboot/usb-connector.ts", async (importOriginal) => {
 	const h = await import("./app-harness.ts");
-	return { linkTo: h.linkTo, WebUsbConnector: h.WebUsbConnector };
+	return { ...(await importOriginal<object>()), linkTo: h.linkTo, WebUsbConnector: h.WebUsbConnector };
 });
 vi.mock("../src/fastboot/webusb.ts", async (importOriginal) => {
 	const h = await import("./app-harness.ts");
@@ -111,6 +111,7 @@ beforeEach(() => {
 	world.unpermitted = new WeakSet();
 	world.askAfterMs = 0;
 	world.reconnectTimeoutMs = 5000;
+	world.duringRestart = null;
 	Object.assign(adbTiming, { answerTimeoutMs: 300, allowTimeoutMs: 800, settleMs: 20 });
 	world.stored = new Map();
 	world.files = new Map();
@@ -290,6 +291,89 @@ describe("a build without a stock init_boot (every Pixel 11 build)", () => {
 		// Nothing on the other slot: there's no stock image to put there
 		expect(fake.physical.get("init_boot_b")!.every((x) => x === 0xee)).toBe(true);
 		expect(text()).not.toContain("KernelSU Next app");
+	});
+
+	it("says what the phone shows on its way to fastbootd, and to wait for it when the browser's list is empty", async () => {
+		const b = build("kodiak", "1.0", "2026-11-03", "require board=kodiak\n", { stock: false, seed: 11 });
+		publish([b]);
+		const fake = phone({ product: "kodiak" });
+		await start("Pixel 11 Pro XL", "kodiak");
+		await toConnected();
+		await press("Continue");
+		const box = (sel: string) => page.panel.querySelector(sel)!;
+		const seen: Record<string, { hidden: boolean; text: string }> = {};
+		const look = (name: string, sel: string) => (seen[name] = { hidden: box(sel).hidden, text: box(sel).textContent });
+		world.duringRestart = async (target, ui) => {
+			if (target !== "fastbootd") return;
+			look("guide", ".restart-guide");
+			look("reconnect before", ".reconnect");
+			// Chrome on Android, or a computer after a minute: the page asks for the phone, which is
+			// still on the G logo, so the browser's list is empty and is closed with nothing chosen
+			ui.needsReconnect(true);
+			look("reconnect", ".reconnect");
+			const plugged = world.device;
+			world.device = null;
+			await press("Reconnect");
+			look("note", ".reconnect-note");
+			world.device = plugged;
+		};
+		// The first command after the restart: the guide and the Reconnect box are gone by then
+		const handle = fake.handle.bind(fake);
+		fake.handle = (cmd: string) => {
+			if (cmd.startsWith("update-super") && !seen.after) look("after", ".restart-guide");
+			return handle(cmd);
+		};
+		await install();
+		expect(text()).toContain("ExpressiveOS is installed");
+		expect(seen.guide.hidden).toBe(false);
+		expect(seen.guide.text).toContain("Your phone is starting fastbootd");
+		expect(seen.guide.text).toContain("First the warning that the bootloader is unlocked (don't press Power there), then the G logo, which can stay for a while.");
+		expect(seen.guide.text).toContain("FASTBOOTD in blue under the ExpressiveOS mark");
+		expect(seen.guide.text).toContain("This page usually finds the phone again on its own.");
+		expect(seen.guide.text).toContain("If nothing changes for 5 minutes, the page stops and says what to do.");
+		expect(seen["reconnect before"].hidden).toBe(true);
+		expect(seen.reconnect.hidden).toBe(false);
+		expect(seen.reconnect.text).toContain(
+			"Once your phone shows FASTBOOTD, press Reconnect and choose it in the browser's list (it may be called Pixel, Android or Fastboot). It isn't in the list until then.",
+		);
+		expect(seen.note.hidden).toBe(false);
+		expect(seen.note.text).toBe(
+			"No phone was chosen. If the list was empty, fastbootd hasn't started yet: wait until the phone shows FASTBOOTD, then press Reconnect again.",
+		);
+		expect(seen.after.hidden).toBe(true);
+	});
+
+	it("says it again when the list is closed empty again, and nothing once the page found the phone itself", async () => {
+		const b = build("grizzly", "1.0", "2026-11-03", "require board=grizzly\n", { stock: false, seed: 12 });
+		publish([b]);
+		phone({ product: "grizzly" });
+		await start("Pixel 11 Pro", "grizzly");
+		await toConnected();
+		await press("Continue");
+		const said = sayings();
+		const note = "No phone was chosen. If the list was empty, fastbootd hasn't started yet: wait until the phone shows FASTBOOTD, then press Reconnect again.";
+		let late: { hidden: boolean; text: string } | null = null;
+		world.duringRestart = async (target, ui) => {
+			if (target !== "fastbootd") return;
+			const plugged = world.device;
+			world.device = null;
+			ui.needsReconnect(true);
+			await press("Reconnect");
+			await press("Reconnect");
+			// The page finds the phone on its own while a list is open; that list then closes empty
+			ui.needsReconnect(false);
+			const reconnect = buttonIn(page.panel, "Reconnect")!;
+			reconnect.click();
+			await settle();
+			const n = page.panel.querySelector(".reconnect-note")!;
+			late = { hidden: n.hidden, text: n.textContent };
+			world.device = plugged;
+		};
+		await install();
+		expect(text()).toContain("ExpressiveOS is installed");
+		expect(said.filter((s) => s.includes(note))).toHaveLength(2);
+		expect(late).toEqual({ hidden: false, text: note });
+		expect(said.filter((s) => /isn't back yet|No phone was chosen/.test(s) && !s.includes(note))).toEqual([]);
 	});
 });
 
@@ -1062,7 +1146,7 @@ describe("a connection that broke part way (protocol-2)", () => {
 		await press("Continue");
 		await install();
 		expect(text()).toContain("Stopped at");
-		expect(text()).toContain("put the phone in Fastboot Mode if it isn't");
+		expect(text()).toContain("leave the phone on FASTBOOTD or Fastboot Mode if it shows either, or else put it in Fastboot Mode");
 		expect(text()).not.toContain("Restart the phone into Fastboot Mode first");
 	});
 

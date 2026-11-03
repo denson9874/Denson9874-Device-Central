@@ -1028,6 +1028,10 @@ details.log pre {
 	margin-top: 8px;
 }
 
+.reconnect-note {
+	font-weight: 600;
+}
+
 .done-list {
 	padding-left: 1.2em;
 	margin: 10px 0 0;

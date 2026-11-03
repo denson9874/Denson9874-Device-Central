@@ -22,9 +22,9 @@ vi.mock("../src/ui/bloom.ts", async () => {
 	const h = await import("./app-harness.ts");
 	return { BloomStage: h.FakeBloom, bloomMark: () => new h.FakeElement("svg") };
 });
-vi.mock("../src/fastboot/usb-connector.ts", async () => {
+vi.mock("../src/fastboot/usb-connector.ts", async (importOriginal) => {
 	const h = await import("./app-harness.ts");
-	return { linkTo: h.linkTo, WebUsbConnector: h.WebUsbConnector };
+	return { ...(await importOriginal<object>()), linkTo: h.linkTo, WebUsbConnector: h.WebUsbConnector };
 });
 vi.mock("../src/fastboot/webusb.ts", async (importOriginal) => {
 	const h = await import("./app-harness.ts");

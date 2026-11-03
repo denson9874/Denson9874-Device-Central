@@ -69,8 +69,15 @@ The six steps:
    (resized to each image), then erase userdata and metadata for a clean install. Images bigger than the phone's
    download buffer go in sparse pieces of at most 1 GiB, and a raw image's AVB footer is moved to the end of its
    partition, both as AOSP fastboot does. Without root, the stock `init_boot` goes to both slots. The page keeps the
-   screen awake, and when the phone comes back from a restart as a device the browser doesn't know yet (Chrome on Android
-   always does this), it shows a Reconnect button.
+   screen awake. While the phone restarts, the page says what it shows: on the way to fastbootd, the unlocked-bootloader
+   warning and the G logo, which can stay for a while, then a black screen with FASTBOOTD in blue under the ExpressiveOS mark and a menu that starts
+   with Reboot system now. When the phone comes back as a device the browser doesn't know yet (Chrome on Android always
+   does this), it shows a Reconnect button: at once on Chrome on Android, and on a computer only after a minute for
+   fastbootd (20 seconds for the bootloader), since a computer's browser usually finds the phone in fastbootd on its own.
+   The button's box says to press it once the phone shows FASTBOOTD, and when the browser's list is closed with nothing
+   chosen (it's empty until fastbootd is up), it says to wait for that screen and press Reconnect again. The page waits 5
+   minutes for fastbootd (3 for the bootloader), then stops and says what to do (`RESTART_WAIT` in
+   `src/fastboot/usb-connector.ts`).
 6. **Done.** Full bloom, and how to finish setting up root.
 
 Nothing is ever loaded whole into memory. The zip is read as slices of the stored file, so a 7 GB release needs about
