@@ -6,8 +6,10 @@
 #   eos-pack.sh             # verify, then pack the candidate into ~/<EOS_RELEASES>/check
 #                           # (replaced each time)
 #   eos-pack.sh --release   # the tested candidate into ~/<EOS_RELEASES>
-#   eos-pack.sh --upload    # --release, then upload it to SourceForge (EOS_SF_DIR), and
-#                           # its target-files to R2 (EOS_R2_REMOTE) or, without, SourceForge
+#   eos-pack.sh --upload    # --release, then upload its target-files to R2 (EOS_R2_REMOTE):
+#                           # no SourceForge (Daryl, 2026-11-03); the zip goes to the web
+#                           # installer (tools/expressiveos_flasher) and the OTA to the
+#                           # Updater (tools/eos-ota.sh), both on R2
 #   eos-pack.sh --testers   # check/'s candidate, not yet tested on a phone, to testers:
 #                           # SourceForge's <EOS_SF_DIR>/testers and ~/<EOS_RELEASES>/testers
 #
@@ -148,6 +150,8 @@ taken() {   # taken <name> <file>: <name> already holds something other than <fi
     if [[ -e $DEST/$1 ]] && ! cmp -s -- "$2" "$DEST/$1"; then return 0; fi
     [[ "$mode" = --upload || "$mode" = --testers ]] || return 1
     if [[ $1 = target-files/* && -n "$R2TF" ]]; then r2_taken "${1#target-files/}" "$2"; return; fi
+    # --upload checks R2's target-files only: releases no longer go to SourceForge
+    [[ "$mode" = --testers ]] || return 1
     # SourceForge too, even when the copy here matches: the copies here may have been
     # cleaned up since that upload and released again from another build. sftp -b ends
     # with 1 and "not found" on an ls of a file that isn't there; any other failure (no
@@ -179,7 +183,7 @@ generate_changelog() {   # generate_changelog <changelog.txt> <announcement.md> 
     # INSTALLED_FROM as <ref>@<commit>
     python3 -I - "$notes" "$out" "$ann" "$EOS_DEVICE" "$EOS_VERSION" "$EOS_MODEL" "$bname" "$spl" \
         "$(sha256sum -- "$zip" | cut -d' ' -f1)" "$(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^[^@]*@//p' "$kit/INSTALLED_FROM" 2>/dev/null | grep . || echo unknown)" \
-        "https://sourceforge.net/projects/$(cut -d/ -f5 <<< "$EOS_SF_DIR")/files/$(cut -d/ -f6- <<< "$EOS_SF_DIR")/" <<'EOF' \
+        "https://expressiveos-flash.daryldenson-apps.workers.dev" <<'EOF' \
         || fail "can't write the release notes from $notes"
 import re, sys
 notes, out, ann, dev, version, model, build, spl, sha, kitrev, downloads = sys.argv[1:]
@@ -530,22 +534,17 @@ M=$CHECK/$NAME.device-ok
 echo "OK: on-device check: $(head -c 300 "$M")"
 
 if [[ "$mode" = --upload ]]; then
-    # The '-' lets a mkdir fail when the folder exists; the cd must work
-    { printf -- '-mkdir %s\n-mkdir %s\n' "${EOS_SF_DIR%/*}" "$EOS_SF_DIR"
-      [[ -n "$R2TF" ]] || printf -- '-mkdir %s/target-files\ncd %s/target-files\n' "$EOS_SF_DIR" "$EOS_SF_DIR"
-      printf 'cd %s\nbye\n' "$EOS_SF_DIR"; } | sf > "$T/sftp.log" 2>&1 \
-        || { tail -5 "$T/sftp.log" >&2; fail "can't reach $EOS_SF_DIR on SourceForge"; }
-    if [[ -n "$R2TF" ]]; then
-        [[ -x ~/bin/rclone ]] || fail "no ~/bin/rclone for the target-files upload to $R2TF (tools/ota_mirror/README.md); EOS_R2_REMOTE= in eos.conf sends them to SourceForge instead"
-        rc2 lsf "$EOS_R2_REMOTE" > /dev/null 2> "$T/rclone.log" \
-            || { tail -3 "$T/rclone.log" >&2; fail "can't reach $EOS_R2_REMOTE (rclone's ${EOS_R2_REMOTE%%:*}: remote, tools/ota_mirror/README.md)"; }
-    fi
+    # Releases go to R2 only (no SourceForge since 2026-11-03)
+    [[ -n "$R2TF" ]] || fail "--upload sends the target-files to R2: set EOS_R2_REMOTE in eos.conf"
+    [[ -x ~/bin/rclone ]] || fail "no ~/bin/rclone for the target-files upload to $R2TF (tools/ota_mirror/README.md)"
+    rc2 lsf "$EOS_R2_REMOTE" > /dev/null 2> "$T/rclone.log" \
+        || { tail -3 "$T/rclone.log" >&2; fail "can't reach $EOS_R2_REMOTE (rclone's ${EOS_R2_REMOTE%%:*}: remote, tools/ota_mirror/README.md)"; }
 fi
-# Never overwrite a released name, here or on SourceForge (where the release folder may be
-# all that's left): a different zip or target-files under an existing name gets -r2, -r3...
+# Never overwrite a released name, here or in R2's target-files: a different zip or
+# target-files under an existing name gets -r2, -r3...
 REL=$NAME; RTF=$TFN; r=2
 while taken "$REL" "$T/$NAME" || taken "target-files/$RTF" "$tf"; do
-    (( r <= 20 )) || fail "$base-r2 to -r20 are all taken (here, on SourceForge or in R2); look at $DEST and $EOS_SF_DIR"
+    (( r <= 20 )) || fail "$base-r2 to -r20 are all taken (here or in R2); look at $DEST and $R2TF"
     REL=$base-r$r-fastboot.zip; RTF=$base-r$r-target_files.zip; r=$((r + 1))
 done
 [[ -e $DEST/$REL ]] || cp -- "$T/$NAME" "$DEST/$REL"
@@ -595,14 +594,10 @@ cat "$TFD/$RTF.sha256" "$OTAD/$ROTA.sha256"
 echo "RELEASED $DEST/$REL"
 
 if [[ "$mode" = --upload ]]; then
-    echo "== upload to SourceForge: $EOS_SF_DIR"
-    # -b: any failed put fails the upload
-    {
-        for f in "${pub[@]}"; do printf 'put %s %s/%s\n' "$DEST/$f" "$EOS_SF_DIR" "$f"; done
-        printf 'ls -l %s\nbye\n' "$EOS_SF_DIR"
-    } | sf > "$T/sftp.log" 2>&1 || { tail -5 "$T/sftp.log" >&2; fail "the SourceForge upload failed"; }
+    # Released for the web installer (expressiveos-flasher-release reads .uploaded); the zip
+    # itself goes to R2 with tools/expressiveos_flasher/publish/flasher_publish.py
     touch -- "$DEST/$REL.uploaded"
-    if [[ -n "$R2TF" ]]; then
+    {
         echo "== upload the target-files to R2: $R2TF"
         for f in "$RTF" "$RTF.sha256"; do
             rc2 copyto --s3-no-check-bucket "$TFD/$f" "$R2TF/$f" > "$T/rclone.log" 2>&1 \
@@ -613,17 +608,10 @@ if [[ "$mode" = --upload ]]; then
         [[ "$size" = "$(stat -c %s -- "$TFD/$RTF")" ]] || fail "R2's $RTF is ${size:-not there}, not $(stat -c %s -- "$TFD/$RTF") bytes"
         [[ "$(rc2 cat "$R2TF/$RTF.sha256" 2> /dev/null)" = "$(cat -- "$TFD/$RTF.sha256")" ]] || fail "R2's $RTF.sha256 isn't $TFD/$RTF.sha256"
         where=$R2TF/$RTF
-    else
-        echo "== upload the target-files to SourceForge: $EOS_SF_DIR/target-files"
-        {
-            for f in "$RTF" "$RTF.sha256"; do printf 'put %s %s/target-files/%s\n' "$TFD/$f" "$EOS_SF_DIR" "$f"; done
-            printf 'ls -l %s/target-files\nbye\n' "$EOS_SF_DIR"
-        } | sf > "$T/sftp.log" 2>&1 || { tail -5 "$T/sftp.log" >&2; fail "the target-files upload to SourceForge failed"; }
-        where=$EOS_SF_DIR/target-files/$RTF
-    fi
+    }
     touch -- "$TFD/$RTF.uploaded"
     echo "UPLOADED_TARGET_FILES $where"
-    echo "UPLOADED https://sourceforge.net/projects/denson9874-s-user-builds/files/${EOS_SF_DIR#/home/frs/project/denson9874-s-user-builds/}/"
+    echo "next: the web installer (runner action expressiveos-flasher-release, or tools/expressiveos_flasher/publish/flasher_publish.py $EOS_DEVICE $DEST/$REL)"
 fi
 echo "next: tools/eos-ota.sh (--upload) for the Updater: the OTA package and an incremental from the feed's build"
 eos_step end
