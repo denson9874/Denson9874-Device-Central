@@ -170,29 +170,28 @@ generate_changelog() {
     # which it first checks is the tested candidate)
     spl=$(sed -n 's/^ro\.build\.version\.security_patch=//p' "$O/system/build.prop" 2> /dev/null | head -1 || true)
     [[ "$spl" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || fail "no security patch level (ro.build.version.security_patch) in $O/system/build.prop"
+    [[ -n "${EOS_MODEL:-}" ]] || fail "devices/$EOS_DEVICE.conf has no EOS_MODEL for the release notes"
     mkdir -p -- "$(dirname -- "$out")"
+    # What users read in What's new and the Updater, from a public repo: plain words, true on
+    # every phone the kit builds, no build plumbing (patch subjects), no old Evolution names,
+    # and no claim of attestation or Play Integrity results the ROM can't honestly give
     {
-        echo "ExpressiveOS 1.0 (Android 17) for the Google Pixel 7 Pro ($EOS_DEVICE), build $bname"
-        echo "Security patch: $spl. ExpressiveOS release build."
+        echo "ExpressiveOS 1.0 (Android 17) for the Google $EOS_MODEL ($EOS_DEVICE)"
+        echo "Build: $bname"
+        echo "Security patch: $spl"
         echo
-        echo "Notes:"
+        echo "What's in ExpressiveOS 1.0"
         echo "=============================="
-        echo "- ExpressiveOS 1.0 build with Monet Bloom theme, Evolver studio, and TrickyStore keybox attestation."
-        echo "- Stock Pixel firmware and Trusty KeyMint supported."
+        echo "- Expressive Launcher is the home screen."
+        echo "- Studio lets you theme the phone, with the Monet Bloom palette."
+        echo "- Holiday themes dress up the phone for each holiday, if you turn them on."
+        echo "- Updates arrive over the air through the built-in Updater."
+        echo "- No root out of the box: rooting is your choice."
+        echo "- Runs on the stock Pixel firmware."
         echo
-        echo "Device changes:"
+        echo "Known limits"
         echo "=============================="
-        if [[ -d "$kit/patches/device_google_gs201" ]]; then
-            for p in "$kit/patches/device_google_gs201"/*.patch; do
-                [[ -f "$p" ]] || continue
-                sed -n 's/^Subject: \[PATCH[^]]*\] /- /p' "$p"
-            done
-        fi
-        echo
-        echo "ROM changes:"
-        echo "=============================="
-        echo "- Play Integrity and TrickyStore attestation fixes (AUTO leaf-hack tag filtering, StrongBox support)"
-        echo "- Holiday theme scheduling and screen-off reconciliation"
+        echo "- Google Wallet tap to pay doesn't work."
     } > "$out"
 }
 
