@@ -105,8 +105,7 @@ $K/tools/v4a-check.sh device
 ```
 
 `apply-v4a.sh` has to run on every build: it stages the files and checks the frameworks/av commits (on a
-tree with them as local commits, `repo sync` drops them and it puts them back). `git am` needs a committer identity in `~/expressiveos/frameworks/av` (as `evolution-cheetah/apply.sh`
-does on the Evolution X tree).
+tree with them as local commits, `repo sync` drops them and it puts them back). `git am` needs a committer identity in `~/expressiveos/frameworks/av`.
 
 `../tools/eos-images.sh` runs `apply-v4a.sh` on every build, and `../tools/eos-verify.sh` (which the
 build and `eos-pack.sh` both run) runs `tools/v4a-check.sh out <product_out> <host_out>` and stops unless

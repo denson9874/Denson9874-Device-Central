@@ -6,14 +6,14 @@
 # command and writes no log). With other products, it also compares their commands for
 # the same steps with the first product's (word by word: what only one side has).
 #
-#   build-explain.sh <evolution|derpfest|expressiveos> <product> [<other product>...]
+#   build-explain.sh expressiveos <product> [<other product>...]
 #
 # Takes a few minutes and some GB of memory (ninja loads the product's whole graph),
 # so it refuses while a build is running.
 set -uo pipefail
 fail() { echo "FAIL: $*"; exit 1; }
-[[ $# -ge 2 && $# -le 4 ]] || fail "usage: build-explain.sh <evolution|derpfest|expressiveos> <product> [<other product>...]"
-[[ $1 =~ ^(evolution|derpfest|expressiveos)$ ]] || fail "tree must be evolution, derpfest or expressiveos"
+[[ $# -ge 2 && $# -le 4 ]] || fail "usage: build-explain.sh expressiveos <product> [<other product>...]"
+[[ $1 = expressiveos ]] || fail "tree must be expressiveos (the server's only tree)"
 for p in "${@:2}"; do [[ $p =~ ^[a-z0-9_]+$ ]] || fail "bad product name: $p"; done
 top=$HOME/$1 p1=$2 others=("${@:3}")
 cd "$top" || fail "no $top"

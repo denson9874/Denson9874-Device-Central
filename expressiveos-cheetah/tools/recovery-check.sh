@@ -6,7 +6,7 @@
 # each ramdisk and how the two sides differ, and the kernel module lists (module names and
 # counts). With devices-check.sh's helpers and rules: never a proprietary file's contents.
 #
-# By hand, to set another build in stock's place (e.g. an Evolution X fastboot zip whose
+# By hand, to set another build in stock's place (e.g. an older fastboot zip whose
 # fastbootd worked): RC_STOCK_ZIP=<zip> RC_STOCK_LABEL=<name>. RC_CAP=<n> caps each list
 # (default 150, 0 for none). RC_TEXT_DIFF=1 also prints diffs of the differing rc, prop and
 # contexts files: only for two builds of our own sources, never with Google's stock zip.

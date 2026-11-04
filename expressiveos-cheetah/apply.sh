@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 # Apply the ExpressiveOS cheetah tree patches (idempotent): patches/<project path with
 # underscores>/*.patch as local commits (git am --3way, skipping a patch whose subject
-# is already in the project's log), the same convention as evolution-cheetah; a folder
+# is already in the project's log); a folder
 # whose project has a _ of its own names it in a PROJECT file. A project that's one of
 # ExpressiveOS's own repos (README.md, "Sources") has them as commits already: there each is
 # only checked, and a patch it lacks stops this (change such a repo with a commit). The set:
 #   device_google_pantah 0001, 0002, 0010   ExpressiveOS's own: maintainer, update feed,
 #                                           only ExpressiveOS's boot animation
-#   device_google_pantah 0003-0009,         evolution-cheetah's, copied unchanged
+#   device_google_pantah 0003-0009,         the old cheetah kit's, copied unchanged
 #   device_google_gs201 0001-0004,
 #   vendor_google_cheetah
 #   device_google_gs201 0005                ExpressiveOS's own: target-files takes the built
 #                                           system, vendor, product... images (incrementals)
 #   frameworks_base                         the fixes the Evolution X tree carries for
-#                                           every build there (evolution-kodiak's copies)
+#                                           every build there (the old Pixel 11 kit's copies)
 #   vendor_lineage 0001                     ExpressiveOS 1.0 names and the build's own date
-#   vendor_lineage 0002                     evolution-kodiak's: stock's 60 fps game default
+#   vendor_lineage 0002                     the old Pixel 11 kit's: stock's 60 fps game default
 #   vendor_lineage 0003                     ExpressiveOS's own: m evolution keeps target-files
 #   frameworks_base 0021-0024, Settings,    ExpressiveOS's branding: no screen names Evolution X
 #   Evolver, Updater and the rest
@@ -27,8 +27,7 @@
 #   system_update_engine 0001-0003          OTA payloads must be signed again (ExpressiveOS's
 #                                           key; recovery's sideload also takes LineageOS's
 #                                           release key, in its otacerts), never older
-# Never evolution-cheetah's apply.sh, or its pantah 0001/0002: they point the Updater
-# at Evolution X's feed. prepare.sh runs this; repo sync drops the local commits again.
+# prepare.sh runs this; repo sync drops the local commits again.
 # For another phone (EOS_DEVICE, devices/<device>.conf), its own devices/<device>/patches/
 # come after the shared ones, and its device tree (EOS_DEVICE_TREE) must carry
 # ExpressiveOS's maintainer and feed commits, "<device>: set ExpressiveOS's maintainer" and
@@ -61,8 +60,7 @@ for dir in "${dirs[@]}"; do
     am_patches "$top/$p" "$project" "${patches[@]}"
 done
 
-# Evolution X's own identity commits must not be in this phone's tree (evolution-cheetah's or
-# evolution-husky's apply.sh run here by mistake), and ExpressiveOS's must be
+# Evolution X's own identity commits must not be in this phone's tree, and ExpressiveOS's must be
 dt="$top/$EOS_DEVICE_TREE"
 project_ok "$dt"
 if git -C "$dt" log --format=%s | grep -E -- "evolution_ota|^$EOS_DEVICE: set unofficial maintainer( overlay)?\$" >&2; then

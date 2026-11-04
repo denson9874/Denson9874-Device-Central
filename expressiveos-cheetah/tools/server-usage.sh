@@ -20,12 +20,12 @@ for l in ~/.evolution-tree.lock ~/.expressiveos.lock; do
     if flock -n "$l" true 2>/dev/null; then echo "${l#"$HOME"/}: free"; else echo "${l#"$HOME"/}: held"; fi
 done
 tmux ls 2>/dev/null | cut -d: -f1 | tr '\n' ' '; echo
-pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja|p11-routine|eos-(images|pack)' | cut -c1-160 | head -5 || true
+pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja|eos-(images|pack)' | cut -c1-160 | head -5 || true
 
 echo "== ~, one level"
 lowdu1 ~ | head -40
 
-for t in ~/evolution ~/derpfest ~/expressiveos; do
+for t in ~/expressiveos; do
     [[ -d $t ]] || continue
     echo "== $t: the tree's top folders, source, kernel out, and each out folder"
     lowdu1 "$t" | head -15
@@ -84,7 +84,7 @@ find ~/android-dt -xdev -type f -size +1G -printf '%TY-%Tm-%Td %s %P\n' 2>/dev/n
 
 echo "== other folders in ~ (newest file)"
 for d in ~/expressiveos-update ~/expressiveos-jobs ~/expressiveos-cheetah ~/expressiveos-cheetah.* ~/routine-backups ~/routine-logs \
-         ~/actions-runner ~/actions-runner/_work ~/actions-runner/_diag ~/evolution-cheetah ~/evolution-husky \
+         ~/actions-runner ~/actions-runner/_work ~/actions-runner/_diag \
          ~/.ccache ~/.cache ~/.cache/* ~/.gradle ~/.m2 ~/.npm ~/.local/share ~/.local/share/* ~/.android ~/bin ~/go ~/snap; do
     [[ -d $d ]] || continue
     echo "$(lowdu "$d" | cut -f1)  ${d#"$HOME"/}  newest $(newest "$d")"
@@ -94,10 +94,10 @@ command -v ccache >/dev/null && { ccache -s 2>/dev/null | grep -iE 'cache direct
 for v in CCACHE_DIR CCACHE_MAXSIZE; do grep -h "$v" ~/.profile ~/.bashrc 2>/dev/null | head -2; done
 
 echo "== files over 1 GiB in ~ outside the trees' .repo, out and out-kernel* and outside ~/releases and ~/android-dt (date, size, path)"
-find ~ -xdev \( -path "$HOME/evolution" -o -path "$HOME/derpfest" -o -path "$HOME/expressiveos" -o -path "$HOME/releases" -o -path "$HOME/android-dt" \) -prune -o \
+find ~ -xdev \( -path "$HOME/expressiveos" -o -path "$HOME/releases" -o -path "$HOME/android-dt" \) -prune -o \
     -type f -size +1G -printf '%TY-%Tm-%Td %s %P\n' 2>/dev/null | sort | numfmt --invalid=ignore --to=iec --field=2 | head -60 || true
 echo "== files over 1 GiB directly in the trees' top folders (not .repo or out)"
-for t in ~/evolution ~/derpfest ~/expressiveos; do
+for t in ~/expressiveos; do
     [[ -d $t ]] || continue
     find "$t" -maxdepth 1 -type f -size +1G -printf '%TY-%Tm-%Td %s %p\n' 2>/dev/null | numfmt --invalid=ignore --to=iec --field=2 || true
 done
