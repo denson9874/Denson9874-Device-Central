@@ -49,7 +49,7 @@ the cache hold). The next cheetah build's `prepare.sh` puts that bootloader and 
 |---|---|
 | `eos.conf` | Names, feed, release folders and key pins every script reads |
 | `devices/` | One `<device>.conf` per phone, what differs between them, and a phone's own tree patches ([`devices/`](devices/README.md); Other phones, below) |
-| `setup.sh` | Sets up `~/expressiveos` (ExpressiveOS's own manifest, full history, Git LFS) or syncs it again, and moves a 1.0 tree onto that manifest (Sources, below) |
+| `setup.sh` | Sets up `~/expressiveos` (ExpressiveOS's own manifest, full history, Git LFS) or syncs it again (Sources, below) |
 | `pins/kernel.xml` | The exact kernel source ExpressiveOS builds |
 | `sources/` | Where ExpressiveOS's own sources came from: `eos-1.0-base/` (the 1.0 builds' sources) and `own-manifest.py` (ExpressiveOS's manifest); `update-check.sh`, `update.sh` and `update.py`, the monthly update (see below), and `tests/`, its tests; `updates/<id>/`, each update's own files |
 | `prepare.sh`, `apply.sh`, `patches/` | Git LFS files, the kit's tree patches (below), the phone's firmware (cheetah's: the newest cached, `update-firmware.sh`) |
@@ -258,12 +258,7 @@ Where it came from, in `sources/`:
   `vendor_google_cheetah` was one commit deep, which would hide its kit commits under the top one from
   `apply.sh` and `eos-verify.sh`.
 
-A tree from before (Evolution X's manifest, `.repo/manifests/expressiveos-pins.xml` and
-`.repo/local_manifests/cheetah.xml`) moves to ExpressiveOS's manifest with `setup.sh`: the local manifest
-is kept beside it as `cheetah.xml.eos-1.0`, `expressiveos-pins.xml` is deleted, BtHelper (another repo
-name now) is checked out again, and the sync fetches only the kit's commits from the forks (and
-`vendor/google/cheetah`'s few older commits, its clone being one commit deep); their files are what the
-1.0 tree had with the kit's patches applied.
+`setup.sh` stops on a tree synced from any other manifest.
 
 A complete run leaves in `out/eos/` (another phone's in `out/eos-<device>/`): `build.ok` (the OTA
 package's sha256, which `eos-pack.sh` needs),
