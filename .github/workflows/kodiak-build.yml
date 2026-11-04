@@ -926,6 +926,11 @@ jobs:
           # The secret holds the token = {...} value of `rclone config show gdrive` on Daryl's
           # Mac (the whole line, or that output, works too)
           GDRIVE_TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          # Daryl's own Google OAuth client for rclone (Google throttles rclone's shared one). A
+          # token only refreshes with the client that made it, so the token above has to come
+          # from `rclone config reconnect gdrive:` after this client went into the Mac's remote
+          GDRIVE_CLIENT_ID: ${{ secrets.RCLONE_DRIVE_CLIENT_ID }}
+          GDRIVE_CLIENT_SECRET: ${{ secrets.RCLONE_DRIVE_CLIENT_SECRET }}
         run: |
           if [[ -n ${GDRIVE_TOKEN:-} ]]; then
             t=$(printf '%s\n' "$GDRIVE_TOKEN" | python3 -I -c 'import re, sys; s = sys.stdin.read(); m = re.search(r"^\s*token\s*=\s*(\{.*\})\s*$", s, re.M); print((m.group(1) if m else s).strip())')
@@ -935,8 +940,16 @@ jobs:
             [[ ! -f $src ]] || cp -- "$src" "$cfg"
             export RCLONE_CONFIG=$cfg RCLONE_CONFIG_GDRIVE_TYPE=drive RCLONE_CONFIG_GDRIVE_SCOPE=drive.file RCLONE_CONFIG_GDRIVE_TOKEN=$t
             unset t
+            id=${GDRIVE_CLIENT_ID//[[:space:]]/} sec=${GDRIVE_CLIENT_SECRET//[[:space:]]/}
+            if [[ -n $id && -n $sec ]]; then
+              export RCLONE_CONFIG_GDRIVE_CLIENT_ID=$id RCLONE_CONFIG_GDRIVE_CLIENT_SECRET=$sec
+              echo "Drive: own Google client"
+            elif [[ -n $id$sec ]]; then
+              echo "::warning::only one of the RCLONE_DRIVE_CLIENT_ID and RCLONE_DRIVE_CLIENT_SECRET secrets is set, so rclone's shared client is used"
+            fi
+            unset id sec
           fi
-          unset GDRIVE_TOKEN
+          unset GDRIVE_TOKEN GDRIVE_CLIENT_ID GDRIVE_CLIENT_SECRET
           p='(cheetah|husky|kodiak|grizzly|cubs|yogi)'
           [[ "$QUERY" =~ ^(|list|drive\ device=($p|all)(\ dry-run)?|prune(\ device=$p)?(\ dry-run)?|retired(\ dry-run)?)$ ]] \
             || { echo "::error::query must be: list, drive device=<phone>|all [dry-run], prune [device=<phone>] [dry-run] or retired [dry-run]"; exit 1; }
