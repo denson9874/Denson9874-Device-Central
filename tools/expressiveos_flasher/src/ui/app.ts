@@ -8,11 +8,12 @@ import { FastbootClient, FastbootError, type LogKind, ProtocolError } from "../f
 import { type Mode, Phone } from "../fastboot/device.ts";
 import { FastbootInfoError } from "../fastboot/fastboot-info.ts";
 import { logicalPartitions } from "../fastboot/lp.ts";
+import { SuperLayoutError } from "../fastboot/super-image.ts";
 import { RESTART_WAIT, WebUsbConnector, linkTo } from "../fastboot/usb-connector.ts";
 import { FASTBOOT_FILTER, USB_DRIVER_URL, UsbError, UsbTransport, hostOs, isFastbootDevice, requestPhone, webUsbSupported } from "../fastboot/webusb.ts";
-import { PlanError, type Step, buildPlan, describe } from "../flash/plan.ts";
+import { type FlashSuperStep, PlanError, type Step, buildPlan, describe } from "../flash/plan.ts";
 import { type PhoneReport, type Problem, canUnlock, checkBeforeInstall, inspectPhone, plausibleProduct, reportProblems, unlockBootloader } from "../flash/preflight.ts";
-import { type ImageSource, InstallError, runPlan, stepWeights } from "../flash/runner.ts";
+import { type ImageSource, InstallError, runPlan, stepWeights, superImageFor } from "../flash/runner.ts";
 import { type Release, ReleasesError, fetchReleases, fileUrl, formatBytes } from "../releases.ts";
 import { type LetGo, StoreError, downloadRelease, fetchVerified, hashFile, listStored, openStored, partialSize, removeStored, storageSupported, storeName, storedFile } from "../store/store.ts";
 import { ZipError, ZipReader } from "../zip/zip.ts";
@@ -2241,19 +2242,34 @@ export class App {
 			for (const line of info ? parseRequirements(info).errors : []) this.logger("note", `android-info.txt syntax error, skipped: ${line}`);
 			const fbInfo = has("fastboot-info.txt") ? await zip.text("fastboot-info.txt") : null;
 			const logical = has("super_empty.img") ? logicalPartitions(await zip.bytes("super_empty.img", 16 * 1024 * 1024)) : null;
-			// A build without a stock init_boot has no root: its zip's own init_boot is the stock one
-			steps = buildPlan(fbInfo, has, logical, { wipe: this.wipe, root: this.root || !rel.initBootStock, hasStockInitBoot: !!rel.initBootStock });
 			let stock: Blob | null = null;
-			if (steps.some((s) => s.kind === "flash" && s.image.kind === "stock-init-boot")) {
-				this.setStatus(null, "Downloading the stock init_boot");
-				const sib = rel.initBootStock!;
-				stock = await fetchVerified(fileUrl(dev.codename, rel, sib.file), sib.size, sib.sha256);
-			}
 			images = {
 				image: async (ref) => (ref.kind === "zip" ? zip.blob(ref.name) : stock!),
 				superEmpty: () => zip.blob("super_empty.img"),
 				size: (ref) => (ref.kind === "zip" ? (zip.entry(ref.name)?.size ?? 0) : (rel.initBootStock?.size ?? 0)),
 			};
+			// A build without a stock init_boot has no root: its zip's own init_boot is the stock one
+			const plan = (superFlash: boolean) =>
+				buildPlan(fbInfo, has, logical, { wipe: this.wipe, root: this.root || !rel.initBootStock, hasStockInitBoot: !!rel.initBootStock, superFlash });
+			steps = plan(true);
+			// As fastboot does, the system images go into super from the bootloader when they can,
+			// so the phone never restarts into fastbootd; when they can't, fastbootd writes them
+			const sup = steps.find((s): s is FlashSuperStep => s.kind === "flash-super");
+			if (sup) {
+				try {
+					await superImageFor(phone, sup, images);
+					this.logger("note", "The system images go into super from the bootloader, as fastboot does, with no restart into fastbootd");
+				} catch (e) {
+					if (!(e instanceof SuperLayoutError)) throw e;
+					this.logger("note", `The system images will be written from fastbootd: ${e.message}`);
+					steps = plan(false);
+				}
+			}
+			if (steps.some((s) => s.kind === "flash" && s.image.kind === "stock-init-boot")) {
+				this.setStatus(null, "Downloading the stock init_boot");
+				const sib = rel.initBootStock!;
+				stock = await fetchVerified(fileUrl(dev.codename, rel, sib.file), sib.size, sib.sha256);
+			}
 		} catch (e) {
 			this.installFailed(e instanceof ZipError || e instanceof PlanError || e instanceof FastbootInfoError ? `The build can't be installed: ${e.message}` : this.explain(e), null, false, e);
 			return;
@@ -2307,7 +2323,7 @@ export class App {
 							this.bloom.setMode(s.kind === "reboot" || s.kind === "start-android" ? "waiting" : "install");
 							this.setStatus(null, describe(s));
 						}
-						if (state === "done" && steps[i].kind === "flash") this.bloom.pulse(flashes++ % 4);
+						if (state === "done" && (steps[i].kind === "flash" || steps[i].kind === "flash-super")) this.bloom.pulse(flashes++ % 4);
 						setOverall((before[i] + (state === "running" ? 0 : weights[i])) / total);
 					},
 					progress: (i, f) => {

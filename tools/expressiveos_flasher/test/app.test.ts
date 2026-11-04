@@ -3,6 +3,7 @@
 // what each step does with a zip, a phone or a failure that changed under it.
 
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConnectOptions } from "../src/adb/adb.ts";
 import { browserAdbKey } from "../src/adb/key.ts";
@@ -51,7 +52,7 @@ interface Build {
 	stock: Uint8Array | null;
 }
 
-function build(device: string, version: string, date: string, androidInfo: string, opts: { stock: boolean; seed: number }): Build {
+function build(device: string, version: string, date: string, androidInfo: string, opts: { stock: boolean; seed: number; superEmpty?: Uint8Array }): Build {
 	const initBoot = bytes(8192, opts.seed + 1);
 	const zip = makeZip([
 		{ name: "android-info.txt", data: enc.encode(androidInfo) },
@@ -60,7 +61,7 @@ function build(device: string, version: string, date: string, androidInfo: strin
 		{ name: "init_boot.img", data: initBoot },
 		{ name: "vendor_boot.img", data: bytes(8192, opts.seed + 2) },
 		{ name: "vbmeta.img", data: bytes(4096, opts.seed + 3) },
-		{ name: "super_empty.img", data: makeSuperEmpty(["system_a", "system_b"]) },
+		{ name: "super_empty.img", data: opts.superEmpty ?? makeSuperEmpty(["system_a", "system_b"]) },
 		{ name: "system.img", data: bytes(16384, opts.seed + 4) },
 	]);
 	const stock = opts.stock ? bytes(6000, opts.seed + 9) : null;
@@ -291,6 +292,37 @@ describe("a build without a stock init_boot (every Pixel 11 build)", () => {
 		// Nothing on the other slot: there's no stock image to put there
 		expect(fake.physical.get("init_boot_b")!.every((x) => x === 0xee)).toBe(true);
 		expect(text()).not.toContain("KernelSU Next app");
+	});
+
+	it("writes the system images into super from the bootloader, as fastboot does, without fastbootd", async () => {
+		const superEmpty = new Uint8Array(readFileSync(new URL("./fixtures/kodiak-super_empty.img", import.meta.url)));
+		const b = build("kodiak", "1.0", "2026-11-03", "require board=kodiak\n", { stock: false, seed: 12, superEmpty });
+		publish([b]);
+		const fake = phone({ product: "kodiak", bootloaderSuper: { reported: 10 * 1024 ** 3, bytes: 4 * 1024 * 1024 } });
+		const app = await start("Pixel 11 Pro XL", "kodiak");
+		await toConnected();
+		await press("Continue");
+		await install();
+		expect(text()).toContain("ExpressiveOS is installed");
+		const log = (app as unknown as { logLines: Array<{ text: string }> }).logLines.map((l) => l.text);
+		expect(log).toContain("The system images go into super from the bootloader, as fastboot does, with no restart into fastbootd");
+		expect(wrote(fake)).not.toContain("reboot-fastboot");
+		expect(wrote(fake)).toContain("flash:super");
+		expect(fake.mode).toBe("android");
+	});
+
+	it("goes through fastbootd when super can't be written from the bootloader", async () => {
+		const b = build("kodiak", "1.0", "2026-11-03", "require board=kodiak\n", { stock: false, seed: 13 });
+		publish([b]);
+		const fake = phone({ product: "kodiak" });
+		const app = await start("Pixel 11 Pro XL", "kodiak");
+		await toConnected();
+		await press("Continue");
+		await install();
+		expect(text()).toContain("ExpressiveOS is installed");
+		const log = (app as unknown as { logLines: Array<{ text: string }> }).logLines.map((l) => l.text);
+		expect(log.some((l) => l.startsWith("The system images will be written from fastbootd: super_empty.img isn't valid"))).toBe(true);
+		expect(wrote(fake)).toContain("reboot-fastboot");
 	});
 
 	it("says what the phone shows on its way to fastbootd, and to wait for it when the browser's list is empty", async () => {
