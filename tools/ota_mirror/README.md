@@ -1,14 +1,12 @@
 # OTA mirror
 
-The Updaters of our Evolution X and DerpFest builds download their OTA packages from here instead of SourceForge.
+ExpressiveOS's Updater downloads its OTA packages from here instead of SourceForge.
 The `ota-mirror` Worker serves the R2 bucket `denson9874-ota` at `https://ota-mirror.daryldenson-apps.workers.dev/<key>`:
 GET and HEAD of an exact key, with byte ranges so interrupted downloads resume. Nothing lists the bucket.
 R2 doesn't charge for downloads, and a file is downloadable as soon as its upload finishes.
 
 | Keys | Uploaded by |
 |---|---|
-| `<dev>/17/<EvolutionX zip>` | `evolution-kodiak/tools/p11-ota.sh <dev> --upload` |
-| `derpfest/<dev>/<DerpFest zip>` | `derpfest-husky/tools/derp-ota.sh <dev> --upload` |
 | `expressiveos/<dev>/target-files/<target-files zip>` | `expressiveos-cheetah/tools/eos-pack.sh --upload` |
 | `expressiveos/<dev>/ota/<OTA package>` (full and incremental) | `expressiveos-cheetah/tools/eos-ota.sh --upload` |
 | `expressiveos/<dev>/ota/test/<incremental>`, `<dev>.json` (a test feed) | `expressiveos-cheetah/tools/eos-ota.sh --candidate` |

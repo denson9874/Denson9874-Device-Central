@@ -4,8 +4,7 @@
 # firmware cache that prepare.sh reads (EOS_FIRMWARE_MODE=cache: the newest cached release
 # goes into vendor/google/cheetah through update-firmware.sh at the start of each build).
 # Run it when Google ships a new monthly release: runner action expressiveos-firmware.
-# Moved here from evolution-cheetah/fetch-firmware.sh (2026-11-02), unchanged but for the
-# paths, when Evolution X left the build server.
+# Moved here from the old cheetah kit (2026-11-02), unchanged but for the paths.
 #
 #   fetch-firmware.sh [--check]     # --check: print the newest release, download nothing
 #

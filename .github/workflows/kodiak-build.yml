@@ -3,8 +3,7 @@
 # Lets a cloud Claude session (which can reach GitHub but not the server) build, check and
 # look after ExpressiveOS on the server. Flashing stays manual, on the Mac. The workflow and
 # its file keep their old names (kodiak-build.yml, "kodiak build server") so links to past
-# runs still work. Since 2026-11-02 the server builds ExpressiveOS only: Evolution X and
-# DerpFest were retired and their trees deleted (evo-retire below), and their actions are gone.
+# runs still work. The server builds ExpressiveOS only.
 #
 # Server-wide, read-only unless said: ccache-direct-mode turns on ccache's direct mode in the
 # shared cache and adds USE_CCACHE and CCACHE_EXEC to ~/.profile (envsetup.sh turns direct
@@ -14,25 +13,15 @@
 # memory, disks, ccache's settings and hit rate, the kernel build's caches) and how long past
 # builds took and where the time went. build-explain asks ninja, in a dry run that runs and
 # writes nothing, why a product's next build would redo the big framework steps
-# (tools/build_speed/build-explain.sh; query: tree, product, other products). routine-scripts:
-# how the server's scripts in ~ differ from this ref's, as diffs with lines that may hold a
-# secret hidden. server-usage: where the disk goes per tree, product, release folder, cache
-# and big file (expressiveos-cheetah/tools/server-usage.sh).
+# (tools/build_speed/build-explain.sh; query: tree, product, other products). server-usage:
+# where the disk goes per tree, product, release folder, cache and big file
+# (expressiveos-cheetah/tools/server-usage.sh).
 #
 # server-cleanup-list (read-only) and server-cleanup free disk on the server:
 # expressiveos-cheetah/tools/server-cleanup.sh lists or removes the groups of files it names,
 # by exact path. server-cleanup removes only the groups in query, which Daryl approves, and
 # only while the tree lock is free (it holds it while it removes); build output only while
 # nothing builds.
-#
-# evo-retire (expressiveos-cheetah/tools/evo-retire.sh) retired Evolution X and DerpFest on
-# 2026-11-02. list and check are read-only: what's left of them in ~, and whether ExpressiveOS
-# still reaches into their old trees (tools, alternates, links, the Pixel 11 blob repos).
-# stop and undo move their scripts out of ~ and back; keep copied what outlives their trees
-# into ~/retired (the Pixel 11 blob repos into ~/expressiveos, the signing keys, every repo's
-# server-only work, the manifests and release records); delete <parts> removed the trees and
-# leftovers (permanent; Daryl chose it on 2026-11-02), and its cheetah-kit part removes
-# ~/evolution-cheetah now that expressiveos-firmware fetches cheetah's firmware.
 #
 # expressiveos-kit (read-only by default) compares the installed kit, ~/expressiveos-cheetah,
 # with tree_ref's expressiveos-cheetah: every folder, file and link, executable bits (the only
@@ -106,16 +95,13 @@
 # present). Those commits are what ExpressiveOS's own sources start from; commit SHAs and
 # file names only, never file contents.
 #
-# expressiveos-devices (read-only) prints what ExpressiveOS builds for husky and the four Pixel
-# 11 phones need from the server (expressiveos-cheetah/tools/devices-check.sh): disk per product,
-# Evolution X's device and vendor projects (commits, remotes, local commits), whether the Pixel 11
-# repos are public, kernel versions, config facts and struct module sizes,
-# firmware zips, fastboot files and board names, AVB and Updater makefile lines, the audio effect
-# HAL type, Evolution X's commits on shared projects, build times, device-ok records and the
-# release folders' names. Names, sizes, SHAs, versions and build-file lines only. query "more":
-# the second round (devices-more.sh): disk per path, the Sunday routines' times, the server's
-# Pixel 11 device trees against this ref's evolution-kodiak copies (open-source diffs), the
-# Pixel 11 firmware lists and images folders, husky's board, AVB chain and Updater lines.
+# expressiveos-devices (read-only) prints what ExpressiveOS's builds for the six phones look like
+# on the server (expressiveos-cheetah/tools/devices-check.sh): disk per product, the device and
+# vendor projects (commits, remotes, local commits), kernel versions, config facts and struct
+# module sizes, firmware zips, fastboot files and board names, AVB and Updater makefile lines,
+# the audio effect HAL type, build times, device-ok records and the release folders' names.
+# Names, sizes, SHAs, versions and build-file lines only. query "recovery": the Pixel 11s'
+# stock boot chain beside ExpressiveOS's (recovery-check.sh).
 #
 # expressiveos-update-check (read-only on the tree) is the dry run of ExpressiveOS's monthly
 # update (expressiveos-cheetah/sources/update-check.sh): what LineageOS has added since the
@@ -169,14 +155,10 @@ on:
           ExpressiveOS cheetah tree needs. build-speed: read-only: CPU, memory,
           disks, ccache and past build timings. build-explain: read-only: why a
           product's next build redoes the framework steps (see query).
-          routine-scripts: read-only: how the server's routine scripts differ
-          from this ref's (query: names of scripts in ~ to print whole).
           server-usage: read-only: where the disk goes, per tree, product,
           release folder, cache and big file. server-cleanup-list: read-only: what
           server-cleanup.sh's groups hold now. server-cleanup: permanently remove
-          the groups in query. evo-retire: retire Evolution X and DerpFest
-          (query: list or check, read-only, list the default; stop; undo; keep;
-          delete out evolution derpfest research leftovers cheetah-kit, permanent).
+          the groups in query.
           expressiveos-status: read-only: the ExpressiveOS
           sessions, logs, keys and every phone's build. expressiveos-progress: read-only,
           a few seconds, fine while a build runs: each phone of the running (or last)
@@ -191,9 +173,9 @@ on:
           expressiveos-keys: make ExpressiveOS's keys (once) and a backup archive.
           expressiveos-pins: read-only: the upstream commit of every project in the
           ExpressiveOS tree, as a manifest, plus its kernel tree and LFS files.
-          expressiveos-devices: read-only: what ExpressiveOS builds for husky and
-          the Pixel 11 phones need from the server (query "more": the second round;
-          "recovery": the Pixel 11s' stock boot chain beside ExpressiveOS's).
+          expressiveos-devices: read-only: what ExpressiveOS's builds for the six
+          phones look like on the server (query "recovery": the Pixel 11s' stock
+          boot chain beside ExpressiveOS's).
           expressiveos-update-check: read-only: the dry run of the monthly update
           (what LineageOS added, and whether ExpressiveOS's forks merge it cleanly).
           expressiveos-update: the monthly update, with the push token (see query;
@@ -210,11 +192,9 @@ on:
           - expressiveos-host
           - build-speed
           - build-explain
-          - routine-scripts
           - server-usage
           - server-cleanup-list
           - server-cleanup
-          - evo-retire
           - expressiveos-status
           - expressiveos-progress
           - expressiveos-kit
@@ -308,7 +288,7 @@ jobs:
           # expressiveos-update (the same, and pushes to GitHub)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys|expressiveos-flasher-release)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys|expressiveos-flasher-release)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -321,7 +301,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -354,12 +334,12 @@ jobs:
           echo "== disk"; df -h ~ /tmp | sed 1d; df -i ~ | sed 1d
           echo "== biggest folders in ~ (GiB; du runs at low priority and can take a while)"
           nice -n 19 ionice -c2 -n7 du -x -d1 -BG ~ 2>/dev/null | sort -rn | head -20 || true
-          for t in ~/evolution ~/derpfest; do
+          for t in ~/expressiveos; do
             [[ -d "$t" ]] || continue
             echo "== $t: source, out, kernel out (GiB)"
             nice -n 19 ionice -c2 -n7 du -x -s -BG "$t/.repo" "$t/out" "$t"/out-kernel 2>/dev/null || true
           done
-          for d in ~/evolution/out ~/evolution/out/target/product ~/derpfest/out/target/product ~/releases ~/android-dt; do
+          for d in ~/expressiveos/out ~/expressiveos/out/target/product ~/releases ~/android-dt; do
             [[ -d "$d" ]] || continue
             echo "== $d (GiB)"
             nice -n 19 ionice -c2 -n7 du -x -d1 -BG "$d" 2>/dev/null | sort -rn | head -15 || true
@@ -369,7 +349,7 @@ jobs:
             echo "== $d, two levels (GiB)"
             nice -n 19 ionice -c2 -n7 du -x -d2 -BG "$d" 2>/dev/null | sort -rn | head -30 || true
           done
-          for t in ~/evolution ~/derpfest; do
+          for t in ~/expressiveos; do
             [[ -d "$t/.repo" ]] || continue
             echo "== $t: repo depth '$(git -C "$t/.repo/manifests" config --get repo.depth || true)', frameworks/base shallow: $(git -C "$t/frameworks/base" rev-parse --is-shallow-repository 2>/dev/null || echo unknown)"
           done
@@ -412,26 +392,6 @@ jobs:
       - name: Build speed check
         if: inputs.action == 'build-speed'
         run: bash tools/build_speed/build-speed.sh
-
-      # Read-only, so it runs beside a build too. This ref's copies are what an install would put there
-      - name: Check out the routine scripts
-        if: inputs.action == 'routine-scripts'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          sparse-checkout: |
-            tools
-            evolution-kodiak/tools
-            evolution-cheetah
-            evolution-husky
-            derpfest-husky/tools
-          fetch-depth: 1
-
-      - name: Routine scripts on the server
-        if: inputs.action == 'routine-scripts'
-        run: |
-          read -r -a q <<< "$QUERY"
-          bash tools/build_speed/routine-scripts.sh "$GITHUB_WORKSPACE" "${q[@]}"
 
       # Not while a build runs (Preflight): ninja loads a product's whole graph
       - name: Check out the build-explain script
@@ -482,24 +442,6 @@ jobs:
             [[ -z "$QUERY" || "$QUERY" =~ ^[1-7](,[1-7])*$ ]] || { echo "::error::query is groups, e.g. 1,2,3"; exit 1; }
             bash "$script" list ${QUERY:+"$QUERY"}
           fi
-
-      # Moves scripts in ~ only (nothing is deleted), so it may run beside an ExpressiveOS
-      # build; keep takes ~/.expressiveos.lock and refuses while one runs
-      - name: Check out the retire script
-        if: inputs.action == 'evo-retire'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          sparse-checkout: expressiveos-cheetah/tools
-          fetch-depth: 1
-
-      - name: Retire Evolution X and DerpFest
-        if: inputs.action == 'evo-retire'
-        run: |
-          part='(out|evolution|derpfest|research|leftovers|cheetah-kit)'
-          [[ "${QUERY:-list}" =~ ^(list|check|stop|undo|keep|delete( $part)+)$ ]] || { echo "::error::query is list, check, stop, undo, keep, or delete followed by parts: out evolution derpfest research leftovers cheetah-kit"; exit 1; }
-          read -ra q <<< "${QUERY:-list}"
-          bash expressiveos-cheetah/tools/evo-retire.sh "${q[@]}"
 
       # ---- The installed kit, and cheetah's firmware cache ----------------------------------
 
@@ -827,15 +769,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
-          sparse-checkout: |
-            expressiveos-cheetah
-            evolution-kodiak
+          sparse-checkout: expressiveos-cheetah
           fetch-depth: 1
 
       - name: ExpressiveOS devices check (read-only)
         if: inputs.action == 'expressiveos-devices'
         run: |
-          [[ -z "$QUERY" || "$QUERY" = more || "$QUERY" = recovery ]] || { echo "::error::query is empty, 'more' or 'recovery'"; exit 1; }
+          [[ -z "$QUERY" || "$QUERY" = recovery ]] || { echo "::error::query is empty or 'recovery'"; exit 1; }
           bash expressiveos-cheetah/tools/devices-check.sh ${QUERY:+"$QUERY"}
 
       # The monthly update and its dry run: this ref's kit, run from the job's checkout (nothing
