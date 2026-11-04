@@ -176,6 +176,9 @@ export async function readLpMetadata(bytes: Uint8Array): Promise<LpMetadata> {
 		});
 	}
 	if (!blockDevices.length) throw bad("no block devices");
+	// ParseMetadata: the geometry and every metadata copy end before the first partition can start
+	const region = RESERVED + (GEOMETRY_SIZE + geometry.metadataMaxSize * geometry.slotCount) * 2;
+	if (region > blockDevices[0].firstLogicalSector * SECTOR) throw bad("the metadata overlaps the partitions");
 	return { geometry, minorVersion: minor, flags, partitions, groups, blockDevices, hasExtents: extents.length > 0 };
 }
 

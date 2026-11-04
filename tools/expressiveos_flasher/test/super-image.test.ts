@@ -101,6 +101,12 @@ describe("super written from the bootloader", () => {
 		broken[4096 + 256] ^= 1; // a partition's name, under the tables' checksum
 		await expect(buildSuperImage(broken, [sys], "super", SUPER)).rejects.toThrow(/tables checksum/);
 		await expect(buildSuperImage(makeSuperEmpty(["system_a"]), [sys], "super", SUPER)).rejects.toBeInstanceOf(SuperLayoutError);
+		// 8 metadata slots of 64 KiB don't fit before the first logical sector (1 MiB): liblp refuses it too
+		const slots8 = EMPTY.slice();
+		new DataView(slots8.buffer).setUint32(44, 8, true);
+		slots8.fill(0, 8, 40);
+		slots8.set(createHash("sha256").update(slots8.subarray(0, 52)).digest(), 8);
+		await expect(buildSuperImage(slots8, [sys], "super", SUPER)).rejects.toThrow(/the metadata overlaps the partitions/);
 	});
 });
 
@@ -157,7 +163,7 @@ describe("install plan with super written from the bootloader", () => {
 });
 
 describe("install on a simulated phone, super from the bootloader", () => {
-	async function setup(o: { mode?: "bootloader" | "fastbootd" } = {}) {
+	async function setup(o: { mode?: "bootloader" | "fastbootd"; slot?: "a" | "b" } = {}) {
 		const zipBytes = makeZip([
 			{ name: "android-info.txt", data: new TextEncoder().encode("require board=kodiak\n") },
 			{ name: "fastboot-info.txt", data: new TextEncoder().encode(INFO) },
@@ -165,7 +171,7 @@ describe("install on a simulated phone, super from the bootloader", () => {
 			...Object.entries(PHYSICAL).map(([name, data]) => ({ name, data })),
 			...ORDER.map((p) => ({ name: `${p}.img`, data: IMAGES[p] })),
 		]);
-		const fake = new FakePhone({ product: "kodiak", maxDownload: 0x20000, bootloaderSuper: { reported: SUPER, bytes: 8 * 1024 * 1024 } });
+		const fake = new FakePhone({ product: "kodiak", slot: o.slot, maxDownload: 0x20000, bootloaderSuper: { reported: SUPER, bytes: 8 * 1024 * 1024 } });
 		if (o.mode) fake.mode = o.mode;
 		const connector = new FakeConnector(fake);
 		const phone = new Phone(connector.link(), connector);
@@ -200,6 +206,21 @@ describe("install on a simulated phone, super from the bootloader", () => {
 		}
 		expect(Buffer.compare(fake.physical.get("boot_a")!.subarray(0, 8192), PHYSICAL["boot.img"])).toBe(0);
 		expect([...fake.erased].sort()).toEqual(["metadata", "userdata"]);
+	});
+
+	it("puts the images in the current slot's partitions on a slot b phone", async () => {
+		const { fake, phone, source, steps } = await setup({ slot: "b" });
+		await runPlan(phone, steps, source, { step: () => {}, progress: () => {}, note: () => {} });
+		expect(fake.mode).toBe("android");
+		expect(fake.commands).toContain("set_active:b");
+		const sup = fake.superBytes!;
+		const meta = await metadataOf(sup);
+		for (const p of ORDER) {
+			const [e] = meta.partitions.find((x) => x.name === `${p}_b`)!.extents;
+			expect(Buffer.compare(sup.subarray(e.start * 512, e.start * 512 + SIZES[p]), IMAGES[p])).toBe(0);
+		}
+		for (const p of meta.partitions.filter((x) => x.name.endsWith("_a"))) expect(p.extents).toEqual([]);
+		expect(Buffer.compare(fake.physical.get("boot_b")!.subarray(0, 8192), PHYSICAL["boot.img"])).toBe(0);
 	});
 
 	it("won't write super whole from fastbootd", async () => {
