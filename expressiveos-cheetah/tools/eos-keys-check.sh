@@ -75,7 +75,7 @@ chains() {   # chains <image>: "<partition> <sha1>" for every partition the imag
 pin() {   # pin <what> <fingerprint> <eos.conf name>
     local want=${!3:-}
     if [[ -z "$want" ]]; then
-        echo "UNPINNED: $1 is $2. Once the keys are backed up, set $3=$2 in eos.conf (README.md, \"Keys\")"
+        echo "UNPINNED: $1 is $2, and eos.conf has no $3. Put back the pin eos.conf was committed with (README.md, \"Keys\"), never one for other keys"
         unpinned=1
     elif [[ "$(norm "$want")" != "$2" ]]; then
         fail "$1 is $2, but eos.conf pins $3=$want: these aren't the keys ExpressiveOS shipped with. Restore $rel from the backup"
@@ -167,7 +167,7 @@ tree)
     in_top "$top/vendor/evolution-priv"
     in_top "$keys"
     [[ -d "$keys" && ! -L "$keys" ]] \
-        || fail "no $rel folder of the tree's own: create ExpressiveOS's keys first (README.md, \"Keys\"). Without it the build signs with the AOSP test keys"
+        || fail "no $rel folder of the tree's own: restore ExpressiveOS's keys from the backup, never make new ones (README.md, \"Keys\"). Without it the build signs with the AOSP test keys"
     # The template's own symlinks (releasekey.* -> testkey.*, BUILD.bazel) stay in the tree
     while IFS= read -r -d '' l; do in_top "$l"; done < <(find "$keys" -type l -print0)
     hard=$(find "$keys" -type f -links +1 -printf '%P\n')
@@ -191,7 +191,7 @@ tree)
         done
     done
     for f in avb_custom_key.bin Android.bp; do [[ -s "$keys/$f" && ! -L "$keys/$f" ]] || missing+=("$f"); done
-    (( ${#missing[@]} == 0 )) || fail "$rel lacks ${#missing[@]} key files of its own (${missing[*]:0:6}...), or has symlinks in their place: run the template's keys.sh there (README.md, \"Keys\")"
+    (( ${#missing[@]} == 0 )) || fail "$rel lacks ${#missing[@]} key files of its own (${missing[*]:0:6}...), or has symlinks in their place: restore the folder from the backup (README.md, \"Keys\")"
     for n in $names avb; do
         [[ -r "$keys/$n.pk8" ]] || fail "can't read $rel/$n.pk8 (run this as the user that builds)"
     done
@@ -203,14 +203,14 @@ tree)
     for n in $names; do
         c=$(cert_fp "$keys/$n.x509.pem") || fail "can't read $rel/$n.x509.pem"
         w=$(whose certs "$c")
-        [[ -z "$w" ]] || fail "$rel/$n.x509.pem is $w; generate ExpressiveOS's own keys (README.md, \"Keys\")"
+        [[ -z "$w" ]] || fail "$rel/$n.x509.pem is $w; restore ExpressiveOS's own keys from the backup (README.md, \"Keys\")"
     done
     echo "OK: no certificate in $rel is Evolution X's, DerpFest's or AOSP's"
     ours
     k=$(key_sha1 "$keys/avb.pk8") || fail "avbtool can't read $rel/avb.pk8"
     [[ "$k" = "$avb" ]] || fail "$rel/avb_custom_key.bin isn't avb.pk8's public key: regenerate it with avbtool extract_public_key"
     w=$(whose avb "$avb")
-    [[ -z "$w" ]] || fail "$rel/avb.pk8 is the same AVB key as $w; generate ExpressiveOS's own (README.md, \"Keys\")"
+    [[ -z "$w" ]] || fail "$rel/avb.pk8 is the same AVB key as $w; restore ExpressiveOS's own from the backup (README.md, \"Keys\")"
     echo "OK: the AVB key is the tree's own"
     pin "the OTA certificate ($rel/testkey.x509.pem, SHA-256)" "$ota" EOS_OTA_CERT_SHA256
     pin "the AVB public key ($rel/avb_custom_key.bin, sha1)" "$avb" EOS_AVB_PUBKEY_SHA1

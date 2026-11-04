@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # ExpressiveOS's own manifest (default.xml on ExpressiveOS/manifest, branch expressiveos), made
 # from the sources of the 1.0 builds (eos-1.0-base/manifest.xml and eos-1.0-base/cheetah.xml):
-# every project Evolution X, Evolution-X-Devices or BtHelper's TheParasiteProject hosted comes
-# from ExpressiveOS's fork instead (org-fork.sh made them), at the commit its expressiveos
-# branch has now (the 1.0 pin plus the kit's commits), and everything else (LineageOS, AOSP)
-# stays at its 1.0 pin. One flat file, every project at a commit, never a branch head; a fresh
-# tree can sync it too, since each commit is on the branch named as its upstream.
-# evolution/manifest stays at Evolution X's last manifest (its 1.0 pin): build_kernel reads
-# the LineageOS version from it, and a manifest can't name its own next commit.
+# every project they take from GitHub outside LineageOS comes from ExpressiveOS's own repo of
+# that name instead, at the commit its expressiveos branch has now (the 1.0 pin plus the kit's
+# commits), and everything else (LineageOS, AOSP) stays at its 1.0 pin. One flat file, every
+# project at a commit, never a branch head; a fresh tree can sync it too, since each commit is
+# on the branch named as its upstream. The 1.0 sources' old manifest and OTA feed checkouts
+# (LEFT_OUT) aren't in it: nothing builds from them, and build_kernel reads the LineageOS
+# version from the tree's own manifest.
 # A fork the kit has patches for (patches/, viper4android/patches/, and each
 # phone's own devices/<device>/patches/) must have each of them as a commit
 # above its 1.0 pin (by subject, as apply.sh's am_patches looks for them), and gets its full
@@ -28,7 +28,8 @@ here = os.path.dirname(os.path.abspath(__file__))
 kit = os.path.dirname(here)
 base = [os.path.join(here, "eos-1.0-base", f) for f in ("manifest.xml", "cheetah.xml")]
 org = (sys.argv[1] if len(sys.argv) > 1 else "https://github.com/ExpressiveOS").rstrip("/")
-SELF = "evolution/manifest"
+# Paths of the 1.0 sources that ExpressiveOS's manifest doesn't carry
+LEFT_OUT = {"evolution/manifest", "evolution/OTA", "evolution/OTA-VANILLA"}
 
 def fail(msg):
     sys.exit(f"FAIL: {msg}")
@@ -118,6 +119,8 @@ for f in base:
     fetch = {e.get("name"): (e.get("fetch") or "").rstrip("/") for e in r.iter("remote")}
     d = r.find("default")
     for p in r.iter("project"):
+        if (p.get("path") or p.get("name")) in LEFT_OUT:
+            continue
         rem = p.get("remote") or d.get("remote")
         rev = p.get("revision") or ""
         if not re.fullmatch(r"[0-9a-f]{40}", rev):
@@ -130,14 +133,14 @@ for f in base:
             # same name, so the tree keeps its git objects
             a["remote"] = "lineageos"
         elif m and m.group(1) != "LineageOS":
-            # The fork, on the branch org-fork.sh made for this pin: expressiveos for a repo's
-            # first pin, expressiveos-<suffix> for another (OTA-VANILLA: cnb-vanilla)
+            # ExpressiveOS's repo, on the branch made for this pin: expressiveos for a repo's
+            # first pin, expressiveos-<suffix> for another
             name = m.group(2)
             up = re.sub(r"^refs/heads/", "", p.get("upstream") or "")
             first = seen.setdefault(name, up)
             branch = "expressiveos" if up == first else "expressiveos-" + (up[len(first) + 1:] if up.startswith(first + "-") else up)
             a.update(name=name, remote="expressiveos",
-                     revision=rev if p.get("path") == SELF else tip(name, branch),
+                     revision=tip(name, branch),
                      upstream=f"refs/heads/{branch}")
             a["dest-branch"] = f"refs/heads/{branch}"
             path = p.get("path") or p.get("name")
@@ -154,9 +157,9 @@ for f in base:
 
 out = ['<?xml version="1.0" encoding="UTF-8"?>',
        "<!-- ExpressiveOS's sources: every project at a commit, never a branch head. Projects from",
-       "     github.com/ExpressiveOS are ExpressiveOS's own (forks of Evolution X's repos at the 1.0",
-       "     builds' commits, plus ExpressiveOS's changes as commits on branch expressiveos); the rest",
-       "     are LineageOS's and AOSP's, at the commits of the 1.0 builds until an update moves them.",
+       "     github.com/ExpressiveOS are ExpressiveOS's own repos (each at its 1.0 builds' commit plus",
+       "     ExpressiveOS's changes as commits on branch expressiveos); the rest are LineageOS's and",
+       "     AOSP's, at the commits of the 1.0 builds until an update moves them.",
        "     Change a revision here only to a commit on the branch its upstream names. -->",
        "<manifest>",
        '  <remote name="aosp" fetch="https://android.googlesource.com" review="android-review.googlesource.com" revision="refs/tags/android-17.0.0_r1" />',

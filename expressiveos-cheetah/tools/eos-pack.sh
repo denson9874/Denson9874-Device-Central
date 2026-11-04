@@ -256,7 +256,7 @@ if [[ "$mode" = --testers ]]; then
     [[ "$(po build)" != quick ]] \
         || fail "$CHECK/$NAME is a quick build (images only, no OTA package or target-files): testers get full builds only, whose phones can take incremental OTAs. Build without quick, pack, then send that"
     [[ "$(po keys)" = OK ]] \
-        || fail "the candidate was packed with ExpressiveOS's keys '$(po keys)', not pinned in eos.conf (KEYS_CHECK=OK) as testers' builds need (README.md, \"Keys\"): pin them, then run eos-pack.sh again"
+        || fail "the candidate was packed with ExpressiveOS's keys '$(po keys)', not pinned in eos.conf (KEYS_CHECK=OK) as testers' builds need (README.md, \"Keys\"): put back the pins eos.conf was committed with (never pins for other keys), then run eos-pack.sh again"
     [[ "$(po incremental-base)" = OK ]] \
         || fail "the fastboot zip's images aren't its target-files' ($PO: incremental-base '$(po incremental-base)'): no incremental OTA could update phones installed from it"
     # Never a rooted candidate: a .pack-ok from a kit that still built KernelSU Next says how
