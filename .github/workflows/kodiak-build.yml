@@ -52,9 +52,8 @@
 # pack run for hours, past this job's limit, so each runs in a tmux session of its own
 # (eos-setup, eos-build, eos-pack) with a clean environment, outside the job: the job
 # starts it and returns, and expressiveos-status (read-only) shows how it's going.
-# expressiveos-keys makes ExpressiveOS's signing keys, once and never over existing
-# ones, plus a backup archive on the server (mode 600) for copying off it by scp; its
-# log shows counts, sizes and public fingerprints, never key material.
+# ExpressiveOS's signing keys were made once (2026-10-26) and are never made again: no
+# action makes keys. A tree without them gets them back from the backup (README.md, "Keys").
 #
 # expressiveos-build and expressiveos-pack build and pack cheetah, as they always did, unless
 # query names another of the kit's phones (tree_ref's expressiveos-cheetah/devices/
@@ -188,7 +187,6 @@ on:
           into ~/android-dt/firmware/cheetah (query check: read-only).
           expressiveos-setup: install tree_ref's
           expressiveos-cheetah, then setup.sh in tmux.
-          expressiveos-keys: make ExpressiveOS's keys (once) and a backup archive.
           expressiveos-pins: read-only: the upstream commit of every project in the
           ExpressiveOS tree, as a manifest, plus its kernel tree and LFS files.
           expressiveos-devices: read-only: what ExpressiveOS builds for husky and
@@ -224,13 +222,12 @@ on:
           - expressiveos-update-check
           - expressiveos-update
           - expressiveos-setup
-          - expressiveos-keys
           - expressiveos-build
           - expressiveos-pack
           - expressiveos-ota
           - expressiveos-flasher-release
       tree_ref:
-        description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -keys, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
+        description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
         default: main
       query:
@@ -303,12 +300,11 @@ jobs:
           # job. Don't start on top of one. The read-only actions run anyway, and so
           # do expressiveos-setup (a repo sync
           # of its own tree, ~/expressiveos: network and disk, no build),
-          # expressiveos-keys (two minutes of openssl in that tree),
           # expressiveos-update-check (fetches and merges in its own folder) and
           # expressiveos-update (the same, and pushes to GitHub)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-keys|expressiveos-flasher-release)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|routine-scripts|server-usage|server-cleanup-list|server-cleanup|evo-retire|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-flasher-release)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -892,7 +888,7 @@ jobs:
           python3 -I tools/expressiveos_flasher/publish/flasher_publish.py "$d" "$z"
 
       - name: Check out expressiveos-cheetah
-        if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack","expressiveos-ota"]'), inputs.action)
+        if: contains(fromJSON('["expressiveos-setup","expressiveos-build","expressiveos-pack","expressiveos-ota"]'), inputs.action)
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tree_ref }}
@@ -900,7 +896,7 @@ jobs:
           fetch-depth: 1
 
       - name: ExpressiveOS
-        if: contains(fromJSON('["expressiveos-setup","expressiveos-keys","expressiveos-build","expressiveos-pack","expressiveos-ota"]'), inputs.action)
+        if: contains(fromJSON('["expressiveos-setup","expressiveos-build","expressiveos-pack","expressiveos-ota"]'), inputs.action)
         run: |
           fail() { echo "::error::$*"; exit 1; }
           kit=~/expressiveos-cheetah jobs=~/expressiveos-jobs
@@ -1016,56 +1012,6 @@ jobs:
           [[ -z $old ]] || rm -rf -- "$old"
           echo "kit $TREE_REF@${sha:0:7} installed in ~/expressiveos-cheetah"
           mkdir -p "$jobs"; chmod 700 "$jobs"
-
-          if [[ $ACTION = expressiveos-keys ]]; then
-            # README.md, "Keys", while holding ~/.expressiveos.lock: no setup or build meanwhile
-            top=$(bash -c 'source "$1/lib.sh" && eos_top && echo "$top"' _ "$kit") || fail "no ExpressiveOS tree to make the keys in"
-            grep -qa '^SETUP_OK ' "$jobs/setup.log" 2>/dev/null || fail "the tree isn't set up: run expressiveos-setup and wait for SETUP_OK (expressiveos-status)"
-            for f in external/avb/avbtool.py development/tools/make_key build/make/target/product/security/testkey.pk8; do
-              [[ -f $top/$f ]] || fail "$f is missing from the tree"
-            done
-            [[ -x $top/external/avb/avbtool.py ]] || fail "external/avb/avbtool.py isn't executable (keys.sh runs it)"
-            if grep -qE '^EOS_(AVB_PUBKEY_SHA1|OTA_CERT_SHA256)=.' "$kit/eos.conf"; then
-              fail "eos.conf pins ExpressiveOS's keys already: restore vendor/evolution-priv/keys from the backup, never make new ones"
-            fi
-            priv=$top/vendor/evolution-priv
-            if [[ -e $priv || -L $priv ]]; then
-              ls -la "$priv" | head -20
-              fail "expressiveos/vendor/evolution-priv already exists: never make keys over it"
-            fi
-            umask 077
-            # Evolution X's template at the commit whose keys.sh and make_key.sh were read
-            tmpl=fed6526d27440d6c1317b465ea399a287313ba19
-            # Cloned beside the tree first, so a failed clone leaves nothing in it (the
-            # clone holds no keys yet, so removing it is safe)
-            clone=$(mktemp -d "$jobs/keys-template.XXXXXX")
-            trap 'rm -rf -- "$clone"' EXIT
-            git clone -q https://github.com/Evolution-X/vendor_evolution-priv_keys-template "$clone/keys"
-            git -C "$clone/keys" -c advice.detachedHead=false checkout -q "$tmpl"
-            [[ "$(git -C "$clone/keys" rev-parse HEAD)" = "$tmpl" ]] || fail "the template isn't at $tmpl"
-            git -C "$clone/keys" remote remove origin
-            mkdir -p "$top/vendor"
-            mkdir "$priv"
-            mv "$clone/keys" "$priv/keys"
-            cd "$priv/keys" || fail "can't cd to $priv/keys"
-            # About 2 minutes, no prompts; it always exits 1 (make_key's trap). Its output
-            # (openssl's progress and the file names) stays on the server
-            ./keys.sh > "$jobs/keys.log" 2>&1 || true
-            chmod 700 . && chmod 600 ./*.pk8
-            echo "$(find . -maxdepth 1 -name '*.pk8' -type f | wc -l) private keys, $(find . -maxdepth 1 -name '*.x509.pem' -type f | wc -l) certificates"
-            bash "$kit/tools/eos-keys-check.sh" tree "$top" 2>&1 | tee "$jobs/keys-check.log" || true
-            [[ "$(tail -1 "$jobs/keys-check.log")" = KEYS_CHECK=UNPINNED ]] || fail "the new keys don't pass eos-keys-check.sh tree (above); nothing was archived"
-            bak=~/expressiveos-keys-$(date -u +%Y%m%d-%H%M%S).tar.gz
-            tar -C "$priv" -czf "$bak" keys
-            chmod 600 "$bak"
-            n=$(tar -tzf "$bak" | grep -c '\.pk8$')
-            {
-              echo "ExpressiveOS keys made in ~/expressiveos/vendor/evolution-priv/keys."
-              echo "Backup archive on the server: \`$bak\`, $(stat -c %s "$bak") bytes, $n .pk8 entries, sha256 \`$(sha256sum "$bak" | cut -d' ' -f1)\`. Copy it off the server by scp; never into git."
-              sed -n 's/^UNPINNED: \(.*\) is \([0-9A-F]*\)\. Once.*/- \1: `\2`/p' "$jobs/keys-check.log"
-            } | tee -a "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
 
           if [[ $ACTION = expressiveos-build ]]; then
             # try=<path>@<commit>: a commit of one of ExpressiveOS's own projects (remote

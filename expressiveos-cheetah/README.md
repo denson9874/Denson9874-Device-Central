@@ -102,7 +102,7 @@ Never `evolution-cheetah/apply.sh` or its pantah 0001/0002: they point the Updat
    run it from a checkout of this repo: the scripts find their files next to themselves. `git am` needs a
    committer identity (`git config --global user.name` and `user.email`).
 3. **The tree:** `~/expressiveos-cheetah/setup.sh` (the first sync downloads a few hundred GB).
-4. **The keys**, by hand, once (next section).
+4. **The keys**: never made again. Restore them from the backup (next section).
 ViPER4Android and Expressive Launcher fetch their own files during the build.
 
 Or from the runner (`.github/workflows/kodiak-build.yml`, with `tree_ref` the branch to install the kit
@@ -112,7 +112,6 @@ from), without a shell on the server:
 |---|---|
 | `expressiveos-status` | Read-only: the sessions, locks, kit, tree, keys, build and the end of each log |
 | `expressiveos-setup` | Installs `tree_ref`'s kit as `~/expressiveos-cheetah`, then runs `setup.sh` in tmux session `eos-setup` |
-| `expressiveos-keys` | "Keys" below, once, never over an existing `vendor/evolution-priv`, and a backup archive `~/expressiveos-keys-<time>.tar.gz` (mode 600) to copy off the server |
 | `expressiveos-build` | Installs the kit, then `tools/eos-images.sh` and `tools/eos-pack.sh` in `eos-build` (query: `device=<phone>` or `devices=<phone>,<phone>,...`, `kernel-only`, `kernel-sync`, `installclean`, `quick`, `clean`, `try=`, `modules=`) |
 | `expressiveos-pack` | Installs the kit, then `tools/eos-pack.sh` in `eos-pack` (query: `device=<phone>`, `testers`) |
 
@@ -124,37 +123,33 @@ ExpressiveOS session or script is running.
 ## Keys
 
 The keys are what make ExpressiveOS its own ROM: every ExpressiveOS phone trusts them for updates from
-its first install on. Evolution X's makefiles fall back to the AOSP test keys without a word when
+its first install on. The build's makefiles fall back to the AOSP test keys without a word when
 `keys.mk` is missing, so the build checks them before it starts (`eos-keys-check.sh tree` and `vars`) and
 after it ends (`out`).
 
-Make them with Evolution X's own template, in a fresh login shell (never one where `envsetup.sh` ran in
-`~/evolution`: `croot` would take you there):
+**The keys exist and are never made again.** They were made once on the build server (2026-10-26) and
+`eos.conf` pins their public fingerprints (`EOS_AVB_PUBKEY_SHA1`, `EOS_OTA_CERT_SHA256`): every phone
+refuses an update signed with any other key, and the same keys can't be made twice. Nothing in the kit
+or the runner makes keys any more, and `eos-keys-check.sh` fails a tree whose keys aren't the pinned ones.
+
+When `~/expressiveos/vendor/evolution-priv/keys` is missing or damaged (a new server, the tree set up
+again), restore it from the backup: `~/expressiveos-keys-<time>.tar.gz` on the server (`expressiveos-status`
+lists it), or its copy kept off the server (a `.tar.gz.gpg` one: `gpg -d` it first). In a fresh login shell:
 
 ```bash
 cd ~/expressiveos
-if [ -e vendor/evolution-priv ]; then
-    ls -la vendor/evolution-priv; echo "STOP: something is already there; don't make keys over it"
+if [ -e vendor/evolution-priv/keys ]; then
+    ls -la vendor/evolution-priv/keys; echo "STOP: keys are there already; check them (eos-keys-check.sh tree), don't restore over them"
 else
-    git clone https://github.com/Evolution-X/vendor_evolution-priv_keys-template vendor/evolution-priv/keys &&
-    cd vendor/evolution-priv/keys && git remote remove origin && {
-        ./keys.sh             # about 2 minutes, no prompts; it always exits 1 (make_key's trap)
-        ls *.pk8 | wc -l      # 89
-        chmod 700 . && chmod 600 *.pk8
-        ~/expressiveos-cheetah/tools/eos-keys-check.sh tree   # last line KEYS_CHECK=UNPINNED, with both fingerprints
-    }
+    umask 077 && mkdir -p vendor/evolution-priv &&
+    tar -C vendor/evolution-priv -xzf ~/expressiveos-keys-<time>.tar.gz &&   # the archive holds keys/
+    chmod 700 vendor/evolution-priv/keys && chmod 600 vendor/evolution-priv/keys/*.pk8 &&
+    ~/expressiveos-cheetah/tools/eos-keys-check.sh tree   # last line KEYS_CHECK=OK
 fi
 ```
 
-Then, before any build leaves the server:
-
-1. **Back up the folder off the server**, for example
-   `tar -C ~/expressiveos/vendor/evolution-priv -czf - keys | gpg -c > ~/expressiveos-keys-$(date +%F).tar.gz.gpg`,
-   copied to the Mac and somewhere offline. It's the only copy. Without it no ExpressiveOS phone can take
-   another update.
-2. **Pin them:** put the two fingerprints `eos-keys-check.sh` printed into `eos.conf`
-   (`EOS_AVB_PUBKEY_SHA1`, `EOS_OTA_CERT_SHA256`) and commit that. From then on a tree with any other keys
-   fails, and `eos-pack.sh --release` works only with them (`KEYS_CHECK=OK`).
+Anything but `KEYS_CHECK=OK` means the backup isn't the pinned keys: stop, build nothing, and find the
+right backup. Never make new keys and never change the pins in `eos.conf` to fit other keys.
 
 The keys never go into git, and never `tools/keys/expressive_platform.keystore`.
 
