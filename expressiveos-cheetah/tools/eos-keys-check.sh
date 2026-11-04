@@ -75,7 +75,7 @@ chains() {   # chains <image>: "<partition> <sha1>" for every partition the imag
 pin() {   # pin <what> <fingerprint> <eos.conf name>
     local want=${!3:-}
     if [[ -z "$want" ]]; then
-        echo "UNPINNED: $1 is $2. Once the keys are backed up, set $3=$2 in eos.conf (README.md, \"Keys\")"
+        echo "UNPINNED: $1 is $2, and eos.conf has no $3. Put back the pin eos.conf was committed with (README.md, \"Keys\"), never one for other keys"
         unpinned=1
     elif [[ "$(norm "$want")" != "$2" ]]; then
         fail "$1 is $2, but eos.conf pins $3=$want: these aren't the keys ExpressiveOS shipped with. Restore $rel from the backup"

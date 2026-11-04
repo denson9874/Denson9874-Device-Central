@@ -138,7 +138,7 @@ lists it), or its copy kept off the server (a `.tar.gz.gpg` one: `gpg -d` it fir
 
 ```bash
 cd ~/expressiveos
-if [ -e vendor/evolution-priv/keys ]; then
+if [ -e vendor/evolution-priv/keys ] || [ -L vendor/evolution-priv/keys ]; then
     ls -la vendor/evolution-priv/keys; echo "STOP: keys are there already; check them (eos-keys-check.sh tree), don't restore over them"
 else
     umask 077 && mkdir -p vendor/evolution-priv &&
@@ -148,8 +148,9 @@ else
 fi
 ```
 
-Anything but `KEYS_CHECK=OK` means the backup isn't the pinned keys: stop, build nothing, and find the
-right backup. Never make new keys and never change the pins in `eos.conf` to fit other keys.
+Anything but `KEYS_CHECK=OK`: stop and build nothing. When the check says the keys aren't the pinned
+ones, find the right backup. Never make new keys and never change the pins in `eos.conf` to fit other
+keys; a pin missing from `eos.conf` goes back to the value it was committed with (`git log -p eos.conf`).
 
 The keys never go into git, and never `tools/keys/expressive_platform.keystore`.
 
