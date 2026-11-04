@@ -1,2 +1,0 @@
-# From stock's system_ext policy (sota.* labels are in property_contexts).
-set_prop(vendor_init, sota_prop)

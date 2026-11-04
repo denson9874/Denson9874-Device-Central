@@ -20,14 +20,14 @@ otherwise. husky (Pixel 8 Pro) and the four Pixel 11s build from the same kit an
 names, folders and switches (Other phones, below).
 
 Since 2026-11-02 the build server builds ExpressiveOS only: Evolution X and DerpFest were retired and
-their trees (`~/evolution`, `~/derpfest`) deleted, after `tools/evo-retire.sh keep` copied the Pixel 11
+their trees (`~/evolution`, `~/derpfest`) deleted, after the retire script (since removed) copied the Pixel 11
 vendor blob repos into `~/expressiveos/vendor/google/` and their keys and server-only work into
 `~/retired/`. The scripts still refuse those two paths, should they come back (`prepare.sh` copies a
 Pixel 11's vendor blobs out of `~/evolution` only when the ExpressiveOS tree lacks them), write nothing
 through a symlink that leads out of `~/expressiveos` (its `out/` and `out-kernel/` included), and build
 only while holding `~/.evolution-tree.lock` (the old name stays). The one exception is
 `tools/server-cleanup.sh` (Disk, below). Cheetah's firmware cache is filled by `tools/fetch-firmware.sh`
-(runner action `expressiveos-firmware`), which used to live in `evolution-cheetah/`.
+(runner action `expressiveos-firmware`).
 
 **Cheetah's firmware pin.** Google shows the factory image tables only after a visitor accepts its
 terms, so the fetcher can't read them unattended. When Google ships a monthly release, a person opens
@@ -71,12 +71,12 @@ project, or a patch changed in place, stops the build. In any other project they
 | Patches | What |
 |---|---|
 | `device_google_pantah` 0001, 0002, 0010 | ExpressiveOS's own: maintainer, update feed, only ExpressiveOS's boot animation |
-| `device_google_pantah` 0003-0009, `device_google_gs201` 0001-0004, `vendor_google_cheetah` | `evolution-cheetah`'s, copied unchanged |
+| `device_google_pantah` 0003-0009, `device_google_gs201` 0001-0004, `vendor_google_cheetah` | The old cheetah kit's, copied unchanged |
 | `device_google_gs201` 0005 | ExpressiveOS's own: target-files takes the system, vendor, product and other dynamic partition images the build made (`COPY_IMAGES_FOR_TARGET_FILES_ZIP`) instead of making them again with other file times, so the fastboot zip and the OTA carry the same ones and an incremental OTA can patch them on phones installed either way (target-files still signs its own boot images and vbmeta, which an incremental writes whole) |
 | `frameworks_base` 0001-0010 | The fixes the Evolution X tree carries, refreshed for today's frameworks/base: they apply without history too |
-| `frameworks_base` 0011-0020 | evolution-kodiak's background-power fixes (2026-10-26), copied: SystemUI animations that kept running with the screen off or on AOD, the colored status bar icons setting, AxSpoofManager's fetches, Extreme Charging's 50% limit |
+| `frameworks_base` 0011-0020 | The old Pixel 11 kit's background-power fixes (2026-10-26), copied: SystemUI animations that kept running with the screen off or on AOD, the colored status bar icons setting, AxSpoofManager's fetches, Extreme Charging's 50% limit |
 | `vendor_lineage` 0001 | ExpressiveOS 1.0 names, and the build's own date, so both make passes name one zip |
-| `vendor_lineage` 0002 | evolution-kodiak's, copied: games get stock's 60 fps default again |
+| `vendor_lineage` 0002 | The old Pixel 11 kit's, copied: games get stock's 60 fps default again |
 | `vendor_lineage` 0003 | ExpressiveOS's own: `m evolution` keeps the target-files zip its OTA package is made from |
 | `frameworks_base` 0021-0024, `packages_apps_Settings`, `packages_apps_Evolver`, `packages_apps_Updater`, `lineage-sdk`, `packages_apps_LineageParts`, `packages_apps_EvoEgg`, `packages_apps_Sandbox`, `vendor_pixel-style`, `system_core`, `bootable_recovery` | ExpressiveOS's branding (Daryl, 2026-10-27: "ExpressiveOS only, no mention"): every screen, icon, link and the crash report header say ExpressiveOS, the Evolver is "Expressive Studio", the crash dialog copies the log instead of uploading it to Evolution X's paste site, recovery shows ExpressiveOS's mark. Made at the server's revisions of 2026-10-26; the images come from [`branding/`](branding/README.md) |
 | `system_update_engine` 0001 | update_engine checks payload and metadata signatures again (Daryl, 2026-10-27); Evolution X's 59fbd47 skips them, on the phone and in the host's `delta_generator` |
@@ -91,14 +91,12 @@ project, or a patch changed in place, stops the build. In any other project they
 A folder is named after its project's path with `_` for `/`; a project whose name has a `_` of its own
 (`system/update_engine`) names itself in the folder's `PROJECT` file.
 
-Never `evolution-cheetah/apply.sh` or its pantah 0001/0002: they point the Updater at Evolution X's feed.
-
 ## First time on the build server
 
 1. **Disk and packages.** A full-history tree with `out/` and `out-kernel/` needs about 450 GB
    (`setup.sh` checks; 620 GB were free on 2026-10-26). Every host package the scripts need is
    installed.
-2. **The kit.** Put this folder on the server as `~/expressiveos-cheetah` (like `~/evolution-cheetah`), or
+2. **The kit.** Put this folder on the server as `~/expressiveos-cheetah`, or
    run it from a checkout of this repo: the scripts find their files next to themselves. `git am` needs a
    committer identity (`git config --global user.name` and `user.email`).
 3. **The tree:** `~/expressiveos-cheetah/setup.sh` (the first sync downloads a few hundred GB).

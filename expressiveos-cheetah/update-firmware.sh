@@ -2,8 +2,7 @@
 # Replace the firmware the ExpressiveOS cheetah OTA ships (bootloader + radio partitions)
 # with a Google factory release, so updates never carry firmware older than the phone's
 # (Pixels refuse bootloader downgrades). Evolution X's vendor_google_cheetah carries the
-# firmware of the release its blobs were extracted from. The same steps as
-# evolution-cheetah/update-firmware.sh, for the ExpressiveOS tree only.
+# firmware of the release its blobs were extracted from.
 #
 #   update-firmware.sh <top> <bootloader-cheetah-*.img> <radio-cheetah-*.img> <build-id>
 #

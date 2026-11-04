@@ -14,6 +14,3 @@ __pycache__/
 keybox.xml
 custom.pif.prop
 
-# Community monitor: local venv and downloaded user logs/bugreports
-tools/community_monitor/venv/
-evolution-kodiak/community/attachments/
