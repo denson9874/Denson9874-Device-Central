@@ -178,7 +178,7 @@ want "no outside block with 2 pinned" 'has "$out" "== Projects outside LineageOS
 want "no shusky-kernels move" 'has "$outs" "device/google/shusky-kernels <- android_device_google_shusky-kernels lineage-24.0: 1 new commit"'
 want "no zuma pinned line" 'has "$outs" "device/google/zuma: pinned at ${ZUMA:0:12} (android_device_google_zuma)"'
 want "no vendor/google/husky pinned line" 'has "$outs" "vendor/google/husky: pinned at ${VH:0:12} (TheMuppets/proprietary_vendor_google_husky)"'
-want "husky's tree not ExpressiveOS's own" 'has "$out" "== ExpressiveOS'"'"'s own repos with nothing upstream (3)"'
+want "husky's tree not ExpressiveOS's own" 'has "$out" "== ExpressiveOS'"'"'s own repos with nothing upstream (2)"'
 want "shusky-kernels in LineageOS's block" '! has "$(section "LineageOS'"'"'s and AOSP'"'"'s projects" "$out")" "shusky-kernels"'
 want "a traceback" '! has "$out" "Traceback"'
 verdict "a1. dry run: device projects sorted by kind, pinned ones never contacted" "$out"
@@ -338,7 +338,7 @@ want "zuma not pinned, on a branch" 'has "$add" "device/google/zuma (android_dev
 want "zuma with clone-depth not fetched by id" 'has "$(entry device/google/zuma-depth "$add")" "its commit is there, by its id"'
 want "TheMuppets' not found on a branch" 'has "$(entry vendor/google/husky "$add")" "its commit is on a branch (repo sync fetches the branches)"'
 want "TheMuppets' with clone-depth not on a branch, by id refused" 'has "$(entry vendor/google/husky-depth "$add")" "its commit is on a branch (the server won'"'"'t hand it out by its id"'
-want "kinds line" 'has "$out" "projects by kind: own 2 -> 3, fork 3, lineage 4, outside 1 -> 2, pinned 0 -> 4"'
+want "kinds line" 'has "$out" "projects by kind: own 1 -> 2, fork 3, lineage 4, outside 1 -> 2, pinned 0 -> 4"'
 verdict "f2. lint of good device lines: OK, each kind" "$out"
 
 git --git-dir="$T/gh/ExpressiveOS/manifest.git" update-ref refs/pull/7/head "$good"

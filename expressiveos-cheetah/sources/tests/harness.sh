@@ -122,9 +122,7 @@ C0=$(tip "$T/gh/LineageOS/android.git" $LB)
 
 # ExpressiveOS's manifest, in own-manifest.py's layout, every project at a commit
 pin() { tip "$1" "$2"; }
-EVO_OLD=$(git --git-dir="$T/gh/LineageOS/android.git" rev-parse $LB)
-mkrepo "$T/gh/ExpressiveOS/manifest.git" expressiveos "README=old evo manifest"
-EVO_MAN=$(tip "$T/gh/ExpressiveOS/manifest.git" expressiveos)
+mkrepo "$T/gh/ExpressiveOS/manifest.git" expressiveos "README=ExpressiveOS's manifest"
 build_make() {   # ExpressiveOS's manifest's build/make line: AOSP's own, or ExpressiveOS's fork of it
     if [[ ${EOS_TEST_AOSP_FORK:-} = 1 ]]; then
         echo "  <project name=\"platform_build\" path=\"build/make\" remote=\"expressiveos\" revision=\"$(pin "$T/gh/ExpressiveOS/platform_build.git" expressiveos)\" upstream=\"refs/heads/expressiveos\" dest-branch=\"refs/heads/expressiveos\" groups=\"pdk\">"
@@ -155,7 +153,6 @@ $(build_make)
   <project name="vendor_lineage" path="vendor/lineage" remote="expressiveos" revision="$(pin "$T/gh/ExpressiveOS/vendor_lineage.git" expressiveos)" upstream="refs/heads/expressiveos" dest-branch="refs/heads/expressiveos" />
   <project name="packages_apps_Settings" path="packages/apps/Settings" remote="expressiveos" revision="$(pin "$T/gh/ExpressiveOS/packages_apps_Settings.git" expressiveos)" upstream="refs/heads/expressiveos" dest-branch="refs/heads/expressiveos" />
   <project name="packages_apps_Evolver" path="packages/apps/Evolver" remote="expressiveos" revision="$(pin "$T/gh/ExpressiveOS/packages_apps_Evolver.git" expressiveos)" upstream="refs/heads/expressiveos" dest-branch="refs/heads/expressiveos" />
-  <project name="manifest" path="evolution/manifest" remote="expressiveos" revision="$EVO_MAN" upstream="refs/heads/expressiveos" dest-branch="refs/heads/expressiveos" />
 </manifest>
 EOF
 }

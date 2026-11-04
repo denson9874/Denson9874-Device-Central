@@ -51,7 +51,7 @@ the cache hold). The next cheetah build's `prepare.sh` puts that bootloader and 
 | `devices/` | One `<device>.conf` per phone, what differs between them, and a phone's own tree patches ([`devices/`](devices/README.md); Other phones, below) |
 | `setup.sh` | Sets up `~/expressiveos` (ExpressiveOS's own manifest, full history, Git LFS) or syncs it again, and moves a 1.0 tree onto that manifest (Sources, below) |
 | `pins/kernel.xml` | The exact kernel source ExpressiveOS builds |
-| `sources/` | Where ExpressiveOS's own sources came from: `eos-1.0-base/` (the 1.0 builds' sources), `org-fork.sh` (the forks in the ExpressiveOS GitHub organization) and `own-manifest.py` (ExpressiveOS's manifest); `update-check.sh`, `update.sh` and `update.py`, the monthly update (see below), and `tests/`, its tests; `updates/<id>/`, each update's own files |
+| `sources/` | Where ExpressiveOS's own sources came from: `eos-1.0-base/` (the 1.0 builds' sources) and `own-manifest.py` (ExpressiveOS's manifest); `update-check.sh`, `update.sh` and `update.py`, the monthly update (see below), and `tests/`, its tests; `updates/<id>/`, each update's own files |
 | `prepare.sh`, `apply.sh`, `patches/` | Git LFS files, the kit's tree patches (below), the phone's firmware (cheetah's: the newest cached, `update-firmware.sh`) |
 | `tools/eos-keys-check.sh` | The key guard: ExpressiveOS's own keys, never Evolution X's, DerpFest's or the AOSP test keys |
 | `tools/eos-keybox.py` | Checks an attestation `keybox.xml` against Google's live roots and CRL, checks `EOS_KEYBOX_URL`, and uploads to R2 |
@@ -214,24 +214,23 @@ The other steps' ETAs come from their recorded times, or from typical times.
 
 ## Sources
 
-ExpressiveOS builds its own sources (Daryl, 2026-10-28: fully independent of Evolution X, whose
-rebuilds and force-pushes broke the Studio patches on 2026-10-27; ExpressiveOS merges LineageOS and
-Google's security fixes itself). The tree is [ExpressiveOS/manifest](https://github.com/ExpressiveOS/manifest),
+ExpressiveOS builds its own sources (Daryl, 2026-10-28: fully independent; ExpressiveOS merges
+LineageOS and Google's security fixes itself). The tree is [ExpressiveOS/manifest](https://github.com/ExpressiveOS/manifest),
 branch `expressiveos` (`eos.conf`), one flat `default.xml` with every project at a commit, never a
 branch head:
 
-- the 74 projects Evolution X, Evolution-X-Devices and BtHelper's TheParasiteProject hosted come from
-  ExpressiveOS's forks of them in the [ExpressiveOS](https://github.com/ExpressiveOS) organization, at
-  their `expressiveos` branch: the commit of the 1.0 builds (tag `eos-1.0-base`) plus the kit's
-  changes as commits (`OTA`, in the tree twice, also has `expressiveos-vanilla` for
-  `evolution/OTA-VANILLA`). cheetah's device trees and blobs are among them: the kit has no local
+- the 71 projects of the 1.0 sources hosted on GitHub outside LineageOS come from ExpressiveOS's own
+  repos in the [ExpressiveOS](https://github.com/ExpressiveOS) organization, at their `expressiveos`
+  branch: the commit of the 1.0 builds (tag `eos-1.0-base`) plus the kit's changes as commits.
+  cheetah's device trees and blobs are among them: the kit has no local
   manifest any more. Another phone's projects must be in the manifest too (`setup.sh` checks its
   `EOS_SENTINEL` file after a sync; husky's are LineageOS's trees and TheMuppets' blobs, as they are),
   all but the Pixel 11s' vendor blobs (Other phones);
 - the rest, LineageOS's and AOSP's, at the commits of the 1.0 builds (LineageOS never rewrites its
   branches, and AOSP's are tags);
-- `evolution/manifest` stays at Evolution X's last manifest: `build_kernel` reads the LineageOS version
-  from it, and a manifest can't name its own next commit.
+- the 1.0 sources' old manifest and OTA json checkouts (`evolution/manifest`, `evolution/OTA`,
+  `evolution/OTA-VANILLA`) are left out: nothing builds from them, and `build_kernel` reads the
+  LineageOS version from the tree's own manifest (`.repo/manifests/default.xml`).
 
 Each commit is on the branch its `upstream` names, so a fresh tree syncs anywhere. `setup.sh` fetches the
 manifest and checks it before anything syncs (nothing but remotes and projects: no `<include>`,
@@ -253,13 +252,11 @@ Where it came from, in `sources/`:
 - `eos-1.0-base/manifest.xml` and `cheetah.xml`: the exact commit of every project of the 1.0 builds of
   2026-10-26 and 2026-10-27 (Evolution X's cnb manifest and the kit's local manifest then), read off
   the build server's tree by the runner's read-only `expressiveos-pins` action. A record now.
-- `org-fork.sh` made the forks, from a machine where `gh` is logged in as an owner (Daryl's Mac): one
-  of each of the 73 repos those name outside LineageOS (69 Evolution-X, 3 Evolution-X-Devices,
-  BtHelper), with tag `eos-1.0-base` and default branch `expressiveos` at its 1.0 commit, and
-  `blobs`, which holds the Git LFS files of `vendor_gms` and `vendor_google_cheetah` (Evolution X keeps
-  them on gitea.com and a personal gitlab.com account; the forks' `.lfsconfig` points at `blobs`). It
-  can run again any time and redoes nothing.
-- `own-manifest.py` made `default.xml` from them and the forks' branches. It fails unless each fork the
+- ExpressiveOS's repos were made once from them, each with tag `eos-1.0-base` and default branch
+  `expressiveos` at its 1.0 commit, and `blobs` holds the Git LFS files of `vendor_gms` and
+  `vendor_google_cheetah` (their `.lfsconfig` points at `blobs`). The script that made them is retired:
+  the repos change only by their own commits.
+- `own-manifest.py` made `default.xml` from them and those repos' branches. It fails unless each fork the
   kit has patches for (`patches/`, `viper4android/patches/`, and each phone's
   `devices/<device>/patches/`) has every one of them as a
   commit above its 1.0 commit, and it gives those forks their full history (no `clone-depth`):
@@ -328,7 +325,7 @@ whether LineageOS's manifest has a project at the same path (`update.py`'s `kind
 | another remote, with `upstream=` | no | moves to its upstream's tip, unreviewed (the `-kernels` prebuilts) |
 | another remote, no `upstream=` | no | pinned: stays at its commit, never contacted |
 
-GitHub's fork relation, `org-fork.sh` and `dest-branch` play no part: a repo of the ExpressiveOS
+GitHub's fork relation and `dest-branch` play no part: a repo of the ExpressiveOS
 organization under any other remote name is not ExpressiveOS's to the update (lint calls it a problem).
 So a device's trees and blobs in the organization, on `expressiveos`, are ExpressiveOS's own; LineageOS's
 or TheMuppets' (husky's) with no `upstream=` are pinned, and listed with the projects outside LineageOS's
@@ -380,7 +377,7 @@ tree and pushes nothing. Against LineageOS's manifest today it shows:
 - the kernel's 18 projects against `pins/kernel.xml` (Google's GKI tag).
 
 It also checks the manifest's text as plan will (the tree's, and GitHub's where that's newer). The report
-is `~/expressiveos-update/reports/update-check-<time>.txt`. ExpressiveOS's own repos (Evolution X's apps
+is `~/expressiveos-update/reports/update-check-<time>.txt`. ExpressiveOS's own repos (its apps
 and vendor repos, the devices' trees and blobs) have nothing upstream, and Google's factory images (each
 device's firmware and vendor blobs) aren't part of it. It ends `UPDATE_CHECK=OK` or
 `UPDATE_CHECK=INCOMPLETE`, or `UPDATE_CHECK=NOT_RUN` (naming the holder) while a build or setup holds

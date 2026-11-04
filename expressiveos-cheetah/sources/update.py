@@ -11,13 +11,13 @@
 # Project by project (the manifest's paths):
 # - LineageOS's and AOSP's projects move to what LineageOS's manifest (its branch, as named on
 #   build_kernel's line of ExpressiveOS's) names for that path today: a branch's newest commit,
-#   a tag or a commit. A project LineageOS's manifest doesn't have (Evolution X kept a few
+#   a tag or a commit. A project LineageOS's manifest doesn't have (the 1.0 sources kept a few
 #   LineageOS repos LineageOS dropped, and cheetah's kernel prebuilts) follows its own upstream.
 #   Each move must descend from our commit: LineageOS never rewrites its branches.
 # - ExpressiveOS's forks of LineageOS's and AOSP's repos: what LineageOS's manifest names for
 #   that path, merged into the fork (git merge-tree, nothing written to the fork): clean, or the
 #   files that conflict, and which of those ExpressiveOS's own changes (the kit's patches) touch.
-# - ExpressiveOS's other repos (Evolution X's apps and vendor repos, cheetah's trees and blobs)
+# - ExpressiveOS's other repos (its own apps and vendor repos, cheetah's trees and blobs)
 #   have nothing upstream: only their branch tip against the manifest is shown.
 # Then what LineageOS's manifest itself changed since --lineage-base (projects added, removed,
 # moved to another repo or branch; Google's AOSP tag), the platform security patch level before
@@ -132,8 +132,6 @@ def kind_of(p, n):
     #             there), and takes LineageOS's changes of repo and branch
     #   outside   not in LineageOS's manifest: moves to the tip of its line's upstream, unreviewed
     #   pinned    another remote, no upstream: stays at its commit, its repo never contacted
-    if p.path == "evolution/manifest":
-        return "own"
     if p.remote == "expressiveos":
         return "own" if n is None else "fork"
     if ref_of(p.upstream or p.revision) == p.revision:
@@ -414,11 +412,6 @@ def check(a):
         # What the update does to project p: a dict for the report
         r = {"path": p.path}
         n = now.get(p.path)
-        if p.path == "evolution/manifest":
-            # Evolution X's last manifest, for build_kernel's LineageOS version line: its repo's
-            # expressiveos branch is ExpressiveOS's own manifest now, one commit on top of it
-            r["kind"] = "own"
-            return r
         if p.remote == "expressiveos":
             branch = branch_of(p.upstream or "refs/heads/expressiveos")
             tip = ls_remote(p.url, "refs/heads/" + branch)
@@ -1332,12 +1325,12 @@ def plan(a):
     def one(p):
         n = now.get(p.path)
         r = {"path": p.path}
-        if p.path == "evolution/manifest" or p.remote == "expressiveos" and n is None:
+        if p.remote == "expressiveos" and n is None:
             r["kind"] = "own"
             r["new_rev"] = p.revision
             branch = branch_of(p.upstream or "refs/heads/expressiveos")
             tip = ls_remote(p.url, "refs/heads/" + branch)
-            if p.path != "evolution/manifest" and tip != p.revision:
+            if tip != p.revision:
                 r["note"] = f"its {branch} branch is at {(tip or 'nothing')[:12]}, the manifest keeps {p.revision[:12]}"
             return r
         if p.remote == "expressiveos":
@@ -2320,7 +2313,7 @@ def lint(a):
                 if up and (SHA.fullmatch(up) or up.startswith("refs/") and not up.startswith(("refs/heads/", "refs/tags/"))):
                     probs.append(f"its upstream {up} isn't a branch or a tag")
                     return info, probs
-                if k in ("own", "fork") and path != "evolution/manifest":
+                if k in ("own", "fork"):
                     if up.startswith("refs/tags/"):
                         probs.append(f"its upstream {up} is a tag: ExpressiveOS's repos are on a branch (expressiveos)")
                         return info, probs

@@ -3,8 +3,8 @@
      ExpressiveOS's own sources start: the exact commit of every project in Evolution X's cnb
      manifest that the build server's tree was synced to on 2026-10-26 12:53 CET, read off that
      tree by the runner's read-only expressiveos-pins action (run 40670948991, 2026-10-28), less
-     cheetah.xml's four projects. org-fork.sh forked the Evolution X repos here at these commits
-     (tag eos-1.0-base), and own-manifest.py made ExpressiveOS's manifest from them. A record
+     cheetah.xml's four projects. ExpressiveOS's own repos have tag eos-1.0-base at these
+     commits, and own-manifest.py made ExpressiveOS's manifest from them. A record
      only: the tree builds ExpressiveOS's manifest (eos.conf), not this. -->
 <manifest>
   <remote name="aosp" fetch="https://android.googlesource.com" review="android-review.googlesource.com" revision="refs/tags/android-17.0.0_r1" />
