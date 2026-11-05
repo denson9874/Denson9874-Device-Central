@@ -7,6 +7,34 @@ build because it is way ahead on 2.0.8"). It is the unmodified QA release APK, s
 Expressive's own release key, as a privileged system_ext app: nothing is rebuilt or re-signed, so
 newer releases from GitHub or the launcher's own updater install over the built-in copy.
 
+## Pixel Launcher as a Home app pick (1.1)
+
+From ExpressiveOS 1.1, Pixel Launcher ships next to it (Daryl, 2026-11-04, after a user asked for
+Pixel Launcher as an option: "Home app pick in 1.1"). Expressive Launcher stays the default Home app and
+the Recents app. Anyone can pick Pixel Launcher in Settings > Apps > Default apps > Home app and get its
+home screen, At a Glance, the Google feed and Wallpaper & style's grid and icon options. Overview and
+the gestures stay Expressive Launcher's, because only one app can be the Recents app and that's set at
+boot (`config_recentsComponentName`). Android then treats Pixel Launcher the way it treats any other
+launcher on a Pixel: Overview is Expressive Launcher's `RecentsActivity` over Pixel Launcher's home
+screen, and going home has a plainer animation.
+
+- **Default Home on a clean flash.** Both apps are privileged system apps. The Home role has no default
+  holder: PermissionController falls back to the highest-priority Home activity, and on a tie it gives
+  the role to nobody, so Home shows a chooser. Pixel Launcher's Home filter has no priority (0), so the
+  pinned release must have priority 1 or more (denson9874/ExpressiveLauncher#49). Android honours
+  that only for privileged system apps, so it changes nothing on other phones. `tools/launcher-check.sh
+  tree` fails on a pin whose Home priority is 0, and `out` checks it against every other Home activity
+  in the build, including the setup wizard's, which must stay above it.
+- **Phones updating from 1.0** already have Expressive Launcher as their Home role holder, and an
+  update doesn't change it. Pixel Launcher just appears in Default apps.
+- **What comes back with Pixel Launcher:** its two overlays (`PixelLauncherNoGestureHintOverlay`,
+  `PixelLauncherOverlayCustom`), so Settings' gesture-pill switch works for it, the wallpaper picker's and
+  SystemUIGoogle's `launcher_overlayable_package` hooks, AI Icons and Pixel Search
+  (`com.google.android.apps.pixel.launcherconnector`), and `config_secondaryHomePackage`, which names
+  Pixel Launcher (an external display's home screen on husky and the Pixel 11s, untested).
+- **Size:** Pixel Launcher's APK goes back into system_ext and the full OTA (not measured here; it
+  shipped in every build until the 2026-10-30 swap).
+
 ## Status: 5.0.9; 5.0.8 was the first Android 17 build that works as the Recents app
 
 Releases up to QA 5.0.4 (66), and the current Stable 5.0.0 (62), are compiled against
@@ -52,25 +80,26 @@ tree` fails on the same.
 | `/system_ext/overlay/ExpressiveLauncherSetupWizardOverlay.apk` | Pixel's setup wizard ends on Expressive Launcher's "All set" page and knows it as the launcher | this kit |
 | The licence texts in the system_ext NOTICE file | Apache-2.0 (AOSP Launcher3, Lawnchair), MIT (the calculator), OFL-1.1 (Google Sans Flex) | `LICENSE.txt` and the calculator's `LICENSE` at `84a81fd`; Google Sans Flex's `OFL.txt` at `6cffd50` |
 
-What goes: Pixel Launcher (vendor/gms's `NexusLauncherRelease`) and AOSP's `Launcher3QuickStep`
-(build/make's `handheld_system_ext.mk`), the two launchers the build installs, through
-`ExpressiveLauncher`'s `overrides` (with the other launcher names they override, as no-ops), and Pixel
-Launcher's two overlays (`PixelLauncherNoGestureHintOverlay`, `PixelLauncherOverlayCustom`).
+What stays: Pixel Launcher (vendor/gms's `NexusLauncherRelease`, `/system_ext/priv-app`) and its two
+overlays (`PixelLauncherNoGestureHintOverlay`, `PixelLauncherOverlayCustom`), as a Home app users can
+pick. What goes: AOSP's `Launcher3QuickStep` (build/make's `handheld_system_ext.mk`), through
+`ExpressiveLauncher`'s `overrides` and Pixel Launcher's own (with the other launcher names they
+override, as no-ops).
 
 ### Framework config
 
 Pixel's config names Pixel Launcher in several places. `ExpressiveLauncherFrameworkOverlay` is on
 system_ext, and the platform applies static overlays partition by partition (system, vendor, odm, oem,
 product, system_ext: frameworks/base `OverlayConfig`, `PackagePartitions`), so its values win over every
-product overlay whatever their priorities. Each list is the one the build uses today, with Expressive
-Launcher in Pixel Launcher's place or added at the end; `tools/launcher-check.sh tree` recomputes them
-from the tree and fails when one drifts.
+product overlay whatever their priorities. Each list is the one the build uses today with Expressive
+Launcher added at the end (Pixel Launcher keeps its place, as it still ships);
+`tools/launcher-check.sh tree` recomputes them from the tree and fails when one drifts.
 
 | Value | Why | The build's value it replaces |
 |---|---|---|
 | `config_recentsComponentName` = `dev.launcher.expressive.l3/com.android.quickstep.RecentsActivity` | SystemUI binds this package's quickstep service (`TouchInteractionService`) for gestures, Overview and the taskbar; Settings offers gesture navigation only when it resolves; the platform grants it the permissions marked "recents" | Pixel Launcher's (vendor/pixel-style `PixelConfigOverlayCommon`, priority 1) |
-| `config_defaultListenerAccessPackages` | Notification access by default (notification dots) | `PixelConfigOverlay2019`'s (priority 6, the highest of the five that set it) |
-| `config_launcherPackages` | Evolution X's launchers: the task and permission checks `PixelPropsUtils` lets them skip, as it did for Pixel Launcher | framework-res's (`evolution_arrays.xml`) |
+| `config_defaultListenerAccessPackages` | Notification access by default (notification dots), for both launchers | `PixelConfigOverlay2019`'s (priority 6, the highest of the five that set it) |
+| `config_launcherPackages` | Evolution X's launchers: the task and permission checks `PixelPropsUtils` lets them skip, as it does for Pixel Launcher | framework-res's (`evolution_arrays.xml`) |
 | `vendor_required_apps_managed_device`, `vendor_required_apps_managed_user` | Apps a fully managed (work) phone or managed user keeps. Expressive Launcher's Home activity is also in the app drawer (Pixel Launcher's isn't), so provisioning would disable it otherwise | `vendor/lineage/overlay/common`'s (the build makes it a product overlay, priority 1, which beats Google's) |
 
 `ExpressiveLauncherSetupWizardOverlay` sets Pixel's setup wizard's `exit_to_action_in_initial_setup` (the
@@ -79,7 +108,8 @@ Launcher's) and `launcher_package`. The setup wizard APK declares no overlayable
 overlay may change them.
 
 Home itself needs no config: the Home role's default is the highest-priority system Home app
-(PermissionController), and with Pixel Launcher and Launcher3 gone that's Expressive Launcher.
+(PermissionController), and the pinned release's Home priority (1) puts Expressive Launcher above Pixel
+Launcher (0). See "Pixel Launcher as a Home app pick" above.
 
 ## Files
 
@@ -133,8 +163,9 @@ crash. The mapping must be the release's own (`dex-refs.py` notes a `pg_map_id` 
 the APK).
 
 The first build after this kit lands should start with `m installclean` (the runner's
-`expressiveos-build` with installclean, or `EOS_INSTALLCLEAN=1`), so no Pixel Launcher from an earlier
-build is left in `out/`: `out` fails if one is.
+`expressiveos-build` with installclean, or `EOS_INSTALLCLEAN=1`), so no launcher an earlier build
+installed is left in `out/`: `out` fails if the launcher apps aren't exactly Expressive Launcher and
+Pixel Launcher.
 
 ### What the checks cover
 
@@ -145,31 +176,34 @@ build is left in `out/`: `out` fails if one is.
   `../devices/<device>.conf` phone; every permission the APK asks for that this tree's frameworks/base
   marks `privileged` is in `EL_PRIVAPP_PERMS` and the privapp XML grants exactly those (a missing one
   stops a clean flash at boot under `ro.control_privapp_permissions=enforce`; the build sets `log` today,
-  vendor/lineage's `config/common.mk`, which only logs it); each framework list above is still the build's own with Expressive
-  Launcher in Pixel Launcher's place; Pixel's setup wizard overlay still sets the exit action on
+  vendor/lineage's `config/common.mk`, which only logs it); the pinned APK's Home activity has a
+  priority above 0 (Pixel Launcher's); each framework list above is still the build's own with Expressive
+  Launcher added at the end; Pixel's setup wizard overlay still sets the exit action on
   `com.google.android.pixel.setupwizard`; no `partition_order.xml` in `device/` or `vendor/`; vendor/gms
-  still names Pixel Launcher `NexusLauncherRelease`.
+  still builds Pixel Launcher as `NexusLauncherRelease`.
 - `out <product_out> [host_out]` (post-build): the APK's sha256 is unchanged (and, when
-  `host_out/bin/apksigner` exists, it verifies with the pinned certificate); it is the only launcher
-  app (no `NexusLauncherRelease`, `Launcher3*`, `Trebuchet`, `Lawnchair` or `QuickSearchBox`); no Pixel
-  Launcher overlays; the privapp XML grants exactly `EL_PRIVAPP_PERMS` and no other permissions XML
+  `host_out/bin/apksigner` exists, it verifies with the pinned certificate); the launcher apps are it
+  and Pixel Launcher's `NexusLauncherRelease`, both in `system_ext/priv-app` (no `Launcher3*`,
+  `Trebuchet`, `Lawnchair` or `QuickSearchBox`); Pixel Launcher's overlays (INFO); the privapp XML grants exactly `EL_PRIVAPP_PERMS` and no other permissions XML
   names the package; the hidden-API sysconfig lists it; the user-type sysconfig installs it for
-  `SYSTEM` and `FULL` users and no other sysconfig names it; no other app ships an enabled Home activity
-  at priority 0 or more (the Home role has no default holder, so the highest priority wins and a tie
-  brings up the chooser), apart from a setup wizard's above 0 (INFO, like the ones that ship turned
-  off and any APK it can't read); no `system_ext/overlay/config/config.xml` or
+  `SYSTEM` and `FULL` users and no other sysconfig names it; its Home activity's priority is above
+  every other enabled one's (the Home role has no default holder, so the highest priority wins and a
+  tie brings up the chooser), and at least one other (Pixel Launcher's) ships for Default apps to
+  offer, while a setup wizard's must stay above it (INFO for the setup wizard's, the ones that ship
+  turned off and any APK it can't read); no `system_ext/overlay/config/config.xml` or
   `product/overlay/partition_order.xml`, which could reorder the overlays; both overlays are on
   system_ext with their packages, targets and values; `system_ext/etc/NOTICE.xml.gz` names the APK and
   carries all three licence texts. Dexpreopt is INFO.
 - `device` (adb, read-only; `ANDROID_SERIAL` picks the phone): an ExpressiveOS phone; the launcher is
-  the built-in copy (INFO when an update from GitHub runs over it), Pixel Launcher isn't installed, it
-  holds the Home role and Home resolves to it; `cmd overlay lookup` shows the recents component, the
+  the built-in copy (INFO when an update from GitHub runs over it), Pixel Launcher is built in, the
+  Home role holder is it (or Pixel Launcher, INFO: the user's pick; nobody fails, as a chooser would
+  come up) and Home resolves to that holder; `cmd overlay lookup` shows the recents component, the
   listener list, Evolution X's launcher list and the setup wizard's two values; SystemUI is bound to
   its `TouchInteractionService`; the 9 privileged permissions are granted with no allowlist violation;
   neither it nor SystemUI crashed since logcat began; no binder call into it failed (Binder's "Caught a
   RuntimeException from the binder stub implementation" in its process: the Status section's mismatch);
   notification access (INFO). Gestures, Overview and the taskbar are checked by hand, then `device` runs
-  again.
+  again; so is picking Pixel Launcher in Default apps and switching back.
 
 ## Pins (`launcher.conf`)
 
@@ -225,17 +259,18 @@ https://github.com/denson9874/ExpressiveLauncher/tree/84a81fda7a1ac589f7a3e654eb
   View on would crash Settings. The fix is a commit in ExpressiveOS's `vendor_packages_SettingsGoogle`
   (use the Home app's own grid provider, and never crash when there's none: its draft PR #1) and a
   manifest pin bump, both before this kit ships.
-- **External displays** (husky and the Pixel 11s): `config_secondaryHomePackage` still names Pixel
-  Launcher and Expressive Launcher has no `SECONDARY_HOME` activity, so a second display gets no home
-  screen. cheetah has no display output. Needs a launcher release with one.
-- **Lost Pixel Launcher hooks:** Settings' gesture-pill switch toggles only Pixel Launcher's and
-  Launcher3's no-hint overlays; Expressive Studio's navigation-bar icon styles target Pixel Launcher;
-  SystemUIGoogle's and the wallpaper picker's `launcher_overlayable_package` still name Pixel Launcher
-  (launcher icon theming, the glanceable hub's widget picker, app-grid option icons); Google Restore
-  can't restore a Pixel Launcher layout into it.
-- **Dead weight:** vendor/gms's AI Icons (`AiIconsPrebuilt`) and Pixel Search
-  (`PixelSearchPrebuilt`, `com.google.android.apps.pixel.launcherconnector`) only serve Pixel Launcher
-  and still ship.
+- **External displays** (husky and the Pixel 11s): `config_secondaryHomePackage` names Pixel Launcher,
+  which ships again, so a second display should get Pixel Launcher's home screen (untested).
+  Expressive Launcher has no `SECONDARY_HOME` activity. cheetah has no display output.
+- **Pixel Launcher hooks that Expressive Launcher doesn't get:** Settings' gesture-pill switch toggles
+  only Pixel Launcher's and Launcher3's no-hint overlays; Expressive Studio's navigation-bar icon styles
+  target Pixel Launcher; SystemUIGoogle's and the wallpaper picker's `launcher_overlayable_package` name
+  Pixel Launcher (launcher icon theming, the glanceable hub's widget picker, app-grid option icons);
+  Google Restore can't restore a Pixel Launcher layout into it. They work again for anyone who picks
+  Pixel Launcher as Home.
+- **Overview with Pixel Launcher as Home** is Expressive Launcher's (see "Pixel Launcher as a Home app
+  pick"). Giving Pixel Launcher Overview too would take a restart-time switch of the Recents app; Daryl
+  chose the Home app pick for 1.1.
 - **Dexpreopt:** Evolution X sets `DONT_DEXPREOPT_PREBUILTS := true`; Pixel Launcher wasn't compiled
   ahead of time either.
 
@@ -254,3 +289,11 @@ at the manifest's pins, with the real pinned APK; never with a real build or a p
       3-button Recents with Expressive Launcher as the Recents app, the setup wizard's end on a clean
       install, notification dots, a clean flash's privapp allowlist, and an in-app update installing over
       the built-in copy.
+- [ ] The Home app pick (1.1): with a release whose Home priority is 1, a new user (or a clean flash)
+      gets Expressive Launcher as Home with no chooser (`cmd role get-role-holders --user <id>
+      android.app.role.HOME`); the setup wizard still runs first; picking Pixel Launcher in Default apps
+      gives its home screen, At a Glance and the Google feed, with swipe up, Overview and quick switch
+      still working through Expressive Launcher; switching back; a phone updating from 1.0 keeps
+      Expressive Launcher.
+- [ ] The new `tree` priority check, the `out` Home comparison and the `device` role checks, run against
+      a real tree, build and phone.
