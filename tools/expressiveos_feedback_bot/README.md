@@ -33,7 +33,7 @@ It's one Cloudflare Worker, `expressiveos-feedback-bot`, on the same account as 
 | Closed as completed | "✅ Fixed in *milestone*, out *due date*. Thanks for reporting it!" (ideas: "✅ Added in …") |
 | Label `planned` | "📌 We're on it: planned for *milestone*, out *due date*." (ideas: "📌 Planned for …") |
 | Label `needs-logs` | how to take a log, and the link to which logs each problem needs |
-| Comment `/reply <text>` by `denson9874` | *text*, as written (🚀 on the comment once it's sent, 😕 if it failed) |
+| Comment `/reply <text>` by `denson9874` | *text*, as written, up to a `---` line (🚀 on the comment once it's sent, 😕 if it failed) |
 | Closed as not planned or duplicate | nothing |
 | Label `no-reply` | nothing automatic (`/reply` still works) |
 
