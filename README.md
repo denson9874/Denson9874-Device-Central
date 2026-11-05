@@ -23,6 +23,7 @@ Denson9874-Device-Central/
 ├── tools/
 │   ├── build_speed/           # Build server speed checks (ccache, ninja's explain, timings)
 │   ├── expressiveos_flasher/  # The web installer (Cloudflare Worker and R2)
+│   ├── expressiveos_feedback_bot/  # Telegram Bugs/Ideas -> private GitHub issues (Cloudflare Worker)
 │   └── ota_mirror/            # R2 mirror for the Updater's OTA packages
 ├── .github/workflows/         # The build server's runner actions (kodiak-build.yml)
 └── docs/assets/screenshots/   # Logo
