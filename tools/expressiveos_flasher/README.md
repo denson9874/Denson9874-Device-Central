@@ -65,7 +65,7 @@ npm run deploy        # cf deploy: needs `cf auth login` once, as for ota-mirror
 Nothing is public until this runs. After the first deploy:
 
 - Publish a release so the page has something to list. On the build server, after `eos-pack.sh`:
-  `python3 -I tools/expressiveos_flasher/publish/flasher_publish.py cheetah ~/releases/expressiveos-cheetah/<name>-fastboot.zip`.
+  `python3 -I tools/expressiveos_flasher/publish/flasher_publish.py cheetah ~/releases/expressiveos-cheetah/<name>-fastboot.zip --keep 1`.
   It uses the same `r2:` rclone remote as the OTA scripts.
 - A custom domain (for example `flash.<your domain>`) can be added in the Cloudflare dashboard under the Worker's
   Settings, Domains & Routes, or by adding `domains: ["flash.example.com"]` to `cloudflare.config.ts`.
