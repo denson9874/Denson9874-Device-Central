@@ -68,7 +68,8 @@ async function handleEvent(event: string, payload: Payload, env: BotEnv): Promis
 
 	if (event === "issue_comment" && payload.action === "created" && payload.comment) {
 		const comment = payload.comment;
-		const reply = /^\/reply\s+([\s\S]+)$/.exec(comment.body.trim());
+		// Only the text above a "---" line goes out: what's below is a note or a signature (Claude's comments end with one)
+		const reply = /^\/reply\s+([\s\S]+?)\s*(?:\n-{3,}\s*(?:\n[\s\S]*)?)?$/.exec(comment.body.trim());
 		const allowed = env.REPLY_LOGINS.toLowerCase().split(/[\s,]+/).includes((comment.user?.login ?? "").toLowerCase());
 		if (!reply || !allowed) return;
 		const gh = new GitHub(env.GITHUB_TOKEN, env.GITHUB_REPO);
