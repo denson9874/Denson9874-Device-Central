@@ -72,7 +72,7 @@
 # incremental to check/'s candidate, uploaded to R2's ota/test/ with a test feed, to try on a
 # phone on the feed's build before the release.
 # expressiveos-build's 'quick' (EOS_QUICK=1) builds the images only, m droid where a full build
-# runs m evolution (droid plus the OTA package and its target-files zip, about 5 minutes more):
+# runs m bacon (droid plus the OTA package and its target-files zip, about 5 minutes more):
 # for testing a change on a phone. eos-pack.sh packs it as check/<name>-quick-fastboot.zip, which
 # it never releases or sends to testers; a release needs a full build, packed, flashed and tested.
 # expressiveos-status shows every phone's build.ok, verify.log, check/, testers/ and build
@@ -1248,7 +1248,8 @@ jobs:
           cd "$top" || fail "can't cd to $top"
           PATH=$HOME/bin:$PATH
           wait_builds
-          export EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
+          # EXPRESSIVE_BUILD_TYPE since 1.1; EVO_BUILD_TYPE for a tree from before it (goes in 1.2)
+          export EXPRESSIVE_BUILD_TYPE=$EOS_BUILD_TYPE EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
           if command -v ccache >/dev/null; then export USE_CCACHE=1 CCACHE_EXEC; CCACHE_EXEC=$(command -v ccache); fi
           # Before lunch, which runs build_kernel (the phones whose kernel is built here)
           [[ ${EOS_KERNEL:-gs-6.1} != gs-6.1 ]] || kernel_pinned

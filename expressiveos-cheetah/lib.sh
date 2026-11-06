@@ -35,8 +35,8 @@ EOS_DEVICE=${EOS_DEVICE:-cheetah}
     || fail "EOS_DEVICE '$EOS_DEVICE' isn't one of the kit's devices: $(cd "$kit/devices" 2>/dev/null && printf '%s ' *.conf | sed 's/\.conf//g')"
 export EOS_DEVICE
 # A quick build (EOS_QUICK=1; the runner's expressiveos-build query quick) makes the images
-# only: m droid where a full build runs m evolution, which is droid plus the OTA package and
-# its target-files zip (vendor/lineage's build/tasks/evolution.mk), about 5 minutes more.
+# only: m droid where a full build runs m bacon (make_goal below), which is droid plus the OTA
+# package and its target-files zip (vendor/lineage's build/tasks/bacon.mk), about 5 minutes more.
 # eos-verify.sh and eos-keys-check.sh out skip only what reads those two, eos-images.sh
 # writes quick.ok instead of build.ok, and eos-pack.sh packs it as a quick candidate
 # (<name>-quick-fastboot.zip in check/) to flash and test, which it never releases, uploads
@@ -125,6 +125,18 @@ in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top
     local r
     r=$(realpath -m -- "$1") || fail "can't resolve $1"
     [[ "$r" == "$top"/* ]] || fail "${1#"$top"/} leads to $r, outside $top (a symlink?); this kit writes only inside the ExpressiveOS tree"
+}
+
+# The make goal of a full build: bacon, as LineageOS names it (vendor/lineage's
+# build/tasks/bacon.mk since 1.1, which keeps evolution as an alias for one release). A tree
+# whose vendor/lineage has no bacon goal yet (one from before 1.1: a manifest revert) builds
+# the same package with evolution, its old name
+make_goal() {   # make_goal: bacon, or evolution in a tree whose vendor/lineage doesn't declare bacon
+    if grep -qsE '^bacon:' "$top"/vendor/lineage/build/tasks/*.mk; then
+        echo bacon
+    else
+        echo evolution
+    fi
 }
 
 project_ok() {   # project_ok <dir>: a git project of its own in this tree, git folder included, with no am or rebase running
@@ -285,11 +297,12 @@ clean_env() {   # drop what a shell set up for another tree: soong_ui and envset
 
 dump_vars() {   # dump_vars <var>...: VAR='value' lines for EOS_LUNCH, without lunch (which runs build_kernel)
     local product=${EOS_LUNCH%%-*} rest=${EOS_LUNCH#*-}
-    # What lunch would export: EVO_BUILD_TYPE as eos-images.sh builds (it decides whether
-    # keys.mk is read), and LINEAGE_BUILD, which check_product sets from the product name
+    # What lunch would export: the build type as eos-images.sh builds (it decides whether
+    # keys.mk is read; EXPRESSIVE_BUILD_TYPE since 1.1, and EVO_BUILD_TYPE, its old name, for
+    # a tree from before it), and LINEAGE_BUILD, which check_product sets from the product name
     # and vendor/lineage's version.mk puts in the zip's name
     (cd "$top" && clean_env &&
-        EVO_BUILD_TYPE=$EOS_BUILD_TYPE LINEAGE_BUILD=${product#lineage_} \
+        EXPRESSIVE_BUILD_TYPE=$EOS_BUILD_TYPE EVO_BUILD_TYPE=$EOS_BUILD_TYPE LINEAGE_BUILD=${product#lineage_} \
         TARGET_PRODUCT=$product TARGET_RELEASE=${rest%%-*} TARGET_BUILD_VARIANT=${rest#*-} \
         build/soong/soong_ui.bash --dumpvars-mode --vars="$*")
 }
@@ -298,7 +311,14 @@ var_of() {   # var_of <dumpvars output> <name>: one value from dump_vars' output
     sed -n "s/^$2='\(.*\)'\$/\1/p" <<<"$1"
 }
 
-tf_zip() {   # tf_zip: the target-files zip m evolution keeps (patches/vendor_lineage/0003), relative to the tree
+var_new_or_old() {   # var_new_or_old <dumpvars output> <name> <old name>: the name's value, or the old name's when it's empty (a tree from before 1.1, or a rollback)
+    local v
+    v=$(var_of "$1" "$2")
+    [[ -n $v ]] || v=$(var_of "$1" "$3")
+    printf '%s\n' "$v"
+}
+
+tf_zip() {   # tf_zip: the target-files zip a full build keeps (patches/vendor_lineage/0003), relative to the tree
     printf '%s\n' "$EOS_PRODUCT_OUT/obj/PACKAGING/target_files_intermediates/${EOS_LUNCH%%-*}-target_files.zip"
 }
 

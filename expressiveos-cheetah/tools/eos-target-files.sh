@@ -41,9 +41,9 @@ eos_top "${2:-}"
 cd "$top"
 O=$EOS_PRODUCT_OUT
 H=out/host/linux-x86/bin
-[[ -x $H/unpack_bootimg ]] || fail "no $H/unpack_bootimg (m evolution builds it)"
+[[ -x $H/unpack_bootimg ]] || fail "no $H/unpack_bootimg (a full build, m bacon, builds it)"
 tf=$(tf_zip)
-[[ -f $tf ]] || fail "no $tf: m evolution keeps it only with patches/vendor_lineage/0003 (apply.sh), then build again"
+[[ -f $tf ]] || fail "no $tf: a full build (m bacon) keeps it only with patches/vendor_lineage/0003 (apply.sh), then build again"
 T=$(mktemp -d "${TMPDIR:-/tmp}/eos-tf.XXXXXX")
 unzip -Z1 -- "$tf" > "$T/list" || fail "can't read $tf"
 has() { grep -qxF -- "$1" "$T/list"; }

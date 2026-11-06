@@ -78,7 +78,7 @@ project, or a patch changed in place, stops the build. In any other project they
 | `frameworks_base` 0011-0020 | The old Pixel 11 kit's background-power fixes (2026-10-26), copied: SystemUI animations that kept running with the screen off or on AOD, the colored status bar icons setting, AxSpoofManager's fetches, Extreme Charging's 50% limit |
 | `vendor_lineage` 0001 | ExpressiveOS 1.0 names, and the build's own date, so both make passes name one zip |
 | `vendor_lineage` 0002 | The old Pixel 11 kit's, copied: games get stock's 60 fps default again |
-| `vendor_lineage` 0003 | ExpressiveOS's own: `m evolution` keeps the target-files zip its OTA package is made from |
+| `vendor_lineage` 0003 | ExpressiveOS's own: the full build's goal (`m bacon` since 1.1, `m evolution` before) keeps the target-files zip its OTA package is made from |
 | `frameworks_base` 0021-0024, `packages_apps_Settings`, `packages_apps_Evolver`, `packages_apps_Updater`, `lineage-sdk`, `packages_apps_LineageParts`, `packages_apps_EvoEgg`, `packages_apps_Sandbox`, `vendor_pixel-style`, `system_core`, `bootable_recovery` | ExpressiveOS's branding (Daryl, 2026-10-27: "ExpressiveOS only, no mention"): every screen, icon, link and the crash report header say ExpressiveOS, the Evolver is "Expressive Studio", the crash dialog copies the log instead of uploading it to Evolution X's paste site, recovery shows ExpressiveOS's mark. Made at the server's revisions of 2026-10-26; the images come from [`branding/`](branding/README.md) |
 | `system_update_engine` 0001 | update_engine checks payload and metadata signatures again (Daryl, 2026-10-27); Evolution X's 59fbd47 skips them, on the phone and in the host's `delta_generator` |
 | `system_update_engine` 0002 | No OTA downgrades on user builds again (59fbd47's other half): going back to an older build means fastboot |
@@ -178,8 +178,9 @@ before is kept as `.1`); the last line is `BUILD_EXIT=0` or `BUILD_EXIT=1`.
   `modules=` compile check asks the next build that makes images (full or quick) for it itself; a
   kernel-only run skips it.
 - `EOS_QUICK=1`: a quick build (the runner's `quick`), to test a change on a phone: the images only,
-  `m droid` where a full build runs `m evolution`, which is `droid` plus the OTA package and its
-  target-files zip (`vendor/lineage`'s `build/tasks/evolution.mk`), about 5 of a cheetah build's 8 to
+  `m droid` where a full build runs `m bacon`, which is `droid` plus the OTA package and its
+  target-files zip (`vendor/lineage`'s `build/tasks/bacon.mk`; a tree from before 1.1 has no `bacon`
+  goal and builds the same with `m evolution`), about 5 of a cheetah build's 8 to
   11 minutes. `eos-verify.sh` checks everything but the package, its payload and the target-files,
   and the run writes `quick.ok` instead of `build.ok` (Test and release, "Quick builds").
 
@@ -263,7 +264,7 @@ Where it came from, in `sources/`:
 
 A complete run leaves in `out/eos/` (another phone's in `out/eos-<device>/`): `build.ok` (the OTA
 package's sha256, which `eos-pack.sh` needs),
-`target-files.ok` (the sha256 of the target-files zip it was made from, which `m evolution` leaves in
+`target-files.ok` (the sha256 of the target-files zip it was made from, which `m bacon` leaves in
 `obj/PACKAGING/target_files_intermediates/`),
 `manifest.xml` (the tree's `repo manifest -r`), `kernel-manifest.xml` (the kernel's) and `sources.txt`
 (the kit's commit, the Expressive Launcher source, and each patched project's
@@ -692,7 +693,7 @@ target-files (`target-files/LATEST`). Release zips don't need to stay on the ser
 
 A target-files zip takes several GB (about 8, until the first build measures it): one in `out/` (kept
 until the next build starts), a copy in `check/`, one per release in `target-files/` (a hard link to
-`check/`'s while that's the same build), and while `m evolution` packages it, its unpacked copy in `out/`
+`check/`'s while that's the same build), and while `m bacon` packages it, its unpacked copy in `out/`
 too. An older release's can go once its `.uploaded` marker is there.
 
 ## Not done yet

@@ -320,14 +320,14 @@ out|vbmeta)
             [[ -f "$O/$i.img" ]] || fail "vbmeta.img chains $i, but there's no $i.img in $O"
             signed_by_us "$O/$i.img" "$i.img (chained)"
         done < <(sort -u "$work/chained" | grep -vxE 'vbmeta|vbmeta_system|vbmeta_vendor|boot|init_boot' || true)
-        # The OTA package m evolution made last, named by patches/vendor_lineage/0001. A quick
+        # The OTA package the last full build made (m bacon), named by patches/vendor_lineage/0001. A quick
         # build (EOS_QUICK=1, lib.sh) makes none, and nothing of it is ever released
         pkg=$(find "$O" -maxdepth 1 -name 'ExpressiveOS-*.zip' ! -name '*-fastboot.zip' -printf '%T@ %p\n' | sort -n | tail -1 | cut -d' ' -f2-)
         if [[ $EOS_QUICK = 1 ]]; then
             [[ -z "$pkg" ]] || fail "${pkg##*/} is in $O, but this is a quick build (EOS_QUICK=1), which makes no OTA package"
             echo "note: a quick build (EOS_QUICK=1) has no OTA package: no package certificate to check"
         else
-            [[ -n "$pkg" ]] || fail "no ExpressiveOS-*.zip OTA package in $O (m evolution not run, or the version patch missing)"
+            [[ -n "$pkg" ]] || fail "no ExpressiveOS-*.zip OTA package in $O (no full build, m bacon, run, or the version patch missing)"
             unzip -p "$pkg" META-INF/com/android/otacert > "$work/otacert" 2>/dev/null || fail "${pkg##*/} has no META-INF/com/android/otacert"
             fp=$(cert_fp "$work/otacert") || fail "${pkg##*/}'s otacert isn't a certificate"
             [[ "$fp" = "$ota" ]] || fail "${pkg##*/} is signed by certificate ${fp:0:16}... ($(whose certs "$fp"; true)), not ExpressiveOS's OTA key"

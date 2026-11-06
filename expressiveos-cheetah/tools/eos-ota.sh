@@ -101,7 +101,7 @@ rc2() { ~/bin/rclone "$@"; }
 T=$(mktemp -d "$HOME/.eos-ota.XXXXXX")
 H=out/host/linux-x86/bin
 for t in ota_from_target_files check_ota_package_signature delta_generator; do
-    [[ -x $H/$t ]] || fail "no $H/$t (m evolution builds it)"
+    [[ -x $H/$t ]] || fail "no $H/$t (a full build, m bacon, builds it)"
 done
 # signapk.jar signs the package with the tree's own JDK, as in the build (soong's PATH)
 jdk=$(find prebuilts/jdk -maxdepth 3 -path '*/linux-x86/bin' -type d 2>/dev/null | sort -V | tail -1) || true
