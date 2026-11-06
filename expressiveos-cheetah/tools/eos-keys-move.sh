@@ -33,22 +33,35 @@
 #      backup's only on the lines that named the old path;
 #   6. a second backup archive, of the folder under its new name, checked the same way.
 # A failure after step 3 says where the folder is; revert (or move) takes it from there, as
-# its keys.mk may name either path.
+# its keys.mk may name either path. Steps 3 and 4 ignore INT, TERM, HUP and PIPE (a cancelled
+# job): they run to their end, so the rename and keys.mk's rewrite never part halfway. Elsewhere
+# those signals stop the script through its last lines (KEYS_MOVE=FAIL, and the NOTE). A run
+# killed outright (SIGKILL) between them can leave keys/.keys.mk.eos-keys-move, the new keys.mk
+# before its rename; keys.mk itself is whole (replaced in one rename), and the next move or
+# revert removes that file with a note. Any other kind of entry of that name is refused.
 # Prints names, modes, sizes and sha256 sums only, never a file's contents, never makes a
 # key and never makes a link. The last line is KEYS_MOVE=OK (...) or KEYS_MOVE=FAIL: <why>.
 set -euo pipefail
+# The script's own output, kept on 5 and 6: a trap can run while a command's output is redirected
+# (a signal while a helper writes to a file), and its last lines must reach the log all the same
+exec 5>&1 6>&2
 done=0 why='' work='' tmpmk='' moved=''
 cleanup() {
     local rc=$?
-    [[ -z $tmpmk || ! -e $tmpmk ]] || rm -f -- "$tmpmk"
+    trap '' INT TERM HUP
+    [[ -z $tmpmk || ! -f $tmpmk || -L $tmpmk ]] || rm -f -- "$tmpmk"
     [[ -z $work ]] || rm -rf -- "$work"
     if [[ $done != 1 ]]; then
-        [[ -z $moved ]] || echo "NOTE: the folder is at $moved now"
-        echo "KEYS_MOVE=FAIL: ${why:-see the lines above}"
+        [[ -z $moved ]] || echo "NOTE: the folder is at $moved now" >&5
+        echo "KEYS_MOVE=FAIL: ${why:-see the lines above}" >&5
     fi
     exit $rc
 }
 trap cleanup EXIT
+# A signal stops the script through cleanup, which says so and where the folder is
+on_signal() { why="stopped by SIG$1${moved:+ after the rename}"; echo "FAIL: $why" >&6; exit 1; }
+stop_on_signals() { trap 'on_signal INT' INT; trap 'on_signal TERM' TERM; trap 'on_signal HUP' HUP; trap - PIPE; }
+stop_on_signals
 # shellcheck source=../lib.sh
 source "$(dirname -- "$(readlink -f -- "$0")")/../lib.sh"
 # lib.sh's guards call fail too: keep the reason for the last line
@@ -64,6 +77,7 @@ command -v tar >/dev/null || fail "tar isn't installed"
 work=$(mktemp -d "${TMPDIR:-/tmp}/eos-keys-move.XXXXXX") || fail "can't make a temporary folder"
 
 OLD=$EOS_PRIV_OLD NEW=$EOS_PRIV_NEW MK=keys/keys.mk
+TMPMK=keys/.keys.mk.eos-keys-move   # the new keys.mk, step 4, before its rename over keys.mk
 if [[ $mode = revert ]]; then from=$NEW to=$OLD; else from=$OLD to=$NEW; fi
 oneline() { tr '\n' ' ' <<<"$1" | sed 's/ *$//'; }
 err1() { tail -n 1 -- "$work/err" 2>/dev/null | cut -c1-300; }   # a helper's error (its last line: notes come before it)
@@ -226,8 +240,23 @@ elif cmd == "plan":          # plan <keys.mk> <old> <new> <out|->: the rewritten
         if want.encode() not in have:
             die("keys.mk would lack the line %r after the rewrite: it does not name the key folder as the template does (%s/keys/avb.pk8 and %s/keys/testkey)" % (want, old, old))
     if dst != "-":
-        with open(dst, "wb") as f:
-            f.write(res)
+        # A new file, never one already there and never through a link (O_EXCL, O_NOFOLLOW),
+        # with keys.mk'"'"'s own mode; it goes again when it can'"'"'t be written whole
+        st = os.lstat(src)
+        if not stat.S_ISREG(st.st_mode):
+            die("%s is not a plain file" % src)
+        fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        try:
+            os.fchmod(fd, stat.S_IMODE(st.st_mode))
+            v = memoryview(res)
+            while v:
+                v = v[os.write(fd, v):]
+            os.fsync(fd)
+        except BaseException:
+            os.close(fd)
+            os.unlink(dst)
+            raise
+        os.close(fd)
     print(",".join(map(str, changed)) or "none")
 elif cmd == "same-but-mk":   # same-but-mk <before> <after> <keys.mk>: the listings agree, keys.mk aside on size and sha256
     a = {e[4]: e for e in read_list(sys.argv[2])}
@@ -296,8 +325,8 @@ folder_ok() {   # folder_ok <rel>: nothing, or why not
     [[ -f $d/$MK && ! -L $d/$MK ]] || { echo "$1 has no $MK of its own"; return; }
     return 0
 }
-naming() {   # naming <rel> <path>: the files in the folder that name <path>, one a line (names only): keys.mk and git's own files aside
-    grep -rlF --exclude-dir=.git -- "$2" "$top/$1" 2>/dev/null | sed "s|^$top/$1/||" | grep -vxF -- "$MK" || true
+naming() {   # naming <rel> <path>: the files in the folder that name <path>, one a line (names only): keys.mk, git's own files and TMPMK aside
+    grep -rlF --exclude-dir=.git --exclude="${TMPMK##*/}" -- "$2" "$top/$1" 2>/dev/null | sed "s|^$top/$1/||" | grep -vxF -- "$MK" || true
 }
 # The files the build reads: one that names the folder's old path would read a path that's gone
 # after the move. Any other file (the template's README, keys.sh) stays as it is, with a note
@@ -309,6 +338,14 @@ others_naming() {   # others_naming <rel> <path>: of naming's files, the ones th
 notes_naming() {   # notes_naming <rel> <path>: of naming's files, the ones the build doesn't read (left as they are)
     local n
     while IFS= read -r n; do [[ -z $n ]] || build_reads "$n" || printf '%s\n' "$n"; done <<<"$(naming "$1" "$2")"
+}
+leftover() {   # leftover <rel>: nothing when <rel>/TMPMK isn't there; "file" for a stopped run's; else what else it is
+    local p=$top/$1/$TMPMK
+    if [[ -L $p ]]; then echo "a symlink"
+    elif [[ ! -e $p ]]; then return 0
+    elif [[ -f $p && $(stat -c %h -- "$p") = 1 ]]; then echo file
+    elif [[ -f $p ]]; then echo "a file with other hard links"
+    else echo "not a plain file"; fi
 }
 free_bytes() { df -B1 --output=avail -- "$1" | tail -1 | tr -dc 0-9; }
 need_bytes() {   # need_bytes <rel>: room for two archives of the folder, and some
@@ -372,6 +409,12 @@ if [[ $mode = check ]]; then
             echo "  (move and revert refuse this folder: see the line above)"
             echo "x" > "$work/bad-${r##*/}"
         fi
+        case $(leftover "$r") in
+            '') ;;
+            file) echo "  note: $TMPMK is there, the new $MK of a run that was stopped before its rename ($MK is whole): move and revert remove it first" ;;
+            *) echo "  $TMPMK is $(leftover "$r"): only this script makes that name, as a plain file, so move and revert refuse it"
+               echo "x" > "$work/bad-${r##*/}" ;;
+        esac
         if [[ -f $top/$r/$MK && ! -L $top/$r/$MK ]]; then
             for p in "$OLD" "$NEW"; do
                 l=$(grep -nF -- "$p/" "$top/$r/$MK" | cut -d: -f1 | paste -sd, - || true)
@@ -427,6 +470,12 @@ w=$(folder_ok "$from")
 [[ -z $w ]] || fail "$w; nothing was changed"
 [[ ! -e $top/$to && ! -L $top/$to ]] || fail "$to is there already: the keys are moved, never copied or merged; nothing was changed (check shows both)"
 in_top "$top/$from"; in_top "$top/$to"
+case $(leftover "$from") in
+    '') ;;
+    file) rm -f -- "$top/$from/$TMPMK"
+          echo "note: removed $from/$TMPMK, the new $MK of a run that was stopped before its rename ($MK itself is whole: it is replaced in one rename)" ;;
+    *) fail "$from/$TMPMK is $(leftover "$from"): only this script makes that name, as a plain file; look at it and remove it by hand; nothing was changed" ;;
+esac
 o=$(others_naming "$from" "$from")
 [[ -z $o ]] || fail "$(oneline "$o") in $from name $from, and the build reads them (only $MK is rewritten); nothing was changed"
 while IFS= read -r n; do
@@ -449,6 +498,10 @@ lines=$(py plan "$work/keys.mk.before" "$from" "$to" - 2> "$work/err") || fail "
 echo "OK: $MK names $from on lines $lines, which become $to"
 backup "$from" "$work/before.txt" bak1
 
+# 3 and 4 ignore INT, TERM, HUP and PIPE, and so does what they start: a cancelled job stops
+# before the rename or after keys.mk's, never between them with a helper still writing
+trap '' INT TERM HUP PIPE
+
 # 3: the move, a rename on the same file system
 id_before=$(stat -c %d:%i -- "$top/$from")
 mv -n -T -- "$top/$from" "$top/$to" || fail "mv $from $to failed (the backup $bak1 has the folder)"
@@ -458,13 +511,13 @@ moved=$top/$to
 [[ $(stat -c %d:%i -- "$top/$to") = "$id_before" ]] || fail "$to isn't the same folder (inode) as $from was: mv copied it (the backup $bak1 has the originals)"
 echo "OK: moved $from to $to (the same folder, renamed)"
 
-# 4: keys.mk's paths
-tmpmk=$top/$to/keys/.keys.mk.eos-keys-move
+# 4: keys.mk's paths: the new one written beside it (a new file, keys.mk's mode), then renamed over it
+tmpmk=$top/$to/$TMPMK
 py plan "$top/$to/$MK" "$from" "$to" "$tmpmk" > /dev/null 2> "$work/err" \
     || fail "can't write the new $MK ($(err1)); $to/$MK still names $from: eos-keys-move.sh $( [[ $mode = move ]] && echo revert || echo move ) puts the folder back"
-chmod --reference="$top/$to/$MK" -- "$tmpmk"
 mv -f -T -- "$tmpmk" "$top/$to/$MK"
 tmpmk=''
+stop_on_signals
 echo "OK: $to/$MK rewritten (lines $lines)"
 
 # 5: nothing else changed, and keys.mk only on those lines

@@ -130,6 +130,11 @@ done
 ln -s evolution-priv "$top/vendor/lnk"; ln -s ../../lnk/keys/testkey.pk8 "$OLD/keys/via"
 rc=$(run move); ok "move refuses a link out of the folder that comes back in through another link" '[[ $rc = 1 ]] && last | grep -q "keys/via is a link to ../../lnk/keys/testkey.pk8, which comes back into vendor/evolution-priv through other links" && [[ ! -e $NEW && $(nbak) = 0 ]]'
 rm "$OLD/keys/via" "$top/vendor/lnk"
+ln -s avb.pk8 "$OLD/keys/.keys.mk.eos-keys-move"
+rc=$(run move); ok "move refuses a link named as its temporary keys.mk (it would write through it)" '[[ $rc = 1 ]] && last | grep -q "keys/.keys.mk.eos-keys-move is a symlink: only this script makes that name" && [[ ! -e $NEW && $(nbak) = 0 ]] && [[ -L $OLD/keys/.keys.mk.eos-keys-move ]]'
+rc=$(run check); ok "  check: MOVE_READY=no for it" 'grep -q "^MOVE_READY=no: vendor/evolution-priv holds an entry it refuses" "$W/out.log"'
+rm "$OLD/keys/.keys.mk.eos-keys-move"
+ok "  (avb.pk8 untouched)" 'unchanged'
 echo '// vendor/evolution-priv/keys/testkey' >> "$OLD/keys/Android.bp"
 rc=$(run move); ok "move refuses when a file other than keys.mk names the folder" '[[ $rc = 1 ]] && last | grep -q "keys/Android.bp in vendor/evolution-priv name vendor/evolution-priv, and the build reads them" && [[ ! -e $NEW && $(nbak) = 0 ]]'
 rc=$(run check); ok "  check: MOVE_READY=no for it" 'grep -q "^MOVE_READY=no: a file in vendor/evolution-priv that the build reads, other than keys/keys.mk, names vendor/evolution-priv" "$W/out.log"'
@@ -180,6 +185,50 @@ if [[ $(id -u) != 0 ]]; then
     sleep 1
     rc=$(run revert); ok "  revert takes it back from there, as it was" '[[ $rc = 0 ]] && [[ -d $OLD && ! -e $NEW ]] && cmp -s "$W/keys.mk.orig" "$OLD/keys/keys.mk" && snap "$OLD" | cmp -s - "$W/orig2.snap"'
 fi
+
+# Signals. A python3 in front of the real one sends the script (its parent) signals when the
+# helper named in EOS_TEST_AT starts: list (step 1, before anything changes) or plan-write
+# (step 4, between the rename and keys.mk's), then runs the real helper and marks it done
+real_py=$(command -v python3)
+mkdir -p "$W/bin"
+cat > "$W/bin/python3" <<EOF2
+#!/usr/bin/env bash
+case \${4:-}:\${8:-} in plan:*.keys.mk.eos-keys-move) at=plan-write ;; list:*) at=list ;; *) at= ;; esac
+if [[ -n \$at && \$at = "\${EOS_TEST_AT:-}" && ! -e \$EOS_TEST_DONE ]]; then
+    for s in \$EOS_TEST_SIG; do kill -s "\$s" "\$PPID"; done
+    sleep 0.3
+    rc=0; "$real_py" "\$@" || rc=\$?
+    : > "\$EOS_TEST_DONE"
+    exit \$rc
+fi
+exec "$real_py" "\$@"
+EOF2
+chmod 755 "$W/bin/python3"
+sig_run() {   # sig_run <at> <signals> <mode>: run the script with the python3 above
+    rm -f "$W/py-done"
+    ( export PATH="$W/bin:$PATH" EOS_TEST_AT=$1 EOS_TEST_SIG=$2 EOS_TEST_DONE=$W/py-done; run "$3" ) 2>/dev/null   # (bash's "Killed")
+}
+settle() {   # the helper done, and the locks it inherited free again
+    local i
+    for i in $(seq 100); do
+        [[ -e $W/py-done ]] && flock -n "$HOME/.expressiveos.lock" true && break
+        sleep 0.1
+    done
+}
+mkfolder; snap "$OLD" > "$W/orig3.snap"; nb=$(nbak)
+sleep 1
+rc=$(sig_run list TERM move); settle
+ok "SIGTERM before the rename: stops through its last line, nothing moved" '[[ $rc = 1 ]] && last | grep -q "^KEYS_MOVE=FAIL: stopped by SIGTERM$" && ! grep -q "^NOTE" "$W/out.log" && [[ -d $OLD && ! -e $NEW && $(nbak) = "$nb" ]] && snap "$OLD" | cmp -s - "$W/orig3.snap"'
+rc=$(sig_run plan-write "INT TERM HUP" move); settle
+ok "INT, TERM and HUP between the rename and keys.mk's: ignored, the move ends whole" '[[ $rc = 0 ]] && last | grep -q "^KEYS_MOVE=OK (move:" && [[ ! -e $OLD && -d $NEW && -z $(find "$NEW" -name ".keys.mk*") ]] && sed "s|vendor/evolution-priv/|vendor/expressiveos-priv/|g" "$W/keys.mk.orig" | cmp -s - "$NEW/keys/keys.mk" && quiet'
+sleep 1
+rc=$(run revert); ok "  and it reverts" '[[ $rc = 0 ]] && snap "$OLD" | cmp -s - "$W/orig3.snap"'
+sleep 1
+rc=$(sig_run plan-write KILL move); settle
+ok "SIGKILL between the rename and keys.mk's: the folder renamed, keys.mk whole, the new one left beside it" '[[ $rc = 137 ]] && [[ ! -e $OLD && -d $NEW && -f $NEW/keys/.keys.mk.eos-keys-move && ! -L $NEW/keys/.keys.mk.eos-keys-move ]] && cmp -s "$W/keys.mk.orig" "$NEW/keys/keys.mk"'
+rc=$(run check); ok "  check names the leftover, REVERT_READY=yes" '[[ $rc = 0 ]] && grep -q "^  note: keys/.keys.mk.eos-keys-move is there, the new keys/keys.mk of a run that was stopped" "$W/out.log" && grep -q "^REVERT_READY=yes: vendor/expressiveos-priv -> vendor/evolution-priv, keys/keys.mk lines none rewritten" "$W/out.log" && quiet'
+sleep 1
+rc=$(run revert); ok "  revert removes it and puts the folder back as it was" '[[ $rc = 0 ]] && grep -q "^note: removed vendor/expressiveos-priv/keys/.keys.mk.eos-keys-move" "$W/out.log" && last | grep -q "^KEYS_MOVE=OK (revert:" && snap "$OLD" | cmp -s - "$W/orig3.snap"'
 
 echo "PASSED $pass FAILED $failn"
 [[ $failn = 0 ]] && rm -rf "$W"
