@@ -404,8 +404,9 @@ build needed) and doesn't run while a build or setup does (`~/.expressiveos.lock
   alike;
 - every other LineageOS and AOSP project's new commit, and each project outside LineageOS's manifest
   with an `upstream=` its upstream's tip (listed on their own). A LineageOS project's must descend from
-  ours (LineageOS never rewrites its branches); a shallow one's (`clone-depth`) and AOSP's (a new tag)
-  aren't checked;
+  ours (LineageOS never rewrites its branches), or, where LineageOS's manifest moved the project to
+  another repo (LineageOS's own copy of an AOSP repo, made from an older AOSP commit), have a commit
+  with exactly our commit's files; a shallow one's (`clone-depth`) and AOSP's (a new tag) aren't checked;
 - the new `default.xml`: those commits, and what LineageOS's manifest changed since the last update,
   taken three ways. A project's repo, branch or clone depth moves where ours was still LineageOS's, and
   the plan stops where both changed it; groups and linkfiles/copyfiles are taken element by element
