@@ -7,7 +7,7 @@
 #      or Evolution X's;
 #   3. the kits: viper4android/apply-v4a.sh on a phone with EOS_V4A=1,
 #      bootanimation/apply-bootanim.sh, wallpapers/apply-wallpapers.sh,
-#      launcher/apply-launcher.sh (Expressive Launcher in Pixel Launcher's place);
+#      launcher/apply-launcher.sh (Expressive Launcher as default Home and Recents app);
 #   4. the name and version the build will carry (dumpvars), and a record of its sources
 #      in EOS_STATE (out/eos/ for cheetah, out/eos-<device>/ for the others: the tree's repo
 #      manifest -r, each patched project's upstream revision, the kit's commit, and the
@@ -98,7 +98,7 @@ else
 fi
 step "boot animation" 'BOOTANIM_APPLY=OK.*' "$kit/bootanimation/apply-bootanim.sh" "$top"
 step "wallpapers" 'WALLPAPERS_APPLY=OK.*' "$kit/wallpapers/apply-wallpapers.sh" "$top"
-# Expressive Launcher in Pixel Launcher's place, on every phone
+# Expressive Launcher as default Home and Recents app, on every phone (Pixel Launcher stays as a pick)
 step "Expressive Launcher" 'LAUNCHER_APPLY=OK.*' "$kit/launcher/apply-launcher.sh" "$top"
 
 echo "== identity"
@@ -110,10 +110,10 @@ for kv in "EVO_VERSION=$EOS_VERSION" "EVO_BUILD_TYPE=$EOS_BUILD_TYPE" "TARGET_DE
     [[ "$(var_of "$vars" "${kv%%=*}")" = "${kv#*=}" ]] || fail "${kv%%=*} is '$(var_of "$vars" "${kv%%=*}")', want '${kv#*=}'"
 done
 pkgs=" $(var_of "$vars" PRODUCT_PACKAGES) "
-# Every phone gets Expressive Launcher (launcher/launcher.mk), which overrides Pixel Launcher
+# Every phone gets Expressive Launcher (launcher/launcher.mk) next to Pixel Launcher
 [[ $pkgs = *" ExpressiveLauncher "* ]] \
     || fail "$EOS_LUNCH doesn't install ExpressiveLauncher: launcher/launcher.mk's product list must name ${EOS_LUNCH%%-*}"
-echo "OK: $EOS_LUNCH installs ExpressiveLauncher, in Pixel Launcher's place"
+echo "OK: $EOS_LUNCH installs ExpressiveLauncher, the default Home and Recents app"
 # No phone gets root, nor ViPER4Android where it's off, from what the one tree all the phones
 # share still holds of earlier builds (vendor/extra, the pantah fork's KernelSU lines)
 [[ $pkgs != *" KernelSUNext "* ]] \

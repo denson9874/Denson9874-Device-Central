@@ -1,0 +1,6 @@
+# Lets adb switch the launcher mode on a user build, where the shell can set debug.*
+# properties but not persist.sys.* ones (Expressive Studio, a system app, sets
+# persist.sys.expressiveos.launcher itself):
+#   adb shell setprop debug.expressiveos.launcher pixel        (or expressive), then reboot
+on property:debug.expressiveos.launcher=*
+    setprop persist.sys.expressiveos.launcher ${debug.expressiveos.launcher}
