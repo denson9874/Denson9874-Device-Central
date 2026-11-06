@@ -9,20 +9,24 @@
 #       phone, the privapp allowlist covers every privileged permission the APK asks for (as
 #       this tree's frameworks/base declares them: a missing one stops a clean flash's boot
 #       under ro.control_privapp_permissions=enforce), the overlays still replace what
-#       Pixel's own config sets for Pixel Launcher, and vendor/gms still names Pixel
-#       Launcher NexusLauncherRelease, which the launcher overrides.
+#       Pixel's own config sets for Pixel Launcher, vendor/gms still builds Pixel Launcher
+#       (NexusLauncherRelease), which ships next to it for Expressive Studio's launcher switch,
+#       and the pinned APK's Home activity has a priority above 0 (Pixel Launcher's).
 #   launcher-check.sh out <product_out> [host_out]
 #       After the build, before packing (the ExpressiveOS OTA script runs it): the APK
-#       landed unchanged with its permissions, sysconfig and two overlays, Pixel Launcher,
-#       AOSP's Launcher3 and Pixel Launcher's overlays did not, no other app ships an
-#       enabled Home activity, and nothing reorders the overlays.
+#       landed unchanged with its permissions, sysconfig and two overlays, Pixel Launcher
+#       and the launcher switch's overlay and sysconfig did too and AOSP's Launcher3 did not,
+#       Expressive Launcher's Home activity outranks every other enabled one but the setup
+#       wizard's (so a clean flash gets no chooser), and nothing reorders the overlays.
 #       host_out (out/host/linux-x86) is only used for apksigner.
 #   launcher-check.sh device
 #       On a phone over adb (ANDROID_SERIAL picks one). Read-only. Run it soon after a boot,
-#       with the phone unlocked once, while logcat still holds the boot: Expressive Launcher
-#       is the Home app and the Recents app SystemUI is bound to, Pixel Launcher is gone,
-#       the privileged permissions are granted, nothing crashed, and no binder call into it
-#       failed (run it again after trying the gestures).
+#       with the phone unlocked once, while logcat still holds the boot. In the launcher mode
+#       the phone is in (persist.sys.expressiveos.launcher, set by Expressive Studio's switch):
+#       Expressive Launcher (or Pixel Launcher, in Pixel Launcher mode) is the Home app and the
+#       Recents app SystemUI is bound to, Pixel Launcher is built in with its Home activity on
+#       only in its mode, the privileged permissions are granted, nothing crashed, and no
+#       binder call into it failed (run it again after trying the gestures).
 set -euo pipefail
 fails=0 finished=0 T=
 cleanup() {
@@ -54,6 +58,10 @@ xq() { python3 -I "$kit/tools/launcher-xml.py" "$@"; }
 words() { tr ' ' '\n' <<<"$*" | sed '/^$/d' | LC_ALL=C sort -u; }
 # Pixel Launcher's package, and what Pixel's config names it for
 PIXEL=com.google.android.apps.nexuslauncher
+PIXEL_HOME="$PIXEL/com.google.android.apps.nexuslauncher.NexusLauncherActivity"
+PIXEL_RECENTS="$PIXEL/com.android.quickstep.RecentsActivity"
+PIXEL_OVERLAY=ExpressiveLauncherPixelModeOverlay PIXEL_SYSCONFIG=pixel-launcher-home-off.xml
+MODE_PROP=persist.sys.expressiveos.launcher
 RECENTS="$EL_PACKAGE/$EL_RECENTS_ACTIVITY"
 ALL_SET="$EL_PACKAGE/$EL_ALL_SET_ACTION"
 SUW=com.google.android.pixel.setupwizard
@@ -65,13 +73,17 @@ want_listeners=$(xq string "$fw_res" config_defaultListenerAccessPackages)
 want_allset=$(xq string "$kit/tree/overlay/setupwizard/res/values/strings.xml" exit_to_action_in_initial_setup)
 [[ "$want_recents" = "$RECENTS" ]] || bad "tree/overlay/framework config_recentsComponentName is '$want_recents', launcher.conf says $RECENTS"
 [[ "$want_allset" = "$ALL_SET" ]] || bad "tree/overlay/setupwizard exit_to_action_in_initial_setup is '$want_allset', launcher.conf says $ALL_SET"
-# The lists in tree/overlay/framework: the build's own with Expressive Launcher in Pixel
-# Launcher's place, or added at the end
+# The launcher switch's build side: Pixel Launcher mode's Recents app, and its Home activity off
+want_pixel_recents=$(xq string "$kit/tree/overlay/pixelmode/res/values/config.xml" config_recentsComponentName)
+[[ "$want_pixel_recents" = "$PIXEL_RECENTS" ]] || bad "tree/overlay/pixelmode config_recentsComponentName is '$want_pixel_recents', not $PIXEL_RECENTS"
+grep -qF "class=\"${PIXEL_HOME#*/}\" enabled=\"false\"" "$kit/tree/$PIXEL_SYSCONFIG" \
+    || bad "tree/$PIXEL_SYSCONFIG doesn't turn ${PIXEL_HOME#*/} off"
+# The lists in tree/overlay/framework: the build's own with Expressive Launcher added at the
+# end (Pixel Launcher, which ships too, keeps its place)
 LISTS="config_defaultListenerAccessPackages config_launcherPackages vendor_required_apps_managed_device vendor_required_apps_managed_user"
 for n in $LISTS; do
     v=$(xq string "$fw_res" "$n")
-    [[ ":$v:" = *":$EL_PACKAGE:"* && ":$v:" != *":$PIXEL:"* ]] \
-        || bad "tree/overlay/framework's $n must name $EL_PACKAGE and not $PIXEL: '$v'"
+    [[ ":$v:" = *":$EL_PACKAGE:"* ]] || bad "tree/overlay/framework's $n must name $EL_PACKAGE: '$v'"
 done
 # ExpressiveOS's phones: devices/<device>.conf
 phones=()
@@ -120,6 +132,18 @@ tree)
         done < <(find "$dest" ! -type d -print0 | LC_ALL=C sort -z)
     fi
     [[ $ok = 0 ]] || pass "vendor/extra/launcher matches the kit and launcher.conf ($EL_PACKAGE $EL_VERSION, $EL_VERSION_CODE)"
+    # Pixel Launcher ships too, and its Home activity has priority 0. The Home role has no
+    # default holder: it falls back to the highest-priority Home activity and, on a tie, to
+    # nobody (a clean flash's Home then shows a chooser). So the pinned release's must be above 0.
+    if [[ -f "$dest/ExpressiveLauncher.apk" ]]; then
+        hp=$(python3 -I "$kit/tools/apk-info.py" --home "$dest/ExpressiveLauncher.apk" 2>&1 \
+            | awk -F'\t' -v p="home $EL_PACKAGE/$EL_HOME_ACTIVITY " 'index($2, p) == 1 { sub(/.* priority=/, "", $2); sub(/ .*/, "", $2); print $2; exit }' || true)
+        if [[ "$hp" =~ ^[0-9]+$ ]] && (( hp > 0 )); then
+            pass "the pinned APK's Home activity has priority $hp, above Pixel Launcher's 0: it's the default Home on a clean flash"
+        else
+            bad "the pinned APK's Home activity ($EL_HOME_ACTIVITY) has priority ${hp:-unreadable}: with Pixel Launcher also shipping at 0, a clean flash would show a Home chooser. Pin a release with ExpressiveLauncher#49 (priority 1)"
+        fi
+    fi
     line='$(call inherit-product, vendor/extra/launcher/launcher.mk)'
     where=$(want="$line" awk -f "$kit/tools/mk-line.awk" -- "$top/vendor/extra/product.mk" 2>/dev/null || true)
     case "$where" in
@@ -132,7 +156,7 @@ tree)
     if grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/lineage/config/common.mk" 2>/dev/null; then
         pass "vendor/lineage/config/common.mk inherits vendor/extra/product.mk"
     else
-        bad "vendor/lineage/config/common.mk is missing or no longer inherits vendor/extra/product.mk: Pixel Launcher would silently stay"
+        bad "vendor/lineage/config/common.mk is missing or no longer inherits vendor/extra/product.mk: Expressive Launcher would silently be left out"
     fi
     # Every ExpressiveOS phone's product is in launcher.mk's list
     mk_filter=$(grep -m1 -E '^ifneq \(\$\(filter ' "$kit/tree/launcher.mk" || true)
@@ -176,7 +200,7 @@ tree)
 
     # The framework config the overlay replaces: each list as the build would have it without
     # this kit (the highest-priority overlay's, else framework-res's), with Expressive Launcher
-    # in Pixel Launcher's place or added at the end
+    # added at the end
     for n in $LISTS; do
         want=$(xq string "$fw_res" "$n")
         xq sources "$n" "$top" > "$T/src"
@@ -189,10 +213,7 @@ tree)
             bad "$n: two sources with priority $pr and different values ($(awk -F'\t' -v p="$pr" '$1 == p { print $2 }' "$T/src" | paste -sd' ')); which one wins depends on their paths: check by hand"
             continue
         fi
-        if [[ ":$val:" = *":$PIXEL:"* ]]; then
-            expect=$(tr ':' '\n' <<<"$val" | sed "s/^$PIXEL\$/$EL_PACKAGE/" | paste -sd:)
-            how="with Pixel Launcher swapped for Expressive Launcher"
-        elif [[ ":$val:" = *":$EL_PACKAGE:"* ]]; then
+        if [[ ":$val:" = *":$EL_PACKAGE:"* ]]; then
             expect=$val how="(it names Expressive Launcher already)"
         else
             expect="${val:+$val:}$EL_PACKAGE" how="with Expressive Launcher added"
@@ -223,21 +244,20 @@ tree)
     [[ -z "$hits" ]] && pass "no partition_order.xml in device/ or vendor/ (system_ext overlays apply after product ones)" \
         || bad "partition_order.xml found ($hits): it may put product overlays after system_ext ones, and Pixel's launcher config would win"
 
-    # The modules ExpressiveLauncher overrides: Pixel Launcher's name must still be the one
-    # its overrides list, or both launchers would ship
+    # Pixel Launcher ships next to Expressive Launcher as a Home app users can pick
     if grep -rqsE --include=Android.mk --include=Android.bp '(LOCAL_MODULE[[:space:]]*:=[[:space:]]*NexusLauncherRelease[[:space:]]*$|name:[[:space:]]*"NexusLauncherRelease")' -- "$top/vendor/gms"; then
-        pass "vendor/gms still builds Pixel Launcher as NexusLauncherRelease, which ExpressiveLauncher overrides"
+        pass "vendor/gms still builds Pixel Launcher as NexusLauncherRelease, which ships next to Expressive Launcher"
     else
         hits=$(grep -rlsE --include=Android.mk --include=Android.bp -i 'nexuslauncher' -- "$top/vendor/gms" | sed "s|^$top/||" | paste -sd' ' || true)
         if [[ -n "$hits" ]]; then
-            bad "vendor/gms builds Pixel Launcher under another module name ($hits): add it to tree/Android.bp's overrides"
+            bad "vendor/gms builds Pixel Launcher under another module name ($hits): update the out check's NexusLauncherRelease path"
         else
-            info "vendor/gms has no Pixel Launcher module any more"
+            bad "vendor/gms has no Pixel Launcher module any more: the launcher switch would have nothing to switch to"
         fi
     fi
     for m in PixelLauncherNoGestureHintOverlay PixelLauncherOverlayCustom; do
-        [[ -d "$top/vendor/pixel-style/rro_overlays/$m" ]] && info "$m (Pixel Launcher's overlay) is in vendor/pixel-style; $FW_OVERLAY overrides it" \
-            || info "$m is gone from vendor/pixel-style (its override is a no-op)"
+        [[ -d "$top/vendor/pixel-style/rro_overlays/$m" ]] && info "$m (Pixel Launcher's overlay) is in vendor/pixel-style and ships with Pixel Launcher" \
+            || info "$m is gone from vendor/pixel-style"
     done
     ;;
 
@@ -262,49 +282,73 @@ out)
     fi
     [[ -d "$O/system_ext/priv-app/ExpressiveLauncher/oat" ]] && info "dexpreopted (system_ext/priv-app/ExpressiveLauncher/oat)" \
         || info "not dexpreopted (no oat/ next to the APK): the phone compiles it after boot"
-    # One Home app: Pixel Launcher, AOSP's Launcher3 and Trebuchet stay out
+    # Two Home apps: Expressive Launcher and Pixel Launcher; AOSP's Launcher3 and Trebuchet stay out
+    want_apps="system_ext/priv-app/ExpressiveLauncher system_ext/priv-app/NexusLauncherRelease"
     hits=$(cd "$O" && find system system_ext product vendor -maxdepth 3 \( -path '*app/ExpressiveLauncher*' -o -path '*app/NexusLauncher*' \
         -o -path '*app/Launcher3*' -o -path '*app/Trebuchet*' -o -path '*app/Lawnchair*' -o -path '*app/QuickSearchBox*' \) -prune -print 2>/dev/null | LC_ALL=C sort | paste -sd' ' || true)
-    if [[ "$hits" = system_ext/priv-app/ExpressiveLauncher ]]; then
-        pass "the only launcher app is system_ext/priv-app/ExpressiveLauncher (no NexusLauncherRelease, Launcher3, Trebuchet or QuickSearchBox)"
+    if [[ "$hits" = "$want_apps" ]]; then
+        pass "the launcher apps are $want_apps (no Launcher3, Trebuchet or QuickSearchBox)"
     else
-        bad "launcher apps in the images: ${hits:-none} (want only system_ext/priv-app/ExpressiveLauncher)"
+        bad "launcher apps in the images: ${hits:-none} (want $want_apps)"
     fi
     hits=$(cd "$O" && find system system_ext product vendor -path '*/overlay/*' -name 'PixelLauncher*' 2>/dev/null | LC_ALL=C sort | paste -sd' ' || true)
-    [[ -z "$hits" ]] && pass "no Pixel Launcher overlays" || bad "Pixel Launcher overlays shipped: $hits"
-    # One Home activity. The HOME role has no default holder: the highest-priority HOME
-    # activity gets it, and a tie leaves nobody (the chooser comes up on Home). So no other
-    # app may ship an enabled one at priority 0 or more, except a setup wizard's (above 0),
-    # which runs first and turns itself off when setup ends. Negative ones (Settings'
-    # FallbackHome) only stand in while nothing else can run.
+    info "Pixel Launcher's overlays (they ship with it): ${hits:-none}"
+    # The default Home app. The HOME role has no default holder: the highest-priority HOME
+    # activity gets it, and a tie leaves nobody (the chooser comes up on Home). So every other
+    # enabled one (Pixel Launcher's, at 0) must be below Expressive Launcher's, and a setup
+    # wizard's above it: the setup wizard runs first and turns itself off when setup ends.
+    # Negative ones (Settings' FallbackHome) only stand in while nothing else can run.
     find "$O"/system/app "$O"/system/priv-app "$O"/system_ext/app "$O"/system_ext/priv-app "$O"/product/app \
         "$O"/product/priv-app "$O"/vendor/app "$O"/vendor/priv-app "$O"/odm/app "$O"/odm/priv-app \
         -mindepth 2 -maxdepth 2 -name '*.apk' -print0 2>/dev/null \
         | xargs -0 -r python3 -I "$kit/tools/apk-info.py" --home > "$T/home" 2>&1 || true
-    others=() off=() unread=() suw=()
+    el_pr= others=() off=() unread=() suw=()
     while IFS=$'\t' read -r f what; do
         f=${f#"$O/"}
         case $what in
             "unreadable "*) unread+=("$f"); continue ;;
-            "home $EL_PACKAGE/"*) continue ;;
             "home "*) ;;
             *) continue ;;
         esac
         read -r _ comp pr en <<<"$what"
         pr=${pr#priority=} en=${en#enabled=}
         [[ "$pr" =~ ^-?[0-9]+$ ]] || pr=0
+        if [[ "$comp" = "$EL_PACKAGE/"* ]]; then
+            [[ "$comp" = "$EL_PACKAGE/$EL_HOME_ACTIVITY" && "$f" = system_ext/priv-app/ExpressiveLauncher/* ]] && el_pr=$pr
+            continue
+        fi
         (( pr < 0 )) && continue
+        # "priority|component|note" for each
         case "$en:${comp%%/*}" in
             false:*) off+=("$comp") ;;
             true:com.google.android.setupwizard|true:com.google.android.pixel.setupwizard|true:org.lineageos.setupwizard|true:com.android.provision)
-                (( pr > 0 )) && suw+=("$comp (priority $pr)") || others+=("$comp (priority $pr, $f)") ;;
-            true:*) others+=("$comp (priority $pr, $f)") ;;
-            *) others+=("$comp (priority $pr, enabled set by a resource: check by hand, $f)") ;;
+                (( pr > 0 )) && suw+=("$pr|$comp|$f") || others+=("$pr|$comp|$f") ;;
+            true:*) others+=("$pr|$comp|$f") ;;
+            *) others+=("$pr|$comp|enabled set by a resource: check by hand, $f") ;;
         esac
     done < "$T/home"
-    [[ ${#others[@]} = 0 ]] && pass "no other app ships an enabled Home activity (priority 0 or more)" \
-        || bad "other enabled Home activities: ${others[*]} (they share or take Home from Expressive Launcher)"
-    [[ ${#suw[@]} = 0 ]] || info "setup wizard Home activities (off once setup ends): ${suw[*]}"
+    if [[ ! "$el_pr" =~ ^[0-9]+$ ]]; then
+        bad "no Home activity $EL_PACKAGE/$EL_HOME_ACTIVITY read from system_ext/priv-app/ExpressiveLauncher/ExpressiveLauncher.apk (apk-info.py --home)"
+    else
+        tie=() below=() low=()
+        for o in ${others[@]+"${others[@]}"}; do
+            IFS='|' read -r pr comp note <<<"$o"
+            if (( pr >= el_pr )); then tie+=("$comp (priority $pr, $note)"); else below+=("$comp (priority $pr)"); fi
+        done
+        for o in ${suw[@]+"${suw[@]}"}; do
+            IFS='|' read -r pr comp note <<<"$o"
+            (( pr > el_pr )) || low+=("$comp (priority $pr, $note)")
+        done
+        [[ ${#tie[@]} = 0 ]] && pass "Expressive Launcher's Home activity (priority $el_pr) outranks every other enabled one but the setup wizard's: it's the default Home on a clean flash" \
+            || bad "enabled Home activities at Expressive Launcher's priority ($el_pr) or above: ${tie[*]} (a tie leaves the Home role empty and a clean flash shows a chooser; pin a release whose Home priority is above theirs)"
+        [[ ${#others[@]} = 0 ]] && bad "no other Home app ships: Pixel Launcher's Home activity is missing, so the launcher switch has nothing to switch to"
+        [[ ${#below[@]} = 0 ]] || info "other Home activities, below it (Pixel Launcher's is off until the launcher switch turns it on): ${below[*]}"
+        if [[ ${#low[@]} != 0 ]]; then
+            bad "setup wizard Home activities at or below Expressive Launcher's priority ($el_pr): ${low[*]} (setup would no longer come first on a clean flash)"
+        elif [[ ${#suw[@]} != 0 ]]; then
+            info "setup wizard Home activities (off once setup ends): $(for o in "${suw[@]}"; do IFS='|' read -r pr comp _ <<<"$o"; echo "$comp (priority $pr)"; done | paste -sd' ' -)"
+        fi
+    fi
     [[ ${#off[@]} = 0 ]] || info "${#off[@]} Home activities that ship turned off (their apps turn them on for restore, supervision or kiosk modes): $(printf '%s\n' "${off[@]%%/*}" | LC_ALL=C sort -u | paste -sd' ')"
     [[ ${#unread[@]} = 0 ]] || info "couldn't read ${#unread[@]} APK manifest(s) for Home activities: ${unread[*]}"
     # Static overlays apply partition by partition, system_ext last, unless system_ext's own
@@ -357,6 +401,12 @@ out)
     }
     ov "system_ext/overlay/$FW_OVERLAY.apk" framework "$want_recents" "$want_listeners"
     ov "system_ext/overlay/$SUW_OVERLAY.apk" setupwizard "$want_allset"
+    ov "system_ext/overlay/$PIXEL_OVERLAY.apk" pixelmode "$want_pixel_recents"
+    if cmp -s "$kit/tree/$PIXEL_SYSCONFIG" "$O/system_ext/etc/sysconfig/$PIXEL_SYSCONFIG"; then
+        pass "system_ext/etc/sysconfig/$PIXEL_SYSCONFIG is the kit's (Pixel Launcher's Home activity off until the switch)"
+    else
+        bad "system_ext/etc/sysconfig/$PIXEL_SYSCONFIG is missing or not the kit's: Pixel Launcher's Home activity would run before the first unlock and crash"
+    fi
     hits=$(cd "$O" && find system_ext product -maxdepth 3 -path '*app/SetupWizardPixel*' -prune -print 2>/dev/null | paste -sd' ' || true)
     info "Pixel's setup wizard (the second overlay's target): ${hits:-not in this build}"
     # The licence text must ship (the build writes NOTICE files unless DISABLE_NOTICE_XML_GENERATION is set)
@@ -404,27 +454,61 @@ device)
     v=$(grep -m1 -oE 'versionCode=[0-9]+' "$T/pkg" | cut -d= -f2 || true)
     info "running versionCode ${v:-unknown} (built-in $EL_VERSION_CODE)"
     p=$(a pm list packages -f "$PIXEL" | grep -E "=$PIXEL\$" || true)
-    [[ -z "$p" ]] && pass "Pixel Launcher ($PIXEL) isn't installed" \
-        || bad "Pixel Launcher is still installed: $p (an update from the Play Store outlives the flash: adb uninstall $PIXEL)"
-    r=$(a cmd role get-role-holders --user 0 android.app.role.HOME)
-    case "$r" in
-        "$EL_PACKAGE") pass "Expressive Launcher holds the Home role" ;;
-        "") info "nobody holds the Home role yet (the chooser comes up on Home)" ;;
-        *) bad "the Home role holder is '$r', not $EL_PACKAGE" ;;
+    case "$p" in
+        *"/system_ext/priv-app/NexusLauncherRelease/"*) pass "Pixel Launcher is built in (for the launcher switch): $p" ;;
+        "") bad "Pixel Launcher ($PIXEL) isn't installed: the launcher switch has nothing to switch to" ;;
+        *) info "Pixel Launcher runs from $p (an update over the built-in copy?)" ;;
     esac
-    r=$(a cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1)
-    [[ "$r" = "$EL_PACKAGE/$EL_HOME_ACTIVITY" ]] && pass "Home resolves to $r" || bad "Home resolves to '${r:-nothing}', not $EL_PACKAGE/$EL_HOME_ACTIVITY"
+    # The launcher mode Expressive Studio's switch set; the framework read it at boot
+    mode=$(a getprop "$MODE_PROP")
+    if [[ "$mode" = pixel ]]; then
+        info "launcher mode: Pixel Launcher ($MODE_PROP=pixel)"
+        want_home=$PIXEL want_rec=$PIXEL_RECENTS
+    else
+        info "launcher mode: Expressive Launcher ($MODE_PROP=${mode:-unset})"
+        want_home=$EL_PACKAGE want_rec=$RECENTS
+    fi
+    # (--brief prints pkg/.Class when the class starts with the package: spell it out)
+    long() { sed -E 's#^([^/]+)/\.#\1/\1.#'; }
+    homes=$(a cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME | long)
+    if [[ "$mode" = pixel ]]; then
+        grep -qxF "$PIXEL_HOME" <<<"$homes" && pass "Pixel Launcher's Home activity is on (its Recents code looks it up)" \
+            || bad "Pixel Launcher's Home activity is off in Pixel Launcher mode: its Recents code crashes (only Expressive Studio's switch, the system uid, can turn it on)"
+    else
+        grep -qxF "$PIXEL_HOME" <<<"$homes" && bad "Pixel Launcher's Home activity is on in Expressive Launcher's mode: before the first unlock it would run and crash ($PIXEL_SYSCONFIG's default overridden?)" \
+            || pass "Pixel Launcher's Home activity is off ($PIXEL_SYSCONFIG)"
+    fi
+    r=$(a cmd overlay list android | grep -F "org.expressiveos.overlay.launcher.pixelmode" || true)
+    if [[ "$mode" = pixel ]]; then
+        [[ "$r" = *"[x]"* ]] && pass "$PIXEL_OVERLAY is on: $r" || bad "$PIXEL_OVERLAY isn't on in Pixel Launcher mode: '${r:-not scanned}'"
+    else
+        [[ -z "$r" ]] && pass "$PIXEL_OVERLAY isn't scanned (Expressive Launcher's mode)" \
+            || bad "$PIXEL_OVERLAY is there in Expressive Launcher's mode: '$r' (a cached parse? ExpressiveOS/frameworks_base must not cache static overlays)"
+    fi
+    home=$(a cmd role get-role-holders --user 0 android.app.role.HOME)
+    case "$home" in
+        "$want_home") pass "$want_home holds the Home role" ;;
+        "$EL_PACKAGE"|"$PIXEL") info "$home holds the Home role, not the mode's $want_home: someone picked it in Default apps (the switch sets both)" ;;
+        "") bad "nobody holds the Home role (a chooser comes up on Home): Expressive Launcher's Home priority should have made it the default" ;;
+        *) bad "the Home role holder is '$home', not $EL_PACKAGE or $PIXEL" ;;
+    esac
+    r=$(a cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1 | long)
+    if [[ "$home" = "$PIXEL" ]]; then
+        [[ "$r" = "$PIXEL_HOME" ]] && pass "Home resolves to $r" || bad "Home resolves to '${r:-nothing}', not $PIXEL_HOME, the Home role holder's"
+    else
+        [[ "$r" = "$EL_PACKAGE/$EL_HOME_ACTIVITY" ]] && pass "Home resolves to $r" || bad "Home resolves to '${r:-nothing}', not $EL_PACKAGE/$EL_HOME_ACTIVITY"
+    fi
     # The overlays' values as the framework and the setup wizard see them
     r=$(a cmd overlay lookup android android:string/config_recentsComponentName)
-    [[ "$r" = "$RECENTS" ]] && pass "config_recentsComponentName is $r" || bad "config_recentsComponentName is '${r:-unreadable}', not $RECENTS ($FW_OVERLAY not applied?)"
+    [[ "$r" = "$want_rec" ]] && pass "config_recentsComponentName is $r" || bad "config_recentsComponentName is '${r:-unreadable}', not $want_rec (the mode's overlay not applied?)"
     r=$(a cmd overlay lookup android android:string/config_defaultListenerAccessPackages)
-    [[ "$r" = "$want_listeners" ]] && pass "config_defaultListenerAccessPackages is the kit's (Expressive Launcher in Pixel Launcher's place)" \
+    [[ "$r" = "$want_listeners" ]] && pass "config_defaultListenerAccessPackages is the kit's (both launchers)" \
         || bad "config_defaultListenerAccessPackages is '${r:-unreadable}', not the kit's"
     # (paste's - operand: macOS's paste needs it; device mode runs on a Mac)
     r=$(a cmd overlay lookup android android:array/config_launcherPackages | tr -d '[]' | tr ', ' '\n\n' | sed '/^$/d' | paste -sd: -)
-    if [[ ":$r:" = *":$EL_PACKAGE:"* && ":$r:" != *":$PIXEL:"* ]]; then pass "config_launcherPackages (Evolution X's launchers) is $r"
+    if [[ ":$r:" = *":$EL_PACKAGE:"* ]]; then pass "config_launcherPackages (Evolution X's launchers) is $r"
     elif [[ -z "$r" ]]; then info "cmd overlay lookup can't print config_launcherPackages here (an array): $FW_OVERLAY's values above say it's applied"
-    else bad "config_launcherPackages is '$r': Expressive Launcher isn't in Pixel Launcher's place"; fi
+    else bad "config_launcherPackages is '$r': Expressive Launcher isn't in it"; fi
     if [[ -n "$(a pm list packages "$SUW")" ]]; then
         r=$(a cmd overlay lookup "$SUW" "$SUW:string/exit_to_action_in_initial_setup")
         [[ "$r" = "$ALL_SET" ]] && pass "the setup wizard ends on $r" || bad "the setup wizard's exit_to_action_in_initial_setup is '${r:-unreadable}', not $ALL_SET ($SUW_OVERLAY not applied?)"
@@ -433,12 +517,13 @@ device)
     else
         info "$SUW isn't installed here: the setup wizard overlay isn't checked"
     fi
-    # SystemUI bound to the launcher's quickstep service: gestures, Overview and the taskbar work
-    a dumpsys activity services "$EL_PACKAGE/$EL_QUICKSTEP_SERVICE" > "$T/svc"
-    if grep -qF "$EL_PACKAGE/$EL_QUICKSTEP_SERVICE" "$T/svc" && grep -qF 'com.android.systemui' "$T/svc"; then
-        pass "SystemUI is bound to $EL_QUICKSTEP_SERVICE"
+    # SystemUI bound to the Recents app's quickstep service: gestures, Overview and the taskbar work
+    rp=${want_rec%%/*}
+    a dumpsys activity services "$rp/$EL_QUICKSTEP_SERVICE" > "$T/svc"
+    if grep -qF "$rp/$EL_QUICKSTEP_SERVICE" "$T/svc" && grep -qF 'com.android.systemui' "$T/svc"; then
+        pass "SystemUI is bound to $rp's $EL_QUICKSTEP_SERVICE"
     else
-        bad "SystemUI isn't bound to $EL_PACKAGE/$EL_QUICKSTEP_SERVICE (gestures and Overview won't work): see dumpsys activity services $EL_PACKAGE"
+        bad "SystemUI isn't bound to $rp/$EL_QUICKSTEP_SERVICE (gestures and Overview won't work): see dumpsys activity services $rp"
     fi
     a dumpsys activity service com.android.systemui/.SystemUIService OverviewProxyService > "$T/ops"
     r=$(grep -m1 -oE 'mRecentsComponentName=[^ ]+' "$T/ops" | cut -d= -f2 || true)
@@ -457,6 +542,9 @@ device)
     n=$(grep -cE "Process: $EL_PACKAGE(,|:| |$)" "$T/log" || true)
     [[ "${n:-0}" = 0 ]] && pass "Expressive Launcher hasn't crashed since logcat began" \
         || bad "Expressive Launcher crashed $n time(s): adb logcat -b crash"
+    n=$(grep -cE "Process: ${PIXEL//./\\.}(,|:| |\$)" "$T/log" || true)
+    [[ "${n:-0}" = 0 ]] && pass "Pixel Launcher hasn't crashed since logcat began" \
+        || bad "Pixel Launcher crashed $n time(s): adb logcat -b crash"
     n=$(grep -cE 'Process: com\.android\.systemui(,|:| |$)' "$T/log" || true)
     [[ "${n:-0}" = 0 ]] && pass "SystemUI hasn't crashed since logcat began" || bad "SystemUI crashed $n time(s): adb logcat -b crash"
     # A launcher whose quickstep was built against another Android's WindowManager Shell can't
@@ -479,6 +567,7 @@ device)
     [[ -n "$r" ]] && pass "notification access (dots): $r" \
         || info "Expressive Launcher has no notification access yet (a dirty flash keeps the old grants: Settings > Notifications > Device & app notifications)"
     info "by hand: swipe up for Home and hold for Overview, swipe along the bottom to switch apps, check the taskbar on a large screen, then run this again (it looks for failed binder calls)"
+    info "by hand: in Settings > Expressive Studio's look & feel page, Home screen > Launcher, switch to Pixel Launcher (the phone restarts), unlock, check its home screen, At a Glance, the Google feed, swipe up, Overview and quick switch, run this again, then switch back and run it once more"
     ;;
 *) usage ;;
 esac

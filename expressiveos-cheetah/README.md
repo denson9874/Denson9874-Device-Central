@@ -13,7 +13,8 @@ ExpressiveOS is its own ROM, built from its own sources like any standard custom
   2026-11-03: "We are no longer doing KSU"). ViPER4Android RE ([`viper4android/`](viper4android/README.md)), its
   own boot animation ([`bootanimation/`](bootanimation/README.md)), its own wallpaper, Bloom, on a
   clean install's first screen ([`wallpapers/`](wallpapers/README.md)), and Daryl's Expressive
-  Launcher as the Home and Recents app in Pixel Launcher's place ([`launcher/`](launcher/README.md)).
+  Launcher as the default Home and Recents app, with Pixel Launcher next to it for the launcher
+  switch in Expressive Studio ([`launcher/`](launcher/README.md)).
 
 That's ExpressiveOS on cheetah, the kit's first phone and the one every script builds unless told
 otherwise. husky (Pixel 8 Pro) and the four Pixel 11s build from the same kit and tree, with their own

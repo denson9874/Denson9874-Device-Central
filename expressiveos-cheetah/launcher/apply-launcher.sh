@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Put Expressive Launcher into the ExpressiveOS tree as every phone's Home and Recents app,
-# in place of Pixel Launcher (idempotent: a second run changes nothing):
+# Put Expressive Launcher into the ExpressiveOS tree as every phone's default Home and Recents
+# app, next to Pixel Launcher for Expressive Studio's launcher switch (idempotent: a second run
+# changes nothing):
 #   1. fetch-launcher.sh: the pinned release APK, its LICENSE and notices, verified;
 #   2. stage them with tree/ into vendor/extra/launcher (Android.bp removed first and written
 #      last, so Soong never sees it without its files; anything else there goes);

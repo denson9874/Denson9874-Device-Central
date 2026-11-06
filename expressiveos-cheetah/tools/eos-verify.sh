@@ -33,8 +33,9 @@
 #      /metadata hint rc, a BootAnimation that reads the hint and its SELinux label, and no
 #      other styles), the wallpaper
 #      (wallpapers.conf's default on ro.config.wallpaper, the theme from the wallpaper) and
-#      Expressive Launcher (launcher-check.sh out: the pinned APK and its overlays, no
-#      Pixel Launcher and no other Home app);
+#      Expressive Launcher (launcher-check.sh out: the pinned APK and its overlays, Pixel
+#      Launcher and the launcher switch's overlay and sysconfig next to it, and Expressive
+#      Launcher the default Home);
 #   7. branding: no app, framework string or crash report header names Evolution X
 #      (brand-check.py), apart from the few links it lists on purpose;
 #   8. firmware (EOS_RADIO_MK) and the fastboot files the pack script reads (super_empty.img
