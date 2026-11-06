@@ -23,7 +23,8 @@
 # nothing: this tree's build/make has no such file): both names sit in vendor/, so such a link
 # leads to the same place after the move. Only the files the build reads (*.mk, *.bp, *.bazel,
 # *.bzl, BUILD, *.go) must not name the folder, keys.mk aside; a README or script that does
-# gets a note and stays as it is. Then:
+# gets a note and stays as it is. keys.mk must not name both folders: a revert couldn't tell
+# its lines apart. Then:
 #   1. a backup archive of the folder, ~/expressiveos-keys-<UTC time>.tar.gz (mode 600, its
 #      contents as the first backup's: keys/), read back and checked against the files;
 #   2. the sha256 of every file, before;
@@ -229,6 +230,14 @@ elif cmd == "archive":       # archive <tar.gz> <listing>: the archive holds exa
 elif cmd == "plan":          # plan <keys.mk> <old> <new> <out|->: the rewritten keys.mk, checked; prints the changed lines
     src, old, new, dst = sys.argv[2:6]
     data = open(src, "rb").read()
+    # Both names in it (a comment naming the other folder?): a revert would rewrite those lines
+    # too, so it could not give back the same keys.mk
+    lines = data.split(b"\n")
+    po = [i + 1 for i, l in enumerate(lines) if pattern(old).search(l)]
+    pn = [i + 1 for i, l in enumerate(lines) if pattern(new).search(l)]
+    if po and pn:
+        die("keys.mk names both %s (lines %s) and %s (lines %s): a revert could not tell those lines apart. Make it name only %s (the template'"'"'s keys.mk does) first"
+            % (old, ",".join(map(str, po)), new, ",".join(map(str, pn)), old))
     res, changed = rewrite(data, old, new)
     left = [i + 1 for i, l in enumerate(res.split(b"\n")) if old.encode() in l]
     if left:
@@ -446,7 +455,7 @@ if [[ $mode = check ]]; then
         if [[ -z $w ]]; then
             [[ ! -e $work/bad-${f##*/} ]] || r+=("$f holds an entry it refuses (above)")
             [[ -z $(others_naming "$f" "$f") ]] || r+=("a file in $f that the build reads, other than $MK, names $f")
-            py plan "$top/$f/$MK" "$f" "$t" - > /dev/null 2> "$work/plan.err" || r+=("$(head -1 "$work/plan.err")")
+            py plan "$top/$f/$MK" "$f" "$t" - > /dev/null 2> "$work/plan.err" || r+=("$(tail -n 1 "$work/plan.err")")
             [[ $(free_bytes "$HOME") -ge $(need_bytes "$f") ]] || r+=("~ has too little free disk for the two backups")
         fi
         if (( ${#r[@]} )); then echo "${m^^}_READY=no: $(IFS=';'; echo "${r[*]}" | sed 's/;/; /g')"

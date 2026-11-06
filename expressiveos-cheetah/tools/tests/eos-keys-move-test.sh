@@ -135,6 +135,10 @@ rc=$(run move); ok "move refuses a link named as its temporary keys.mk (it would
 rc=$(run check); ok "  check: MOVE_READY=no for it" 'grep -q "^MOVE_READY=no: vendor/evolution-priv holds an entry it refuses" "$W/out.log"'
 rm "$OLD/keys/.keys.mk.eos-keys-move"
 ok "  (avb.pk8 untouched)" 'unchanged'
+printf '\n# 1.1 moves it to vendor/expressiveos-priv/keys\n' >> "$OLD/keys/keys.mk"
+rc=$(run move); ok "move refuses a keys.mk that names both folders (a revert couldn't give it back)" '[[ $rc = 1 ]] && last | grep -q "keys/keys.mk can.t be rewritten: keys.mk names both vendor/evolution-priv (lines 3,6,9) and vendor/expressiveos-priv (lines 10)" && [[ ! -e $NEW && $(nbak) = 0 ]]'
+rc=$(run check); ok "  check: MOVE_READY=no with the reason" 'grep -q "^MOVE_READY=no: keys.mk names both vendor/evolution-priv" "$W/out.log"'
+cp -p "$W/keys.mk.orig" "$OLD/keys/keys.mk"
 echo '// vendor/evolution-priv/keys/testkey' >> "$OLD/keys/Android.bp"
 rc=$(run move); ok "move refuses when a file other than keys.mk names the folder" '[[ $rc = 1 ]] && last | grep -q "keys/Android.bp in vendor/evolution-priv name vendor/evolution-priv, and the build reads them" && [[ ! -e $NEW && $(nbak) = 0 ]]'
 rc=$(run check); ok "  check: MOVE_READY=no for it" 'grep -q "^MOVE_READY=no: a file in vendor/evolution-priv that the build reads, other than keys/keys.mk, names vendor/evolution-priv" "$W/out.log"'
