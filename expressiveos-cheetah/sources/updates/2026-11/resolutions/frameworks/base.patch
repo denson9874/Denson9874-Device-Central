@@ -3,6 +3,7 @@ resolved core/jni/com_android_internal_content_MicrogUtils.cpp
 resolved packages/SystemUI/src/com/android/systemui/globalactions/shared/model/GlobalActionType.kt
 resolved services/core/java/com/android/server/pm/ComputerEngine.java
 resolved services/core/java/com/android/server/policy/PhoneWindowManager.java
+changed core/java/android/service/credentials/CredentialProviderInfoFactory.java
 changed core/java/com/android/internal/content/MicrogUtils.java
 
 diff --git a/core/java/com/android/internal/content/MicrogUtils.java b/core/java/com/android/internal/content/MicrogUtils.java

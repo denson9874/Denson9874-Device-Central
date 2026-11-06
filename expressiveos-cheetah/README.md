@@ -352,7 +352,8 @@ again in a gap between builds.
 tree and pushes nothing. Against LineageOS's manifest today it shows:
 
 - for LineageOS's and AOSP's projects, which move and by how many commits (a LineageOS project's
-  must descend from ours; shallow and AOSP projects aren't counted);
+  must descend from ours or, where LineageOS's manifest moved it to another repo, have a commit with
+  exactly our commit's files, counted from there; shallow and AOSP projects aren't counted);
 - for ExpressiveOS's forks of LineageOS's and AOSP's repos (44 at 1.0), LineageOS's new commits
   merged into each in memory (`git merge-tree`): clean, or the files that conflict, and which of those
   the kit's own changes touch (any device's), and the commits a fork's branch has past its pin, which
