@@ -472,13 +472,23 @@ jobs:
         if: inputs.action == 'expressiveos-keys-move'
         run: |
           [[ "${QUERY:-check}" =~ ^(check|move|revert)$ ]] || { echo "::error::query is check (read-only, the default), move or revert"; exit 1; }
+          # The log names every key file with its sha256: a folder only this user reads, as
+          # the install step makes it
           jobs=~/expressiveos-jobs
-          mkdir -p "$jobs"
+          mkdir -p "$jobs"; chmod 700 "$jobs"
+          # keys-move.log is the newest run's (any query), the one before it keys-move.log.1. A
+          # move's or revert's log is also kept as keys-move-<query>-<UTC time>.log, which no
+          # later run writes over: its backups' names, and the NOTE of one that failed
+          log=$jobs/keys-move.log
+          [[ ! -f $log ]] || mv -f -- "$log" "$log.1"
+          out=("$log")
+          [[ ${QUERY:-check} = check ]] || out+=("$jobs/keys-move-$QUERY-$(date -u +%Y%m%d-%H%M%S).log")
           rc=0
-          env -u EOS_HOLDS_LOCK -u EOS_DEVICE bash --noprofile --norc expressiveos-cheetah/tools/eos-keys-move.sh "${QUERY:-check}" 2>&1 | tee -- "$jobs/keys-move.log" || rc=$?
+          env -u EOS_HOLDS_LOCK -u EOS_DEVICE bash --noprofile --norc expressiveos-cheetah/tools/eos-keys-move.sh "${QUERY:-check}" 2>&1 | tee -- "${out[@]}" || rc=$?
           {
-            echo "expressiveos-keys-move ${QUERY:-check}, script ${GITHUB_SHA:0:7}: $(tail -n 1 "$jobs/keys-move.log")"
-            grep -aE '^(OK: |FAIL|NOTE|note: |WARNING|MOVE_READY|REVERT_READY|vendor/)' "$jobs/keys-move.log" | cut -c1-300 || true
+            echo "expressiveos-keys-move ${QUERY:-check}, script ${GITHUB_SHA:0:7}: $(tail -n 1 "$log")"
+            [[ ${#out[@]} = 1 ]] || echo "log kept as ${out[1]/#"$HOME"/\~}"
+            grep -aE '^(OK: |FAIL|NOTE|note: |WARNING|MOVE_READY|REVERT_READY|vendor/)' "$log" | cut -c1-300 || true
           } | tee -a "$GITHUB_STEP_SUMMARY"
           exit "$rc"
 
@@ -644,6 +654,8 @@ jobs:
           done
           [[ -e $top/vendor/expressiveos-priv || -e $top/vendor/evolution-priv ]] || echo "== keys: none in the tree (neither vendor/expressiveos-priv nor vendor/evolution-priv)"
           ls -l ~/expressiveos-keys-*.tar.gz 2>/dev/null || echo "no key backup archive on the server"
+          # Each move's and revert's own log (expressiveos-keys-move): the newest is shown below
+          ls -l "$jobs"/keys-move-move-*.log "$jobs"/keys-move-revert-*.log 2>/dev/null || true
           # Each phone's records (lib.sh's EOS_STATE): cheetah's in out/eos, always shown, the
           # others' in out/eos-<device>, once they exist
           for d in $devs; do
@@ -688,7 +700,8 @@ jobs:
           done
           # The runner's sessions' logs, then eos-images.sh's own (whoever started it; cheetah's,
           # then the other phones'), then the newest ExpressiveOS routine log, if a routine started one
-          logs=("$jobs"/{setup,keys,keys-move,build,pack}.log ~/expressiveos-build.log)
+          k=$(ls -t "$jobs"/keys-move-move-*.log "$jobs"/keys-move-revert-*.log 2>/dev/null | head -n 1 || true)
+          logs=("$jobs"/{setup,keys,keys-move}.log ${k:+"$k"} "$jobs"/{build,pack}.log ~/expressiveos-build.log)
           for d in $devs; do
             [[ $d = cheetah ]] || logs+=("$HOME/expressiveos-build-$d.log")
           done
