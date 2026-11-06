@@ -18,7 +18,9 @@ touch "$top/build/envsetup.sh"
 echo 'include vendor/expressiveos-priv/keys/keys.mk' > "$top/vendor/lineage/config/expressiveos.mk"
 
 # The fake folder: filler files under the template's names (each its own bytes, with a marker
-# that must never reach the output), the template's relative links, a subfolder, and keys.mk
+# that must never reach the output), the template's relative links (BUILD.bazel's out of the
+# folder, to nothing, as on the server), a subfolder, a README naming the folder as the
+# template's clone step does, git's own folder, and keys.mk
 mkfolder() {
     rm -rf -- "$OLD" "$NEW"
     mkdir -p "$OLD/keys/sub"
@@ -33,6 +35,13 @@ mkfolder() {
     ln -s testkey.pk8 "$OLD/keys/releasekey.pk8"
     ln -s testkey.x509.pem "$OLD/keys/releasekey.x509.pem"
     ln -s ../testkey.pk8 "$OLD/keys/sub/up.pk8"
+    ln -s ../../../build/make/target/product/security/BUILD.bazel "$OLD/keys/BUILD.bazel"
+    printf '# MARKER-readme\nClone this into vendor/evolution-priv/keys, then run keys.sh there.\n' > "$OLD/keys/README.md"
+    printf '#!/bin/sh\n# MARKER-keys-sh\n' > "$OLD/keys/keys.sh"
+    mkdir -p "$OLD/keys/.git/info"
+    printf 'ref: refs/heads/main\n' > "$OLD/keys/.git/HEAD"
+    printf '[core]\n\tbare = false\n' > "$OLD/keys/.git/config"
+    printf '# MARKER-git vendor/evolution-priv/keys\n' > "$OLD/keys/.git/info/exclude"
     cat > "$OLD/keys/keys.mk" <<'EOF'
 # MARKER-mk (the template's keys.mk, made for the test)
 PRODUCT_CERTIFICATE_OVERRIDES := com.android.x:com.android.x.certificate.override
@@ -71,7 +80,9 @@ cp -p "$OLD/keys/keys.mk" "$W/keys.mk.orig"
 
 rc=$(run bogus); ok "usage: refuses" '[[ $rc = 1 ]] && last | grep -q "^KEYS_MOVE=FAIL: usage"'
 rc=$(run); ok "check (the default): read-only report" '[[ $rc = 0 ]] && last | grep -q "^KEYS_MOVE=OK (check only, nothing changed" && grep -qx "MOVE_READY=yes: vendor/evolution-priv -> vendor/expressiveos-priv, keys/keys.mk lines 3,6,9 rewritten" "$W/out.log" && grep -q "^REVERT_READY=no" "$W/out.log"'
-ok "  names each file with its sha256" 'grep -q "$(sha256sum < "$OLD/keys/avb.pk8" | cut -d" " -f1) keys/avb.pk8$" "$W/out.log" && grep -q "keys/releasekey.pk8 -> testkey.pk8" "$W/out.log" && grep -q "^  21 files, 3 links" "$W/out.log"'
+ok "  names each file with its sha256" 'grep -q "$(sha256sum < "$OLD/keys/avb.pk8" | cut -d" " -f1) keys/avb.pk8$" "$W/out.log" && grep -q "keys/releasekey.pk8 -> testkey.pk8" "$W/out.log" && grep -q "^  26 files, 4 links" "$W/out.log"'
+ok "  takes the template's BUILD.bazel link out of the folder, to nothing, with a note" 'grep -q "keys/BUILD.bazel -> ../../../build/make/target/product/security/BUILD.bazel$" "$W/out.log" && grep -q "^  note: keys/BUILD.bazel is a link out of the folder, to build/make/target/product/security/BUILD.bazel in the tree (nothing there): the same place after the move" "$W/out.log"'
+ok "  notes the README naming the folder (the build doesn't read it), and no file the build reads" 'grep -q "^  note: other files name a key folder path, and stay as they are (the build doesn.t read them): keys/README.md$" "$W/out.log" && grep -q "^  files the build reads, keys/keys.mk aside, that name a key folder path: none" "$W/out.log"'
 ok "  says which folder vendor/lineage includes, and what builds" 'grep -q "^vendor/lineage.s config includes vendor/expressiveos-priv/keys/keys.mk" "$W/out.log" && grep -q "^nothing builds or syncs now" "$W/out.log" && grep -q "free$" "$W/out.log"'
 ok "  prints no file's contents" 'quiet'
 ok "  changes nothing: no lock file, no backup, the folder as it was" '[[ ! -e $HOME/.expressiveos.lock && ! -e $HOME/.expressiveos-tree.lock && $(nbak) = 0 ]] && snap "$OLD" | cmp -s - "$W/orig.snap"'
@@ -108,8 +119,20 @@ rm "$OLD/keys/abs"
 ln "$OLD/keys/shared.pk8" "$W/hard"
 rc=$(run move); ok "move refuses a hard-linked file" '[[ $rc = 1 ]] && last | grep -q "keys/shared.pk8 has other hard links" && [[ ! -e $NEW && $(nbak) = 0 ]]'
 rm "$W/hard"
+ln -s ../../../../outside "$OLD/keys/far"
+rc=$(run move); ok "move refuses a link that leads out of the tree" '[[ $rc = 1 ]] && last | grep -q "keys/far is a link to ../../../../outside, which leads out of the tree" && [[ ! -e $NEW && $(nbak) = 0 ]]'
+rm "$OLD/keys/far"
+for t in ../../evolution-priv/keys/testkey.pk8 ../../expressiveos-priv/keys/testkey.pk8; do
+    ln -s "$t" "$OLD/keys/back"
+    rc=$(run move); ok "move refuses a link that comes back in through a key folder's name ($t)" '[[ $rc = 1 ]] && last | grep -q "keys/back is a link to $t, which leaves the folder and comes back in through the name" && [[ ! -e $NEW && $(nbak) = 0 ]]'
+    rm "$OLD/keys/back"
+done
+ln -s evolution-priv "$top/vendor/lnk"; ln -s ../../lnk/keys/testkey.pk8 "$OLD/keys/via"
+rc=$(run move); ok "move refuses a link out of the folder that comes back in through another link" '[[ $rc = 1 ]] && last | grep -q "keys/via is a link to ../../lnk/keys/testkey.pk8, which comes back into vendor/evolution-priv through other links" && [[ ! -e $NEW && $(nbak) = 0 ]]'
+rm "$OLD/keys/via" "$top/vendor/lnk"
 echo '// vendor/evolution-priv/keys/testkey' >> "$OLD/keys/Android.bp"
-rc=$(run move); ok "move refuses when a file other than keys.mk names the folder" '[[ $rc = 1 ]] && last | grep -q "keys/Android.bp in vendor/evolution-priv name vendor/evolution-priv" && [[ ! -e $NEW && $(nbak) = 0 ]]'
+rc=$(run move); ok "move refuses when a file other than keys.mk names the folder" '[[ $rc = 1 ]] && last | grep -q "keys/Android.bp in vendor/evolution-priv name vendor/evolution-priv, and the build reads them" && [[ ! -e $NEW && $(nbak) = 0 ]]'
+rc=$(run check); ok "  check: MOVE_READY=no for it" 'grep -q "^MOVE_READY=no: a file in vendor/evolution-priv that the build reads, other than keys/keys.mk, names vendor/evolution-priv" "$W/out.log"'
 sed -i '$d' "$OLD/keys/Android.bp"
 sed -i 's|^AVB_CUSTOM_KEY_PATH := .*|AVB_CUSTOM_KEY_PATH := somewhere/avb.pk8|' "$OLD/keys/keys.mk"
 rc=$(run move); ok "move refuses a keys.mk without the template's key path line" '[[ $rc = 1 ]] && last | grep -q "keys/keys.mk can.t be rewritten" && grep -q "would lack the line .AVB_CUSTOM_KEY_PATH := vendor/expressiveos-priv/keys/avb.pk8" "$W/out.log" && [[ ! -e $NEW && $(nbak) = 0 ]]'
@@ -128,6 +151,7 @@ ok "  keys.mk: only the three path lines rewritten, byte for byte" 'sed "s|vendo
 ok "  two backups in ~, mode 600, holding keys/" '[[ $(nbak) = 2 ]] && for b in "$HOME"/expressiveos-keys-*.tar.gz; do [[ $(stat -c %a "$b") = 600 ]] && tar -tzf "$b" | grep -qx "keys/" || exit 1; done'
 b1=$(ls "$HOME"/expressiveos-keys-*.tar.gz | sort | head -1) b2=$(ls "$HOME"/expressiveos-keys-*.tar.gz | sort | tail -1)
 ok "  the first backup is the folder before, the second after" 'tar -xzOf "$b1" keys/keys.mk | cmp -s - "$W/keys.mk.orig" && tar -xzOf "$b2" keys/keys.mk | cmp -s - "$NEW/keys/keys.mk" && tar -xzOf "$b1" keys/avb.pk8 | cmp -s - "$NEW/keys/avb.pk8" && tar -tvzf "$b1" | grep -q "keys/releasekey.pk8 -> testkey.pk8"'
+ok "  keeps the BUILD.bazel link as it was, and the README byte-identical, with notes" '[[ $(readlink "$NEW/keys/BUILD.bazel") = ../../../build/make/target/product/security/BUILD.bazel ]] && grep -q "^note: keys/README.md names vendor/evolution-priv; left as it is" "$W/out.log" && grep -q "^note: keys/BUILD.bazel is a link out of the folder" "$W/out.log" && grep "keys/README.md$" "$W/orig.snap" | cmp -s - <(snap "$NEW" | grep "keys/README.md$")'
 ok "  prints no file's contents" 'quiet'
 ok "  no temporary file left in the folder" '[[ -z $(find "$NEW" -name ".keys.mk*") ]]'
 rc=$(run check); ok "check after the move: REVERT_READY=yes, MOVE_READY=no" '[[ $rc = 0 ]] && grep -q "^REVERT_READY=yes: vendor/expressiveos-priv -> vendor/evolution-priv, keys/keys.mk lines 3,6,9 rewritten" "$W/out.log" && grep -q "^MOVE_READY=no: vendor/evolution-priv isn.t in the tree" "$W/out.log" && quiet'

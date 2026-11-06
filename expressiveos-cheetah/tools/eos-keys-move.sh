@@ -16,8 +16,14 @@
 # (~/.expressiveos.lock and the tree lock's two names) and hold them to the end, and no
 # eos-setup, eos-build or eos-pack session and no soong_ui, ninja or repo of this user runs. The
 # folder they move from must be a folder (not a symlink) on the tree's file system, with only
-# files, folders and relative links that stay inside it, and keys/keys.mk must name it; the
-# folder they move to must not exist. Then:
+# files, folders and relative links, and keys/keys.mk must name it; the folder they move to
+# must not exist. A link may stay inside the folder (releasekey.* -> testkey.*), or lead out
+# of it to elsewhere in the tree without coming back in through either of the two names (the
+# template's BUILD.bazel -> ../../../build/make/target/product/security/BUILD.bazel, a link to
+# nothing: this tree's build/make has no such file): both names sit in vendor/, so such a link
+# leads to the same place after the move. Only the files the build reads (*.mk, *.bp, *.bazel,
+# *.bzl, BUILD, *.go) must not name the folder, keys.mk aside; a README or script that does
+# gets a note and stays as it is. Then:
 #   1. a backup archive of the folder, ~/expressiveos-keys-<UTC time>.tar.gz (mode 600, its
 #      contents as the first backup's: keys/), read back and checked against the files;
 #   2. the sha256 of every file, before;
@@ -80,9 +86,46 @@ def sha(path):
             h.update(b)
     return h.hexdigest()
 
-def listing(root, dev):
-    # One line a file, folder or link under root (root itself left out), sorted:
-    # type, mode, size, sha256 (files) or target (links) or -, path relative to root
+def link_where(top, frel, names, rel, t):
+    # A link rel (relative to the folder frel, itself relative to the tree top) to t: None when
+    # it stays inside the folder; else the place in the tree it leads to, which must be the
+    # same before and after the move: inside the tree, never back in through either of the
+    # move'"'"'s two names, and not into either folder through other links. A link to nothing
+    # is fine (the template'"'"'s BUILD.bazel).
+    if os.path.isabs(t) or any(c in t for c in "\t\n\r\\"):
+        die("%s is a link to %s, an absolute path or a name the kit does not take: a key folder of the tree'"'"'s own has only relative links" % (rel, t))
+    base = frel.split("/")
+    here = base + rel.split("/")[:-1]
+    out = False
+    for c in t.split("/"):
+        if c in ("", "."):
+            continue
+        if c == "..":
+            if not here:
+                die("%s is a link to %s, which leads out of the tree" % (rel, t))
+            here.pop()
+            out = out or len(here) < len(base)
+        else:
+            here.append(c)
+            if out and "/".join(here) in names:
+                die("%s is a link to %s, which leaves the folder and comes back in through the name %s: it would lead elsewhere after the move" % (rel, t, "/".join(here)))
+    if not out:
+        return None
+    real = os.path.realpath(os.path.join(top, frel, rel))
+    rtop = os.path.realpath(top)
+    if not real.startswith(rtop + "/"):
+        die("%s is a link to %s, which leads out of the tree (to %s, through other links)" % (rel, t, real))
+    for n in names:
+        r = os.path.realpath(os.path.join(rtop, n))
+        if real == r or real.startswith(r + "/"):
+            die("%s is a link to %s, which comes back into %s through other links: it would lead elsewhere after the move" % (rel, t, n))
+    return os.path.relpath(real, rtop)
+
+def listing(top, frel, names, dev):
+    # One line a file, folder or link under the folder top/frel (the folder itself left out),
+    # sorted: type, mode, size, sha256 (files) or target (links) or -, path relative to it.
+    # A note on stderr for each link that leads out of the folder (to the same place after the move)
+    root = os.path.join(top, frel)
     out = []
     for d, dirs, files in os.walk(root):
         dirs.sort()
@@ -99,9 +142,10 @@ def listing(root, dev):
             m = "%o" % stat.S_IMODE(st.st_mode)
             if stat.S_ISLNK(st.st_mode):
                 t = os.readlink(p)
-                tgt = os.path.normpath(os.path.join(os.path.dirname(rel), t))
-                if os.path.isabs(t) or tgt == ".." or tgt.startswith("../") or "\t" in t or "\n" in t:
-                    die("%s is a link to %s, which leads out of the folder: a key folder of the tree'"'"'s own has only relative links that stay inside it" % (rel, t))
+                w = link_where(top, frel, names, rel, t)
+                if w is not None:
+                    print("note: %s is a link out of the folder, to %s in the tree (%s): the same place after the move"
+                          % (rel, w, "there" if os.path.lexists(os.path.join(top, w)) else "nothing there"), file=sys.stderr)
                 out.append(("l", m, "-", t, rel))
             elif stat.S_ISDIR(st.st_mode):
                 out.append(("d", m, "-", "-", rel))
@@ -129,9 +173,11 @@ def rewrite(data, old, new):
 # Any other error as one line (a file name at most), never a traceback
 sys.excepthook = lambda t, v, tb: print("%s: %s" % (t.__name__, v), file=sys.stderr)
 cmd = sys.argv[1]
-if cmd == "list":            # list <root>: the listing, checked
-    root = sys.argv[2]
-    for e in listing(root, os.lstat(root).st_dev):
+if cmd == "list":            # list <top> <folder> <name> <name>: the listing of top/folder, checked (the names: the move'"'"'s two)
+    if len(sys.argv) != 6:
+        die("py list: wants <top> <folder> <old name> <new name>")
+    top, frel = sys.argv[2:4]
+    for e in listing(top, frel, sys.argv[4:6], os.lstat(os.path.join(top, frel)).st_dev):
         print("\t".join(e))
 elif cmd == "archive":       # archive <tar.gz> <listing>: the archive holds exactly the listed entries
     want = {e[4]: e for e in read_list(sys.argv[3])}
@@ -250,8 +296,19 @@ folder_ok() {   # folder_ok <rel>: nothing, or why not
     [[ -f $d/$MK && ! -L $d/$MK ]] || { echo "$1 has no $MK of its own"; return; }
     return 0
 }
-others_naming() {   # others_naming <rel> <path>: files in the folder other than keys.mk that name <path> (names only)
+naming() {   # naming <rel> <path>: the files in the folder that name <path>, one a line (names only): keys.mk and git's own files aside
     grep -rlF --exclude-dir=.git -- "$2" "$top/$1" 2>/dev/null | sed "s|^$top/$1/||" | grep -vxF -- "$MK" || true
+}
+# The files the build reads: one that names the folder's old path would read a path that's gone
+# after the move. Any other file (the template's README, keys.sh) stays as it is, with a note
+build_reads() { case ${1##*/} in *.mk|*.bp|*.bazel|*.bzl|BUILD|*.go) return 0 ;; *) return 1 ;; esac; }
+others_naming() {   # others_naming <rel> <path>: of naming's files, the ones the build reads (move and revert refuse them)
+    local n
+    while IFS= read -r n; do [[ -z $n ]] || ! build_reads "$n" || printf '%s\n' "$n"; done <<<"$(naming "$1" "$2")"
+}
+notes_naming() {   # notes_naming <rel> <path>: of naming's files, the ones the build doesn't read (left as they are)
+    local n
+    while IFS= read -r n; do [[ -z $n ]] || build_reads "$n" || printf '%s\n' "$n"; done <<<"$(naming "$1" "$2")"
 }
 free_bytes() { df -B1 --output=avail -- "$1" | tail -1 | tr -dc 0-9; }
 need_bytes() {   # need_bytes <rel>: room for two archives of the folder, and some
@@ -306,10 +363,12 @@ if [[ $mode = check ]]; then
         [[ -d $top/$r && ! -L $top/$r ]] || continue
         echo "== files in $r (type, mode, size, sha256, name)"
         L=$work/list-${r##*/}.txt
-        if py list "$top/$r" > "$L"; then
+        if py list "$top" "$r" "$OLD" "$NEW" > "$L" 2> "$work/list.err"; then
             show_list "$L"
             echo "  $(awk -F'\t' '$1 == "f"' "$L" | wc -l) files, $(awk -F'\t' '$1 == "l"' "$L" | wc -l) links, $(du -sh -- "$top/$r" | cut -f1)"
+            sed 's/^/  /' -- "$work/list.err"   # its notes: the links out of the folder
         else
+            sed 's/^/  /' -- "$work/list.err"
             echo "  (move and revert refuse this folder: see the line above)"
             echo "x" > "$work/bad-${r##*/}"
         fi
@@ -319,8 +378,10 @@ if [[ $mode = check ]]; then
                 echo "  $MK names $p/ on lines: ${l:-none}"
             done
         fi
-        o=$(others_naming "$r" "$OLD"; others_naming "$r" "$NEW")
-        echo "  other files naming a key folder path: ${o:-none}"
+        o=$( { others_naming "$r" "$OLD"; others_naming "$r" "$NEW"; } | sort -u)
+        echo "  files the build reads, $MK aside, that name a key folder path: ${o:-none}"
+        o=$( { notes_naming "$r" "$OLD"; notes_naming "$r" "$NEW"; } | sort -u)
+        [[ -z $o ]] || echo "  note: other files name a key folder path, and stay as they are (the build doesn't read them): $(oneline "$o")"
     done
     echo "== builds and syncs"
     locks
@@ -341,7 +402,7 @@ if [[ $mode = check ]]; then
         [[ ! -e $top/$t && ! -L $top/$t ]] || r+=("$t is there already")
         if [[ -z $w ]]; then
             [[ ! -e $work/bad-${f##*/} ]] || r+=("$f holds an entry it refuses (above)")
-            [[ -z $(others_naming "$f" "$f") ]] || r+=("a file in $f other than $MK names $f")
+            [[ -z $(others_naming "$f" "$f") ]] || r+=("a file in $f that the build reads, other than $MK, names $f")
             py plan "$top/$f/$MK" "$f" "$t" - > /dev/null 2> "$work/plan.err" || r+=("$(head -1 "$work/plan.err")")
             [[ $(free_bytes "$HOME") -ge $(need_bytes "$f") ]] || r+=("~ has too little free disk for the two backups")
         fi
@@ -367,15 +428,19 @@ w=$(folder_ok "$from")
 [[ ! -e $top/$to && ! -L $top/$to ]] || fail "$to is there already: the keys are moved, never copied or merged; nothing was changed (check shows both)"
 in_top "$top/$from"; in_top "$top/$to"
 o=$(others_naming "$from" "$from")
-[[ -z $o ]] || fail "$(oneline "$o") in $from name $from (only $MK is rewritten): nothing was changed"
+[[ -z $o ]] || fail "$(oneline "$o") in $from name $from, and the build reads them (only $MK is rewritten); nothing was changed"
+while IFS= read -r n; do
+    [[ -z $n ]] || echo "note: $n names $from; left as it is (the build doesn't read it)"
+done <<<"$(notes_naming "$from" "$from")"
 need=$(need_bytes "$from")
 [[ $(free_bytes "$HOME") -ge $need ]] || fail "~ has $(gib "$(free_bytes "$HOME")") free, the two backups need $(gib "$need"); nothing was changed"
 echo "OK: $from is a folder of the tree's own, $to isn't there, $(gib "$(free_bytes "$HOME")") free in ~"
 
 # 1, 2: the files and their sha256, then the first backup, checked against them
-py list "$top/$from" > "$work/before.txt" 2> "$work/err" || fail "$(err1) (in $from); nothing was changed"
+py list "$top" "$from" "$OLD" "$NEW" > "$work/before.txt" 2> "$work/err" || fail "$(err1) (in $from); nothing was changed"
 echo "== $from, before: $(awk -F'\t' '$1 == "f"' "$work/before.txt" | wc -l) files, $(awk -F'\t' '$1 == "l"' "$work/before.txt" | wc -l) links (type, mode, size, sha256, name)"
 show_list "$work/before.txt"
+[[ ! -s $work/err ]] || cat -- "$work/err"   # its notes: the links out of the folder
 cp -p -- "$top/$from/$MK" "$work/keys.mk.before"
 [[ $(sha256sum < "$work/keys.mk.before" | cut -d' ' -f1) = "$(awk -F'\t' -v m="$MK" '$5 == m { print $4 }' "$work/before.txt")" ]] \
     || fail "$MK changed while it was read; nothing was changed"
@@ -403,7 +468,7 @@ tmpmk=''
 echo "OK: $to/$MK rewritten (lines $lines)"
 
 # 5: nothing else changed, and keys.mk only on those lines
-py list "$top/$to" > "$work/after.txt" 2> "$work/err" || fail "$(err1) (in $to, after the move)"
+py list "$top" "$to" "$OLD" "$NEW" > "$work/after.txt" 2> "$work/err" || fail "$(err1) (in $to, after the move)"
 n=$(py same-but-mk "$work/before.txt" "$work/after.txt" "$MK" 2> "$work/err") || fail "the folder isn't what it was before the move: $(err1). Restore it from $bak1 (README.md, \"Keys\")"
 echo "OK: all $n entries as before (type, mode, size, sha256), $MK aside"
 tar -xzOf "$bak1" "$MK" > "$work/keys.mk.backup" 2>/dev/null || fail "can't read $MK back from $bak1"
