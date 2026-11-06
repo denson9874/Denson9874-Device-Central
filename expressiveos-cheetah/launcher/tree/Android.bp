@@ -1,7 +1,5 @@
 // Expressive Launcher for ExpressiveOS: Daryl's own launcher, the unmodified release APK, as
-// every phone's default Home app and its Recents app. Pixel Launcher (vendor/gms's
-// NexusLauncherRelease) ships next to it as a Home app users can pick in Settings > Apps >
-// Default apps > Home app; Overview and gestures stay Expressive Launcher's.
+// every phone's Home and Recents app in place of Pixel Launcher.
 // expressiveos-cheetah/launcher/apply-launcher.sh stages this folder into vendor/extra/launcher:
 // the APK first, this file last. The kit's launcher/README.md has the pins and the reasons.
 
@@ -47,13 +45,14 @@ android_app_import {
         "androidx.window.extensions",
         "androidx.window.sidecar",
     ],
-    // What it replaces: AOSP's Launcher3QuickStep (build/make's handheld_system_ext.mk) and
-    // packages/apps/Launcher3's other launcher modules, which no product installs today.
-    // Pixel Launcher (NexusLauncherRelease) stays as the second Home app, and its own overrides
-    // (Launcher3, Launcher3QuickStep, Trebuchet, QuickSearchBox) apply too. Its Home filter has
-    // no priority (0); this release's has 1, so the Home role's fallback picks Expressive
-    // Launcher on a clean flash instead of showing a chooser (tools/launcher-check.sh checks it).
+    // What it replaces: Pixel Launcher (vendor/gms's NexusLauncherRelease) and AOSP's
+    // Launcher3QuickStep (build/make's handheld_system_ext.mk), the two launchers the build
+    // installs, and packages/apps/Launcher3's other launcher modules, which no product installs
+    // today, so no second Home app ever ships. NexusLauncherRelease's own overrides (Launcher3,
+    // QuickSearchBox and the rest) still apply: make collects every listed module's overrides
+    // before it removes the overridden ones (build/make core/main.mk).
     overrides: [
+        "NexusLauncherRelease",
         "Launcher3QuickStep",
         "Launcher3",
         "Launcher3Go",
@@ -94,14 +93,17 @@ prebuilt_etc {
 // The framework's side (overlay/framework/res/values/config.xml): Expressive Launcher is the
 // Recents app (SystemUI binds its quickstep service for gestures and Overview, and the
 // platform grants it the "recents" permissions), gets notification access by default (dots),
-// is one of Evolution X's launchers, and stays enabled on a managed phone. Pixel Launcher keeps
-// its place in those lists, and its two overlays (PixelLauncherNoGestureHintOverlay,
-// PixelLauncherOverlayCustom) ship with it.
+// is one of Evolution X's launchers, and stays enabled on a managed phone. The two Pixel
+// Launcher overlays go with Pixel Launcher.
 runtime_resource_overlay {
     name: "ExpressiveLauncherFrameworkOverlay",
     manifest: "overlay/framework/AndroidManifest.xml",
     resource_dirs: ["overlay/framework/res"],
     system_ext_specific: true,
+    overrides: [
+        "PixelLauncherNoGestureHintOverlay",
+        "PixelLauncherOverlayCustom",
+    ],
 }
 
 // Pixel's setup wizard ends on Expressive Launcher's gesture tutorial page, not Pixel
