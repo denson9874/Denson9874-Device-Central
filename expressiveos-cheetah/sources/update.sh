@@ -40,7 +40,6 @@ source "$(dirname -- "$(readlink -f -- "$0")")/lock-holder.sh"
 usage="usage: update.sh token | update.sh lint [ref] | update.sh plan|push|verify <id> [top]"
 [[ $# -ge 1 ]] || fail "$usage"
 work=${EOS_UPDATE_WORK:-$HOME/expressiveos-update}
-not_other "$work"
 r=$(realpath -m -- "$work") || fail "can't resolve $work"
 case $1 in
     token)

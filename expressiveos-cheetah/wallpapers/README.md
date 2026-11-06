@@ -5,8 +5,8 @@ clean install starts on, so the system colours match the logo from the first scr
 2026-10-27). Each is 1440x3120 (cheetah's full resolution), 8-bit sRGB PNG, with no text and a clear
 top half for the clock. Every thread of each ribbon is an echo of one petal's outline.
 
-This folder is only the wallpaper part of the ExpressiveOS kit. **None of it applies to the Evolution
-X tree** (`~/evolution`): `apply-wallpapers.sh` refuses it.
+This folder is only the wallpaper part of the ExpressiveOS kit, for the ExpressiveOS tree
+(`~/expressiveos`): `apply-wallpapers.sh` writes nothing through a symlink that leads out of it.
 
 ## The four
 

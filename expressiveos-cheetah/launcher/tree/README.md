@@ -1,8 +1,7 @@
 # vendor/extra/launcher (ExpressiveOS, every phone)
 
 `expressiveos-cheetah/launcher/apply-launcher.sh` stages this folder from the ExpressiveOS repo. Don't
-edit it here, because the next run puts the kit's copy back. Only the ExpressiveOS tree has it, never the
-Evolution X tree (`~/evolution`) or DerpFest's (`~/derpfest`).
+edit it here, because the next run puts the kit's copy back. Only the ExpressiveOS tree has it.
 
 ## What ships
 

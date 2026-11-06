@@ -78,20 +78,16 @@ tree)
     eos_device
     top="$(cd "$1" && pwd -P)"
     echo "== ViPER4Android RE tree checks: $top"
-    if [[ "$top" = */evolution ]]; then bad "$top is the Evolution X tree; this kit is for the ExpressiveOS tree only"; finish; fi
-    evo=$(cd "$HOME/evolution" 2>/dev/null && pwd -P || true)
-    if [[ -n "$evo" && "$top" = "$evo" ]]; then bad "$top is the Evolution X tree (~/evolution); this kit is for the ExpressiveOS tree only"; finish; fi
     # What apply-v4a.sh writes must stay in this tree, also through symlinks
     ok=1
     for p in vendor/extra vendor/extra/viper4android vendor/extra/product.mk frameworks/av; do
         r=$(realpath -m -- "$top/$p")
-        if [[ "$r" != "$top"/* ]]; then ok=0; bad "$p leads to $r, outside $top (a symlink?)"
-        elif [[ -n "$evo" && ( "$r" = "$evo" || "$r" = "$evo"/* ) ]]; then ok=0; bad "$p leads into the Evolution X tree ($r)"; fi
+        if [[ "$r" != "$top"/* ]]; then ok=0; bad "$p leads to $r, outside $top (a symlink?)"; fi
     done
     gd=$(git -C "$top/frameworks/av" rev-parse --absolute-git-dir 2>/dev/null || true)
     [[ -z "$gd" ]] || gd=$(realpath -- "$gd")
-    if [[ -n "$gd" && -n "$evo" && ( "$gd" = "$evo" || "$gd" = "$evo"/* ) ]]; then ok=0; bad "frameworks/av's git folder is in the Evolution X tree ($gd)"; fi
-    [[ $ok = 0 ]] || pass "vendor/extra and frameworks/av are this tree's own (no symlink out of it or into ~/evolution)"
+    if [[ -n "$gd" && "$gd" != "$top"/* ]]; then ok=0; bad "frameworks/av's git folder is $gd, outside $top (shared with another tree?)"; fi
+    [[ $ok = 0 ]] || pass "vendor/extra and frameworks/av are this tree's own (no symlink out of it)"
     fx="$top/frameworks/av/media/libeffects/factory/EffectsFactory.c"
     ecpp="$top/frameworks/av/services/audioflinger/Effects.cpp"
     # gs201's HIDL effect HAL is what the driver needs; the phone's own device tree and vendor

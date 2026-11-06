@@ -85,20 +85,13 @@ tree)
     [[ $# = 1 && -d "$1" ]] || usage
     top="$(cd "$1" && pwd -P)"
     echo "== Expressive Launcher tree checks: $top"
-    evo=$(cd "$HOME/evolution" 2>/dev/null && pwd -P || true)
-    derp=$(cd "$HOME/derpfest" 2>/dev/null && pwd -P || true)
-    if [[ "$top" = */evolution || "$top" = */derpfest || ( -n "$evo" && "$top" = "$evo" ) || ( -n "$derp" && "$top" = "$derp" ) ]]; then
-        bad "$top is the Evolution X or DerpFest tree; Expressive Launcher is for the ExpressiveOS tree only"; finish
-    fi
     # What apply-launcher.sh writes must stay in this tree, also through symlinks
     ok=1
     for p in vendor/extra vendor/extra/launcher vendor/extra/product.mk; do
         r=$(realpath -m -- "$top/$p")
-        if [[ "$r" != "$top"/* ]]; then ok=0; bad "$p leads to $r, outside $top (a symlink?)"
-        elif [[ -n "$evo" && ( "$r" = "$evo" || "$r" = "$evo"/* ) ]]; then ok=0; bad "$p leads into the Evolution X tree ($r)"
-        elif [[ -n "$derp" && ( "$r" = "$derp" || "$r" = "$derp"/* ) ]]; then ok=0; bad "$p leads into the DerpFest tree ($r)"; fi
+        if [[ "$r" != "$top"/* ]]; then ok=0; bad "$p leads to $r, outside $top (a symlink?)"; fi
     done
-    [[ $ok = 0 ]] || pass "vendor/extra is this tree's own (no symlink out of it, or into ~/evolution or ~/derpfest)"
+    [[ $ok = 0 ]] || pass "vendor/extra is this tree's own (no symlink out of it)"
 
     # What apply-launcher.sh staged: the pinned APK, LICENSE and notices, and tree/ as it is
     dest="$top/vendor/extra/launcher"
@@ -121,8 +114,8 @@ tree)
             f=${f#"$dest/"}
             # Nothing staged may lead out of the tree (apply-launcher.sh refuses that too)
             r=$(realpath -m -- "$dest/$f")
-            if [[ "$r" != "$top"/* || ( -n "$evo" && ( "$r" = "$evo" || "$r" = "$evo"/* ) ) || ( -n "$derp" && ( "$r" = "$derp" || "$r" = "$derp"/* ) ) ]]; then
-                ok=0; bad "vendor/extra/launcher/$f leads to $r, outside this tree or into ~/evolution or ~/derpfest (a symlink?)"
+            if [[ "$r" != "$top"/* ]]; then
+                ok=0; bad "vendor/extra/launcher/$f leads to $r, outside this tree (a symlink?)"
             fi
             case $f in ExpressiveLauncher.apk|LICENSE|NOTICE.calculator|NOTICE.font) continue ;; esac
             [[ -f "$kit/tree/$f" ]] || { ok=0; bad "vendor/extra/launcher/$f isn't the kit's: run apply-launcher.sh"; }

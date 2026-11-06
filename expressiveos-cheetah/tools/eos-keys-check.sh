@@ -96,11 +96,11 @@ others() {
     for f in "$top"/external/avb/test/data/testkey_rsa*.pem; do
         [[ -f "$f" ]] && c=$(key_sha1 "$f") && printf '%s\tthe AOSP AVB test key %s\n' "$c" "${f##*/}" >> "$work/avb"
     done
-    # Their trees' keys, and, once those trees are gone (evo-retire, 2026-11-02), every copy
-    # evo-retire keep made of them in ~/retired/keys-<time>/. Every copy, not KEPT's keys= line:
-    # a later keep run with the trees gone has nothing to copy
+    # Their trees are gone (evo-retire, 2026-11-02): every copy evo-retire keep made of their
+    # keys in ~/retired/keys-<time>/. Every copy, not KEPT's keys= line: a later keep run with
+    # the trees gone had nothing to copy
     # (a copy reached through a link counts too: more keys can only add refusals)
-    local kd seen=0 unread=0 dirs=("$evo/vendor/evolution-priv/keys:Evolution X" "$derp/vendor/lineage-priv/keys:DerpFest")
+    local kd seen=0 unread=0 dirs=()
     for kd in "$HOME"/retired/keys-[0-9]*; do
         [[ -d $kd ]] || continue
         if [[ ! -r $kd || ! -x $kd ]]; then echo "note: can't read $kd; relying on eos.conf's pins for the keys in it"; unread=$((unread + 1)); continue; fi
@@ -109,9 +109,8 @@ others() {
     if [[ -d $HOME/retired && ( ! -r $HOME/retired || ! -x $HOME/retired ) ]]; then
         echo "note: can't read ~/retired; relying on eos.conf's pins for any key copies in it"; unread=$((unread + 1))
     fi
-    for d in "${dirs[@]}"; do
+    for d in ${dirs[@]+"${dirs[@]}"}; do
         label="${d##*:}'s"; d=${d%:*}
-        [[ "$d" != /vendor/* ]] || continue        # that tree isn't on this server
         if [[ ! -d "$d" ]]; then continue; fi
         if [[ ! -r "$d" || ! -x "$d" ]]; then echo "note: can't read $d; relying on eos.conf's pins for $label keys"; unread=$((unread + 1)); continue; fi
         seen=$((seen + 1))
@@ -126,7 +125,7 @@ others() {
             else echo "note: can't read $f; its public half (avb_custom_key.bin) and the pins still count"; fi
         done
     done
-    if [[ $seen = 0 && $unread = 0 ]]; then echo "note: no Evolution X or DerpFest keys on this server (no tree, no copy in ~/retired); only eos.conf's pins stand for them"
+    if [[ $seen = 0 && $unread = 0 ]]; then echo "note: no Evolution X or DerpFest keys on this server (no copy in ~/retired); only eos.conf's pins stand for them"
     elif [[ $seen = 0 ]]; then echo "note: no Evolution X or DerpFest keys readable here (see the notes above); only eos.conf's pins stand for them"; fi
     return 0
 }

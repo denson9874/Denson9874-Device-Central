@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build ExpressiveOS for a phone (EOS_DEVICE, cheetah unless set; devices/<device>.conf),
-# start to finish, in its own tree (setup.sh made it; never ~/evolution or ~/derpfest):
+# start to finish, in its own tree (setup.sh made it):
 #   1. prepare.sh: Git LFS files, the kit's tree patches, the phone's firmware;
 #   2. eos-keys-check.sh tree and vars: ExpressiveOS's own keys are in
 #      vendor/evolution-priv/keys and the build will sign with them, not with test keys

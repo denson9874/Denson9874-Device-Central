@@ -7,8 +7,7 @@
 #   3. vendor/extra/product.mk inherits wallpapers.mk (Evolution X's vendor_evolution, checked
 #      out at vendor/lineage, has config/common.mk inherit vendor/extra/product.mk), which sets
 #      ro.config.wallpaper and the overlay for ExpressiveOS's lineage_<device> products.
-# Never on the Evolution X tree (~/evolution). Nothing is written through a symlink that
-# leads out of the tree.
+# Nothing is written through a symlink that leads out of the tree.
 #
 #   apply-wallpapers.sh [top]      # default ~/expressiveos
 set -euo pipefail
@@ -21,21 +20,8 @@ source "$here/wallpapers.conf" || fail "can't read $here/wallpapers.conf"
 
 arg=${1:-$HOME/expressiveos}
 [[ $# -le 1 ]] || fail "usage: apply-wallpapers.sh [top]"
-not_evo() {
-    [[ "${1%/}" != */evolution && "${1%/}" != evolution && "${1%/}" != */derpfest && "${1%/}" != derpfest ]] \
-        || fail "$arg is the Evolution X or DerpFest tree ($1); the ExpressiveOS wallpapers are for the ExpressiveOS tree only"
-}
-not_evo "$arg"
 [[ -d "$arg" ]] || fail "no tree at $arg"
 top="$(cd "$arg" && pwd -P)"
-not_evo "$top"
-evo='' derp=''
-if evo="$(cd "$HOME/evolution" 2>/dev/null && pwd -P)"; then
-    [[ "$top" != "$evo" ]] || fail "$arg is the Evolution X tree (~/evolution); the ExpressiveOS wallpapers are for the ExpressiveOS tree only"
-fi
-if derp="$(cd "$HOME/derpfest" 2>/dev/null && pwd -P)"; then
-    [[ "$top" != "$derp" ]] || fail "$arg is the DerpFest tree (~/derpfest); the ExpressiveOS wallpapers are for the ExpressiveOS tree only"
-fi
 [[ -f "$top/build/envsetup.sh" ]] || fail "$top isn't an Android tree (no build/envsetup.sh)"
 grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/lineage/config/common.mk" 2>/dev/null \
     || fail "vendor/lineage/config/common.mk no longer inherits vendor/extra/product.mk: the wallpapers would silently not ship"
@@ -44,12 +30,10 @@ grep -q '"ro.config.wallpaper"' "$top/frameworks/base/core/java/android/app/Wall
     || fail "frameworks/base's WallpaperManager no longer reads ro.config.wallpaper; check how the default wallpaper is chosen now"
 grep -q 'theming_defaults' "$top/frameworks/base/packages/SystemUI/src/com/android/systemui/theme/ThemeOverlayController.java" 2>/dev/null \
     || fail "SystemUI's ThemeOverlayController no longer reads theming_defaults; check how the first-boot theme is chosen now"
-in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top and not in ~/evolution or ~/derpfest
+in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top
     local r
     r=$(realpath -m -- "$1") || fail "can't resolve $1"
     [[ "$r" == "$top"/* ]] || fail "${1#"$top"/} leads to $r, outside $top (a symlink?); this kit writes only inside the ExpressiveOS tree"
-    [[ -z "$evo" || ( "$r" != "$evo" && "$r" != "$evo"/* ) ]] || fail "${1#"$top"/} leads into the Evolution X tree ($r)"
-    [[ -z "$derp" || ( "$r" != "$derp" && "$r" != "$derp"/* ) ]] || fail "${1#"$top"/} leads into the DerpFest tree ($r)"
 }
 
 # What goes into vendor/extra/wallpapers, relative to this folder: no Android.bp, so the

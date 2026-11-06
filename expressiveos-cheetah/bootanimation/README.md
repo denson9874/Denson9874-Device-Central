@@ -6,8 +6,8 @@ boot animation concept, shared in the ExpressiveLauncher feedback group
 (t.me/ExpressiveLauncherFeedback/463): none of his artwork is used, and he gets a credit in
 every release (Daryl, 2026-10-26). The wordmark reads "ExpressiveOS" (Daryl, 2026-10-26).
 
-This folder is only the boot animation part of the ExpressiveOS kit. **None of it applies to
-the Evolution X tree** (`~/evolution`): `apply-bootanim.sh` refuses it.
+This folder is only the boot animation part of the ExpressiveOS kit, for the ExpressiveOS tree
+(`~/expressiveos`): `apply-bootanim.sh` writes nothing through a symlink that leads out of it.
 
 ## What plays
 

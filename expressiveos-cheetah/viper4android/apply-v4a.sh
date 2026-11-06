@@ -12,9 +12,8 @@
 # Run it on every build, after the tree's own patches (repo sync drops local commits).
 # A phone with EOS_V4A=0 in its devices/<device>.conf (all but cheetah) gets none of this:
 # the run touches nothing and ends with V4A_APPLY=OK skipped.
-# Never on the Evolution X tree (~/evolution): its vendor/extra and frameworks/av are
-# shared by every Evolution X build there. Nothing is written through a symlink that
-# leads out of the tree.
+# Nothing is written through a symlink that leads out of the tree, nor into a git folder
+# outside it.
 #
 #   apply-v4a.sh [top]      # default ~/expressiveos
 set -euo pipefail
@@ -38,33 +37,18 @@ arg=${1:-$HOME/expressiveos}
 # where it writes), but for tree/viper4android.mk, which adds nothing to their products
 read -r v4a_dev v4a_on <<<"$(source "$here/../lib.sh" && printf '%s %s' "$EOS_DEVICE" "$EOS_V4A")"
 [[ -n ${v4a_dev:-} && ${v4a_on:-} =~ ^[01]$ ]] || fail "can't read this phone's EOS_V4A (lib.sh, devices/<device>.conf)"
-not_evo() {
-    [[ "${1%/}" != */evolution && "${1%/}" != evolution && "${1%/}" != */derpfest && "${1%/}" != derpfest ]] \
-        || fail "$arg is the Evolution X or DerpFest tree ($1); ViPER4Android RE is for the ExpressiveOS tree only"
-}
-not_evo "$arg"
 [[ -d "$arg" ]] || fail "no tree at $arg"
 top="$(cd "$arg" && pwd -P)"
-not_evo "$top"
-evo='' derp=''
-if evo="$(cd "$HOME/evolution" 2>/dev/null && pwd -P)"; then
-    [[ "$top" != "$evo" ]] || fail "$arg is the Evolution X tree (~/evolution); ViPER4Android RE is for the ExpressiveOS tree only"
-fi
-if derp="$(cd "$HOME/derpfest" 2>/dev/null && pwd -P)"; then
-    [[ "$top" != "$derp" ]] || fail "$arg is the DerpFest tree (~/derpfest); ViPER4Android RE is for the ExpressiveOS tree only"
-fi
 [[ -f "$top/build/envsetup.sh" ]] || fail "$top isn't an Android tree (no build/envsetup.sh)"
 av="$top/frameworks/av"
 [[ -d "$av" && "$(cd "$av" && git rev-parse --show-toplevel 2>/dev/null)" = "$(cd "$av" && pwd -P)" ]] \
     || fail "$top isn't an Android tree (frameworks/av isn't a git project)"
 # What this script writes must stay in this tree, even when a folder in it is a symlink
-# (vendor/extra or frameworks/av linked from ~/evolution would change the Evolution X tree).
-in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top and not in ~/evolution or ~/derpfest
+# (vendor/extra or frameworks/av linked from elsewhere would change that folder).
+in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top
     local r
     r=$(realpath -m -- "$1") || fail "can't resolve $1"
     [[ "$r" == "$top"/* ]] || fail "${1#"$top"/} leads to $r, outside $top (a symlink?); this kit writes only inside the ExpressiveOS tree"
-    [[ -z "$evo" || ( "$r" != "$evo" && "$r" != "$evo"/* ) ]] || fail "${1#"$top"/} leads into the Evolution X tree ($r)"
-    [[ -z "$derp" || ( "$r" != "$derp" && "$r" != "$derp"/* ) ]] || fail "${1#"$top"/} leads into the DerpFest tree ($r)"
 }
 for p in vendor/extra vendor/extra/viper4android vendor/extra/product.mk frameworks/av; do in_top "$top/$p"; done
 if [[ $v4a_on = 0 ]]; then
@@ -82,8 +66,7 @@ if [[ $v4a_on = 0 ]]; then
     exit 0
 fi
 gd=$(git -C "$av" rev-parse --absolute-git-dir) && gd=$(realpath -- "$gd") || fail "can't find frameworks/av's git folder"
-[[ -z "$evo" || ( "$gd" != "$evo" && "$gd" != "$evo"/* ) ]] || fail "frameworks/av's git folder is in the Evolution X tree ($gd)"
-[[ -z "$derp" || ( "$gd" != "$derp" && "$gd" != "$derp"/* ) ]] || fail "frameworks/av's git folder is in the DerpFest tree ($gd)"
+[[ "$gd" == "$top"/* ]] || fail "frameworks/av's git folder is $gd, outside $top (shared with another tree?)"
 # An am or rebase someone else left running in frameworks/av is theirs to finish: step 4's
 # cleanup (am --abort) would drop the commits it already made
 [[ ! -e "$gd/rebase-apply" && ! -e "$gd/rebase-merge" ]] \

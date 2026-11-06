@@ -27,7 +27,6 @@ source "$(dirname -- "$(readlink -f -- "$0")")/lock-holder.sh"
 [[ $# -le 1 ]] || fail "usage: update-check.sh [top]"
 eos_top "${1:-}"
 work=${EOS_UPDATE_WORK:-$HOME/expressiveos-update}
-not_other "$work"
 r=$(realpath -m -- "$work") || fail "can't resolve $work"
 [[ "$r" != "$top" && "$r" != "$top"/* && "$top" != "$r"/* ]] || fail "the work folder $work is in the tree $top, or holds it"
 exec 8>"$HOME/.expressiveos.lock"

@@ -1,7 +1,6 @@
 # Shared by the ExpressiveOS scripts (sourced, never run): sets kit, reads eos.conf and
 # the phone's devices/<device>.conf (EOS_DEVICE, cheetah unless set), and holds the guards
-# they all use. The Evolution X tree (~/evolution) and the DerpFest tree (~/derpfest) are
-# never touched, nothing is written through a symlink that leads out of the ExpressiveOS
+# they all use. Nothing is written through a symlink that leads out of the ExpressiveOS
 # tree, and a git project is checked before git am runs in it.
 # shellcheck shell=bash
 
@@ -109,42 +108,23 @@ kit_patch_dirs() {   # kit_patch_dirs: the kit's patch folders for EOS_DEVICE, o
     return 0
 }
 
-# The other trees on the server, symlinks resolved (empty when absent)
-evo=$(cd "$HOME/evolution" 2>/dev/null && pwd -P) || evo=
-derp=$(cd "$HOME/derpfest" 2>/dev/null && pwd -P) || derp=
-
-not_other() {   # not_other <path>: <path>, as given and resolved, isn't in the Evolution X or DerpFest tree
-    local p=${1%/} r o
-    [[ "$p" != */evolution && "$p" != evolution && "$p" != */derpfest && "$p" != derpfest ]] \
-        || fail "$1 is the Evolution X or DerpFest tree; this kit is for the ExpressiveOS tree only"
-    r=$(realpath -m -- "$1") || fail "can't resolve $1"
-    for o in "$evo" "$derp"; do
-        [[ -z "$o" || ( "$r" != "$o" && "$r" != "$o"/* ) ]] || fail "$1 leads into $o; this kit is for the ExpressiveOS tree only"
-    done
-}
-
 eos_top() {   # eos_top [path]: sets top to the ExpressiveOS tree (default ~/expressiveos), checked
     local arg=${1:-$HOME/expressiveos}
-    not_other "$arg"
     [[ -d "$arg" ]] || fail "no tree at $arg (run setup.sh)"
     top=$(cd "$arg" && pwd -P)
-    not_other "$top"
     [[ -f "$top/build/envsetup.sh" ]] || fail "$top isn't an Android tree (no build/envsetup.sh)"
     # The build writes here before anything else checks: a linked out/ or out-kernel/ would
-    # build into another tree (Evolution X's kernel output is the same gs-6.1 source)
+    # build into another folder
     local p
     for p in out out-kernel out-kernel/google out-kernel/google/gs-6.1 "$EOS_STATE" "$EOS_PRODUCT_OUT"; do
         in_top "$top/$p"
     done
 }
 
-in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top and in no other tree
-    local r o
+in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top
+    local r
     r=$(realpath -m -- "$1") || fail "can't resolve $1"
     [[ "$r" == "$top"/* ]] || fail "${1#"$top"/} leads to $r, outside $top (a symlink?); this kit writes only inside the ExpressiveOS tree"
-    for o in "$evo" "$derp"; do
-        [[ -z "$o" || ( "$r" != "$o" && "$r" != "$o"/* ) ]] || fail "${1#"$top"/} leads into $o"
-    done
 }
 
 project_ok() {   # project_ok <dir>: a git project of its own in this tree, git folder included, with no am or rebase running

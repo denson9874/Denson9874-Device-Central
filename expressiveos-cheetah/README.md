@@ -23,10 +23,9 @@ names, folders and switches (Other phones, below).
 Since 2026-11-02 the build server builds ExpressiveOS only: Evolution X and DerpFest were retired and
 their trees (`~/evolution`, `~/derpfest`) deleted, after the retire script (since removed) copied the Pixel 11
 vendor blob repos into `~/expressiveos/vendor/google/` and their keys and server-only work into
-`~/retired/`. The scripts still refuse those two paths, should they come back (`prepare.sh` copies a
-Pixel 11's vendor blobs out of `~/evolution` only when the ExpressiveOS tree lacks them), write nothing
-through a symlink that leads out of `~/expressiveos` (its `out/` and `out-kernel/` included), and build
-only while holding `~/.evolution-tree.lock` (the old name stays). The one exception is
+`~/retired/`. The scripts write nothing through a symlink that leads out of `~/expressiveos` (its
+`out/` and `out-kernel/` included), and build only while holding `~/.evolution-tree.lock` (the old
+name stays). The one exception is
 `tools/server-cleanup.sh` (Disk, below). Cheetah's firmware cache is filled by `tools/fetch-firmware.sh`
 (runner action `expressiveos-firmware`).
 
@@ -667,9 +666,9 @@ build holds `~/.expressiveos.lock`).
   android16-6.12 GKI `boot.img`, prebuilt) and stock vendor, vendor_dlkm, system_dlkm and dtbo images:
   init_boot is the build's own, stock, as on every phone, and no ViPER4Android (no HIDL effect HAL)
   for now. Their vendor blobs, `vendor/google/<device>`, aren't in
-  ExpressiveOS's manifest (Google's files, never pushed anywhere): `prepare.sh` copies the build
-  server's own repo of them (`~/evolution`'s, only read) on the first build and moves to its newer
-  commits after, and `sources.txt` records the commit. `vendor/google/<device>-images` (those images and
+  ExpressiveOS's manifest (Google's files, never pushed anywhere): the build server's own repo of
+  them is in the tree (copied there on 2026-11-02, before the old trees were deleted), `prepare.sh` only
+  reads it and stops when it's missing, and `sources.txt` records its commit. `vendor/google/<device>-images` (those images and
   the firmware) is made by the device tree's `extract-images.sh` from the newest
   `~/android-dt/firmware/image-<device>-*.zip`, again only when that zip changes. The fastboot zip takes
   its `super_empty.img` from that zip too, flashes `vendor_kernel_boot`, and says
