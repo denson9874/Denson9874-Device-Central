@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Checks that an ExpressiveOS build signs with ExpressiveOS's own keys, and never with
 # Evolution X's, DerpFest's or the AOSP test keys.
-# Evolution X's makefiles fall back to the AOSP test keys without a word when keys.mk is
+# The build's makefiles fall back to the AOSP test keys without a word when keys.mk is
 # missing, and a phone keeps trusting whatever key its first build carried, so every
 # stage of a build checks again:
 #
-#   eos-keys-check.sh tree [top]           before: vendor/evolution-priv/keys is the tree's
+#   eos-keys-check.sh tree [top]           before: the key folder's keys are the tree's
 #                                          own, complete, and nobody else's
 #   eos-keys-check.sh vars [top]           product config signs with it (dumpvars)
 #   eos-keys-check.sh out [top]            after: otacerts, build tags, every AVB signer
@@ -13,8 +13,11 @@
 #                                          quick build, EOS_QUICK=1: images only)
 #   eos-keys-check.sh vbmeta <img> [top]   one image's AVB signer is the tree's key
 #
-# Evolution X's and DerpFest's keys are read from their trees or, since those were deleted,
-# from evo-retire keep's copy in ~/retired (eos.conf's EVO_* pins count either way).
+# The key folder is vendor/expressiveos-priv/keys since 1.1 (tools/eos-keys-move.sh moves it
+# there), vendor/evolution-priv/keys before: the new one whenever it's in the tree, the old one
+# only while it isn't (lib.sh's eos_priv; the tree check says which it found).
+# Evolution X's and DerpFest's keys are read from evo-retire keep's copy in ~/retired (their
+# trees were deleted on 2026-11-02; eos.conf's EVO_* pins count either way).
 # Pins: once the keys exist and are backed up, eos.conf's EOS_AVB_PUBKEY_SHA1 and
 # EOS_OTA_CERT_SHA256 hold their public fingerprints (README.md, "Keys"), and a tree whose
 # keys differ fails. While they are empty the checks pass with UNPINNED, and eos-pack.sh
@@ -40,7 +43,8 @@ case "$mode" in
     *) fail "$usage" ;;
 esac
 work=$(mktemp -d "${TMPDIR:-/tmp}/eos-keys.XXXXXX")
-rel=vendor/evolution-priv/keys
+priv=$(eos_priv)
+rel=$priv/keys
 keys=$top/$rel
 command -v openssl >/dev/null || fail "openssl isn't installed"
 
@@ -163,7 +167,17 @@ signed_by_us() {   # signed_by_us <image> <label>
 
 case "$mode" in
 tree)
-    in_top "$top/vendor/evolution-priv"
+    # Which key folder: the new name, or the old one while the new one isn't there
+    if [[ $priv = "$EOS_PRIV_NEW" && ( -e $top/$EOS_PRIV_NEW || -L $top/$EOS_PRIV_NEW ) ]]; then
+        echo "OK: the key folder is $priv (1.1's name)"
+    elif [[ $priv = "$EOS_PRIV_OLD" ]]; then
+        echo "note: the key folder is $priv, its name before 1.1: $EOS_PRIV_NEW isn't in the tree (tools/eos-keys-move.sh move puts it there; a 1.1 build reads only the new one)"
+    fi
+    if [[ $priv = "$EOS_PRIV_NEW" ]] && [[ -e $top/$EOS_PRIV_OLD || -L $top/$EOS_PRIV_OLD ]]; then
+        echo "WARNING: $EOS_PRIV_OLD is in the tree too: the keys are moved, never copied, so one of the two is a leftover. This check and the build use $priv; check the other with tools/eos-keys-move.sh check before anything removes it"
+    fi
+    in_top "$top/$priv"
+    [[ ! -L $top/$priv ]] || fail "$priv is a symlink: the key folder is the tree's own, moved (tools/eos-keys-move.sh), never linked"
     in_top "$keys"
     [[ -d "$keys" && ! -L "$keys" ]] \
         || fail "no $rel folder of the tree's own: restore ExpressiveOS's keys from the backup, never make new ones (README.md, \"Keys\"). Without it the build signs with the AOSP test keys"
@@ -172,12 +186,15 @@ tree)
     hard=$(find "$keys" -type f -links +1 -printf '%P\n')
     [[ -z "$hard" ]] || fail "$rel holds hard-linked files ($(oneline "$hard")): shared with another tree's keys?"
     mk=$keys/keys.mk
-    [[ -f "$mk" && ! -L "$mk" ]] || fail "no $rel/keys.mk of the tree's own: Evolution X would build with the AOSP test keys"
-    for line in 'AVB_CUSTOM_KEY_PATH := vendor/evolution-priv/keys/avb.pk8' \
+    [[ -f "$mk" && ! -L "$mk" ]] || fail "no $rel/keys.mk of the tree's own: the build would use the AOSP test keys"
+    # keys.mk names its own folder: tools/eos-keys-move.sh rewrites these two paths as it moves it
+    for line in "AVB_CUSTOM_KEY_PATH := $rel/avb.pk8" \
                 'AVB_CUSTOM_ALGORITHM := SHA256_RSA4096' \
-                'PRODUCT_DEFAULT_DEV_CERTIFICATE := vendor/evolution-priv/keys/testkey'; do
-        grep -qxF -- "$line" "$mk" || fail "$rel/keys.mk lacks the line '$line' (the template's)"
+                "PRODUCT_DEFAULT_DEV_CERTIFICATE := $rel/testkey"; do
+        grep -qxF -- "$line" "$mk" || fail "$rel/keys.mk lacks the line '$line' (the template's, with the folder it's in: a move that didn't rewrite keys.mk? tools/eos-keys-move.sh check)"
     done
+    if [[ $priv = "$EOS_PRIV_NEW" ]]; then other=$EOS_PRIV_OLD; else other=$EOS_PRIV_NEW; fi
+    ! grep -qF -- "$other/" "$mk" || fail "$rel/keys.mk still names $other/ (lines $(grep -nF -- "$other/" "$mk" | cut -d: -f1 | paste -sd, -)): the key folder is $priv now (tools/eos-keys-move.sh rewrites every such path)"
     # A key pair for every AOSP key name and every certificate override keys.mk names
     names=$( { for f in "$top"/build/make/target/product/security/*.pk8; do basename "$f" .pk8; done
                { grep -o ':[A-Za-z0-9_.]*certificate\.override' "$mk" || true; } | cut -c2-; } | sort -u)
@@ -232,9 +249,10 @@ vars)
         v=$(var_of "$vars" "$1")
         [[ "$v" = "$2" ]] || fail "$1 is '${v:-unset}', want '$2'${3:+ ($3)}"
     }
-    check_var PRODUCT_DEFAULT_DEV_CERTIFICATE "$rel/testkey" "keys.mk isn't read: is EVO_BUILD_TYPE right?"
-    # Evolution X's build/make tags builds whose certificate is under vendor/evolution-priv/
-    # release-keys (core/config.mk); test-keys means the AOSP test keys
+    check_var PRODUCT_DEFAULT_DEV_CERTIFICATE "$rel/testkey" "$rel/keys.mk isn't read: is the build type Official (EXPRESSIVE_BUILD_TYPE, EVO_BUILD_TYPE), and does the tree's vendor/lineage include this folder's keys.mk (1.1's reads $EOS_PRIV_NEW, 1.0's $EOS_PRIV_OLD)?"
+    # build/make tags builds whose certificate is under vendor/expressiveos-priv/ (and, through
+    # 1.1, vendor/evolution-priv/) release-keys (core/config.mk); test-keys means the AOSP test
+    # keys, and dev-keys a key folder build/make doesn't know
     check_var BUILD_KEYS release-keys
     check_var BOARD_AVB_ALGORITHM SHA256_RSA4096
     for v in BOARD_AVB_KEY_PATH BOARD_AVB_BOOT_KEY_PATH BOARD_AVB_INIT_BOOT_KEY_PATH \

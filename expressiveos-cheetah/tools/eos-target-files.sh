@@ -9,7 +9,9 @@
 #
 #   1. it's the package's: its build.prop has the package's post-timestamp and name
 #      (ro.evolution.build.version), its ab_partitions.txt is the build's, and its
-#      misc_info.txt names the tree's own release key (what an incremental is signed with);
+#      misc_info.txt names the tree's own release key (what an incremental is signed with), in
+#      either key folder: vendor/expressiveos-priv since 1.1, vendor/evolution-priv before (the
+#      1.0 releases' target-files, an incremental's base, keep the old one; the same key);
 #   2. it holds an image (IMAGES/ or RADIO/) of every partition the package's payload writes;
 #   3. its init_boot carries out/'s ramdisk: a WARNING says when it isn't;
 #   4. for incrementals: the images of the dynamic partitions (system, vendor, product...:
@@ -74,9 +76,13 @@ cmp -s -- "$T/ab" "$T/ab-out" || fail "its ab_partitions.txt isn't the build's A
 unzip -p -- "$tf" META/misc_info.txt > "$T/misc" || fail "can't read its META/misc_info.txt"
 grep -qx 'ab_update=true' "$T/misc" || fail "its misc_info.txt isn't an A/B build's"
 # The key ota_from_target_files signs an OTA to this build with when -k isn't given (the
-# target's misc_info.txt, full or incremental; the incremental script passes -k anyway)
-grep -qx 'default_system_dev_certificate=vendor/evolution-priv/keys/testkey' "$T/misc" \
-    || fail "its misc_info.txt doesn't name the tree's own release key (vendor/evolution-priv/keys/testkey)"
+# target's misc_info.txt, full or incremental; the incremental script passes -k anyway). Either
+# key folder's name: the folder moved in 1.1, its files didn't (the pins in eos.conf are what
+# say the key is ExpressiveOS's)
+dc=$(sed -n 's/^default_system_dev_certificate=//p' "$T/misc" | tail -1)
+[[ $dc = "$EOS_PRIV_NEW/keys/testkey" || $dc = "$EOS_PRIV_OLD/keys/testkey" ]] \
+    || fail "its misc_info.txt doesn't name the tree's own release key ($EOS_PRIV_NEW/keys/testkey, or $EOS_PRIV_OLD/keys/testkey before 1.1): it names '${dc:-nothing}'"
+[[ $dc = "$EOS_PRIV_NEW"/* ]] || echo "note: its misc_info.txt names the release key in $EOS_PRIV_OLD, the key folder's name before 1.1"
 echo "OK: ${tf##*/} ($(stat -c %s -- "$tf") bytes) is $ver's, built $(date -ud "@$ts" '+%F %T') UTC, with the build's A/B partitions and release key"
 
 echo "== images"

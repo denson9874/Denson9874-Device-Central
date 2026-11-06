@@ -599,7 +599,12 @@ jobs:
               echo "$p: tried ${c:0:12}${rest:+ (may still be at ${rest:0:12})}, HEAD $(git -C "$top/$p" rev-parse --short=12 HEAD 2>/dev/null || echo "?")"
             done < "$jobs/try.txt"
           fi
-          echo "== keys: $(find "$top/vendor/evolution-priv/keys" -maxdepth 1 -name '*.pk8' 2>/dev/null | wc -l) .pk8 files in expressiveos/vendor/evolution-priv/keys"
+          # vendor/expressiveos-priv since 1.1 (eos-keys-move.sh moved it), vendor/evolution-priv before
+          for k in vendor/expressiveos-priv vendor/evolution-priv; do
+            if [[ -L $top/$k ]]; then echo "== keys: expressiveos/$k is a symlink (the kit refuses it)"
+            elif [[ -d $top/$k ]]; then echo "== keys: $(find "$top/$k/keys" -maxdepth 1 -name '*.pk8' 2>/dev/null | wc -l) .pk8 files in expressiveos/$k/keys"; fi
+          done
+          [[ -e $top/vendor/expressiveos-priv || -e $top/vendor/evolution-priv ]] || echo "== keys: none in the tree (neither vendor/expressiveos-priv nor vendor/evolution-priv)"
           ls -l ~/expressiveos-keys-*.tar.gz 2>/dev/null || echo "no key backup archive on the server"
           # Each phone's records (lib.sh's EOS_STATE): cheetah's in out/eos, always shown, the
           # others' in out/eos-<device>, once they exist

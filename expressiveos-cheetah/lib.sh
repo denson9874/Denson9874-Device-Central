@@ -127,6 +127,23 @@ in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top
     [[ "$r" == "$top"/* ]] || fail "${1#"$top"/} leads to $r, outside $top (a symlink?); this kit writes only inside the ExpressiveOS tree"
 }
 
+# ExpressiveOS's signing keys, in the tree: vendor/expressiveos-priv/keys since 1.1 (Sunday
+# 2026-11-08's move, tools/eos-keys-move.sh), vendor/evolution-priv/keys before. The scripts
+# take the new folder whenever it's there, and the old one only while the new one is missing:
+# a tree before the move, or after the move's revert. The keys are the same files either way
+# (moved, never made again), so 1.0 phones keep taking updates
+EOS_PRIV_NEW=vendor/expressiveos-priv
+EOS_PRIV_OLD=vendor/evolution-priv
+eos_priv() {   # eos_priv: the tree's key folder, relative to $top: EOS_PRIV_NEW when it's there (a link counts, for the checks to refuse), else EOS_PRIV_OLD when that is, else EOS_PRIV_NEW
+    if [[ -e $top/$EOS_PRIV_NEW || -L $top/$EOS_PRIV_NEW ]]; then
+        printf '%s\n' "$EOS_PRIV_NEW"
+    elif [[ -e $top/$EOS_PRIV_OLD || -L $top/$EOS_PRIV_OLD ]]; then
+        printf '%s\n' "$EOS_PRIV_OLD"
+    else
+        printf '%s\n' "$EOS_PRIV_NEW"
+    fi
+}
+
 # The make goal of a full build: bacon, as LineageOS names it (vendor/lineage's
 # build/tasks/bacon.mk since 1.1, which keeps evolution as an alias for one release). A tree
 # whose vendor/lineage has no bacon goal yet (one from before 1.1: a manifest revert) builds

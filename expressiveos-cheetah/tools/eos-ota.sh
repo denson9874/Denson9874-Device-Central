@@ -106,9 +106,12 @@ done
 # signapk.jar signs the package with the tree's own JDK, as in the build (soong's PATH)
 jdk=$(find prebuilts/jdk -maxdepth 3 -path '*/linux-x86/bin' -type d 2>/dev/null | sort -V | tail -1) || true
 [[ -n $jdk && -x $jdk/java ]] || fail "no prebuilts/jdk/<jdk>/linux-x86/bin/java in the tree"
-# Signed with ExpressiveOS's own release key, the one eos.conf pins, as m evolution signs
-# the full package (eos-target-files.sh checks target-files names it)
-key=vendor/evolution-priv/keys/testkey
+# Signed with ExpressiveOS's own release key, the one eos.conf pins, as the build signs
+# the full package (eos-target-files.sh checks target-files names it), from the tree's key
+# folder: vendor/expressiveos-priv, or vendor/evolution-priv while that isn't there (lib.sh's
+# eos_priv; the same files either way)
+key=$(eos_priv)/keys/testkey
+[[ $key = "$EOS_PRIV_NEW"/* ]] || echo "note: the release key is in $EOS_PRIV_OLD, the key folder's name before 1.1 ($EOS_PRIV_NEW isn't in the tree)"
 [[ -f $key.pk8 && -f $key.x509.pem ]] || fail "no $key.pk8 and $key.x509.pem in the tree"
 "$kit/tools/eos-keys-check.sh" tree "$top" > "$T/keys.log" 2>&1 || true
 [[ "$(tail -1 "$T/keys.log")" = KEYS_CHECK=OK ]] \

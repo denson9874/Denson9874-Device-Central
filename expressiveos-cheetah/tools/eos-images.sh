@@ -2,9 +2,9 @@
 # Build ExpressiveOS for a phone (EOS_DEVICE, cheetah unless set; devices/<device>.conf),
 # start to finish, in its own tree (setup.sh made it):
 #   1. prepare.sh: Git LFS files, the kit's tree patches, the phone's firmware;
-#   2. eos-keys-check.sh tree and vars: ExpressiveOS's own keys are in
-#      vendor/evolution-priv/keys and the build will sign with them, not with test keys
-#      or Evolution X's;
+#   2. eos-keys-check.sh tree and vars: ExpressiveOS's own keys are in the tree's key folder
+#      (vendor/expressiveos-priv/keys; vendor/evolution-priv/keys before 1.1's move) and the
+#      build will sign with them, not with test keys or Evolution X's;
 #   3. the kits: viper4android/apply-v4a.sh on a phone with EOS_V4A=1,
 #      bootanimation/apply-bootanim.sh, wallpapers/apply-wallpapers.sh,
 #      launcher/apply-launcher.sh (Expressive Launcher as default Home and Recents app);
