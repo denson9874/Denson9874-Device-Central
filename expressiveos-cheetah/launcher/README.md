@@ -35,7 +35,7 @@ screen, and going home has a plainer animation.
 - **Size:** Pixel Launcher's APK goes back into system_ext and the full OTA (not measured here; it
   shipped in every build until the 2026-10-30 swap).
 
-## Status: 5.0.9; 5.0.8 was the first Android 17 build that works as the Recents app
+## Status: 5.1.1; 5.0.8 was the first Android 17 build that works as the Recents app
 
 Releases up to QA 5.0.4 (66), and the current Stable 5.0.0 (62), are compiled against
 android-16.0.0_r3's framework and WindowManager Shell, and the Shell's AIDL stubs are built into the
@@ -62,6 +62,11 @@ is included on ExpressiveOS (the launcher checks the `android` package's signing
 ExpressiveOS's platform certificate, so no key or trial is needed), and work-profile badges in the
 app pickers. Its permissions, uses-library tags and licence files are the same as 5.0.8's.
 
+QA 5.1.1 (73, source `a1e2796`, 2026-11-05) is the first with Home priority 1 (the Pixel Launcher
+section above), and fixes the drawer's blur after switching drawer styles, Smartspacer cards losing
+their first letters, the 3-button order switch and renaming small folders. Same permissions,
+uses-library tags and licence files again.
+
 This folder is only the launcher part of the ExpressiveOS kit. It works on the ExpressiveOS tree
 (`~/expressiveos`), for every phone in `../devices/`. **None of it applies to the Evolution X tree
 (`~/evolution`) or DerpFest's (`~/derpfest`)**: `apply-launcher.sh` refuses them, and any
@@ -72,13 +77,13 @@ tree` fails on the same.
 
 | On the phone | What it is | Source |
 |---|---|---|
-| `/system_ext/priv-app/ExpressiveLauncher/ExpressiveLauncher.apk` | Expressive Launcher QA 5.0.9 (`dev.launcher.expressive.l3`, versionCode 71), byte for byte | [denson9874/ExpressiveLauncher](https://github.com/denson9874/ExpressiveLauncher) release `qa-v5.0.9-71`, source revision `84a81fd` |
+| `/system_ext/priv-app/ExpressiveLauncher/ExpressiveLauncher.apk` | Expressive Launcher QA 5.1.1 (`dev.launcher.expressive.l3`, versionCode 73), byte for byte | [denson9874/ExpressiveLauncher](https://github.com/denson9874/ExpressiveLauncher) release `qa-v5.1.1-73`, source revision `a1e2796` |
 | `/system_ext/etc/permissions/privapp-permissions-dev.launcher.expressive.l3.xml` | Grants the 9 privileged permissions it asks for (Pixel Launcher is granted all 9 too) | this kit |
 | `/system_ext/etc/sysconfig/hiddenapi-dev.launcher.expressive.l3.xml` | Lifts hidden-API restrictions, as Google's list does for Pixel Launcher | this kit |
 | `/system_ext/etc/sysconfig/preinstalled-packages-dev.launcher.expressive.l3.xml` | Installs it for the phone's own users (`SYSTEM`, `FULL`) only, as Google's list does Pixel Launcher; without it the build's user-type mode would put it in work profiles, clones and the private space too | this kit |
 | `/system_ext/overlay/ExpressiveLauncherFrameworkOverlay.apk` | The framework config below | this kit |
 | `/system_ext/overlay/ExpressiveLauncherSetupWizardOverlay.apk` | Pixel's setup wizard ends on Expressive Launcher's "All set" page and knows it as the launcher | this kit |
-| The licence texts in the system_ext NOTICE file | Apache-2.0 (AOSP Launcher3, Lawnchair), MIT (the calculator), OFL-1.1 (Google Sans Flex) | `LICENSE.txt` and the calculator's `LICENSE` at `84a81fd`; Google Sans Flex's `OFL.txt` at `6cffd50` |
+| The licence texts in the system_ext NOTICE file | Apache-2.0 (AOSP Launcher3, Lawnchair), MIT (the calculator), OFL-1.1 (Google Sans Flex) | `LICENSE.txt` and the calculator's `LICENSE` at `a1e2796`; Google Sans Flex's `OFL.txt` at `6cffd50` |
 
 What stays: Pixel Launcher (vendor/gms's `NexusLauncherRelease`, `/system_ext/priv-app`) and its two
 overlays (`PixelLauncherNoGestureHintOverlay`, `PixelLauncherOverlayCustom`), as a Home app users can
@@ -209,13 +214,13 @@ Pixel Launcher.
 
 | What | Value |
 |---|---|
-| Release | QA `5.0.9`, versionCode 71, tag `qa-v5.0.9-71` (Jenkins build 19, release id `qa-5.0.9-71-build-19`), source revision `84a81fda7a1ac589f7a3e654eb1d2e11397a456b` |
-| URL | https://github.com/denson9874/ExpressiveLauncher/releases/download/qa-v5.0.9-71/ExpressiveLauncherL3-5.0.9-Android17-QPR2-Beta5-Jenkins-QA-release-signed.apk |
-| sha256 / size | `9df3e66bfb97e729b8d5820641fc9a918de6c4f10ca69d00a5d5f88c6cb05ea1` / 24,445,347 bytes |
+| Release | QA `5.1.1`, versionCode 73, tag `qa-v5.1.1-73` (Jenkins build 25), source revision `a1e27964210493582f3dff9e34ebaf726a5067d0` |
+| URL | https://github.com/denson9874/ExpressiveLauncher/releases/download/qa-v5.1.1-73/ExpressiveLauncherL3-5.1.1-Android17-QPR2-Beta5-Jenkins-QA-release-signed.apk |
+| sha256 / size | `2b9445f109548fbc2bc898d614c89ec7dfc6133faf4a2d84bbba8115a73adb65` / 24,445,878 bytes |
 | Signer | certificate sha256 `c14160306d5c059b3d119f15fb74e08c57cc272316e80b36e192c71dc9e4d0d2`, the same for Stable and QA |
 | Package | `dev.launcher.expressive.l3`, minSdk 31, targetSdk 37 |
-| LICENSE | `LICENSE.txt` at `84a81fd`, sha256 `4bb3ad323fe4c27f06a47b39c0ae6ad35315f15c40e46c81a5211f7f519286ab` (Apache-2.0) |
-| Notices | the calculator's `LICENSE` at `84a81fd`, sha256 `6f1b3f6fecde974467f78fec9fdad2614c1652ec2bda13206b83c2f9f083a0c9` (MIT); Google Sans Flex's `OFL.txt` at `6cffd50d9ff4ead23eda9dc7864eb9aed9fe304c`, sha256 `831b6e041705873c3e6efb18c4c96202bc41c8be42a456d3d26c47abf14816d0` (OFL-1.1). The launcher's own `docs/licenses/GoogleSansFlex-OFL.txt` is empty at `84a81fd`, so the font's repository is the source |
+| LICENSE | `LICENSE.txt` at `a1e2796`, sha256 `4bb3ad323fe4c27f06a47b39c0ae6ad35315f15c40e46c81a5211f7f519286ab` (Apache-2.0) |
+| Notices | the calculator's `LICENSE` at `a1e2796`, sha256 `6f1b3f6fecde974467f78fec9fdad2614c1652ec2bda13206b83c2f9f083a0c9` (MIT); Google Sans Flex's `OFL.txt` at `6cffd50d9ff4ead23eda9dc7864eb9aed9fe304c`, sha256 `831b6e041705873c3e6efb18c4c96202bc41c8be42a456d3d26c47abf14816d0` (OFL-1.1). The launcher's own `docs/licenses/GoogleSansFlex-OFL.txt` is empty at `a1e2796`, so the font's repository is the source |
 | Permissions | 46 (`EL_PERMS`); privileged: `PACKAGE_USAGE_STATS`, `BROADCAST_CLOSE_SYSTEM_DIALOGS`, `CONTROL_REMOTE_APP_TRANSITION_ANIMATIONS`, `START_TASKS_FROM_RECENTS`, `WRITE_SECURE_SETTINGS`, `STATUS_BAR`, `STOP_APP_SWITCHES`, `ALLOW_SLIPPERY_TOUCHES`, `ACCESS_HIDDEN_PROFILES_FULL` |
 | uses-library | `androidx.window.extensions`, `androidx.window.sidecar`, both `required="false"` |
 
@@ -250,7 +255,7 @@ What follows from the GPL part: every ExpressiveOS release must come with the la
 the release's source revision (`EL_COMMIT`, which `sources.txt` records), like the other GPL code in the
 ROM. The launcher's repository has no GPL-3.0 text of its own yet; once it has one, pin it here and add
 it to `license_text`. Its source at the pinned revision is public at
-https://github.com/denson9874/ExpressiveLauncher/tree/84a81fda7a1ac589f7a3e654eb1d2e11397a456b.
+https://github.com/denson9874/ExpressiveLauncher/tree/a1e27964210493582f3dff9e34ebaf726a5067d0.
 
 ## Not covered, and follow-ups
 
