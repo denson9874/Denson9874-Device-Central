@@ -131,18 +131,31 @@ after it ends (`out`).
 refuses an update signed with any other key, and the same keys can't be made twice. Nothing in the kit
 or the runner makes keys any more, and `eos-keys-check.sh` fails a tree whose keys aren't the pinned ones.
 
-When `~/expressiveos/vendor/evolution-priv/keys` is missing or damaged (a new server, the tree set up
-again), restore it from the backup: `~/expressiveos-keys-<time>.tar.gz` on the server (`expressiveos-status`
-lists it), or its copy kept off the server (a `.tar.gz.gpg` one: `gpg -d` it first). In a fresh login shell:
+**The key folder is `vendor/expressiveos-priv/keys`** since 1.1: on 2026-11-08 the runner's
+`expressiveos-keys-move` (`tools/eos-keys-move.sh`) moved it there from `vendor/evolution-priv/keys`, its
+name before. A move, not new keys: every key file is byte-identical, only `keys.mk`'s two paths name the
+new folder, and the 1.0 phones keep taking updates. Query `check` (read-only) shows which folder the tree
+has, every file's size and sha256, and whether a move could run; `move` and `revert` refuse while
+anything builds or syncs, and each leaves a backup archive in `~` from before and from after. The
+scripts read the new folder whenever it's there and the old one only while it isn't (a tree before the
+move, or after `revert`); 1.1's `vendor/lineage` reads only the new one, 1.0's only the old one.
+
+When `~/expressiveos/vendor/expressiveos-priv/keys` is missing or damaged (a new server, the tree set up
+again), restore it from the backup: the newest `~/expressiveos-keys-<time>.tar.gz` on the server
+(`expressiveos-status` lists them), or its copy kept off the server (a `.tar.gz.gpg` one: `gpg -d` it
+first). An archive from before 2026-11-08's move has a `keys.mk` that names `vendor/evolution-priv`:
+restore that one into `vendor/evolution-priv` instead (the same lines with that folder), then run
+`tools/eos-keys-move.sh move`. In a fresh login shell:
 
 ```bash
 cd ~/expressiveos
-if [ -e vendor/evolution-priv/keys ] || [ -L vendor/evolution-priv/keys ]; then
-    ls -la vendor/evolution-priv/keys; echo "STOP: keys are there already; check them (eos-keys-check.sh tree), don't restore over them"
+priv=vendor/expressiveos-priv   # vendor/evolution-priv for an archive from before 2026-11-08
+if [ -e vendor/expressiveos-priv ] || [ -L vendor/expressiveos-priv ] || [ -e vendor/evolution-priv ] || [ -L vendor/evolution-priv ]; then
+    ls -la vendor/*-priv; echo "STOP: a key folder is there already; check it (eos-keys-check.sh tree, eos-keys-move.sh check), don't restore over it"
 else
-    umask 077 && mkdir -p vendor/evolution-priv &&
-    tar -C vendor/evolution-priv -xzf ~/expressiveos-keys-<time>.tar.gz &&   # the archive holds keys/
-    chmod 700 vendor/evolution-priv/keys && chmod 600 vendor/evolution-priv/keys/*.pk8 &&
+    umask 077 && mkdir -p "$priv" &&
+    tar -C "$priv" -xzf ~/expressiveos-keys-<time>.tar.gz &&   # the archive holds keys/
+    chmod 700 "$priv/keys" && chmod 600 "$priv"/keys/*.pk8 &&
     ~/expressiveos-cheetah/tools/eos-keys-check.sh tree   # last line KEYS_CHECK=OK
 fi
 ```

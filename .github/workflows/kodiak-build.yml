@@ -43,6 +43,13 @@
 # starts it and returns, and expressiveos-status (read-only) shows how it's going.
 # ExpressiveOS's signing keys were made once (2026-10-26) and are never made again: no
 # action makes keys. A tree without them gets them back from the backup (README.md, "Keys").
+# expressiveos-keys-move moves the key folder in ~/expressiveos from vendor/evolution-priv to
+# vendor/expressiveos-priv, 1.1's name (expressiveos-cheetah/tools/eos-keys-move.sh, this ref's):
+# query check (read-only, the default) shows which folder is there, each file's name, size and
+# sha256, whether a build or repo sync runs and free disk; move moves it (a rename, never new
+# keys and never a link) and rewrites only keys.mk's paths, with a backup archive in ~ before and
+# after; revert moves it back the same way. move and revert refuse while anything builds or syncs.
+# Only when Daryl says so; dispatch it on the branch that has the script.
 #
 # expressiveos-build and expressiveos-pack build and pack cheetah, as they always did, unless
 # query names another of the kit's phones (tree_ref's expressiveos-cheetah/devices/
@@ -169,6 +176,8 @@ on:
           into ~/android-dt/firmware/cheetah (query check: read-only).
           expressiveos-setup: install tree_ref's
           expressiveos-cheetah, then setup.sh in tmux.
+          expressiveos-keys-move: the key folder vendor/evolution-priv to
+          vendor/expressiveos-priv (query: check, read-only, the default; move; revert).
           expressiveos-pins: read-only: the upstream commit of every project in the
           ExpressiveOS tree, as a manifest, plus its kernel tree and LFS files.
           expressiveos-devices: read-only: what ExpressiveOS's builds for the six
@@ -202,6 +211,7 @@ on:
           - expressiveos-update-check
           - expressiveos-update
           - expressiveos-setup
+          - expressiveos-keys-move
           - expressiveos-build
           - expressiveos-pack
           - expressiveos-ota
@@ -244,6 +254,8 @@ on:
           (required): tree, product, then up to two products to compare, e.g.
           'expressiveos lineage_cheetah lineage_husky'. expressiveos-kit (optional): diff
           (the default) or adopt. expressiveos-firmware (optional): check.
+          expressiveos-keys-move (optional): check (read-only, the default), move or
+          revert (only when Daryl says so).
           expressiveos-update (required):
           token (read-only: may the push token push to every ExpressiveOS repo?),
           lint [ref] (read-only: a change of ExpressiveOS's manifest, e.g. pull/2, read
@@ -280,11 +292,13 @@ jobs:
           # job. Don't start on top of one. The read-only actions run anyway, and so
           # do expressiveos-setup (a repo sync
           # of its own tree, ~/expressiveos: network and disk, no build),
-          # expressiveos-update-check (fetches and merges in its own folder) and
-          # expressiveos-update (the same, and pushes to GitHub)
+          # expressiveos-update-check (fetches and merges in its own folder),
+          # expressiveos-update (the same, and pushes to GitHub) and expressiveos-keys-move
+          # (check is read-only; move and revert refuse by themselves while anything builds
+          # or syncs, as server-cleanup does)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-flasher-release)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-flasher-release)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -297,7 +311,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -443,6 +457,30 @@ jobs:
             [[ -z "$QUERY" || "$QUERY" =~ ^[1-7](,[1-7])*$ ]] || { echo "::error::query is groups, e.g. 1,2,3"; exit 1; }
             bash "$script" list ${QUERY:+"$QUERY"}
           fi
+
+      # check is read-only, so it runs beside a build too; move and revert take the kit's locks
+      # and refuse while anything builds or syncs (the script checks, not Preflight)
+      - name: Check out the key move script
+        if: inputs.action == 'expressiveos-keys-move'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: expressiveos-cheetah
+          fetch-depth: 1
+
+      - name: ExpressiveOS key folder move
+        if: inputs.action == 'expressiveos-keys-move'
+        run: |
+          [[ "${QUERY:-check}" =~ ^(check|move|revert)$ ]] || { echo "::error::query is check (read-only, the default), move or revert"; exit 1; }
+          jobs=~/expressiveos-jobs
+          mkdir -p "$jobs"
+          rc=0
+          env -u EOS_HOLDS_LOCK -u EOS_DEVICE bash --noprofile --norc expressiveos-cheetah/tools/eos-keys-move.sh "${QUERY:-check}" 2>&1 | tee -- "$jobs/keys-move.log" || rc=$?
+          {
+            echo "expressiveos-keys-move ${QUERY:-check}, script ${GITHUB_SHA:0:7}: $(tail -n 1 "$jobs/keys-move.log")"
+            grep -aE '^(OK: |FAIL|NOTE|note: |WARNING|MOVE_READY|REVERT_READY|vendor/)' "$jobs/keys-move.log" | cut -c1-300 || true
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$rc"
 
       # ---- The installed kit, and cheetah's firmware cache ----------------------------------
 
@@ -650,7 +688,7 @@ jobs:
           done
           # The runner's sessions' logs, then eos-images.sh's own (whoever started it; cheetah's,
           # then the other phones'), then the newest ExpressiveOS routine log, if a routine started one
-          logs=("$jobs"/{setup,keys,build,pack}.log ~/expressiveos-build.log)
+          logs=("$jobs"/{setup,keys,keys-move,build,pack}.log ~/expressiveos-build.log)
           for d in $devs; do
             [[ $d = cheetah ]] || logs+=("$HOME/expressiveos-build-$d.log")
           done
@@ -666,7 +704,7 @@ jobs:
             fi
             # ninja's progress lines (libthiserror:...) and the compilers' and aidl's own warnings
             # (WARNING: <file>:<line>) would bury the kit's lines
-            grep -aE '^(== |OK: |FAIL|WARNING|SETUP|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|MODULES_EXIT|PACK=|VERIFY|SESSION_EXIT|DEVICE |CLEAN |CANDIDATE |UPLOADED_TESTERS )|FAILED:|error:' "$log" \
+            grep -aE '^(== |OK: |FAIL|WARNING|SETUP|KEYS_CHECK|KEYS_MOVE|BUILD_EXIT|MAKE_EXIT|MODULES_EXIT|PACK=|VERIFY|SESSION_EXIT|DEVICE |CLEAN |CANDIDATE |UPLOADED_TESTERS )|FAILED:|error:' "$log" \
               | grep -avE '^(\[ *[0-9]+% |WARNING: [^ ]+:[0-9])' | tail -n 25 | cut -c1-300 || true
             # The kit's warnings from the whole log (apply.sh's come long before the end), each once
             w=$(grep -aE '^WARNING' "$log" | grep -avE '^WARNING: [^ ]+:[0-9]' | sort | uniq -c | sort -rn | head -n 10 | cut -c1-300 || true)
