@@ -374,7 +374,12 @@ jobs:
             if [[ -e "$p" ]]; then echo "exists   $p"; else echo "absent   $p"; fi
           done
           echo "cheetah firmware cached: $(cat ~/android-dt/firmware/cheetah/CURRENT 2>/dev/null || echo none)"
-          echo "== tree lock"; if flock -n ~/.evolution-tree.lock true; then echo free; else echo "held (a routine or build is running)"; fi
+          # The tree lock's name since 1.1, and its old name, which the kit holds too through 1.1
+          for l in ~/.expressiveos-tree.lock ~/.evolution-tree.lock; do
+            if [[ ! -e $l ]]; then echo "== tree lock ${l#"$HOME"/}: free (no file yet)"
+            elif flock -n "$l" true; then echo "== tree lock ${l#"$HOME"/}: free"
+            else echo "== tree lock ${l#"$HOME"/}: held (a build or server-cleanup is running)"; fi
+          done
 
       # Read-only, so it runs beside a build too (its numbers then include that build's load)
       - name: Check out the build-speed scripts
@@ -542,7 +547,10 @@ jobs:
                   } | grep -xE '[a-z0-9]+' | awk '!seen[$0]++')
           echo "== machine"; uptime; free -g | head -2; df -h ~ | sed 1d
           echo "== sessions"; tmux ls 2>/dev/null | grep -E '^eos-' || echo "no ExpressiveOS session running"
-          for l in ~/.expressiveos.lock ~/.evolution-tree.lock; do
+          # The tree lock is ~/.expressiveos-tree.lock since 1.1; the kit holds its old name,
+          # ~/.evolution-tree.lock, too through 1.1
+          for l in ~/.expressiveos.lock ~/.expressiveos-tree.lock ~/.evolution-tree.lock; do
+            [[ -e $l ]] || { echo "${l#"$HOME"/}: free (no file yet)"; continue; }
             if flock -n "$l" true; then echo "${l#"$HOME"/}: free"; continue; fi
             echo "${l#"$HOME"/}: held"
             # Who holds it: /proc/locks names the process and the file's inode

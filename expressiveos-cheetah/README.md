@@ -24,8 +24,9 @@ Since 2026-11-02 the build server builds ExpressiveOS only: Evolution X and Derp
 their trees (`~/evolution`, `~/derpfest`) deleted, after the retire script (since removed) copied the Pixel 11
 vendor blob repos into `~/expressiveos/vendor/google/` and their keys and server-only work into
 `~/retired/`. The scripts write nothing through a symlink that leads out of `~/expressiveos` (its
-`out/` and `out-kernel/` included), and build only while holding `~/.evolution-tree.lock` (the old
-name stays). The one exception is
+`out/` and `out-kernel/` included), and build only while holding the tree lock,
+`~/.expressiveos-tree.lock`; through 1.1 they hold its old name, `~/.evolution-tree.lock`, too, so a
+run of an older kit still waits for them and they for it. The one exception is
 `tools/server-cleanup.sh` (Disk, below). Cheetah's firmware cache is filled by `tools/fetch-firmware.sh`
 (runner action `expressiveos-firmware`).
 
@@ -158,12 +159,13 @@ In tmux. A first build runs longer than the runner job's 4-hour limit.
 
 ```bash
 ~/expressiveos-cheetah/setup.sh               # only to set up the tree or put it back on its pins
-~/expressiveos-cheetah/tools/eos-images.sh    # waits for the Evolution X routines' lock and any running build
+~/expressiveos-cheetah/tools/eos-images.sh    # waits for the build locks and any running build
 ```
 
-It waits for `~/.expressiveos.lock`, then the routines' `~/.evolution-tree.lock`, and holds both to the end
+It waits for `~/.expressiveos.lock`, then the tree lock, `~/.expressiveos-tree.lock`, and through 1.1
+its old name, `~/.evolution-tree.lock`, and holds them to the end
 (never set `EOS_HOLDS_LOCK` yourself: the script checks that its own run holds them).
-`tools/eos-make.sh` run alone takes the same two locks. It runs `prepare.sh`, the key checks,
+`tools/eos-make.sh` run alone takes the same locks. It runs `prepare.sh`, the key checks,
 the three kits, checks the name and version the build will carry,
 records the sources, runs the make (`tools/eos-make.sh`) and `eos-verify.sh`. Everything
 also goes to `~/expressiveos-build.log` (another phone's: `~/expressiveos-build-<device>.log`; the run
@@ -682,7 +684,7 @@ release) gets a candidate to testers.
 
 `tools/server-cleanup.sh`, through the runner actions `server-cleanup-list` (read-only) and
 `server-cleanup` (query: groups such as `1,2,3`), lists and removes old builds and outputs, Evolution X's
-and DerpFest's copies included, by exact path and only while it holds `~/.evolution-tree.lock`. It never
+and DerpFest's copies included, by exact path and only while it holds the tree lock (both its names). It never
 touches the `~/android-dt/firmware/image-*.zip` files every fastboot pack reads or the firmware cache,
 never removes a folder holding a `.device-ok` record, and never the newest ExpressiveOS release's
 target-files (`target-files/LATEST`). Release zips don't need to stay on the server

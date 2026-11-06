@@ -362,24 +362,36 @@ fastboot_files() {   # fastboot_files: what the fastboot zip takes from the prod
     } | awk '!seen[$0]++'
 }
 
-eos_lock() {   # eos_lock <script> [arg]...: run <script> holding ~/.expressiveos.lock and ~/.evolution-tree.lock (shared with the build server routines), waiting up to 8 h for each
+# The build locks: ExpressiveOS's own (setup, build, pack, OTA, the monthly update), then the
+# tree lock, which a build and server-cleanup.sh's delete hold. The tree lock was
+# ~/.evolution-tree.lock, the build server routines' name for it, until 1.1: through 1.1 the
+# kit takes and checks that name too, after the new one, so a run of an older kit or script
+# that takes only the old name still waits for this one, and this one for it
+EOS_LOCK=$HOME/.expressiveos.lock
+EOS_TREE_LOCK=$HOME/.expressiveos-tree.lock
+EOS_TREE_LOCK_OLD=$HOME/.evolution-tree.lock   # goes in 1.2
+
+eos_lock() {   # eos_lock <script> [arg]...: run <script> holding ~/.expressiveos.lock, ~/.expressiveos-tree.lock and ~/.evolution-tree.lock (the tree lock's old name), waiting up to 8 h for each
     local rc=0
-    # Its own lock first: waiting for an ExpressiveOS run (eos-pack.sh) never holds up the routines
-    echo "== waiting for ~/.expressiveos.lock, then ~/.evolution-tree.lock (ExpressiveOS build locks)"
-    env EOS_HOLDS_LOCK=1 flock -o -E 75 -w 28800 "$HOME/.expressiveos.lock" \
-        flock -o -E 75 -w 28800 "$HOME/.evolution-tree.lock" "$@" || rc=$?
+    # Its own lock first, then the tree lock's two names, always in this order (no two runs
+    # can each hold one the other waits for): waiting for an ExpressiveOS run (eos-pack.sh)
+    # never holds the tree lock
+    echo "== waiting for ~/.expressiveos.lock, then ~/.expressiveos-tree.lock and ~/.evolution-tree.lock (ExpressiveOS build locks)"
+    env EOS_HOLDS_LOCK=1 flock -o -E 75 -w 28800 "$EOS_LOCK" \
+        flock -o -E 75 -w 28800 "$EOS_TREE_LOCK" \
+        flock -o -E 75 -w 28800 "$EOS_TREE_LOCK_OLD" "$@" || rc=$?
     [[ $rc != 75 ]] || echo "FAIL: a lock was held for 8 hours; nothing was built" >&2
     return $rc
 }
 
-locks_held() {   # locks_held: fail unless this run's own eos_lock holds both locks (EOS_HOLDS_LOCK=1 says a parent does)
+locks_held() {   # locks_held: fail unless this run's own eos_lock holds all three locks (EOS_HOLDS_LOCK=1 says a parent does)
     local l n rc inode p=$$ up=' '
-    # eos_lock's two flock processes hold the locks: they're among this run's parents
+    # eos_lock's flock processes hold the locks: they're among this run's parents
     while [[ "$p" =~ ^[0-9]+$ && "$p" -gt 1 ]]; do
         up+="$p "
         p=$(sed -n 's/^PPid:[[:space:]]*//p' "/proc/$p/status" 2>/dev/null)
     done
-    for l in "$HOME/.expressiveos.lock" "$HOME/.evolution-tree.lock"; do
+    for l in "$EOS_LOCK" "$EOS_TREE_LOCK" "$EOS_TREE_LOCK_OLD"; do
         n=${l/#"$HOME"/\~}
         rc=0; flock -n "$l" true 2>/dev/null || rc=$?
         case $rc in

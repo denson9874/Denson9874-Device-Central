@@ -19,8 +19,9 @@
 # A quick one (EOS_QUICK=1: the images only, m droid; lib.sh) writes quick.ok instead (the
 # sha256 of every file the fastboot zip takes from out/),
 # which eos-pack.sh packs as a quick candidate to test on a phone, never to release.
-# Holds ~/.evolution-tree.lock (the Evolution X routines' lock) and ~/.expressiveos.lock
-# for the whole run, and first waits for any build already running. Everything also goes
+# Holds ~/.expressiveos.lock and the tree lock (~/.expressiveos-tree.lock, and through 1.1
+# its old name ~/.evolution-tree.lock; lib.sh's eos_lock) for the whole run, and first waits
+# for any build already running. Everything also goes
 # to EOS_BUILD_LOG (~/expressiveos-build.log for cheetah, ~/expressiveos-build-<device>.log
 # for the others; the one before is kept as .1); the last line is BUILD_EXIT=0 or BUILD_EXIT=1.
 #
