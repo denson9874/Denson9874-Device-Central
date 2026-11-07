@@ -547,7 +547,13 @@ while taken "$REL" "$T/$NAME" || taken "target-files/$RTF" "$tf"; do
     (( r <= 20 )) || fail "$base-r2 to -r20 are all taken (here or in R2); look at $DEST and $R2TF"
     REL=$base-r$r-fastboot.zip; RTF=$base-r$r-target_files.zip; r=$((r + 1))
 done
-[[ -e $DEST/$REL ]] || cp -- "$T/$NAME" "$DEST/$REL"
+# Through a .part file, like the target-files and OTA copies: a cut-short copy must not sit
+# under the release name (the rerun would take it as a different zip and go to -r2)
+if [[ ! -e $DEST/$REL ]]; then
+    rm -f -- "$DEST/.$REL.part"
+    { cp -- "$T/$NAME" "$DEST/.$REL.part" && mv -- "$DEST/.$REL.part" "$DEST/$REL"; } \
+        || fail "can't copy the zip to $DEST/$REL"
+fi
 # Names only, so users can run sha256sum -c
 (cd "$DEST" && sha256sum -- "$REL" > "$REL.sha256")
 pub=("$REL.sha256" "$REL")
@@ -555,10 +561,7 @@ for f in manifest.xml kernel-manifest.xml sources.txt; do cp -- "$EOS_STATE/$f" 
 mkdir -p -- "$DEST/changelogs"
 generate_changelog "$DEST/changelogs/$EOS_DEVICE.txt" "$DEST/${REL%-fastboot.zip}-announcement.md" "$base" "$DEST/$REL"
 cp -- "$DEST/changelogs/$EOS_DEVICE.txt" "$DEST/${REL%-fastboot.zip}-changelog.txt"
-if [[ -d "$HOME/expressiveos_ota" ]]; then
-    mkdir -p -- "$HOME/expressiveos_ota/changelogs"
-    cp -- "$DEST/changelogs/$EOS_DEVICE.txt" "$HOME/expressiveos_ota/changelogs/$EOS_DEVICE.txt"
-fi
+# (The feed's changelogs/<device>.txt comes from eos-ota.sh's ota/feed/, through the feed PR.)
 # The target-files the release's OTA package was made from: a hard link to check/'s copy
 # when that's this build's (no second copy on the disk), else a copy of out/'s, made
 # under another name first (a copy cut short must not take the release's name)
@@ -594,12 +597,11 @@ cat "$TFD/$RTF.sha256" "$OTAD/$ROTA.sha256"
 echo "RELEASED $DEST/$REL"
 
 if [[ "$mode" = --upload ]]; then
-    # Released for the web installer (expressiveos-flasher-release reads .uploaded); the zip
-    # itself goes to R2 with tools/expressiveos_flasher/publish/flasher_publish.py
-    touch -- "$DEST/$REL.uploaded"
     {
         echo "== upload the target-files to R2: $R2TF"
-        for f in "$RTF" "$RTF.sha256"; do
+        # The .sha256 first, as for the testers zip: a cut-short upload then leaves a matching
+        # .sha256 beside a partial zip, and the rerun keeps the name (not a new -rN)
+        for f in "$RTF.sha256" "$RTF"; do
             rc2 copyto --s3-no-check-bucket "$TFD/$f" "$R2TF/$f" > "$T/rclone.log" 2>&1 \
                 || { tail -5 "$T/rclone.log" >&2; fail "the target-files upload to $R2TF failed"; }
         done
@@ -610,6 +612,10 @@ if [[ "$mode" = --upload ]]; then
         where=$R2TF/$RTF
     }
     touch -- "$TFD/$RTF.uploaded"
+    # Released for the web installer (expressiveos-flasher-release reads .uploaded), only once
+    # the target-files are on R2; the zip itself goes to R2 with
+    # tools/expressiveos_flasher/publish/flasher_publish.py
+    touch -- "$DEST/$REL.uploaded"
     echo "UPLOADED_TARGET_FILES $where"
     echo "next: the web installer (runner action expressiveos-flasher-release, or tools/expressiveos_flasher/publish/flasher_publish.py $EOS_DEVICE $DEST/$REL)"
 fi
