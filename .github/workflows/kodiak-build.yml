@@ -216,6 +216,7 @@ on:
           - expressiveos-pack
           - expressiveos-ota
           - expressiveos-flasher-release
+          - expressiveos-device-ok-1.1
       tree_ref:
         description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
@@ -867,6 +868,55 @@ jobs:
           export PATH=~/bin:$PATH
           read -r -a q <<< "$QUERY"
           bash expressiveos-cheetah/sources/update.sh "${q[@]}"
+
+      # One-off for the 1.1 release (Daryl, 2026-11-07 08:42 UTC: "let's go ahead and release
+      # 1.1 with the fixes we have so far"; 08:45 UTC: "Phase 3 and 1.1 go out today"). Writes
+      # check/'s 1.1 candidate's .device-ok, so eos-pack.sh --upload can release it.
+      # query: "device=cheetah tested sha=<sha256>" after the 7 Pro test of that exact zip, or
+      # "devices=<phone>,<phone>,... untested" (husky kodiak grizzly cubs yogi): a record that
+      # says plainly no phone tested that build. Only a full 1.1 Official candidate, only its
+      # packed sha256, never over a record, never one built with try= commits.
+      - name: Record the 1.1 candidates for release
+        if: inputs.action == 'expressiveos-device-ok-1.1'
+        run: |
+          if [[ "$QUERY" =~ ^device=cheetah\ tested\ sha=([0-9a-f]{64})$ ]]; then
+            ds=(cheetah) mode=tested tsha=${BASH_REMATCH[1]}
+          elif [[ "$QUERY" =~ ^devices=((husky|kodiak|grizzly|cubs|yogi)(,(husky|kodiak|grizzly|cubs|yogi))*)\ untested$ ]]; then
+            IFS=, read -r -a ds <<< "${BASH_REMATCH[1]}"; mode=untested tsha=
+          else
+            echo "::error::query must be 'device=cheetah tested sha=<sha256>' or 'devices=<phone>,... untested'"; exit 1
+          fi
+          declare -A model=([cheetah]="Pixel 7 Pro" [husky]="Pixel 8 Pro" [kodiak]="Pixel 11 Pro XL" [grizzly]="Pixel 11 Pro" [cubs]="Pixel 11" [yogi]="Pixel 11 Pro Fold")
+          go='Released on Daryl'"'"'s go: 2026-11-07 08:42 UTC "let'"'"'s go ahead and release 1.1 with the fixes we have so far" and 08:45 UTC "Phase 3 and 1.1 go out today".'
+          for d in "${ds[@]}"; do
+            c=~/releases/expressiveos-$d/check
+            zs=("$c"/ExpressiveOS-17.0-*-"$d"-1.1-Official-fastboot.zip)
+            [[ ${#zs[@]} -eq 1 && -f ${zs[0]} ]] || { echo "::error::$c holds ${#zs[@]} 1.1 Official fastboot zips, not one"; exit 1; }
+            z=${zs[0]} m=${zs[0]}.device-ok
+            [[ -f $z.sha256 && -f $z.pack-ok ]] || { echo "::error::no $z.sha256 and .pack-ok"; exit 1; }
+            [[ ! -e $m ]] || { echo "::error::$m exists already:"; cat -- "$m"; exit 1; }
+            [[ ! -e $c/try.txt ]] || { echo "::error::$c's candidate was built with try= commits"; exit 1; }
+            want=$(cut -d' ' -f1 "$z.sha256")
+            grep -qx "sha256 $want" "$z.pack-ok" || { echo "::error::$z.pack-ok doesn't name $want"; exit 1; }
+            grep -qx 'build full' "$z.pack-ok" || { echo "::error::$z.pack-ok doesn't say build full"; exit 1; }
+            grep -qx 'keys OK' "$z.pack-ok" || { echo "::error::$z.pack-ok doesn't say keys OK"; exit 1; }
+            got=$(sha256sum -- "$z" | cut -d' ' -f1)
+            [[ $got = "$want" ]] || { echo "::error::${z##*/} hashes to $got, not $want"; exit 1; }
+            if [[ $mode = tested ]]; then
+              [[ $got = "$tsha" ]] || { echo "::error::${z##*/} is $got, not the tested $tsha"; exit 1; }
+              printf '%s\n' "sha256 $got" \
+                "Tested on Daryl's Pixel 7 Pro, 2026-11-07: this build installed as the incremental update from 1.0 through the Updater (eos-ota.sh --candidate's test feed), then checked over adb (details in the thread \"Release ExpressiveOS 1.1 now\")." \
+                "$go" > "$m.part"
+            else
+              printf '%s\n' "sha256 $got" \
+                "NOT tested on a phone: this exact build wasn't installed on a ${model[$d]}." \
+                "$go" \
+                "Basis: built from the same sources as the 1.1 cheetah build, which passed its Pixel 7 Pro test (cheetah check/ .device-ok); this build: VERIFY=OK, PACK=OK." > "$m.part"
+            fi
+            mv -- "$m.part" "$m"
+            echo "== $d"; cat -- "$m"
+          done
+          echo DEVICE_OK_WRITTEN
 
       - name: Check out the flasher publish script
         if: inputs.action == 'expressiveos-flasher-release'
