@@ -617,7 +617,7 @@ if [[ "$mode" = --upload ]]; then
     # tools/expressiveos_flasher/publish/flasher_publish.py
     touch -- "$DEST/$REL.uploaded"
     echo "UPLOADED_TARGET_FILES $where"
-    echo "next: the web installer (runner action expressiveos-flasher-release, or tools/expressiveos_flasher/publish/flasher_publish.py $EOS_DEVICE $DEST/$REL)"
+    echo "next: the web installer (runner action expressiveos-flasher-release, or tools/expressiveos_flasher/publish/flasher_publish.py $EOS_DEVICE $DEST/$REL --keep 1)"
 fi
 echo "next: tools/eos-ota.sh (--upload) for the Updater: the OTA package and an incremental from the feed's build"
 eos_step end
