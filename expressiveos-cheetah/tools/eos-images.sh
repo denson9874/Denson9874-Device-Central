@@ -112,7 +112,7 @@ vars=$(dump_vars LINEAGE_VERSION EXPRESSIVE_MODVERSION EXPRESSIVE_BUILD_TYPE EVO
     TARGET_DEVICE TARGET_BUILD_VARIANT PRODUCT_PACKAGES) || fail "dumpvars failed"
 name=$(var_of "$vars" LINEAGE_VERSION)
 [[ "$name" =~ ^ExpressiveOS-17\.[0-9]+-[0-9]{8}-$EOS_DEVICE-${EOS_VERSION//./\\.}-$EOS_BUILD_TYPE$ ]] \
-    || fail "the build would be named '$name', not ExpressiveOS-17.x-<date>-$EOS_DEVICE-$EOS_VERSION-$EOS_BUILD_TYPE (patches/vendor_lineage/0001)"
+    || fail "the build would be named '$name', not ExpressiveOS-17.x-<date>-$EOS_DEVICE-$EOS_VERSION-$EOS_BUILD_TYPE (vendor/lineage config/version.mk)"
 modver=$(var_new_or_old "$vars" EXPRESSIVE_MODVERSION EVO_VERSION)
 btype=$(var_new_or_old "$vars" EXPRESSIVE_BUILD_TYPE EVO_BUILD_TYPE)
 [[ -n $(var_of "$vars" EXPRESSIVE_MODVERSION) ]] \
