@@ -100,12 +100,12 @@ D=$HOME/releases/expressiveos-cheetah
 mkdir -p "$D/check" "$D/target-files" "$D/ota"
 otacerts=$W/otacerts.zip
 (cd "$top/vendor/expressiveos-priv/keys" && zip -q "$otacerts" testkey.x509.pem)
-mktf() {   # mktf <out> <name> <ts> <incr>
+mktf() {   # mktf <out> <name> <ts> <incr> [<security patch>]
     local d; d=$(mktemp -d)
     mkdir -p "$d/META" "$d/SYSTEM/etc/security"
     printf 'ab_update=true\ndynamic_partition_list=system vendor product\n' > "$d/META/misc_info.txt"
     printf 'boot\ninit_boot\nproduct\nsystem\nvbmeta\nvendor\n' > "$d/META/ab_partitions.txt"
-    printf 'ro.build.date.utc=%s\nro.build.version.incremental=%s\nro.build.version.security_patch=2026-11-05\nro.evolution.build.version=%s\n' "$3" "$4" "$2" > "$d/SYSTEM/build.prop"
+    printf 'ro.build.date.utc=%s\nro.build.version.incremental=%s\nro.build.version.security_patch=%s\nro.evolution.build.version=%s\n' "$3" "$4" "${5:-2026-11-05}" "$2" > "$d/SYSTEM/build.prop"
     cp "$otacerts" "$d/SYSTEM/etc/security/otacerts.zip"
     (cd "$d" && zip -q -r "$1" META SYSTEM); rm -rf "$d"
 }
@@ -187,6 +187,10 @@ rc=$(ota --candidate); ok "base target-files fetched from R2" '[[ $rc = 0 ]] && 
 echo corrupt >> "$W/r2/expressiveos/cheetah/target-files/$B-target_files.zip"
 rc=$(ota --candidate); ok "  a corrupt R2 copy is refused" '[[ $rc = 1 ]] && grep -q "isn.t the zip its .sha256 names" "$W/out.log"'
 
+# A candidate with an older security patch than the feed's build (B has 2026-11-05)
+mktf "$D/check/$C-target_files.zip" "$C" 1765300000 eng.c 2026-10-05
+(cd "$D/check" && sha256sum -- "$C-target_files.zip" > "$C-target_files.zip.sha256")
+rc=$(ota --candidate); ok "--candidate refuses an older security patch than the feed's" '[[ $rc = 1 ]] && grep -q "security patch 2026-10-05 is older than 2026-11-05" "$W/out.log"'
 
 # Wrong key pin and a changed full package
 rc=$(FAKE_KEYS=UNPINNED ota); ok "unpinned keys: refuses" '[[ $rc = 1 ]] && grep -q "pinned ones" "$W/out.log"'

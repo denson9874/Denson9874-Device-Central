@@ -149,7 +149,8 @@ case $code in
     *) fail "fetching $FEED: HTTP $code" ;;
 esac
 # live_full and live_inc: "<filename> <timestamp>" of the feed's full entry, and
-# "<filename> <base_timestamp>" of its incremental, or nothing
+# "<filename> <base_timestamp>" of its incremental, or nothing; live_spl: the full entry's
+# os_patch_level, or nothing
 python3 -I - "$T/live.json" > "$T/live.txt" <<'EOF' || fail "can't read the feed's builds JSON"
 import json, sys
 r = json.load(open(sys.argv[1])).get('response') or []
@@ -159,8 +160,9 @@ if len(full) > 1 or len(inc) > 1:
     sys.exit('the feed lists %d full and %d incremental packages; this script writes one of each at most' % (len(full), len(inc)))
 print(' '.join([full[0]['filename'], str(int(full[0]['timestamp']))]) if full else '')
 print(' '.join([inc[0]['filename'], str(int(inc[0]['base_timestamp']))]) if inc else '')
+print((full[0].get('os_patch_level') or '') if full else '')
 EOF
-live_full=$(sed -n 1p "$T/live.txt") live_inc=$(sed -n 2p "$T/live.txt")
+live_full=$(sed -n 1p "$T/live.txt") live_inc=$(sed -n 2p "$T/live.txt") live_spl=$(sed -n 3p "$T/live.txt")
 echo "OK: the feed offers ${live_full:-nothing}${live_inc:+, and the incremental ${live_inc% *} to the build of ${live_inc#* }}"
 
 if [[ $mode = --candidate ]]; then
@@ -235,6 +237,15 @@ if [[ -n $live_full && ${live_full% *} != "$REL.zip" ]] && (( ${live_full#* } >=
     done=1
     echo "OTA=FAIL"
     exit 3
+fi
+
+# Never an older security patch than the feed's build: update_engine installs one on these
+# unlocked phones and wipes their data at the reboot (the Updater refuses it too, since 1.1.1)
+if [[ -n $live_full && ${live_full% *} != "$REL.zip" && -n $live_spl ]]; then
+    [[ $spl =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || fail "${TF##*/}'s security patch is '$spl', not YYYY-MM-DD"
+    [[ $live_spl =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || fail "the feed's ${live_full% *} has os_patch_level '$live_spl', not YYYY-MM-DD"
+    [[ ! $spl < $live_spl ]] \
+        || fail "$REL's security patch $spl is older than $live_spl, the feed's ${live_full% *}'s: installing it would wipe those phones (build from a tree with that patch or newer)"
 fi
 
 # The base: the feed's build, or for a rerun of this release, the one it was made from
