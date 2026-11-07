@@ -13,7 +13,9 @@
 #   build_kernel's line of ExpressiveOS's) names for that path today: a branch's newest commit,
 #   a tag or a commit. A project LineageOS's manifest doesn't have (the 1.0 sources kept a few
 #   LineageOS repos LineageOS dropped, and cheetah's kernel prebuilts) follows its own upstream.
-#   Each move must descend from our commit: LineageOS never rewrites its branches.
+#   Each move must descend from our commit: LineageOS never rewrites its branches. Where
+#   LineageOS's manifest moves a project to another repo (LineageOS's own copy of an AOSP repo),
+#   that repo may instead have a commit with exactly our commit's files.
 # - ExpressiveOS's forks of LineageOS's and AOSP's repos: what LineageOS's manifest names for
 #   that path, merged into the fork (git merge-tree, nothing written to the fork): clean, or the
 #   files that conflict, and which of those ExpressiveOS's own changes (the kit's patches) touch.
@@ -274,6 +276,18 @@ def tip_log(gd, a, b, most=10):
 def is_ancestor(gd, a, b):
     return git("merge-base", "--is-ancestor", a, b, gd=gd, ok=(0, 1)).returncode == 0
 
+def same_files_in(gd, ours, up):
+    # The newest commit of up's history whose files are exactly ours's, or None. LineageOS
+    # makes its own copy of an AOSP repo from an older AOSP commit and puts the newer AOSP
+    # changes back as its own commits: that copy doesn't contain our AOSP commit, but with such
+    # a commit in it nothing of ours is lost by moving to it
+    t = git("rev-parse", f"{ours}^{{tree}}", gd=gd).stdout.strip()
+    for line in git("log", "--format=%H %T", up, gd=gd).stdout.splitlines():
+        h, _, tree = line.partition(" ")
+        if tree == t:
+            return h
+    return None
+
 # How every merge here detects renames and shows conflicts: git's defaults, pinned (with
 # pure=True: the same merge on any machine)
 MERGE_CFG = ["-c", "merge.renames=true", "-c", "merge.directoryRenames=conflict", "-c", "merge.renameLimit=7000",
@@ -485,8 +499,13 @@ def check(a):
             up = fetch(gd, p, target.url, ref if not SHA.fullmatch(ref) else sha)
             r["new"] = count(gd, p.revision, up)
             if not is_ancestor(gd, p.revision, up):
-                r["rewritten"] = True
-                problems.append(f"{p.path}: {target.name} {branch_of(ref)} doesn't contain our commit {p.revision[:12]} (rewritten?)")
+                same = same_files_in(gd, p.revision, up) if "repo" in c else None
+                if same:
+                    r["new"] = count(gd, same, up)
+                    r["note"] += f", whose {same[:12]} has our {p.revision[:12]}'s files exactly"
+                else:
+                    r["rewritten"] = True
+                    problems.append(f"{p.path}: {target.name} {branch_of(ref)} doesn't contain our commit {p.revision[:12]} (rewritten?)")
             r["gd"] = gd
         return r
 
@@ -1364,7 +1383,12 @@ def plan(a):
                 raise Fail(f"{url} {ref} moved while this ran ({sha[:12]}, then {got[:12]}); plan again")
             r["new"] = count(gd, p.revision, sha)
             if not is_ancestor(gd, p.revision, sha):
-                raise Fail(f"{name} {branch_of(ref)} doesn't contain our commit {p.revision[:12]} (rewritten?)")
+                same = same_files_in(gd, p.revision, sha) if "repo" in c else None
+                if not same:
+                    raise Fail(f"{name} {branch_of(ref)} doesn't contain our commit {p.revision[:12]} (rewritten?)")
+                r["new"] = count(gd, same, sha)
+                r["note"] = (f"LineageOS's manifest now takes it from {name}, whose {same[:12]} has our "
+                             f"{p.revision[:12]}'s files exactly")
         return r
 
     def plan_fork(p, n):

@@ -367,7 +367,8 @@ again in a gap between builds.
 tree and pushes nothing. Against LineageOS's manifest today it shows:
 
 - for LineageOS's and AOSP's projects, which move and by how many commits (a LineageOS project's
-  must descend from ours; shallow and AOSP projects aren't counted);
+  must descend from ours or, where LineageOS's manifest moved it to another repo, have a commit with
+  exactly our commit's files, counted from there; shallow and AOSP projects aren't counted);
 - for ExpressiveOS's forks of LineageOS's and AOSP's repos (44 at 1.0), LineageOS's new commits
   merged into each in memory (`git merge-tree`): clean, or the files that conflict, and which of those
   the kit's own changes touch (any device's), and the commits a fork's branch has past its pin, which
@@ -419,8 +420,9 @@ build needed) and doesn't run while a build or setup does (`~/.expressiveos.lock
   alike;
 - every other LineageOS and AOSP project's new commit, and each project outside LineageOS's manifest
   with an `upstream=` its upstream's tip (listed on their own). A LineageOS project's must descend from
-  ours (LineageOS never rewrites its branches); a shallow one's (`clone-depth`) and AOSP's (a new tag)
-  aren't checked;
+  ours (LineageOS never rewrites its branches), or, where LineageOS's manifest moved the project to
+  another repo (LineageOS's own copy of an AOSP repo, made from an older AOSP commit), have a commit
+  with exactly our commit's files; a shallow one's (`clone-depth`) and AOSP's (a new tag) aren't checked;
 - the new `default.xml`: those commits, and what LineageOS's manifest changed since the last update,
   taken three ways. A project's repo, branch or clone depth moves where ours was still LineageOS's, and
   the plan stops where both changed it; groups and linkfiles/copyfiles are taken element by element

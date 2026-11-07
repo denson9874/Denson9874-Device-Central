@@ -9,7 +9,7 @@
   
   <default remote="github" revision="refs/heads/lineage-24.0" sync-j="4" sync-c="true"/>
   
-  <project name="LineageOS/android_kernel_google_gs-6.1_devices" path="private/devices" revision="10af805ff55ce273e1b0c66a0e357b29e94130c1" upstream="refs/heads/lineage-24.0" dest-branch="refs/heads/lineage-24.0">
+  <project name="LineageOS/android_kernel_google_gs-6.1_devices" path="private/devices" revision="ec1bafc7ddc9a92937bd110f0b47dc069217ae50" upstream="refs/heads/lineage-24.0" dest-branch="refs/heads/lineage-24.0">
     <linkfile src="google/common/workspace/root.AGENTS.md" dest="AGENTS.md"/>
     <linkfile src="google/common/workspace/root.WORKSPACE" dest="WORKSPACE"/>
     <linkfile src="google/common/workspace/common.BUILD.bazel" dest="common/BUILD.bazel"/>
@@ -32,9 +32,9 @@
     <linkfile src="google/stallion/build_stallion.sh" dest="build_stallion.sh"/>
   </project>
   <project name="LineageOS/android_kernel_google_gs-6.1_google-modules" path="private/google-modules" revision="25a95e4a29816368c4877c42d7c6865a75236164" upstream="refs/heads/lineage-24.0" dest-branch="refs/heads/lineage-24.0"/>
-  <project name="LineageOS/android_kernel_google_gs-6.1_manifest" path="manifest" revision="afa3f59d6164dd2cf2ea0b6185a361b59002d7ed" upstream="refs/heads/lineage-24.0" dest-branch="refs/heads/lineage-24.0"/>
-  <project name="kernel/build" path="build/kernel" remote="aosp" revision="120ee136dc3b65275b400d51f7292163bb4cb3cd" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023"/>
-  <project name="kernel/common" path="common/gki" remote="aosp" revision="33365f631c2825a14714e4cae41b63dae20ee68e" upstream="refs/tags/android14-6.1-2026-03_r24" dest-branch="refs/tags/android14-6.1-2026-03_r24">
+  <project name="LineageOS/android_kernel_google_gs-6.1_manifest" path="manifest" revision="88e0074f1d20fc1cf74da59b0345d360503fcafd" upstream="refs/heads/lineage-24.0" dest-branch="refs/heads/lineage-24.0"/>
+  <project name="kernel/build" path="build/kernel" remote="aosp" revision="ccc31488bfbfe383b42a5538de70cebfddad693e" upstream="refs/heads/main-kernel-build-2023" dest-branch="refs/heads/main-kernel-build-2023"/>
+  <project name="kernel/common" path="common/gki" remote="aosp" revision="7b58131aec77682c068b072dd055e130cfc971f7" upstream="refs/tags/android14-6.1-2026-03_r25" dest-branch="refs/tags/android14-6.1-2026-03_r25">
     <linkfile src="build.config.constants" dest="common/build.config.constants"/>
     <linkfile src="modules.bzl" dest="common/modules.bzl"/>
     <linkfile src=".clang-format" dest=".clang-format"/>
