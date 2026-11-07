@@ -224,6 +224,7 @@ on:
           - expressiveos-ota
           - expressiveos-flasher-release
           - expressiveos-storage
+          - expressiveos-device-ok-1.1.1
       tree_ref:
         description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
@@ -310,7 +311,7 @@ jobs:
           # or syncs, as server-cleanup does)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-flasher-release|expressiveos-storage)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-flasher-release|expressiveos-storage|expressiveos-device-ok-1.1.1)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -323,7 +324,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release|expressiveos-storage)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release|expressiveos-storage|expressiveos-device-ok-1.1.1)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -879,6 +880,57 @@ jobs:
           export PATH=~/bin:$PATH
           read -r -a q <<< "$QUERY"
           bash expressiveos-cheetah/sources/update.sh "${q[@]}"
+
+      # One-off for the 1.1.1 release (Daryl, 2026-11-07 19:12 UTC card "1.1.1 hotfix after a 7
+      # Pro test"; 23:33 UTC card "Yes, release all six tonight"). Writes check/'s 1.1.1
+      # candidate's .device-ok, so eos-pack.sh --upload can release it.
+      # query: "device=cheetah tested sha=<sha256>" after the 7 Pro test of that exact zip, or
+      # "devices=<phone>,<phone>,... untested" (husky kodiak grizzly cubs yogi): a record that
+      # says plainly no phone tested that build. Only a full 1.1.1 Official candidate, only its
+      # packed sha256, never over a record, never one built with try= commits.
+      - name: Record the 1.1.1 candidates for release
+        if: inputs.action == 'expressiveos-device-ok-1.1.1'
+        run: |
+          if [[ "$QUERY" =~ ^device=cheetah\ tested\ sha=([0-9a-f]{64})$ ]]; then
+            ds=(cheetah) mode=tested tsha=${BASH_REMATCH[1]}
+          elif [[ "$QUERY" =~ ^devices=((husky|kodiak|grizzly|cubs|yogi)(,(husky|kodiak|grizzly|cubs|yogi))*)\ untested$ ]]; then
+            IFS=, read -r -a ds <<< "${BASH_REMATCH[1]}"; mode=untested tsha=
+          else
+            echo "::error::query must be 'device=cheetah tested sha=<sha256>' or 'devices=<phone>,... untested'"; exit 1
+          fi
+          declare -A model=([cheetah]="Pixel 7 Pro" [husky]="Pixel 8 Pro" [kodiak]="Pixel 11 Pro XL" [grizzly]="Pixel 11 Pro" [cubs]="Pixel 11" [yogi]="Pixel 11 Pro Fold")
+          go='Released on Daryl'"'"'s go: 2026-11-07 19:12 UTC "1.1.1 hotfix after a 7 Pro test" and 23:33 UTC "Yes, release all six tonight".'
+          for d in "${ds[@]}"; do
+            c=~/releases/expressiveos-$d/check
+            shopt -s nullglob
+            zs=("$c"/ExpressiveOS-17.0-*-"$d"-1.1.1-Official-fastboot.zip)
+            shopt -u nullglob
+            [[ ${#zs[@]} -eq 1 && -f ${zs[0]} ]] || { echo "::error::$c holds ${#zs[@]} 1.1.1 Official fastboot zips, not one"; exit 1; }
+            z=${zs[0]} m=${zs[0]}.device-ok
+            [[ -f $z.sha256 && -f $z.pack-ok ]] || { echo "::error::no $z.sha256 and .pack-ok"; exit 1; }
+            [[ ! -e $m ]] || { echo "::error::$m exists already:"; cat -- "$m"; exit 1; }
+            [[ ! -e $c/try.txt ]] || { echo "::error::$c's candidate was built with try= commits"; exit 1; }
+            want=$(cut -d' ' -f1 "$z.sha256")
+            grep -qx "sha256 $want" "$z.pack-ok" || { echo "::error::$z.pack-ok doesn't name $want"; exit 1; }
+            grep -qx 'build full' "$z.pack-ok" || { echo "::error::$z.pack-ok doesn't say build full"; exit 1; }
+            grep -qx 'keys OK' "$z.pack-ok" || { echo "::error::$z.pack-ok doesn't say keys OK"; exit 1; }
+            got=$(sha256sum -- "$z" | cut -d' ' -f1)
+            [[ $got = "$want" ]] || { echo "::error::${z##*/} hashes to $got, not $want"; exit 1; }
+            if [[ $mode = tested ]]; then
+              [[ $got = "$tsha" ]] || { echo "::error::${z##*/} is $got, not the tested $tsha"; exit 1; }
+              printf '%s\n' "sha256 $got" \
+                "Tested on Daryl's Pixel 7 Pro, 2026-11-07: this build installed as the incremental update from 1.1 through the Updater's Install local update (eos-ota.sh --candidate's package), then checked over adb (details in the thread \"Audit the whole ROM for December stability\")." \
+                "$go" > "$m.part"
+            else
+              printf '%s\n' "sha256 $got" \
+                "NOT tested on a phone: this exact build wasn't installed on a ${model[$d]}." \
+                "$go" \
+                "Basis: built from the same sources as the 1.1.1 cheetah build, which passed its Pixel 7 Pro test (cheetah check/ .device-ok); this build: VERIFY=OK, PACK=OK." > "$m.part"
+            fi
+            mv -- "$m.part" "$m"
+            echo "== $d"; cat -- "$m"
+          done
+          echo DEVICE_OK_WRITTEN
 
       - name: Check out the flasher publish script
         if: inputs.action == 'expressiveos-flasher-release'
