@@ -599,7 +599,9 @@ echo "RELEASED $DEST/$REL"
 if [[ "$mode" = --upload ]]; then
     {
         echo "== upload the target-files to R2: $R2TF"
-        for f in "$RTF" "$RTF.sha256"; do
+        # The .sha256 first, as for the testers zip: a cut-short upload then leaves a matching
+        # .sha256 beside a partial zip, and the rerun keeps the name (not a new -rN)
+        for f in "$RTF.sha256" "$RTF"; do
             rc2 copyto --s3-no-check-bucket "$TFD/$f" "$R2TF/$f" > "$T/rclone.log" 2>&1 \
                 || { tail -5 "$T/rclone.log" >&2; fail "the target-files upload to $R2TF failed"; }
         done
