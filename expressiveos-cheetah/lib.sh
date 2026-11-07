@@ -127,8 +127,8 @@ in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top
     [[ "$r" == "$top"/* ]] || fail "${1#"$top"/} leads to $r, outside $top (a symlink?); this kit writes only inside the ExpressiveOS tree"
 }
 
-# ExpressiveOS's signing keys, in the tree: vendor/expressiveos-priv/keys since 1.1 (Sunday
-# 2026-11-08's move, tools/eos-keys-move.sh), vendor/evolution-priv/keys before. The scripts
+# ExpressiveOS's signing keys, in the tree: vendor/expressiveos-priv/keys since 1.1 (Saturday
+# 2026-11-07's move, tools/eos-keys-move.sh), vendor/evolution-priv/keys before. The scripts
 # take the new folder whenever it's there, and the old one only while the new one is missing:
 # a tree before the move, or after the move's revert. The keys are the same files either way
 # (moved, never made again), so 1.0 phones keep taking updates
