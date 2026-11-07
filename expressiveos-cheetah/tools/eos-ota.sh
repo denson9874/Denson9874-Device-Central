@@ -205,6 +205,12 @@ spl=$(tfprop "$TF" ro.build.version.security_patch) ver=$(tfprop "$TF" ro.evolut
 [[ $ts =~ ^[0-9]+$ && -n $incr ]] || fail "${TF##*/} has no ro.build.date.utc or ro.build.version.incremental"
 # The release name is the build's, with -r<n> for a second release of the same day
 [[ $REL = "$ver" || $REL =~ ^"$ver"-r[0-9]+$ ]] || fail "${TF##*/} is $ver's build, not $REL's"
+# The feed's "version" is the release's (ExpressiveOS-17.0-<date>-<device>-<version>-...), not the
+# installed kit's: eos.conf may already be bumped for the next version when a late upload or a
+# rerun of this one runs
+relver=$(cut -d- -f5 <<< "$REL")
+[[ -n $relver ]] || fail "can't read the version from $REL"
+[[ $relver = "$EOS_VERSION" ]] || echo "note: the kit is for $EOS_VERSION, the release is $relver; the feed says $relver"
 echo "OK: $REL, built $(date -ud "@$ts" '+%F %T') UTC (security patch $spl)"
 # Its own otacerts: what the phone checks the package against once it's running this build,
 # the key eos.conf pins
@@ -332,7 +338,7 @@ fi
 
 entry() {   # entry <package> [<base_timestamp>]: one feed entry, as JSON, on one line
     python3 -I - "$1" "$(sha256sum -- "$1" | cut -d' ' -f1)" "$(md5sum -- "$1" | cut -d' ' -f1)" "$(stat -c %s -- "$1")" \
-        "$ts" "${2:-}" "$URL$3" "$EOS_MODEL" "$EOS_VERSION" "$spl" "$EOS_DEVICE" <<'EOF'
+        "$ts" "${2:-}" "$URL$3" "$EOS_MODEL" "$relver" "$spl" "$EOS_DEVICE" <<'EOF'
 import json, sys
 path, sha256, md5, size, ts, base, url, model, version, spl, dev = sys.argv[1:]
 name = path.rsplit('/', 1)[-1]
