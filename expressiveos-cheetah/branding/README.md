@@ -9,8 +9,10 @@ an Evolution X copyright or SPDX header keep it verbatim (Apache-2.0 section 4(c
 move unchanged when their file is renamed. The rename lands in phases: A (2026-11-01) outbound
 links, fonts, wrong headers and this gate; B labels and dead code; C code namespaces; D the
 load-bearing props, make goal, keys path and manifest paths, as a staged rename with one
-transition release. The Evolver is "Expressive Studio", subtitle "Make your device yours" (Daryl,
-2026-10-27): two strings in `packages_apps_Evolver` 0001.
+transition release. 1.1 (2026-11-07) moved the key folder to `vendor/expressiveos-priv` and the make
+goal to `bacon`, LineageOS's name; the kit takes the old names too through 1.1. The Evolver is
+"Expressive Studio", subtitle "Make your device yours" (Daryl, 2026-10-27): two strings in
+`packages_apps_Evolver` 0001.
 
 The patches are in `../patches/` (the table in [the kit's README](../README.md)), made at the build
 server's revisions of 2026-10-26 and applied by `apply.sh` like the others. `tools/brand-check.py`

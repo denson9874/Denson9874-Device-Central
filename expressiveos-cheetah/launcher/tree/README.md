@@ -1,8 +1,7 @@
 # vendor/extra/launcher (ExpressiveOS, every phone)
 
 `expressiveos-cheetah/launcher/apply-launcher.sh` stages this folder from the ExpressiveOS repo. Don't
-edit it here, because the next run puts the kit's copy back. Only the ExpressiveOS tree has it, never the
-Evolution X tree (`~/evolution`) or DerpFest's (`~/derpfest`).
+edit it here, because the next run puts the kit's copy back. Only the ExpressiveOS tree has it.
 
 ## What ships
 
@@ -12,13 +11,12 @@ Evolution X tree (`~/evolution`) or DerpFest's (`~/derpfest`).
 | `/system_ext/etc/permissions/privapp-permissions-dev.launcher.expressive.l3.xml` | ExpressiveOS: grants the privileged permissions it asks for | |
 | `/system_ext/etc/sysconfig/hiddenapi-dev.launcher.expressive.l3.xml` | ExpressiveOS: no hidden-API restrictions for the app | |
 | `/system_ext/etc/sysconfig/preinstalled-packages-dev.launcher.expressive.l3.xml` | ExpressiveOS: installs it for the phone's own users, not work profiles, clones or the private space | |
-| `/system_ext/overlay/ExpressiveLauncherFrameworkOverlay.apk` | ExpressiveOS: the framework config that makes it the Recents app and adds it to the launcher lists (`overlay/framework`) | |
+| `/system_ext/overlay/ExpressiveLauncherFrameworkOverlay.apk` | ExpressiveOS: the framework config that names it in Pixel Launcher's place (`overlay/framework`) | |
 | `/system_ext/overlay/ExpressiveLauncherSetupWizardOverlay.apk` | ExpressiveOS: Pixel's setup wizard ends on its "All set" page (`overlay/setupwizard`) | |
 
-It is the default Home app and the Recents app. Pixel Launcher (`NexusLauncherRelease`) ships next to it
-as a Home app users can pick in Settings > Apps > Default apps > Home app. It replaces AOSP's
-`Launcher3QuickStep` through `overrides` in `Android.bp`. `launcher.mk` adds it to every ExpressiveOS
-phone's `lineage_<device>` product.
+It replaces Pixel Launcher (`NexusLauncherRelease`), AOSP's `Launcher3QuickStep` and Pixel Launcher's
+two overlays through `overrides` in `Android.bp`. `launcher.mk` adds it to every ExpressiveOS phone's
+`lineage_<device>` product.
 
 ## Sources
 

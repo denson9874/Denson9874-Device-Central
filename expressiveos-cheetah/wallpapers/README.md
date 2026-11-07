@@ -5,8 +5,8 @@ clean install starts on, so the system colours match the logo from the first scr
 2026-10-27). Each is 1440x3120 (cheetah's full resolution), 8-bit sRGB PNG, with no text and a clear
 top half for the clock. Every thread of each ribbon is an echo of one petal's outline.
 
-This folder is only the wallpaper part of the ExpressiveOS kit. **None of it applies to the Evolution
-X tree** (`~/evolution`): `apply-wallpapers.sh` refuses it.
+This folder is only the wallpaper part of the ExpressiveOS kit, for the ExpressiveOS tree
+(`~/expressiveos`): `apply-wallpapers.sh` writes nothing through a symlink that leads out of it.
 
 ## The four
 
@@ -61,7 +61,8 @@ Running it again changes nothing; its last line is `WALLPAPERS_APPLY=OK` or `WAL
    `vendor/lineage/config/common.mk` inherits `vendor/extra/product.mk` on its line 2, so our overlay
    folder comes first in `PRODUCT_PACKAGE_OVERLAYS`, and Soong gives earlier folders the higher
    priority. Both end up in the same auto-generated RRO,
-   `/product/overlay/framework-res__evolution_cheetah__auto_generated_rro_product.apk`.
+   `/product/overlay/framework-res__lineage_cheetah__auto_generated_rro_product.apk` (since 1.1, LineageOS's
+   name again; `framework-res__evolution_cheetah__...` before).
 3. **The picker (1.1, not built in 1.0).** `ExpressiveWallpapers` is a resource-only partner customization APK: Google's
    wallpaper picker finds it by `com.android.launcher3.action.PARTNER_CUSTOMIZATION` and shows an
    "ExpressiveOS" category with all four, plus Google Photos' "Your memories" live wallpaper, which it

@@ -462,6 +462,60 @@ else
     bad "6c unexpected exception in plan"; show <<<"$out"
 fi
 
+# 6d. LineageOS moves development to its own copy: a history of its own (so it doesn't contain our
+#     pin), but its first commit has exactly our pin's files, and one LineageOS commit follows. The
+#     move goes ahead, counting from that commit. 6e: the dry run says the same
+world
+resolve
+devpin=$(git -C "$top/.repo/manifests" show HEAD:default.xml | grep 'path="development"' | grep -o 'revision="[0-9a-f]*"' | grep -o '[0-9a-f]\{40\}')
+git init -q --bare "$T/gh/LineageOS/android_development_copy.git"
+w=$(mktemp -d "$T/w/c.XXXX"); git clone -q --bare "$T/gh/LineageOS/android_development.git" "$w/d.git"
+root=$(git --git-dir="$w/d.git" commit-tree "$devpin^{tree}" -m "development: LineageOS's own copy")
+git --git-dir="$w/d.git" push -q "$T/gh/LineageOS/android_development_copy.git" "$root:refs/heads/lineage-24.0"; rm -rf "$w"
+dtip=$(commit_on "$T/gh/LineageOS/android_development_copy.git" lineage-24.0 copy.txt "LineageOS's" "development: LineageOS's own fix")
+w=$(mktemp -d "$T/w/l.XXXX"); git clone -q -b lineage-24.0 "$T/gh/LineageOS/android.git" "$w"
+sed -i 's#name="LineageOS/android_development"#name="LineageOS/android_development_copy"#' "$w/snippets/lineage.xml"
+git -C "$w" commit -qam "development: LineageOS's own copy"; git -C "$w" push -q origin lineage-24.0
+C1c=$(git -C "$w" rev-parse HEAD); rm -rf "$w"
+echo "LINEAGE_MANIFEST=$C1c" > "$U/update.conf"
+out=$(plan 2>&1); rc=$?
+devline="development <- LineageOS/android_development_copy lineage-24.0: ${devpin:0:12} -> ${dtip:0:12}, 1 new commit [LineageOS's manifest now takes it from LineageOS/android_development_copy, whose ${root:0:12} has our ${devpin:0:12}'s files exactly]"
+if [[ $rc = 0 && -n $devpin && -n $dtip ]] && grep -q "UPDATE_PLAN=READY" <<<"$out" && grep -qxF "$devline" <<<"$out" \
+        && ! grep -q "doesn't contain our commit" <<<"$out" \
+        && grep 'path="development"' "$W/updates/2026-11/default.xml" | grep -q "name=\"LineageOS/android_development_copy\".*revision=\"$dtip\""; then
+    ok "6d development moved to LineageOS's own copy with our pin's files: READY, from that commit, at the copy's tip"
+else
+    bad "6d plan with development moved to a copy that has our pin's files: rc $rc"; show <<<"$out" 25
+    grep 'path="development"' "$W/updates/2026-11/default.xml" 2>&1 | show
+fi
+out=$(cd "$T" && bash "$kit/sources/update-check.sh" "$top" 2>&1); rc=$?
+if grep -qF "development <- LineageOS/android_development_copy lineage-24.0: 1 new commit [LineageOS's manifest now takes it from LineageOS/android_development_copy, whose ${root:0:12} has our ${devpin:0:12}'s files exactly]" <<<"$out" \
+        && ! grep -q "DOESN'T DESCEND FROM OURS" <<<"$out" && ! grep -q "doesn't contain our commit" <<<"$out"; then
+    ok "6e the dry run lists development's move to the copy, from the commit with our pin's files, with no problem"
+else
+    bad "6e dry run with development moved to a copy that has our pin's files: rc $rc"; show <<<"$out" 25
+fi
+
+# 6f. control: the same rewritten history (a commit with exactly our pin's files, then one more) in
+#     development's own repo, with no move in LineageOS's manifest, still stops the plan
+world
+resolve
+devpin=$(git -C "$top/.repo/manifests" show HEAD:default.xml | grep 'path="development"' | grep -o 'revision="[0-9a-f]*"' | grep -o '[0-9a-f]\{40\}')
+g=$T/gh/LineageOS/android_development.git
+w=$(mktemp -d "$T/w/r.XXXX"); git clone -q --bare "$g" "$w/d.git"
+root=$(git --git-dir="$w/d.git" commit-tree "$devpin^{tree}" -m "development: rewritten")
+git --git-dir="$w/d.git" push -q -f "$g" "$root:refs/heads/lineage-24.0"; rm -rf "$w"
+commit_on "$g" lineage-24.0 copy.txt "LineageOS's" "development: a fix on the rewritten branch" >/dev/null
+rm -f "$W/updates/2026-11/plan.json"
+out=$(plan 2>&1); rc=$?
+if [[ $rc != 0 && -n $devpin ]] && grep -q "UPDATE_PLAN=NOT_READY" <<<"$out" \
+        && grep -q "^development: LineageOS/android_development lineage-24.0 doesn't contain our commit ${devpin:0:12} (rewritten?)" <<<"$out" \
+        && [[ ! -e $W/updates/2026-11/plan.json ]]; then
+    ok "6f control: development's own branch rewritten to a commit with our pin's files, no move: NOT_READY (rewritten?), no plan.json"
+else
+    bad "6f control: development's own branch rewritten, no move: rc $rc"; show <<<"$out" 25
+fi
+
 stop_servers
 rm -rf "$WD"
 echo "== $pass passed, $failn failed"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Put Expressive Launcher into the ExpressiveOS tree as every phone's default Home and Recents
-# app, next to Pixel Launcher as a Home app users can pick (idempotent: a second run changes nothing):
+# Put Expressive Launcher into the ExpressiveOS tree as every phone's Home and Recents app,
+# in place of Pixel Launcher (idempotent: a second run changes nothing):
 #   1. fetch-launcher.sh: the pinned release APK, its LICENSE and notices, verified;
 #   2. stage them with tree/ into vendor/extra/launcher (Android.bp removed first and written
 #      last, so Soong never sees it without its files; anything else there goes);
@@ -9,8 +9,7 @@
 #   4. tools/launcher-check.sh tree: the pre-build guards.
 # Run it on every build (../tools/eos-images.sh does), for every phone: launcher.mk adds the
 # launcher to all of ExpressiveOS's lineage_<device> products.
-# Never on the Evolution X tree (~/evolution) or DerpFest's. Nothing is written through a
-# symlink that leads out of the tree.
+# Nothing is written through a symlink that leads out of the tree.
 #
 #   apply-launcher.sh [top]      # default ~/expressiveos
 set -euo pipefail
@@ -31,29 +30,14 @@ mkline="$here/tools/mk-line.awk"
 
 arg=${1:-$HOME/expressiveos}
 [[ $# -le 1 ]] || fail "usage: apply-launcher.sh [top]"
-not_evo() {
-    [[ "${1%/}" != */evolution && "${1%/}" != evolution && "${1%/}" != */derpfest && "${1%/}" != derpfest ]] \
-        || fail "$arg is the Evolution X or DerpFest tree ($1); Expressive Launcher is for the ExpressiveOS tree only"
-}
-not_evo "$arg"
 [[ -d "$arg" ]] || fail "no tree at $arg"
 top="$(cd "$arg" && pwd -P)"
-not_evo "$top"
-evo='' derp=''
-if evo="$(cd "$HOME/evolution" 2>/dev/null && pwd -P)"; then
-    [[ "$top" != "$evo" ]] || fail "$arg is the Evolution X tree (~/evolution); Expressive Launcher is for the ExpressiveOS tree only"
-fi
-if derp="$(cd "$HOME/derpfest" 2>/dev/null && pwd -P)"; then
-    [[ "$top" != "$derp" ]] || fail "$arg is the DerpFest tree (~/derpfest); Expressive Launcher is for the ExpressiveOS tree only"
-fi
 [[ -f "$top/build/envsetup.sh" ]] || fail "$top isn't an Android tree (no build/envsetup.sh)"
 # What this script writes must stay in this tree, even when a folder in it is a symlink
-in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top and not in ~/evolution or ~/derpfest
+in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top
     local r
     r=$(realpath -m -- "$1") || fail "can't resolve $1"
     [[ "$r" == "$top"/* ]] || fail "${1#"$top"/} leads to $r, outside $top (a symlink?); this kit writes only inside the ExpressiveOS tree"
-    [[ -z "$evo" || ( "$r" != "$evo" && "$r" != "$evo"/* ) ]] || fail "${1#"$top"/} leads into the Evolution X tree ($r)"
-    [[ -z "$derp" || ( "$r" != "$derp" && "$r" != "$derp"/* ) ]] || fail "${1#"$top"/} leads into the DerpFest tree ($r)"
 }
 dest="$top/vendor/extra/launcher"
 for p in vendor/extra vendor/extra/launcher vendor/extra/product.mk; do in_top "$top/$p"; done

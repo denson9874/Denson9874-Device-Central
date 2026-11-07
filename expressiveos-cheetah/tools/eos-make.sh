@@ -5,7 +5,7 @@
 # that builds its kernel (EOS_KERNEL=gs-6.1: cheetah, husky), then one make pass, which must
 # ship the stock init_boot (no root: ExpressiveOS ships none) and keep its target-files zip
 # (tf_zip in lib.sh). Every phone gets EOS_PRODUCT_OUT's ab_partitions.txt. A quick build
-# (EOS_QUICK=1, lib.sh) runs m droid where a full one runs m evolution: the same images, and
+# (EOS_QUICK=1, lib.sh) runs m droid where a full one runs m bacon: the same images, and
 # no OTA package or target-files zip, which it then must not leave in out/ either. The last
 # line is MAKE_EXIT=0 or MAKE_EXIT=1.
 #
@@ -52,7 +52,9 @@ elif [[ "${KERNEL_ONLY:-0}" = 1 ]]; then
 else
     eos_step make
 fi
-export EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
+# The build type under its 1.1 name, and its old one, which a tree from before 1.1 reads
+# (vendor/lineage's version.mk takes EVO_BUILD_TYPE when only it is set, through 1.1)
+export EXPRESSIVE_BUILD_TYPE=$EOS_BUILD_TYPE EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
 if command -v ccache >/dev/null; then export USE_CCACHE=1 CCACHE_EXEC; CCACHE_EXEC=$(command -v ccache); fi
 # shellcheck source=/dev/null
 source build/envsetup.sh >/dev/null || fail "build/envsetup.sh failed"
@@ -118,13 +120,17 @@ eos_step make
 export BUILD_DATETIME=${BUILD_DATETIME:-$(date +%s)}
 export BUILD_NUMBER=${BUILD_NUMBER:-eng.$(whoami).$(date -ud "@$BUILD_DATETIME" +%Y%m%d.%H%M%S)}
 # Older builds' packages out of the way: after this run, out/ holds only this build's,
-# and the target-files zip m evolution keeps (patches/vendor_lineage/0003) is this build's.
+# and the target-files zip a full build keeps (patches/vendor_lineage/0003) is this build's.
 # A quick build leaves none: nothing in out/ can pass for its package
 tf=$(tf_zip)
-# m evolution is m droid (the images) plus the OTA package and its target-files zip
-# (vendor/lineage's build/tasks/evolution.mk: evolution: <package> $(DEFAULT_GOAL))
-goal=evolution
-[[ $EOS_QUICK != 1 ]] || goal=droid
+# m bacon is m droid (the images) plus the OTA package and its target-files zip
+# (vendor/lineage's build/tasks/bacon.mk: bacon: <package> $(DEFAULT_GOAL)). A tree from
+# before 1.1 has the same goal as evolution only (lib.sh's make_goal)
+goal=droid
+if [[ $EOS_QUICK != 1 ]]; then
+    goal=$(make_goal)
+    [[ $goal = bacon ]] || echo "note: vendor/lineage has no bacon goal (a tree from before 1.1): building the package with m $goal, its old name"
+fi
 in_top "$top/${tf%/*}"
 pkgs() { rm -f -- "$O"/ExpressiveOS-*.zip "$O"/ExpressiveOS-*.zip.sha256sum "$O/$EOS_DEVICE.json" "$tf"; }
 pkgs

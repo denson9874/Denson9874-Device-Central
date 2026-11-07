@@ -43,6 +43,13 @@
 # starts it and returns, and expressiveos-status (read-only) shows how it's going.
 # ExpressiveOS's signing keys were made once (2026-10-26) and are never made again: no
 # action makes keys. A tree without them gets them back from the backup (README.md, "Keys").
+# expressiveos-keys-move moves the key folder in ~/expressiveos from vendor/evolution-priv to
+# vendor/expressiveos-priv, 1.1's name (expressiveos-cheetah/tools/eos-keys-move.sh, this ref's):
+# query check (read-only, the default) shows which folder is there, each file's name, size and
+# sha256, whether a build or repo sync runs and free disk; move moves it (a rename, never new
+# keys and never a link) and rewrites only keys.mk's paths, with a backup archive in ~ before and
+# after; revert moves it back the same way. move and revert refuse while anything builds or syncs.
+# Only when Daryl says so; dispatch it on the branch that has the script.
 #
 # expressiveos-build and expressiveos-pack build and pack cheetah, as they always did, unless
 # query names another of the kit's phones (tree_ref's expressiveos-cheetah/devices/
@@ -79,7 +86,7 @@
 # with any of them says what it would do. A release: pack release, ota upload, flasher-release, storage
 # drive; storage prune once Daryl has merged the feed pull request.
 # expressiveos-build's 'quick' (EOS_QUICK=1) builds the images only, m droid where a full build
-# runs m evolution (droid plus the OTA package and its target-files zip, about 5 minutes more):
+# runs m bacon (droid plus the OTA package and its target-files zip, about 5 minutes more):
 # for testing a change on a phone. eos-pack.sh packs it as check/<name>-quick-fastboot.zip, which
 # it never releases or sends to testers; a release needs a full build, packed, flashed and tested.
 # expressiveos-status shows every phone's build.ok, verify.log, check/, testers/ and build
@@ -176,6 +183,8 @@ on:
           into ~/android-dt/firmware/cheetah (query check: read-only).
           expressiveos-setup: install tree_ref's
           expressiveos-cheetah, then setup.sh in tmux.
+          expressiveos-keys-move: the key folder vendor/evolution-priv to
+          vendor/expressiveos-priv (query: check, read-only, the default; move; revert).
           expressiveos-pins: read-only: the upstream commit of every project in the
           ExpressiveOS tree, as a manifest, plus its kernel tree and LFS files.
           expressiveos-devices: read-only: what ExpressiveOS's builds for the six
@@ -209,6 +218,7 @@ on:
           - expressiveos-update-check
           - expressiveos-update
           - expressiveos-setup
+          - expressiveos-keys-move
           - expressiveos-build
           - expressiveos-pack
           - expressiveos-ota
@@ -256,6 +266,8 @@ on:
           device=<phone>|all (the newest release to Google Drive, the newest two kept
           there) or prune [device=<phone>] (R2 keeps the current release only, permanent),
           each with dry-run to say what it would do.
+          expressiveos-keys-move (optional): check (read-only, the default), move or
+          revert (only when Daryl says so).
           expressiveos-update (required):
           token (read-only: may the push token push to every ExpressiveOS repo?),
           lint [ref] (read-only: a change of ExpressiveOS's manifest, e.g. pull/2, read
@@ -292,11 +304,13 @@ jobs:
           # job. Don't start on top of one. The read-only actions run anyway, and so
           # do expressiveos-setup (a repo sync
           # of its own tree, ~/expressiveos: network and disk, no build),
-          # expressiveos-update-check (fetches and merges in its own folder) and
-          # expressiveos-update (the same, and pushes to GitHub)
+          # expressiveos-update-check (fetches and merges in its own folder),
+          # expressiveos-update (the same, and pushes to GitHub) and expressiveos-keys-move
+          # (check is read-only; move and revert refuse by themselves while anything builds
+          # or syncs, as server-cleanup does)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-flasher-release|expressiveos-storage)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-flasher-release|expressiveos-storage)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -309,7 +323,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release|expressiveos-storage)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release|expressiveos-storage)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -386,7 +400,12 @@ jobs:
             if [[ -e "$p" ]]; then echo "exists   $p"; else echo "absent   $p"; fi
           done
           echo "cheetah firmware cached: $(cat ~/android-dt/firmware/cheetah/CURRENT 2>/dev/null || echo none)"
-          echo "== tree lock"; if flock -n ~/.evolution-tree.lock true; then echo free; else echo "held (a routine or build is running)"; fi
+          # The tree lock's name since 1.1, and its old name, which the kit holds too through 1.1
+          for l in ~/.expressiveos-tree.lock ~/.evolution-tree.lock; do
+            if [[ ! -e $l ]]; then echo "== tree lock ${l#"$HOME"/}: free (no file yet)"
+            elif flock -n "$l" true; then echo "== tree lock ${l#"$HOME"/}: free"
+            else echo "== tree lock ${l#"$HOME"/}: held (a build or server-cleanup is running)"; fi
+          done
 
       # Read-only, so it runs beside a build too (its numbers then include that build's load)
       - name: Check out the build-speed scripts
@@ -450,6 +469,40 @@ jobs:
             [[ -z "$QUERY" || "$QUERY" =~ ^[1-7](,[1-7])*$ ]] || { echo "::error::query is groups, e.g. 1,2,3"; exit 1; }
             bash "$script" list ${QUERY:+"$QUERY"}
           fi
+
+      # check is read-only, so it runs beside a build too; move and revert take the kit's locks
+      # and refuse while anything builds or syncs (the script checks, not Preflight)
+      - name: Check out the key move script
+        if: inputs.action == 'expressiveos-keys-move'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: expressiveos-cheetah
+          fetch-depth: 1
+
+      - name: ExpressiveOS key folder move
+        if: inputs.action == 'expressiveos-keys-move'
+        run: |
+          [[ "${QUERY:-check}" =~ ^(check|move|revert)$ ]] || { echo "::error::query is check (read-only, the default), move or revert"; exit 1; }
+          # The log names every key file with its sha256: a folder only this user reads, as
+          # the install step makes it
+          jobs=~/expressiveos-jobs
+          mkdir -p "$jobs"; chmod 700 "$jobs"
+          # keys-move.log is the newest run's (any query), the one before it keys-move.log.1. A
+          # move's or revert's log is also kept as keys-move-<query>-<UTC time>.log, which no
+          # later run writes over: its backups' names, and the NOTE of one that failed
+          log=$jobs/keys-move.log
+          [[ ! -f $log ]] || mv -f -- "$log" "$log.1"
+          out=("$log")
+          [[ ${QUERY:-check} = check ]] || out+=("$jobs/keys-move-$QUERY-$(date -u +%Y%m%d-%H%M%S).log")
+          rc=0
+          env -u EOS_HOLDS_LOCK -u EOS_DEVICE bash --noprofile --norc expressiveos-cheetah/tools/eos-keys-move.sh "${QUERY:-check}" 2>&1 | tee -- "${out[@]}" || rc=$?
+          {
+            echo "expressiveos-keys-move ${QUERY:-check}, script ${GITHUB_SHA:0:7}: $(tail -n 1 "$log")"
+            [[ ${#out[@]} = 1 ]] || echo "log kept as ${out[1]/#"$HOME"/\~}"
+            grep -aE '^(OK: |FAIL|NOTE|note: |WARNING|MOVE_READY|REVERT_READY|vendor/)' "$log" | cut -c1-300 || true
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$rc"
 
       # ---- The installed kit, and cheetah's firmware cache ----------------------------------
 
@@ -554,7 +607,10 @@ jobs:
                   } | grep -xE '[a-z0-9]+' | awk '!seen[$0]++')
           echo "== machine"; uptime; free -g | head -2; df -h ~ | sed 1d
           echo "== sessions"; tmux ls 2>/dev/null | grep -E '^eos-' || echo "no ExpressiveOS session running"
-          for l in ~/.expressiveos.lock ~/.evolution-tree.lock; do
+          # The tree lock is ~/.expressiveos-tree.lock since 1.1; the kit holds its old name,
+          # ~/.evolution-tree.lock, too through 1.1
+          for l in ~/.expressiveos.lock ~/.expressiveos-tree.lock ~/.evolution-tree.lock; do
+            [[ -e $l ]] || { echo "${l#"$HOME"/}: free (no file yet)"; continue; }
             if flock -n "$l" true; then echo "${l#"$HOME"/}: free"; continue; fi
             echo "${l#"$HOME"/}: held"
             # Who holds it: /proc/locks names the process and the file's inode
@@ -603,8 +659,15 @@ jobs:
               echo "$p: tried ${c:0:12}${rest:+ (may still be at ${rest:0:12})}, HEAD $(git -C "$top/$p" rev-parse --short=12 HEAD 2>/dev/null || echo "?")"
             done < "$jobs/try.txt"
           fi
-          echo "== keys: $(find "$top/vendor/evolution-priv/keys" -maxdepth 1 -name '*.pk8' 2>/dev/null | wc -l) .pk8 files in expressiveos/vendor/evolution-priv/keys"
+          # vendor/expressiveos-priv since 1.1 (eos-keys-move.sh moved it), vendor/evolution-priv before
+          for k in vendor/expressiveos-priv vendor/evolution-priv; do
+            if [[ -L $top/$k ]]; then echo "== keys: expressiveos/$k is a symlink (the kit refuses it)"
+            elif [[ -d $top/$k ]]; then echo "== keys: $(find "$top/$k/keys" -maxdepth 1 -name '*.pk8' 2>/dev/null | wc -l) .pk8 files in expressiveos/$k/keys"; fi
+          done
+          [[ -e $top/vendor/expressiveos-priv || -e $top/vendor/evolution-priv ]] || echo "== keys: none in the tree (neither vendor/expressiveos-priv nor vendor/evolution-priv)"
           ls -l ~/expressiveos-keys-*.tar.gz 2>/dev/null || echo "no key backup archive on the server"
+          # Each move's and revert's own log (expressiveos-keys-move): the newest is shown below
+          ls -l "$jobs"/keys-move-move-*.log "$jobs"/keys-move-revert-*.log 2>/dev/null || true
           # Each phone's records (lib.sh's EOS_STATE): cheetah's in out/eos, always shown, the
           # others' in out/eos-<device>, once they exist
           for d in $devs; do
@@ -649,7 +712,8 @@ jobs:
           done
           # The runner's sessions' logs, then eos-images.sh's own (whoever started it; cheetah's,
           # then the other phones'), then the newest ExpressiveOS routine log, if a routine started one
-          logs=("$jobs"/{setup,keys,build,pack}.log ~/expressiveos-build.log)
+          k=$(ls -t "$jobs"/keys-move-move-*.log "$jobs"/keys-move-revert-*.log 2>/dev/null | head -n 1 || true)
+          logs=("$jobs"/{setup,keys,keys-move}.log ${k:+"$k"} "$jobs"/{build,pack}.log ~/expressiveos-build.log)
           for d in $devs; do
             [[ $d = cheetah ]] || logs+=("$HOME/expressiveos-build-$d.log")
           done
@@ -665,7 +729,7 @@ jobs:
             fi
             # ninja's progress lines (libthiserror:...) and the compilers' and aidl's own warnings
             # (WARNING: <file>:<line>) would bury the kit's lines
-            grep -aE '^(== |OK: |FAIL|WARNING|SETUP|KEYS_CHECK|BUILD_EXIT|MAKE_EXIT|MODULES_EXIT|PACK=|VERIFY|SESSION_EXIT|DEVICE |CLEAN |CANDIDATE |UPLOADED_TESTERS )|FAILED:|error:' "$log" \
+            grep -aE '^(== |OK: |FAIL|WARNING|SETUP|KEYS_CHECK|KEYS_MOVE|BUILD_EXIT|MAKE_EXIT|MODULES_EXIT|PACK=|VERIFY|SESSION_EXIT|DEVICE |CLEAN |CANDIDATE |UPLOADED_TESTERS )|FAILED:|error:' "$log" \
               | grep -avE '^(\[ *[0-9]+% |WARNING: [^ ]+:[0-9])' | tail -n 25 | cut -c1-300 || true
             # The kit's warnings from the whole log (apply.sh's come long before the end), each once
             w=$(grep -aE '^WARNING' "$log" | grep -avE '^WARNING: [^ ]+:[0-9]' | sort | uniq -c | sort -rn | head -n 10 | cut -c1-300 || true)
@@ -1308,7 +1372,8 @@ jobs:
           cd "$top" || fail "can't cd to $top"
           PATH=$HOME/bin:$PATH
           wait_builds
-          export EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
+          # EXPRESSIVE_BUILD_TYPE since 1.1; EVO_BUILD_TYPE for a tree from before it (goes in 1.2)
+          export EXPRESSIVE_BUILD_TYPE=$EOS_BUILD_TYPE EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
           if command -v ccache >/dev/null; then export USE_CCACHE=1 CCACHE_EXEC; CCACHE_EXEC=$(command -v ccache); fi
           # Before lunch, which runs build_kernel (the phones whose kernel is built here)
           [[ ${EOS_KERNEL:-gs-6.1} != gs-6.1 ]] || kernel_pinned

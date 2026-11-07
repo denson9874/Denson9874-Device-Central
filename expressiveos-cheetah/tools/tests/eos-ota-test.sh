@@ -11,15 +11,15 @@ W=$(mktemp -d "${TMPDIR:-/tmp}/eos-ota-test.XXXXXX")
 export HOME=$W/home
 mkdir -p "$HOME/bin" "$W/stub" "$W/r2" "$W/feed"
 top=$HOME/expressiveos
-mkdir -p "$top/build" "$top/out/host/linux-x86/bin" "$top/vendor/evolution-priv/keys"
+mkdir -p "$top/build" "$top/out/host/linux-x86/bin" "$top/vendor/expressiveos-priv/keys"
 touch "$top/build/envsetup.sh"
 mkdir -p "$top/prebuilts/jdk/jdk21/linux-x86/bin" "$top/prebuilts/jdk/jdk8/linux-x86/bin"; printf "#!/bin/sh\n" > "$top/prebuilts/jdk/jdk21/linux-x86/bin/java"; chmod +x "$top/prebuilts/jdk/jdk21/linux-x86/bin/java"
 # The kit: a copy, with eos.conf's pin set to a test cert and the payload tools stubbed
 kit=$HOME/expressiveos-cheetah
 cp -a "$KITSRC" "$kit"
-openssl req -x509 -newkey rsa:2048 -nodes -keyout "$W/k.pem" -out "$top/vendor/evolution-priv/keys/testkey.x509.pem" -subj /CN=t -days 3 2>/dev/null
-openssl pkcs8 -topk8 -nocrypt -in "$W/k.pem" -outform DER -out "$top/vendor/evolution-priv/keys/testkey.pk8"
-FP=$(openssl x509 -in "$top/vendor/evolution-priv/keys/testkey.x509.pem" -noout -fingerprint -sha256 | sed 's/.*=//; s/://g')
+openssl req -x509 -newkey rsa:2048 -nodes -keyout "$W/k.pem" -out "$top/vendor/expressiveos-priv/keys/testkey.x509.pem" -subj /CN=t -days 3 2>/dev/null
+openssl pkcs8 -topk8 -nocrypt -in "$W/k.pem" -outform DER -out "$top/vendor/expressiveos-priv/keys/testkey.pk8"
+FP=$(openssl x509 -in "$top/vendor/expressiveos-priv/keys/testkey.x509.pem" -noout -fingerprint -sha256 | sed 's/.*=//; s/://g')
 sed -i "s/^EOS_OTA_CERT_SHA256=.*/EOS_OTA_CERT_SHA256=$FP/" "$kit/eos.conf"
 cat > "$kit/tools/eos-keys-check.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -43,7 +43,8 @@ a = sys.argv[1:]; src = None; full = ''
 pos = []
 i = 0
 while i < len(a):
-    if a[i] in ('--path', '-k'): i += 2; continue
+    if a[i] == '-k': open(os.environ['HOME'] + '/otf-k.log', 'a').write(a[i+1] + '\n'); i += 2; continue
+    if a[i] == '--path': i += 2; continue
     if a[i] == '-i': src = a[i+1]; i += 2; continue
     if a[i] == '--full_ota_partitions': full = a[i+1]; i += 2; continue
     pos.append(a[i]); i += 1
@@ -98,7 +99,7 @@ export PATH=$W/stub:$PATH
 D=$HOME/releases/expressiveos-cheetah
 mkdir -p "$D/check" "$D/target-files" "$D/ota"
 otacerts=$W/otacerts.zip
-(cd "$top/vendor/evolution-priv/keys" && zip -q "$otacerts" testkey.x509.pem)
+(cd "$top/vendor/expressiveos-priv/keys" && zip -q "$otacerts" testkey.x509.pem)
 mktf() {   # mktf <out> <name> <ts> <incr>
     local d; d=$(mktemp -d)
     mkdir -p "$d/META" "$d/SYSTEM/etc/security"
@@ -136,6 +137,7 @@ rc=$(ota --upload); ok "rerun of A once A is in the feed: still full only" '[[ $
 release "$B" 1764700000 eng.b
 : > "$HOME/otf.log"
 rc=$(ota --upload); ok "B: incremental from A" '[[ $rc = 0 ]] && [[ -f $D/ota/$B-incremental-from-20261103.zip ]] && grep -qx "src=$A-target_files.zip full=boot,init_boot,vbmeta" "$HOME/otf.log"'
+ok "  signed with the key in vendor/expressiveos-priv (-k)" 'tail -1 "$HOME/otf-k.log" | grep -qx vendor/expressiveos-priv/keys/testkey'
 ok "  feed: incremental first (base A, ts+1), then full" 'python3 -c "
 import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]
 assert len(r)==2, r
@@ -167,6 +169,12 @@ import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]
 assert len(r)==1 and r[0][\"base_timestamp\"]==1764700000 and r[0][\"download\"].endswith(\"/ota/test/$C-incremental-from-20261203.zip\")
 " "$W/r2/expressiveos/cheetah/ota/test/cheetah.json"'
 ok "  the live feed's R2 files untouched" '[[ -f $W/r2/expressiveos/cheetah/ota/$B.zip ]]'
+# A tree from before 1.1's key move (or after its revert): the key folder's old name
+mv "$top/vendor/expressiveos-priv" "$top/vendor/evolution-priv"
+rm -f "$D/check/$C-incremental-from-20261203.zip"*
+: > "$HOME/otf-k.log"
+rc=$(ota --candidate); ok "key folder still vendor/evolution-priv: -k takes it, with a note" '[[ $rc = 0 ]] && grep -q "^note: the release key is in vendor/evolution-priv" "$W/out.log" && tail -1 "$HOME/otf-k.log" | grep -qx vendor/evolution-priv/keys/testkey'
+mv "$top/vendor/evolution-priv" "$top/vendor/expressiveos-priv"
 sed -i 's/^build full/build quick/' "$D/check/$C-fastboot.zip.pack-ok"
 rc=$(ota --candidate); ok "--candidate refuses a quick build" '[[ $rc = 1 ]] && grep -q "quick build" "$W/out.log"'
 sed -i 's/^build quick/build full/' "$D/check/$C-fastboot.zip.pack-ok"

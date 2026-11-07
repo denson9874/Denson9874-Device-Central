@@ -7,10 +7,9 @@ sources go with every release.
 
 This folder is only the ViPER4Android part of the ExpressiveOS kit. It works on the ExpressiveOS tree
 (`~/expressiveos`), and only for a phone whose `../devices/<device>.conf` has `EOS_V4A=1`: cheetah
-alone ("Other phones", below). **None of it applies to the Evolution X tree**
-(`~/evolution`, which also builds kodiak and husky): `apply-v4a.sh` refuses any tree whose path ends
-in `/evolution` or that is `~/evolution`, and any `vendor/extra` or `frameworks/av` that leads out of
-the tree or into `~/evolution` through a symlink; `tools/v4a-check.sh tree` fails on the same.
+alone ("Other phones", below). `apply-v4a.sh` refuses any `vendor/extra` or `frameworks/av` that
+leads out of the tree through a symlink, and a `frameworks/av` whose git folder is outside it;
+`tools/v4a-check.sh tree` fails on the same.
 
 ## What ships
 
@@ -114,9 +113,8 @@ its last line is `V4A_CHECK=OK`.
 
 ### What the checks cover
 
-- `tree <top>` (pre-build): the tree isn't `~/evolution`, and `vendor/extra`, `vendor/extra/product.mk`,
-  `vendor/extra/viper4android`, `frameworks/av` and its git folder don't lead out of it or into
-  `~/evolution`; Evolution X's loader is still in `EffectsFactory.c` (the library path, and the
+- `tree <top>` (pre-build): `vendor/extra`, `vendor/extra/product.mk`, `vendor/extra/viper4android`,
+  `frameworks/av` and its git folder don't lead out of the tree; Evolution X's loader is still in `EffectsFactory.c` (the library path, and the
   `loadViperEffect();` call inside `init()`); gs201's VINTF manifest still declares
   `@7.0::IEffectsFactory/default`; gs201 still sets `IGNORE_PREFER32_ON_DEVICE := true` (or something
   sets `android_hardware_audio` `run_64bit`), so the audio HAL is 64-bit; no AIDL effect HAL anywhere in gs201, pantah or

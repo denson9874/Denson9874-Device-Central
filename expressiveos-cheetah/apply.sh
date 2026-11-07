@@ -16,7 +16,7 @@
 #                                           every build there (the old Pixel 11 kit's copies)
 #   vendor_lineage 0001                     ExpressiveOS 1.0 names and the build's own date
 #   vendor_lineage 0002                     the old Pixel 11 kit's: stock's 60 fps game default
-#   vendor_lineage 0003                     ExpressiveOS's own: m evolution keeps target-files
+#   vendor_lineage 0003                     ExpressiveOS's own: m bacon keeps target-files
 #   frameworks_base 0021-0024, Settings,    ExpressiveOS's branding: no screen names Evolution X
 #   Evolver, Updater and the rest
 #   packages_apps_Updater 0005              ExpressiveOS's own: an incremental is offered
