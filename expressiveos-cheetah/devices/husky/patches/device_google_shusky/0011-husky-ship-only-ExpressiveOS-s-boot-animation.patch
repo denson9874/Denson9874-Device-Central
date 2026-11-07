@@ -13,11 +13,11 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  1 file changed, 5 insertions(+)
 
 diff --git a/lineage_husky.mk b/lineage_husky.mk
-index a47f850..a526b44 100644
+index 32f3a4b..aa81d36 100644
 --- a/lineage_husky.mk
 +++ b/lineage_husky.mk
 @@ -23,6 +23,11 @@ PRODUCT_SYSTEM_NAME := generic_system_google
- DEVICE_PACKAGE_OVERLAYS += $(DEVICE_PATH)/overlay-evolution
+ DEVICE_PACKAGE_OVERLAYS += $(DEVICE_PATH)/overlay-expressiveos
  
  # Boot animation
 +# Only ExpressiveOS's own animation (vendor/extra/bootanimation), not Evolution X's

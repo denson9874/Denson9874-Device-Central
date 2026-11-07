@@ -60,7 +60,7 @@ H=out/host/linux-x86/bin
 tools="avbtool ota_extractor check_ota_package_signature delta_generator unpack_bootimg"
 [[ $EOS_QUICK != 1 ]] || tools="avbtool unpack_bootimg"
 for t in $tools; do
-    [[ -x $H/$t ]] || fail "no $H/$t (m evolution builds it)"
+    [[ -x $H/$t ]] || fail "no $H/$t (the build makes it)"
 done
 # Only a build in this tree changes out/ under the checks
 b=$(tree_build); [[ -z "$b" ]] || fail "a build is running in $top: $b"
@@ -103,7 +103,7 @@ if [[ $EOS_QUICK = 1 ]]; then
     echo "OK: $ver, a quick build (EOS_QUICK=1: the images only, no OTA package or target-files), built $(date -ud "@$ts" '+%F %T') UTC"
 else
     ota=$O/$ver.zip
-    [[ -f $ota ]] || fail "no $ota (m evolution makes it)"
+    [[ -f $ota ]] || fail "no $ota (a full build, m bacon, makes it)"
     others=$(find "$O" -maxdepth 1 -name 'ExpressiveOS-*.zip' ! -name "$ver.zip" -printf '%f ')
     [[ -z "$others" ]] || fail "out/ also holds $others; it must hold only this build's package"
     unzip -p -- "$ota" META-INF/com/android/metadata > "$T/metadata" || fail "$ota has no OTA metadata"
@@ -378,7 +378,7 @@ wpd=$O$WALLPAPER_DEFAULT_PATH dvar="WALLPAPER_${WALLPAPER_DEFAULT#expressiveos_}
     || fail "ro.config.wallpaper is '$(prop ro.config.wallpaper)', not $WALLPAPER_DEFAULT_PATH (wallpapers/wallpapers.mk)"
 # 1.0 keeps Pixel's wallpapers in the picker, which reads one partner APK only (wallpapers/README.md)
 [[ ! -e $O/product/app/ExpressiveWallpapers ]] || fail "ExpressiveWallpapers shipped: 1.0's picker keeps PixelWallpapers2026 (wallpapers/wallpapers.mk)"
-[[ -x $H/aapt2 ]] || fail "no $H/aapt2 (m evolution builds it)"
+[[ -x $H/aapt2 ]] || fail "no $H/aapt2 (the build makes it)"
 rros=("$O"/product/overlay/framework-res__*auto_generated_rro_product.apk)
 [[ ${#rros[@]} = 1 && -f ${rros[0]} ]] || fail "not one framework-res product auto-RRO in $O/product/overlay: ${rros[*]}"
 "$H/aapt2" dump resources "${rros[0]}" > "$T/rro.txt" 2>&1 || fail "aapt2 can't read ${rros[0]}"

@@ -7,8 +7,7 @@
 # project at a commit), and the projects sync to that commit of it only, so a bad manifest
 # changes no source. A tree on any other manifest stops here.
 # A project whose repo is now another (BtHelper) is checked out again.
-# The tree is its own: nothing in it may be a symlink, hardlink or git alternate into
-# ~/evolution or ~/derpfest, so nothing this kit does can reach their builds.
+# The tree is its own: no hardlinked copy of another tree.
 # A sync drops local commits; eos-images.sh puts the kit's own back (prepare.sh).
 #
 #   setup.sh [top]          # default ~/expressiveos
@@ -25,7 +24,6 @@ source "$(dirname -- "$(readlink -f -- "$0")")/lib.sh"
 
 arg=${1:-$HOME/expressiveos}
 [[ $# -le 1 ]] || fail "usage: setup.sh [top]"
-not_other "$arg"
 PATH=$HOME/bin:$PATH
 command -v repo >/dev/null || fail "repo isn't installed"
 git lfs version >/dev/null 2>&1 || fail "git-lfs isn't installed (vendor/google/cheetah, vendor/google/husky and vendor/gms need it)"
@@ -51,7 +49,6 @@ fi
 if (( fresh )); then
     mkdir -p -- "$arg"
     top=$(cd "$arg" && pwd -P)
-    not_other "$top"
     free=$(df -BG --output=avail -- "$top" | tail -1 | tr -dc 0-9)
     min=${EOS_MIN_FREE_GB:-450}
     (( free >= min )) || fail "$top has $free GB free; a new ExpressiveOS tree needs about $min GB (EOS_MIN_FREE_GB)"
@@ -60,7 +57,6 @@ if (( fresh )); then
         || fail "repo init -u $EOS_MANIFEST_URL -b $EOS_MANIFEST_BRANCH failed (above); no project was synced, run setup.sh again"
 else
     top=$(cd "$arg" && pwd -P)
-    not_other "$top"
 fi
 for p in .repo .repo/manifests .repo/projects .repo/project-objects .repo/local_manifests; do in_top "$top/$p"; done
 # Not under a build someone started by hand in this tree: the sync would change its sources
@@ -142,18 +138,8 @@ echo "== repo sync (-j${EOS_SYNC_JOBS:-4}; the first one downloads a few hundred
 (cd "$top" && repo sync -c -j"${EOS_SYNC_JOBS:-4}" --no-tags --no-clone-bundle --optimized-fetch --no-manifest-update) || fail "repo sync failed (its errors are above); run setup.sh again to resume"
 pins_check "$top" "$EOS_MANIFEST_BRANCH" "$mf" || fail "the tree isn't on its manifest's commits after the sync (above)"
 
-# Nothing borrowed from another tree: git alternates (repo --reference) or a hardlinked copy
-while IFS= read -r -d '' a; do
-    while IFS= read -r line; do
-        [[ -n "$line" && "$line" != \#* ]] || continue
-        # Relative entries are relative to the objects folder
-        r=$(cd "${a%/info/alternates}" && realpath -m -- "$line")
-        for o in "$evo" "$derp"; do
-            [[ -z "$o" || ( "$r" != "$o" && "$r" != "$o"/* ) ]] || fail "${a#"$top"/} borrows git objects from $o; set the tree up again without --reference"
-        done
-    done < "$a"
-done < <(find "$top/.repo" -path '*/objects/info/alternates' -print0 2>/dev/null)
-# cheetah's, and the phone this run is for (EOS_DEVICE): a manifest without its projects stops here
+# cheetah's, and the phone this run is for (EOS_DEVICE): a manifest without its projects stops
+# here, and so does a tree that's a hardlinked copy of another
 for f in build/make/core/Makefile vendor/lineage/config/common.mk device/google/pantah/device-cheetah.mk "$EOS_SENTINEL"; do
     [[ -f "$top/$f" ]] || fail "$f is missing after the sync"
     [[ "$(stat -c %h -- "$top/$f")" = 1 ]] || fail "$f has other hard links: is $top a hardlinked copy of another tree? Set it up again from scratch"

@@ -1,8 +1,7 @@
 # vendor/extra/viper4android (ExpressiveOS, cheetah)
 
 Staged by `expressiveos-cheetah/viper4android/apply-v4a.sh` from the ExpressiveOS repo; don't edit
-it here, the next run puts the kit's copy back. Only the ExpressiveOS tree has it: never the
-Evolution X tree (`~/evolution`).
+it here, the next run puts the kit's copy back. Only the ExpressiveOS tree has it.
 
 ## What ships
 

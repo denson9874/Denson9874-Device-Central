@@ -22,10 +22,10 @@ names, folders and switches (Other phones, below).
 Since 2026-11-02 the build server builds ExpressiveOS only: Evolution X and DerpFest were retired and
 their trees (`~/evolution`, `~/derpfest`) deleted, after the retire script (since removed) copied the Pixel 11
 vendor blob repos into `~/expressiveos/vendor/google/` and their keys and server-only work into
-`~/retired/`. The scripts still refuse those two paths, should they come back (`prepare.sh` copies a
-Pixel 11's vendor blobs out of `~/evolution` only when the ExpressiveOS tree lacks them), write nothing
-through a symlink that leads out of `~/expressiveos` (its `out/` and `out-kernel/` included), and build
-only while holding `~/.evolution-tree.lock` (the old name stays). The one exception is
+`~/retired/`. The scripts write nothing through a symlink that leads out of `~/expressiveos` (its
+`out/` and `out-kernel/` included), and build only while holding the tree lock,
+`~/.expressiveos-tree.lock`; through 1.1 they hold its old name, `~/.evolution-tree.lock`, too, so a
+run of an older kit still waits for them and they for it. The one exception is
 `tools/server-cleanup.sh` (Disk, below). Cheetah's firmware cache is filled by `tools/fetch-firmware.sh`
 (runner action `expressiveos-firmware`).
 
@@ -77,7 +77,7 @@ project, or a patch changed in place, stops the build. In any other project they
 | `frameworks_base` 0011-0020 | The old Pixel 11 kit's background-power fixes (2026-10-26), copied: SystemUI animations that kept running with the screen off or on AOD, the colored status bar icons setting, AxSpoofManager's fetches, Extreme Charging's 50% limit |
 | `vendor_lineage` 0001 | ExpressiveOS 1.0 names, and the build's own date, so both make passes name one zip |
 | `vendor_lineage` 0002 | The old Pixel 11 kit's, copied: games get stock's 60 fps default again |
-| `vendor_lineage` 0003 | ExpressiveOS's own: `m evolution` keeps the target-files zip its OTA package is made from |
+| `vendor_lineage` 0003 | ExpressiveOS's own: the full build's goal (`m bacon` since 1.1, `m evolution` before) keeps the target-files zip its OTA package is made from |
 | `frameworks_base` 0021-0024, `packages_apps_Settings`, `packages_apps_Evolver`, `packages_apps_Updater`, `lineage-sdk`, `packages_apps_LineageParts`, `packages_apps_EvoEgg`, `packages_apps_Sandbox`, `vendor_pixel-style`, `system_core`, `bootable_recovery` | ExpressiveOS's branding (Daryl, 2026-10-27: "ExpressiveOS only, no mention"): every screen, icon, link and the crash report header say ExpressiveOS, the Evolver is "Expressive Studio", the crash dialog copies the log instead of uploading it to Evolution X's paste site, recovery shows ExpressiveOS's mark. Made at the server's revisions of 2026-10-26; the images come from [`branding/`](branding/README.md) |
 | `system_update_engine` 0001 | update_engine checks payload and metadata signatures again (Daryl, 2026-10-27); Evolution X's 59fbd47 skips them, on the phone and in the host's `delta_generator` |
 | `system_update_engine` 0002 | No OTA downgrades on user builds again (59fbd47's other half): going back to an older build means fastboot |
@@ -130,18 +130,31 @@ after it ends (`out`).
 refuses an update signed with any other key, and the same keys can't be made twice. Nothing in the kit
 or the runner makes keys any more, and `eos-keys-check.sh` fails a tree whose keys aren't the pinned ones.
 
-When `~/expressiveos/vendor/evolution-priv/keys` is missing or damaged (a new server, the tree set up
-again), restore it from the backup: `~/expressiveos-keys-<time>.tar.gz` on the server (`expressiveos-status`
-lists it), or its copy kept off the server (a `.tar.gz.gpg` one: `gpg -d` it first). In a fresh login shell:
+**The key folder is `vendor/expressiveos-priv/keys`** since 1.1: on 2026-11-08 the runner's
+`expressiveos-keys-move` (`tools/eos-keys-move.sh`) moved it there from `vendor/evolution-priv/keys`, its
+name before. A move, not new keys: every key file is byte-identical, only `keys.mk`'s two paths name the
+new folder, and the 1.0 phones keep taking updates. Query `check` (read-only) shows which folder the tree
+has, every file's size and sha256, and whether a move could run; `move` and `revert` refuse while
+anything builds or syncs, and each leaves a backup archive in `~` from before and from after. The
+scripts read the new folder whenever it's there and the old one only while it isn't (a tree before the
+move, or after `revert`); 1.1's `vendor/lineage` reads only the new one, 1.0's only the old one.
+
+When `~/expressiveos/vendor/expressiveos-priv/keys` is missing or damaged (a new server, the tree set up
+again), restore it from the backup: the newest `~/expressiveos-keys-<time>.tar.gz` on the server
+(`expressiveos-status` lists them), or its copy kept off the server (a `.tar.gz.gpg` one: `gpg -d` it
+first). An archive from before 2026-11-08's move has a `keys.mk` that names `vendor/evolution-priv`:
+restore that one into `vendor/evolution-priv` instead (the same lines with that folder), then run
+`tools/eos-keys-move.sh move`. In a fresh login shell:
 
 ```bash
 cd ~/expressiveos
-if [ -e vendor/evolution-priv/keys ] || [ -L vendor/evolution-priv/keys ]; then
-    ls -la vendor/evolution-priv/keys; echo "STOP: keys are there already; check them (eos-keys-check.sh tree), don't restore over them"
+priv=vendor/expressiveos-priv   # vendor/evolution-priv for an archive from before 2026-11-08
+if [ -e vendor/expressiveos-priv ] || [ -L vendor/expressiveos-priv ] || [ -e vendor/evolution-priv ] || [ -L vendor/evolution-priv ]; then
+    ls -la vendor/*-priv; echo "STOP: a key folder is there already; check it (eos-keys-check.sh tree, eos-keys-move.sh check), don't restore over it"
 else
-    umask 077 && mkdir -p vendor/evolution-priv &&
-    tar -C vendor/evolution-priv -xzf ~/expressiveos-keys-<time>.tar.gz &&   # the archive holds keys/
-    chmod 700 vendor/evolution-priv/keys && chmod 600 vendor/evolution-priv/keys/*.pk8 &&
+    umask 077 && mkdir -p "$priv" &&
+    tar -C "$priv" -xzf ~/expressiveos-keys-<time>.tar.gz &&   # the archive holds keys/
+    chmod 700 "$priv/keys" && chmod 600 "$priv"/keys/*.pk8 &&
     ~/expressiveos-cheetah/tools/eos-keys-check.sh tree   # last line KEYS_CHECK=OK
 fi
 ```
@@ -158,12 +171,13 @@ In tmux. A first build runs longer than the runner job's 4-hour limit.
 
 ```bash
 ~/expressiveos-cheetah/setup.sh               # only to set up the tree or put it back on its pins
-~/expressiveos-cheetah/tools/eos-images.sh    # waits for the Evolution X routines' lock and any running build
+~/expressiveos-cheetah/tools/eos-images.sh    # waits for the build locks and any running build
 ```
 
-It waits for `~/.expressiveos.lock`, then the routines' `~/.evolution-tree.lock`, and holds both to the end
+It waits for `~/.expressiveos.lock`, then the tree lock, `~/.expressiveos-tree.lock`, and through 1.1
+its old name, `~/.evolution-tree.lock`, and holds them to the end
 (never set `EOS_HOLDS_LOCK` yourself: the script checks that its own run holds them).
-`tools/eos-make.sh` run alone takes the same two locks. It runs `prepare.sh`, the key checks,
+`tools/eos-make.sh` run alone takes the same locks. It runs `prepare.sh`, the key checks,
 the three kits, checks the name and version the build will carry,
 records the sources, runs the make (`tools/eos-make.sh`) and `eos-verify.sh`. Everything
 also goes to `~/expressiveos-build.log` (another phone's: `~/expressiveos-build-<device>.log`; the run
@@ -176,8 +190,9 @@ before is kept as `.1`); the last line is `BUILD_EXIT=0` or `BUILD_EXIT=1`.
   `modules=` compile check asks the next build that makes images (full or quick) for it itself; a
   kernel-only run skips it.
 - `EOS_QUICK=1`: a quick build (the runner's `quick`), to test a change on a phone: the images only,
-  `m droid` where a full build runs `m evolution`, which is `droid` plus the OTA package and its
-  target-files zip (`vendor/lineage`'s `build/tasks/evolution.mk`), about 5 of a cheetah build's 8 to
+  `m droid` where a full build runs `m bacon`, which is `droid` plus the OTA package and its
+  target-files zip (`vendor/lineage`'s `build/tasks/bacon.mk`; a tree from before 1.1 has no `bacon`
+  goal and builds the same with `m evolution`), about 5 of a cheetah build's 8 to
   11 minutes. `eos-verify.sh` checks everything but the package, its payload and the target-files,
   and the run writes `quick.ok` instead of `build.ok` (Test and release, "Quick builds").
 
@@ -261,7 +276,7 @@ Where it came from, in `sources/`:
 
 A complete run leaves in `out/eos/` (another phone's in `out/eos-<device>/`): `build.ok` (the OTA
 package's sha256, which `eos-pack.sh` needs),
-`target-files.ok` (the sha256 of the target-files zip it was made from, which `m evolution` leaves in
+`target-files.ok` (the sha256 of the target-files zip it was made from, which `m bacon` leaves in
 `obj/PACKAGING/target_files_intermediates/`),
 `manifest.xml` (the tree's `repo manifest -r`), `kernel-manifest.xml` (the kernel's) and `sources.txt`
 (the kit's commit, the Expressive Launcher source, and each patched project's
@@ -666,9 +681,9 @@ build holds `~/.expressiveos.lock`).
   android16-6.12 GKI `boot.img`, prebuilt) and stock vendor, vendor_dlkm, system_dlkm and dtbo images:
   init_boot is the build's own, stock, as on every phone, and no ViPER4Android (no HIDL effect HAL)
   for now. Their vendor blobs, `vendor/google/<device>`, aren't in
-  ExpressiveOS's manifest (Google's files, never pushed anywhere): `prepare.sh` copies the build
-  server's own repo of them (`~/evolution`'s, only read) on the first build and moves to its newer
-  commits after, and `sources.txt` records the commit. `vendor/google/<device>-images` (those images and
+  ExpressiveOS's manifest (Google's files, never pushed anywhere): the build server's own repo of
+  them is in the tree (copied there on 2026-11-02, before the old trees were deleted), `prepare.sh` only
+  reads it and stops when it's missing, and `sources.txt` records its commit. `vendor/google/<device>-images` (those images and
   the firmware) is made by the device tree's `extract-images.sh` from the newest
   `~/android-dt/firmware/image-<device>-*.zip`, again only when that zip changes. The fastboot zip takes
   its `super_empty.img` from that zip too, flashes `vendor_kernel_boot`, and says
@@ -682,7 +697,7 @@ release) gets a candidate to testers.
 
 `tools/server-cleanup.sh`, through the runner actions `server-cleanup-list` (read-only) and
 `server-cleanup` (query: groups such as `1,2,3`), lists and removes old builds and outputs, Evolution X's
-and DerpFest's copies included, by exact path and only while it holds `~/.evolution-tree.lock`. It never
+and DerpFest's copies included, by exact path and only while it holds the tree lock (both its names). It never
 touches the `~/android-dt/firmware/image-*.zip` files every fastboot pack reads or the firmware cache,
 never removes a folder holding a `.device-ok` record, and never the newest ExpressiveOS release's
 target-files (`target-files/LATEST`). Release zips don't need to stay on the server
@@ -690,7 +705,7 @@ target-files (`target-files/LATEST`). Release zips don't need to stay on the ser
 
 A target-files zip takes several GB (about 8, until the first build measures it): one in `out/` (kept
 until the next build starts), a copy in `check/`, one per release in `target-files/` (a hard link to
-`check/`'s while that's the same build), and while `m evolution` packages it, its unpacked copy in `out/`
+`check/`'s while that's the same build), and while `m bacon` packages it, its unpacked copy in `out/`
 too. An older release's can go once its `.uploaded` marker is there.
 
 ## Not done yet

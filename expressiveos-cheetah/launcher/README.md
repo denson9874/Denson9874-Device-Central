@@ -58,10 +58,8 @@ their first letters, the 3-button order switch and renaming small folders. Same 
 uses-library tags and licence files again.
 
 This folder is only the launcher part of the ExpressiveOS kit. It works on the ExpressiveOS tree
-(`~/expressiveos`), for every phone in `../devices/`. **None of it applies to the Evolution X tree
-(`~/evolution`) or DerpFest's (`~/derpfest`)**: `apply-launcher.sh` refuses them, and any
-`vendor/extra` that leads out of the tree or into them through a symlink; `tools/launcher-check.sh
-tree` fails on the same.
+(`~/expressiveos`), for every phone in `../devices/`. `apply-launcher.sh` refuses any `vendor/extra`
+that leads out of the tree through a symlink; `tools/launcher-check.sh tree` fails on the same.
 
 ## What ships
 
@@ -161,8 +159,7 @@ build is left in `out/`: `out` fails if one is.
 
 ### What the checks cover
 
-- `tree <top>` (pre-build): the tree isn't `~/evolution` or `~/derpfest`, and nothing the kit writes
-  leads out of it; `vendor/extra/launcher` matches the kit and the pins (nothing else in it);
+- `tree <top>` (pre-build): nothing the kit writes leads out of the tree; `vendor/extra/launcher` matches the kit and the pins (nothing else in it);
   `vendor/extra/product.mk` inherits `launcher.mk` outside any conditional, and
   `vendor/lineage/config/common.mk` still inherits `vendor/extra/product.mk`; `launcher.mk` names every
   `../devices/<device>.conf` phone; every permission the APK asks for that this tree's frameworks/base

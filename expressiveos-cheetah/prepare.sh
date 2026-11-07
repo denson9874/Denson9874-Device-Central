@@ -10,9 +10,9 @@
 #           newest ~/android-dt/firmware/image-<device>-*.zip, again only when that zip
 #           changed (the Pixel 11s: stock vendor, boot, dtbo and firmware images). Their
 #           vendor blobs, vendor/google/<device>, aren't in ExpressiveOS's manifest (Google's
-#           files, never pushed anywhere): the first build copies the build server's own repo
-#           of them, ~/evolution's, which is only read, and a later one moves to its newer
-#           commits; eos-images.sh records the commit in sources.txt.
+#           files, never pushed anywhere): the build server's own repo of them is in the tree
+#           (copied there on 2026-11-02, before the old trees were deleted), only read here;
+#           eos-images.sh records its commit in sources.txt.
 # eos-images.sh runs this before the ViPER4Android, boot animation, wallpaper and launcher
 # kits.
 #
@@ -27,30 +27,11 @@ eos_top "${1:-}"
 vendor="$top/$EOS_VENDOR_DIR"
 
 if [[ $EOS_FIRMWARE_MODE = images ]]; then
-    # Google's blobs for this phone, from the server's own repo of them (read, never written)
-    src=${evo:+$evo/$EOS_VENDOR_DIR}
+    # Google's blobs for this phone: the server's own repo of them, in the tree (read, never written)
     in_top "$vendor"
-    if [[ ! -e $vendor ]]; then
-        [[ -n $src && -d $src/.git ]] || fail "$EOS_VENDOR_DIR isn't in this tree, and there's no ~/evolution/$EOS_VENDOR_DIR to copy it from"
-        echo "$EOS_VENDOR_DIR: copying the build server's repo (~/evolution/$EOS_VENDOR_DIR, $(git -C "$src" rev-parse --short HEAD))"
-        git clone -q --no-hardlinks --no-checkout -- "$src" "$vendor" || fail "can't copy ~/evolution/$EOS_VENDOR_DIR"
-        git -C "$vendor" remote rename origin server || fail "can't name $EOS_VENDOR_DIR's remote"
-        git -C "$vendor" checkout -q --detach "$(git -C "$src" rev-parse HEAD)" || fail "can't check out $EOS_VENDOR_DIR"
-    fi
+    [[ -e $vendor ]] || fail "$EOS_VENDOR_DIR isn't in this tree: Google's vendor files for $EOS_DEVICE aren't in ExpressiveOS's manifest, so the build server's own repo of them has to be put back there (a git repo of its own, as it was copied on 2026-11-02)"
     project_ok "$vendor"
     [[ -z "$(git -C "$vendor" status --porcelain)" ]] || fail "$EOS_VENDOR_DIR has changes that aren't committed (git -C $vendor status)"
-    if [[ -n $src && -d $src/.git ]]; then
-        sh=$(git -C "$src" rev-parse HEAD)
-        if [[ $(git -C "$vendor" rev-parse HEAD) != "$sh" ]]; then
-            git -C "$vendor" fetch -q server "+HEAD:refs/remotes/server/HEAD" || fail "can't read ~/evolution/$EOS_VENDOR_DIR"
-            if git -C "$vendor" merge-base --is-ancestor HEAD "$sh"; then
-                git -C "$vendor" checkout -q --detach "$sh" || fail "can't move $EOS_VENDOR_DIR to ${sh:0:12}"
-                echo "$EOS_VENDOR_DIR: moved to the server repo's ${sh:0:12}"
-            else
-                echo "WARNING: $EOS_VENDOR_DIR is at $(git -C "$vendor" rev-parse --short HEAD), which the server repo's ${sh:0:12} doesn't build on: kept as it is"
-            fi
-        fi
-    fi
     echo "OK: $EOS_VENDOR_DIR at $(git -C "$vendor" log -1 --format='%h %s' | cut -c1-90)"
 fi
 

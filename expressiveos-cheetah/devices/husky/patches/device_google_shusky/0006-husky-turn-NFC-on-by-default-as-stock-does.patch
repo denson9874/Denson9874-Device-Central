@@ -3,11 +3,13 @@ From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Sat, 24 Oct 2026 12:23:39 +0200
 Subject: [PATCH 06/10] husky: turn NFC on by default, as stock does
 
-LineageOS's NfcOverlay sets enable_nfc_default=false, so after a clean flash
+vendor/lineage's ExpressiveOSNfcOverlay (LineageOS's NfcOverlay, renamed
+in ExpressiveOS) sets enable_nfc_default=false, so after a clean flash
 NFC (and tap-to-pay) stayed off until the user found the toggle. Stock and
-AOSP default to on. NfcOverlayHusky (priority 1, above NfcOverlay) sets it
-back, with stock PixelNfcOverlayCommon's URL-open dialog for mcc204-mnc04,
-mcc310-mnc04 and mcc311-mnc480. Same as kodiak e016d25.
+AOSP default to on. NfcOverlayHusky (priority 1, above
+ExpressiveOSNfcOverlay) sets it back, with stock PixelNfcOverlayCommon's
+URL-open dialog for mcc204-mnc04, mcc310-mnc04 and mcc311-mnc480. Same as
+kodiak e016d25.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
@@ -17,8 +19,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  .../res/values-mcc204-mnc04/config.xml             |  9 +++++++++
  .../res/values-mcc310-mnc04/config.xml             |  9 +++++++++
  .../res/values-mcc311-mnc480/config.xml            |  9 +++++++++
- .../overlay/NfcOverlayHusky/res/values/config.xml  | 10 ++++++++++
- 7 files changed, 64 insertions(+)
+ .../overlay/NfcOverlayHusky/res/values/config.xml  | 11 +++++++++++
+ 7 files changed, 65 insertions(+)
  create mode 100644 husky/overlay/NfcOverlayHusky/Android.bp
  create mode 100644 husky/overlay/NfcOverlayHusky/AndroidManifest.xml
  create mode 100644 husky/overlay/NfcOverlayHusky/res/values-mcc204-mnc04/config.xml
@@ -55,7 +57,7 @@ index 0000000..7c95259
 +}
 diff --git a/husky/overlay/NfcOverlayHusky/AndroidManifest.xml b/husky/overlay/NfcOverlayHusky/AndroidManifest.xml
 new file mode 100644
-index 0000000..9839a36
+index 0000000..9c96c41
 --- /dev/null
 +++ b/husky/overlay/NfcOverlayHusky/AndroidManifest.xml
 @@ -0,0 +1,14 @@
@@ -66,7 +68,7 @@ index 0000000..9839a36
 +-->
 +<manifest xmlns:android="http://schemas.android.com/apk/res/android"
 +    package="com.android.nfc.overlay.husky">
-+    <!-- Priority 1: above LineageOS's NfcOverlay (priority 0), which turns NFC off by default. -->
++    <!-- Priority 1: above vendor/lineage's ExpressiveOSNfcOverlay (priority 0), which turns NFC off by default. -->
 +    <overlay
 +        android:isStatic="true"
 +        android:priority="1"
@@ -120,18 +122,19 @@ index 0000000..9c21f2d
 +</resources>
 diff --git a/husky/overlay/NfcOverlayHusky/res/values/config.xml b/husky/overlay/NfcOverlayHusky/res/values/config.xml
 new file mode 100644
-index 0000000..55a35df
+index 0000000..9ca0d00
 --- /dev/null
 +++ b/husky/overlay/NfcOverlayHusky/res/values/config.xml
-@@ -0,0 +1,10 @@
+@@ -0,0 +1,11 @@
 +<?xml version="1.0" encoding="utf-8"?>
 +<!--
 +    SPDX-FileCopyrightText: The LineageOS Project
 +    SPDX-License-Identifier: Apache-2.0
 +-->
 +<resources>
-+    <!-- Stock Pixels and AOSP turn NFC on after a clean flash; LineageOS's NfcOverlay
-+         turns it off, so tap-to-pay didn't work until the user found the toggle. -->
++    <!-- Stock Pixels and AOSP turn NFC on after a clean flash; vendor/lineage's
++         ExpressiveOSNfcOverlay turns it off, so tap-to-pay didn't work until the user
++         found the toggle. -->
 +    <bool name="enable_nfc_default">true</bool>
 +</resources>
 -- 

@@ -170,9 +170,12 @@ for n in "${chosen[@]}"; do
 done
 
 if [[ "$mode" = delete ]]; then
-    # Held to the end: no routine or build starts while files go
-    exec 9>"$home/.evolution-tree.lock"
-    flock -n 9 || fail "the tree lock is held (a routine or build is running); run delete again later (nothing was removed)"
+    # Held to the end: no routine or build starts while files go. The tree lock is
+    # ~/.expressiveos-tree.lock since 1.1; through 1.1 the kit holds its old name too
+    exec 9>"$home/.expressiveos-tree.lock"
+    flock -n 9 || fail "the tree lock is held (a build is running); run delete again later (nothing was removed)"
+    exec 7>"$home/.evolution-tree.lock"
+    flock -n 7 || fail "the tree lock's old name, ~/.evolution-tree.lock, is held (a build of an older kit is running); run delete again later (nothing was removed)"
     exec 8>"$home/.expressiveos.lock"
     flock -n 8 || fail "ExpressiveOS's lock is held (a build, pack or kit script is running); run delete again later (nothing was removed)"
 fi
