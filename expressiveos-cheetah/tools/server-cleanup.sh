@@ -1,38 +1,34 @@
 #!/usr/bin/env bash
-# Free disk on the build server. Second round (2026-10-31); the first round's seven groups
-# (2026-10-26: release zips, test copies, factory zips, the emulator's product output) are
-# all gone, and git history has them. The groups below come from the runner's server-usage
-# listing of 2026-10-31 (sizes then):
-#   1  scratch and an old cache: /tmp/kimg (Oct 10) and ~/.cache/ccache, unused since
-#      Oct 9 (ccache's cache is ~/.ccache)                                         ~13 GB
-#   2  Evolution X's emulator leftovers: lineage_sdk_phone_arm64's own files in
-#      ~/evolution/out and out/soong (its product output went on 2026-10-26)       ~12 GB
-#   3  DerpFest's kodiak build: its product output (last built Oct 19; DerpFest's feed is
-#      husky only) and lineage_kodiak's own files in ~/derpfest/out and out/soong  ~26 GB
-#   4  all of DerpFest's build output: ~/derpfest/out and ~/derpfest/out-kernel (its
-#      source stays; the next DerpFest build starts from scratch)                 ~175 GB
-#   5  ExpressiveOS's kodiak build output, ~/expressiveos/out/target/product/kodiak (its
-#      root test build is packed in check/; the next kodiak build redoes it)       ~29 GB
-#   6  ExpressiveOS's husky candidate in check/ (testers-only, Oct 30)             ~13 GB
-#   7  the reeky LineageOS kodiak reference: ~/android-dt/ref/reeky, ~/android-dt/reeky
-#                                                                                   ~22 GB
-# Done 2026-10-31 17:06 UTC with Daryl's OK: groups 1, 2 and 4 (195 GB, so 3 went with 4;
-# 317 GB free after). 5 and 6 belong to the six-Pixel work on hold; 5, 6 and 7 need Daryl's OK.
-# Exact paths only, never a pattern, and deleting is permanent, so `delete` runs only the
-# groups Daryl approved, and only while it holds the tree lock the routines and builds take
-# (and ExpressiveOS's lock for groups 5 and 6), so nothing is removed from under a routine,
-# a build or a pack. Groups 2-5 remove build output, so they also wait until no build runs
-# at all (soong_ui or ninja, in any tree) and no ExpressiveOS tmux session (eos-build,
-# eos-pack) is open. Nothing on the keep list goes, nor anything holding it: the firmware
-# the pack scripts read, every product output a weekly routine or an open thread builds on
-# (Evolution X's six phones, ExpressiveOS's cheetah), the ExpressiveOS records (out/eos*),
-# the check/ candidates in use (cheetah's integrity test build, kodiak's root test build),
-# the DDK, the stock dumps and ccache's cache. No folder holding an on-device gate's
-# .device-ok record is removed either, nor the newest ExpressiveOS release's target-files
-# (~/releases/expressiveos-*/target-files/LATEST).
+# Free disk on the build server. Third round (2026-11-06). Daryl's rule that day: the server
+# keeps only what release builds, deltas and test builds need, and check/ and out/ files go
+# once they're no longer needed. The groups below come from the runner's server-usage listing
+# of 2026-11-06 (run 42285807240, sizes then; 877 GB free). Rounds 1 (2026-10-26) and 2
+# (2026-10-31) are in git history.
+#   1  the Nov 3 releases' zips in ~/releases, all six phones: each release's fastboot zip
+#      (on R2 and Drive; its .sha256 stays, as eos-ota.sh expects) and its full OTA package
+#      in ota/ (on R2, the live feed's; five of them are hard links of out/'s, so they free
+#      their space with group 3)                                                   ~53 GB
+#   2  the released Nov 3 candidates in check/ of husky, kodiak, grizzly, cubs and yogi: the
+#      fastboot zip, its .pack-ok, its target-files (a hard link of target-files/'s, which
+#      stays) and its text files. The .device-ok records stay                      ~26 GB
+#   3  the build output of husky, kodiak, grizzly, cubs and yogi: out/target/product/<phone>
+#      and each product's own files in out/ and out/soong (Kati's and Soong's ninja files,
+#      raw-lineage_<phone>/ ...), plus the KernelSU leftovers out/ksu, out/ksu-husky and
+#      out/ksu-kodiak (KernelSU left ExpressiveOS on 2026-11-03). Each phone's next build
+#      starts its product over; the shared build output and ccache stay           ~200 GB
+#   4  what no build reads: the stock firmware dumps ~/android-dt/dumps and the Pixel 11
+#      kernel DDK ~/android-dt/ddk                                                  ~59 GB
+# Kept, whatever the groups say: cheetah's build output and its check/ candidate (the test
+# builds), out-kernel, the ExpressiveOS records (out/eos*), the firmware the pack scripts
+# read, each phone's newest release target-files (the next delta's base), every .device-ok
+# record, ccache's cache. Daryl approved groups 1, 2 and 3 on 2026-11-06; group 4 needs his OK.
+# Exact paths only (built from the fixed phone and release names below, never a glob), and
+# deleting is permanent, so `delete` runs only the groups named, only while it holds the tree
+# lock and ExpressiveOS's lock, and only while no build runs (soong_ui or ninja, in any tree)
+# and no ExpressiveOS tmux session (eos-build, eos-pack) is open.
 #
 #   server-cleanup.sh list [groups]       # what's there now, with sizes; changes nothing
-#   server-cleanup.sh delete <groups>     # e.g. delete 1,2
+#   server-cleanup.sh delete <groups>     # e.g. delete 1,2,3
 #
 # The last line is CLEANUP=LISTED, OK, PARTIAL (a group was skipped: a build was running)
 # or FAIL.
@@ -42,168 +38,68 @@ trap '[[ $done = 1 ]] || echo "CLEANUP=FAIL"' EXIT
 fail() { echo "ERROR: $*" >&2; exit 1; }
 
 mode=${1:-}
-groups=${2:-1,2,3,4,5,6,7}
+groups=${2:-1,2,3,4}
 [[ "$mode" = list || "$mode" = delete ]] && [[ $# -le 2 ]] || fail "usage: server-cleanup.sh list [groups] | delete <groups>"
 [[ "$mode" = list || $# -eq 2 ]] || fail "delete needs the groups, e.g. delete 1,2"
-[[ "$groups" =~ ^[1-7](,[1-7])*$ ]] || fail "groups are numbers 1-7 separated by commas, not '$groups'"
+[[ "$groups" =~ ^[1-4](,[1-4])*$ ]] || fail "groups are numbers 1-4 separated by commas, not '$groups'"
 
 # The groups are read through a nameref (g$n). Entries ending in / are folders
-E=evolution/out D=derpfest/out X=expressiveos/out R=releases A=android-dt
-# shellcheck disable=SC2034
-g1=(
-    /tmp/kimg/
-    .cache/ccache/
-)
-# shellcheck disable=SC2034
-g2=(
-    "$E/build-lineage_sdk_phone_arm64-cleanspec.ninja"
-    "$E/build-lineage_sdk_phone_arm64.ninja"
-    "$E/build-lineage_sdk_phone_arm64-package.ninja"
-    "$E/combined-lineage_sdk_phone_arm64.ninja"
-    "$E/env-lineage_sdk_phone_arm64-cleanspec.sh"
-    "$E/env-lineage_sdk_phone_arm64-package.sh"
-    "$E/env-lineage_sdk_phone_arm64.sh"
-    "$E/.kati_stamp-lineage_sdk_phone_arm64"
-    "$E/.kati_stamp-lineage_sdk_phone_arm64-cleanspec"
-    "$E/.kati_stamp-lineage_sdk_phone_arm64-package"
-    "$E/ninja-lineage_sdk_phone_arm64-cleanspec.sh"
-    "$E/ninja-lineage_sdk_phone_arm64-package.sh"
-    "$E/ninja-lineage_sdk_phone_arm64.sh"
-    "$E/soong/Android-lineage_sdk_phone_arm64.mk"
-    "$E/soong/build.lineage_sdk_phone_arm64.0.ninja"
-    "$E/soong/build.lineage_sdk_phone_arm64.1.ninja"
-    "$E/soong/build.lineage_sdk_phone_arm64.2.ninja"
-    "$E/soong/build.lineage_sdk_phone_arm64.3.ninja"
-    "$E/soong/build.lineage_sdk_phone_arm64.4.ninja"
-    "$E/soong/build.lineage_sdk_phone_arm64.5.ninja"
-    "$E/soong/build.lineage_sdk_phone_arm64.6.ninja"
-    "$E/soong/build.lineage_sdk_phone_arm64.7.ninja"
-    "$E/soong/build.lineage_sdk_phone_arm64.8.ninja"
-    "$E/soong/build.lineage_sdk_phone_arm64.9.ninja"
-    "$E/soong/build.lineage_sdk_phone_arm64.ninja"
-    "$E/soong/build.lineage_sdk_phone_arm64.ninja.d"
-    "$E/soong/build.lineage_sdk_phone_arm64.ninja.glob_results"
-    "$E/soong/build.lineage_sdk_phone_arm64.ninja.globs"
-    "$E/soong/build.lineage_sdk_phone_arm64.ninja.globs_time"
-    "$E/soong/build_uuid-lineage_sdk_phone_arm64.txt"
-    "$E/soong/dexpreopt-lineage_sdk_phone_arm64.config"
-    "$E/soong/installs-lineage_sdk_phone_arm64.mk"
-    "$E/soong/kati_packaging-lineage_sdk_phone_arm64/"
-    "$E/soong/late-lineage_sdk_phone_arm64.mk"
-    "$E/soong/make_vars-lineage_sdk_phone_arm64.mk"
-    "$E/soong/module-info-lineage_sdk_phone_arm64.json"
-    "$E/soong/raw-lineage_sdk_phone_arm64/"
-    "$E/soong/soong.environment.used.lineage_sdk_phone_arm64.build"
-    "$E/soong/soong.lineage_sdk_phone_arm64.extra.variables"
-    "$E/soong/soong.lineage_sdk_phone_arm64.variables"
-)
-# shellcheck disable=SC2034
-g3=(
-    "$D/target/product/kodiak/"
-    "$D/build-lineage_kodiak-cleanspec.ninja"
-    "$D/build-lineage_kodiak.ninja"
-    "$D/build-lineage_kodiak-package.ninja"
-    "$D/combined-lineage_kodiak.ninja"
-    "$D/env-lineage_kodiak-cleanspec.sh"
-    "$D/env-lineage_kodiak-package.sh"
-    "$D/env-lineage_kodiak.sh"
-    "$D/.kati_stamp-lineage_kodiak"
-    "$D/.kati_stamp-lineage_kodiak-cleanspec"
-    "$D/.kati_stamp-lineage_kodiak-package"
-    "$D/ninja-lineage_kodiak-cleanspec.sh"
-    "$D/ninja-lineage_kodiak-package.sh"
-    "$D/ninja-lineage_kodiak.sh"
-    "$D/soong/Android-lineage_kodiak.mk"
-    "$D/soong/build.lineage_kodiak.0.ninja"
-    "$D/soong/build.lineage_kodiak.1.ninja"
-    "$D/soong/build.lineage_kodiak.2.ninja"
-    "$D/soong/build.lineage_kodiak.3.ninja"
-    "$D/soong/build.lineage_kodiak.4.ninja"
-    "$D/soong/build.lineage_kodiak.5.ninja"
-    "$D/soong/build.lineage_kodiak.6.ninja"
-    "$D/soong/build.lineage_kodiak.7.ninja"
-    "$D/soong/build.lineage_kodiak.8.ninja"
-    "$D/soong/build.lineage_kodiak.9.ninja"
-    "$D/soong/build.lineage_kodiak.ninja"
-    "$D/soong/build.lineage_kodiak.ninja.d"
-    "$D/soong/build.lineage_kodiak.ninja.glob_results"
-    "$D/soong/build.lineage_kodiak.ninja.globs"
-    "$D/soong/build.lineage_kodiak.ninja.globs_time"
-    "$D/soong/build_uuid-lineage_kodiak.txt"
-    "$D/soong/dexpreopt-lineage_kodiak.config"
-    "$D/soong/installs-lineage_kodiak.mk"
-    "$D/soong/kati_packaging-lineage_kodiak/"
-    "$D/soong/late-lineage_kodiak.mk"
-    "$D/soong/make_vars-lineage_kodiak.mk"
-    "$D/soong/module-info-lineage_kodiak.json"
-    "$D/soong/raw-lineage_kodiak/"
-    "$D/soong/soong.environment.used.lineage_kodiak.build"
-    "$D/soong/soong.lineage_kodiak.extra.variables"
-    "$D/soong/soong.lineage_kodiak.variables"
-)
-# shellcheck disable=SC2034
-g4=(
-    "$D/"
-    derpfest/out-kernel/
-)
-# shellcheck disable=SC2034
-g5=("$X/target/product/kodiak/")
-H=$R/expressiveos-husky/check/ExpressiveOS-17.0-20261030-husky-1.0-Unofficial
-# shellcheck disable=SC2034
-g6=(
-    "$H-fastboot.zip"
-    "$H-fastboot.zip.pack-ok"
-    "$H-init_boot-stock.img"
-    "$H-kernel-manifest.xml"
-    "$H-manifest.xml"
-    "$H-sources.txt"
-    "$H-target_files.zip"
-)
-# shellcheck disable=SC2034
-g7=(
-    "$A/ref/reeky/"
-    "$A/reeky/"
-)
-F=$A/firmware
+X=expressiveos/out R=releases A=android-dt
+ALL=(cheetah husky kodiak grizzly cubs yogi)
+DONE=(husky kodiak grizzly cubs yogi)  # released Nov 3, no test build planned before 1.1
+rel() { echo "ExpressiveOS-17.0-20261103-$1-1.0-Official"; }
+g1=() g2=() g3=() g4=()
+for d in "${ALL[@]}"; do
+    g1+=("$R/expressiveos-$d/$(rel "$d")-fastboot.zip" "$R/expressiveos-$d/ota/$(rel "$d").zip")
+done
+for d in "${DONE[@]}"; do
+    c=$R/expressiveos-$d/check/$(rel "$d")
+    g2+=("$c-fastboot.zip" "$c-fastboot.zip.pack-ok" "$c-target_files.zip"
+         "$c-manifest.xml" "$c-kernel-manifest.xml" "$c-sources.txt" "$c-changelog.txt")
+    [[ $d = husky ]] || g2+=("$c-announcement.md")
+    P=lineage_$d
+    g3+=("$X/target/product/$d/")
+    for f in "build-$P-cleanspec.ninja" "build-$P.ninja" "build-$P-package.ninja" "combined-$P.ninja" \
+             "env-$P-cleanspec.sh" "env-$P-package.sh" "env-$P.sh" \
+             ".kati_stamp-$P" ".kati_stamp-$P-cleanspec" ".kati_stamp-$P-package" \
+             "ninja-$P-cleanspec.sh" "ninja-$P-package.sh" "ninja-$P.sh"; do
+        g3+=("$X/$f")
+    done
+    for f in "Android-$P.mk" "build.$P.0.ninja" "build.$P.1.ninja" "build.$P.2.ninja" "build.$P.3.ninja" \
+             "build.$P.4.ninja" "build.$P.5.ninja" "build.$P.6.ninja" "build.$P.7.ninja" "build.$P.8.ninja" \
+             "build.$P.9.ninja" "build.$P.ninja" "build.$P.ninja.d" "build_uuid-$P.txt" "dexpreopt-$P.config" \
+             "installs-$P.mk" "kati_packaging-$P/" "late-$P.mk" "make_vars-$P.mk" "module-info-$P.json" \
+             "raw-$P/" "soong.environment.used.$P.build" "soong.$P.extra.variables" "soong.$P.variables"; do
+        g3+=("$X/soong/$f")
+    done
+done
+g3+=("$X/ksu/" "$X/ksu-husky/" "$X/ksu-kodiak/")
+g4=("$A/dumps/" "$A/ddk/")
 keep=(
-    # Firmware the pack scripts and fetch-firmware.sh read
-    "$F/image-kodiak-cd1a.261005.003.zip"
-    "$F/image-yogi-cd1a.261005.003.zip"
-    "$F/image-grizzly-cd1a.261005.003.zip"
-    "$F/image-cubs-cd1a.261005.003.zip"
-    "$F/image-cheetah-cp3a.261005.002.a1.zip"
-    "$F/image-husky-cp3a.261005.005.zip"
-    "$F/cheetah/"
-    # What the next builds start from: the weekly routines' six phones, ExpressiveOS's cheetah
-    "$E/target/product/cheetah/"
-    "$E/target/product/husky/"
-    "$E/target/product/kodiak/"
-    "$E/target/product/grizzly/"
-    "$E/target/product/cubs/"
-    "$E/target/product/yogi/"
+    # The firmware the pack scripts and fetch-firmware.sh read
+    "$A/firmware/"
+    # The test builds: cheetah's build output and its check/ candidate; the kernel build
     "$X/target/product/cheetah/"
-    "$X/eos/"
-    "$X/eos-husky/"
-    "$X/eos-kodiak/"
-    # Candidates in use: cheetah's integrity test build (on the 7 Pro), kodiak's root test build
     "$R/expressiveos-cheetah/check/"
-    "$R/expressiveos-kodiak/check/"
-    # Gate records, the stock dumps, ccache's cache
-    "$R/husky/check/EvolutionX-17.0-20261024-husky-12.3-Unofficial.zip.device-ok"
-    "$R/cheetah/check/EvolutionX-17.0-20261024-cheetah-12.3-Unofficial.zip.device-ok"
-    "$A/dumps/"
+    expressiveos/out-kernel/
+    # The ExpressiveOS records, and ccache's cache
+    "$X/eos/"
     .ccache/
 )
+for d in "${ALL[@]}"; do
+    # Each release's fastboot zip checksum stays (eos-ota.sh's sign of a release of this folder),
+    # and so do the phones' build records
+    keep+=("$R/expressiveos-$d/$(rel "$d")-fastboot.zip.sha256")
+    [[ $d = cheetah ]] || keep+=("$X/eos-$d/")
+done
 
 home=$(cd ~ && pwd -P)
 # Absolute path of an entry: /tmp entries as they are, the rest under ~
 abs() { local p=${1%/}; [[ "$p" = /* ]] && echo "$p" || echo "$home/$p"; }
-# Only things inside these folders may go, and these two folders themselves
+# Only things inside these folders may go
 allowed() {
     local p=$1 r
-    [[ "$p" = "$home/derpfest/out" || "$p" = "$home/derpfest/out-kernel" ]] && return 0
-    for r in "$home/releases" "$home/android-dt/ref" "$home/android-dt" "$home/.cache" /tmp \
-             "$home/evolution/out" "$home/derpfest/out" "$home/expressiveos/out"; do
+    for r in "$home/releases" "$home/android-dt" "$home/expressiveos/out"; do
         [[ "$p" = "$r"/* ]] && return 0
     done
     return 1
@@ -220,11 +116,16 @@ for d in "$home/$R"/expressiveos-*/target-files; do
     keep+=("$rel/LATEST")
     for z in "$n" "$newest"; do [[ -z "$z" ]] || keep+=("$rel/$z" "$rel/$z.sha256"); done
 done
+kept() { # kept <absolute path>: on the keep list, or inside a kept folder
+    local k K
+    for k in "${keep[@]}"; do K=$(abs "$k"); [[ "$1" = "$K" || "$1" = "$K"/* ]] && return 0; done
+    return 1
+}
 # Checksum files the pack scripts and the release step write next to a zip or image
-sidecars() { # each checksum file beside $1, once (name.sha256 for a .zip too)
+sidecars() { # each checksum file beside $1, once (name.sha256 for a .zip too), unless it's kept
     local f; local -a c=("$1.sha256" "$1.sha256sum" "$1.md5sum")
     [[ $1 == *.zip ]] && c+=("${1%.zip}.sha256")
-    for f in "${c[@]}"; do [[ -f "$f" && ! -L "$f" ]] && echo "$f"; done; return 0
+    for f in "${c[@]}"; do [[ -f "$f" && ! -L "$f" ]] && ! kept "$f" && echo "$f"; done; return 0
 }
 # du's total even if it can't read part of a folder (that stops nothing; the sum is then low)
 size_of() { { nice -n 19 ionice -c2 -n7 du -s -B1 --apparent-size -- "$@" 2>/dev/null || true; } | awk '{s += $1} END {print s + 0}'; }
@@ -233,7 +134,7 @@ human() { numfmt --to=iec --suffix=B "$1"; }
 # Nothing on the keep list may be a target, or inside one, or hold one
 for k in "${keep[@]}"; do
     K=$(abs "$k")
-    for n in 1 2 3 4 5 6 7; do
+    for n in 1 2 3 4; do
         declare -n list="g$n"
         for t in "${list[@]}"; do
             T=$(abs "$t")
@@ -242,20 +143,6 @@ for k in "${keep[@]}"; do
         unset -n list
     done
 done
-
-# Group 1's old cache must not be the one ccache uses now
-if [[ ",$groups," == *,1,* ]] && command -v ccache >/dev/null; then
-    ccdir=$(ccache --get-config cache_dir 2>/dev/null || ccache -k cache_dir 2>/dev/null || true)
-    [[ -n $ccdir ]] || fail "can't read ccache's cache_dir; not touching ~/.cache/ccache (nothing was removed)"
-    ccdir=$(realpath -m -- "$ccdir") old=$home/.cache/ccache
-    [[ "$ccdir" != "$old" && "$ccdir" != "$old"/* && "$old" != "$ccdir"/* ]] \
-        || fail "ccache's cache_dir is $ccdir, which is, holds or sits in ~/.cache/ccache (nothing was removed)"
-fi
-# ... and nothing may have written to it this past week (ccache 4 touches an entry on every hit)
-if [[ ",$groups," == *,1,* && -d $home/.cache/ccache ]]; then
-    [[ -z "$(find "$home/.cache/ccache" -xdev -type f -mtime -7 -print -quit 2>/dev/null)" ]] \
-        || fail "$home/.cache/ccache has files changed in the last 7 days, so something still uses it (nothing was removed)"
-fi
 
 build_running() { pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' >/dev/null; }
 eos_session() { local s; for s in eos-build eos-pack; do tmux has-session -t "=$s" 2>/dev/null && return 0; done; return 1; }
@@ -289,10 +176,8 @@ if [[ "$mode" = delete ]]; then
     flock -n 9 || fail "the tree lock is held (a build is running); run delete again later (nothing was removed)"
     exec 7>"$home/.evolution-tree.lock"
     flock -n 7 || fail "the tree lock's old name, ~/.evolution-tree.lock, is held (a build of an older kit is running); run delete again later (nothing was removed)"
-    if [[ ",$groups," =~ ,[56], ]]; then
-        exec 8>"$home/.expressiveos.lock"
-        flock -n 8 || fail "ExpressiveOS's lock is held (a build, pack or kit script is running); run delete again later (nothing was removed)"
-    fi
+    exec 8>"$home/.expressiveos.lock"
+    flock -n 8 || fail "ExpressiveOS's lock is held (a build, pack or kit script is running); run delete again later (nothing was removed)"
 fi
 echo "== $mode, groups $groups ($(df -h --output=avail ~ | tail -1 | tr -d ' ') free)"
 total=0 skipped=0
@@ -300,8 +185,8 @@ for n in "${chosen[@]}"; do
     declare -n list="g$n"
     echo "== group $n"
     gsum=0 skip=''
-    if [[ "$mode" = delete && $n =~ ^[2345]$ ]]; then
-        # Build output only while nothing builds, in any tree, even by hand
+    if [[ "$mode" = delete ]]; then
+        # Only while nothing builds, in any tree, even by hand
         if build_running; then skip="a build is running"; elif eos_session; then skip="an ExpressiveOS build or pack session is open"; fi
     fi
     if [[ -n $skip ]]; then
@@ -315,7 +200,7 @@ for n in "${chosen[@]}"; do
         if [[ -d "$T" ]]; then
             s=$(size_of "$T")
             echo "folder   $(human "$s")  $t"
-            if [[ "$mode" = list && $n =~ ^[167]$ ]]; then
+            if [[ "$mode" = list && $n = 4 ]]; then
                 find "$T" -mindepth 1 -maxdepth 1 -printf '           %y %s %P\n' | sort -k3 | numfmt --invalid=ignore --to=iec --field=2 | head -20 || true
             fi
             if [[ "$mode" = list ]]; then
