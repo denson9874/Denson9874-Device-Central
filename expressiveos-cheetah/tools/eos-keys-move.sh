@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Moves ExpressiveOS's signing-key folder in the tree from vendor/evolution-priv to
-# vendor/expressiveos-priv, 1.1's name (Sunday 2026-11-08, with no build running), or back.
+# vendor/expressiveos-priv, 1.1's name (Saturday 2026-11-07, with no build running), or back.
 # A move, never new keys and never a link: every key file stays byte-identical, so the 1.0
 # phones keep taking updates. Only keys/keys.mk changes, on the lines that name the folder.
 # The runner's action expressiveos-keys-move runs it (query: check, move or revert).

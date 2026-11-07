@@ -130,7 +130,7 @@ after it ends (`out`).
 refuses an update signed with any other key, and the same keys can't be made twice. Nothing in the kit
 or the runner makes keys any more, and `eos-keys-check.sh` fails a tree whose keys aren't the pinned ones.
 
-**The key folder is `vendor/expressiveos-priv/keys`** since 1.1: on 2026-11-08 the runner's
+**The key folder is `vendor/expressiveos-priv/keys`** since 1.1: on 2026-11-07 at 09:09 UTC the runner's
 `expressiveos-keys-move` (`tools/eos-keys-move.sh`) moved it there from `vendor/evolution-priv/keys`, its
 name before. A move, not new keys: every key file is byte-identical, only `keys.mk`'s two paths name the
 new folder, and the 1.0 phones keep taking updates. Query `check` (read-only) shows which folder the tree
@@ -142,13 +142,16 @@ move, or after `revert`); 1.1's `vendor/lineage` reads only the new one, 1.0's o
 When `~/expressiveos/vendor/expressiveos-priv/keys` is missing or damaged (a new server, the tree set up
 again), restore it from the backup: the newest `~/expressiveos-keys-<time>.tar.gz` on the server
 (`expressiveos-status` lists them), or its copy kept off the server (a `.tar.gz.gpg` one: `gpg -d` it
-first). An archive from before 2026-11-08's move has a `keys.mk` that names `vendor/evolution-priv`:
-restore that one into `vendor/evolution-priv` instead (the same lines with that folder), then run
-`tools/eos-keys-move.sh move`. In a fresh login shell:
+first). An archive from before the move (`~/expressiveos-keys-20261107-090905.tar.gz`, made just before
+it, and older ones such as 2026-10-26's) has a `keys.mk` that names `vendor/evolution-priv`; the one made
+just after it, `~/expressiveos-keys-20261107-090906.tar.gz`, and newer ones name `vendor/expressiveos-priv`.
+To be sure, `tar -xzOf <archive> keys/keys.mk | grep -m1 -o 'vendor/[a-z]*-priv'` prints the folder an
+archive's `keys.mk` names (`keys.mk` holds paths, no keys). Restore an old one into
+`vendor/evolution-priv` instead (the same lines with that folder), then run `tools/eos-keys-move.sh move`. In a fresh login shell:
 
 ```bash
 cd ~/expressiveos
-priv=vendor/expressiveos-priv   # vendor/evolution-priv for an archive from before 2026-11-08
+priv=vendor/expressiveos-priv   # vendor/evolution-priv for an archive from before the move (20261107-090905 and older)
 if [ -e vendor/expressiveos-priv ] || [ -L vendor/expressiveos-priv ] || [ -e vendor/evolution-priv ] || [ -L vendor/evolution-priv ]; then
     ls -la vendor/*-priv; echo "STOP: a key folder is there already; check it (eos-keys-check.sh tree, eos-keys-move.sh check), don't restore over it"
 else
