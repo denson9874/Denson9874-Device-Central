@@ -98,7 +98,8 @@ Daryl says "fine" when things aren't: run every check yourself and keep the logs
 device-ok -> `expressiveos-pack release` -> `expressiveos-ota upload` (it reuses the tested
 candidate incremental) -> `expressiveos-flasher-release` -> feed PR on expressiveos_ota
 (Daryl merges) -> Drive backup (keeps the last two) and R2 prune (current only) ->
-`server-cleanup` (keep each phone's newest target-files, the next incremental's base) ->
+`server-cleanup` (keep each phone's newest target-files, the next incremental's base, and
+husky's build output: its fresh build is the slowest, Daryl 11-08) ->
 XDA thread titles, ROM Information lines and kernel source links (no new go needed) ->
 Telegram and XDA drafts, posted only on his go.
 Dispatch each step as soon as the one before it ends; gaps between dispatches cost 3-6

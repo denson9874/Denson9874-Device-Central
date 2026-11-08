@@ -59,7 +59,7 @@ eos_top "${1:-}"
 clean_env
 cd "$top" || fail "can't cd to $top"
 PATH=$HOME/bin:$PATH
-rm -f -- "$EOS_STATE/build.ok" "$EOS_STATE/target-files.ok" "$EOS_STATE/quick.ok"
+rm -f -- "$EOS_STATE/build.ok" "$EOS_STATE/target-files.ok" "$EOS_STATE/quick.ok" "$EOS_STATE/verified.ok" "$EOS_STATE/images-verify.log"
 # The build type under its 1.1 name and its old one (a tree from before 1.1 reads that), as
 # eos-make.sh exports them. patches/device_google_pantah/0010 sets TARGET_INCLUDE_BOOT_ANIMATIONS
 # too; apply-bootanim.sh checks for it here
@@ -197,7 +197,7 @@ fi
 {
     echo "ExpressiveOS $EOS_VERSION $EOS_BUILD_TYPE, $EOS_DEVICE, $(date -u '+%F %T') UTC"
     # A copy the runner installed (rsync, no .git) names the commit it came from
-    echo "kit: $(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")$([[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || echo " (with local changes)")"
+    echo "kit: $(kit_version)"
     # GPL-3.0-or-later code ships in it (launcher/README.md, "Licence and credits")
     echo "Expressive Launcher: $(sed -n 's/^EL_VERSION=//p' "$kit/launcher/launcher.conf") ($(sed -n 's/^EL_VERSION_CODE=//p' "$kit/launcher/launcher.conf")), source $(sed -n 's/^EL_SRC=//p' "$kit/launcher/launcher.conf") $(sed -n 's/^EL_COMMIT=//p' "$kit/launcher/launcher.conf")"
     echo "Patched projects: upstream revision (repo's m/$EOS_MANIFEST_BRANCH), then HEAD with the kit's commits"
@@ -245,6 +245,8 @@ zip=$(sed -n 's/^VERIFIED //p' "$work/step.log" | tail -1)
 [[ -f $zip ]] || fail "eos-verify.sh named no package"
 tf=$(tf_zip)
 [[ -f $tf ]] || fail "no $tf (eos-verify.sh checked it)"
+# This verify (step.log, the last step's output), for eos-pack.sh's candidate run (lib.sh)
+verified_save "$work/step.log"
 # The target-files eos-verify.sh checked against the package, for eos-pack.sh (written
 # first: build.ok is what says the run finished)
 echo "$(sha256sum -- "$tf" | cut -d' ' -f1)  ${tf##*/}" > "$EOS_STATE/target-files.ok"
