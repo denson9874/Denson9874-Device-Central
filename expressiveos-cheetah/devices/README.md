@@ -31,7 +31,7 @@ ones, a patch for one of ExpressiveOS's own repos must already be a commit there
 | `EOS_SENTINEL` | a file setup.sh expects after a sync |
 | `EOS_KERNEL` | `gs-6.1`: built from `pins/kernel.xml`'s source; `prebuilt`: the tree's prebuilt boot image |
 | `EOS_KMI` | the kernel's KMI (`android14-6.1`, `android16-6.12`) |
-| `EOS_V4A` | `1`: ViPER4Android built in (gs201's HIDL effect HAL only); `0`: none |
+| `EOS_V4A` | ViPER4Android built in: `1` with the HIDL driver (gs201's HIDL effect HAL: cheetah), `aidl` with the AIDL driver (an AIDL effect HAL whose vendor ExpressiveOS builds: husky); `0`: none (the Pixel 11s, whose vendor is Google's stock image) |
 | `EOS_SUPER_EMPTY` | `out`: the build's super_empty.img; `factory`: the one in the factory image zip |
 | `EOS_FLASH_VKB` | `1`: the fastboot zip flashes vendor_kernel_boot even when the tree's fastboot-info.txt doesn't |
 | `EOS_SCONE_PATCH` | the kit patch naming the SCONE module that must be installed (optional) |

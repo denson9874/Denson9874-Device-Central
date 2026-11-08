@@ -1,13 +1,14 @@
-# ViPER4Android RE for ExpressiveOS (cheetah)
+# ViPER4Android RE for ExpressiveOS (cheetah, husky)
 
 Public ExpressiveOS builds for the Pixel 7 Pro ship ViPER4Android RE built in (Daryl, 2026-10-26,
 "Ship it built in"): the unmodified upstream app as a privileged system app, and the upstream 64-bit
 effect driver in `/vendor/lib64/soundfx`. Nothing is rebuilt or re-signed. Credits and the exact
-sources go with every release.
+sources go with every release. From the December build the Pixel 8 Pro (husky) gets it too, with
+upstream's AIDL driver (Daryl, 2026-11-07: "8 Pro now, Pixel 11 in January"; "husky", below).
 
 This folder is only the ViPER4Android part of the ExpressiveOS kit. It works on the ExpressiveOS tree
-(`~/expressiveos`), and only for a phone whose `../devices/<device>.conf` has `EOS_V4A=1`: cheetah
-alone ("Other phones", below). `apply-v4a.sh` refuses any `vendor/extra` or `frameworks/av` that
+(`~/expressiveos`), and only for a phone whose `../devices/<device>.conf` has `EOS_V4A=1` (cheetah,
+the non-AIDL driver) or `EOS_V4A=aidl` (husky, the AIDL driver) ("Other phones", below). `apply-v4a.sh` refuses any `vendor/extra` or `frameworks/av` that
 leads out of the tree through a symlink, and a `frameworks/av` whose git folder is outside it;
 `tools/v4a-check.sh tree` fails on the same.
 
@@ -56,34 +57,68 @@ Why it is put together this way:
 - **No sepolicy.** The library gets `vendor_file` from the generic `/vendor(/.*)?` rule, has no
   TEXTREL or writable-executable segment, and the HIDL path needs no binder service.
 
+## husky (`EOS_V4A=aidl`)
+
+husky's audio HAL is Google's prebuilt `android.hardware.audio.service-aidl.aoc` (TheMuppets
+vendor/google/husky), which serves the **AIDL** effect `IFactory/default`. The non-AIDL driver and
+Evolution X's libeffects loader never run there, so husky gets upstream's AIDL driver instead:
+
+| On the phone | What it is | Source |
+|---|---|---|
+| `/vendor/lib64/soundfx/libv4a_aidl.so` | `common/files/libv4a_aidl_arm64-v8a.so` from the **AIDL** module zip, unstripped | [likelikeslike/ViPERFX_RE](https://github.com/likelikeslike/ViPERFX_RE) release `v2.1.1`, `ViPER4Android-RE-AIDL-v2.1.1.zip` |
+| `/vendor/etc/audio_effects_config.xml` | The zip's `common/audio_effects_config.xml`, unchanged: library `v4a_aidl`, ViPER's effect, applied on USB and remote-submix outputs | same zip |
+| The app, its two XMLs, the vendor and system_ext NOTICE files | As on cheetah (no `libv4a_re.so`, no GPL-2.0: the AIDL zip has no LICENSE) | as above |
+
+- **The config.** The AIDL HAL reads the first `audio_effects_config.xml` in `/odm/etc`,
+  `/vendor/etc`, `/system/etc` and loads libraries from `/vendor/lib64/soundfx`. husky's stock vendor
+  has no such file (it's in neither LineageOS's `proprietary-files-vendor.txt` nor its
+  `skip-files-vendor.txt`, which between them list the whole stock vendor), and upstream's installer
+  writes this same file on a phone that has none. `out` fails if the build has any other
+  `audio_effects*` file but AOSP's `system/etc/audio_effects.xml`.
+- **SELinux.** The driver publishes the binder service `viper.control` (`viper.fx.IViperControl`)
+  from the audio HAL, and the app (`priv_app` here, as a system_ext priv-app) talks to it.
+  `../devices/husky/patches/device_google_zuma/0008-*.patch` labels it `viper_control_service` in
+  zuma's vendor `service_contexts` and adds `sepolicy/vendor/viper4android.te`: the audio HAL may add
+  it, `priv_app` may find it and call the HAL. No neverallow in AOSP forbids those.
+- **frameworks/av.** Patch 0002 (AudioFlinger's suspend exemption) goes by ViPER's uuid, which the
+  AIDL driver keeps, so it matters on husky too. Patch 0001 is in libeffects, which husky's AIDL HAL
+  doesn't use.
+- **No source.** ViPERFX_RE publishes no source for the AIDL driver, only the binary. It contains the
+  same ViPERDSP and PFFFT, so it carries the same two notices and `legacy_restricted` label.
+
 ## Other phones
 
 The ExpressiveOS tree builds every phone in `../devices/` (`EOS_DEVICE`, cheetah unless set), and
-`vendor/extra/product.mk` is read for all of them, so after one cheetah run every product inherits
-`viper4android.mk`. Only cheetah has `EOS_V4A=1`: the non-AIDL driver needs gs201's HIDL effect HAL,
-husky's effect HAL is AIDL, and the Pixel 11s' stock vendor images have no HIDL one. So:
+`vendor/extra/product.mk` is read for all of them, so after one run every product inherits
+`viper4android.mk`. `EOS_V4A` in each phone's devices file decides: `1` for cheetah (gs201's HIDL
+effect HAL, the non-AIDL driver), `aidl` for husky (the AIDL driver), `0` for the Pixel 11s, whose
+stock prebuilt `vendor.img` would have to be patched at boot or repacked to take the driver and the
+config (planned for January, after a kodiak test). So:
 
 - `tree/viper4android.mk` adds its namespace and packages only when `TARGET_PRODUCT` is
-  `lineage_cheetah`. The other products get nothing from it, whatever a cheetah run staged in
-  `vendor/extra` (`../tools/eos-images.sh` checks their `PRODUCT_PACKAGES` before building, and
-  `../tools/eos-verify.sh` that none of the files shipped).
-- `apply-v4a.sh` for a phone with `EOS_V4A=0` touches nothing and ends with
+  `lineage_cheetah` (the app and `libv4a_re`) or `lineage_husky` (the app, `libv4a_aidl` and the
+  config). The other products get nothing from it, whatever a run staged in `vendor/extra`
+  (`../tools/eos-images.sh` checks each product's `PRODUCT_PACKAGES` before building: the modules
+  its `EOS_V4A` wants are there and the others aren't; `../tools/eos-verify.sh` checks that an
+  `EOS_V4A=0` build shipped none of the files).
+- `apply-v4a.sh` stages the same folder for cheetah and husky (both drivers, the config). For a phone
+  with `EOS_V4A=0` it touches nothing and ends with
   `V4A_APPLY=OK skipped (ViPER4Android is off for <device>)` (`eos-images.sh` doesn't run it then).
-- `tools/v4a-check.sh` is only for an `EOS_V4A=1` phone. `tree` checks gs201 and the phone's own
-  `EOS_DEVICE_TREE` and `EOS_VENDOR_DIR`, `device` wants the phone's own `ro.product.device`, and
-  `out` checks the product out it's given; for cheetah that's device/google/pantah,
-  vendor/google/cheetah and cheetah, as always.
-- A phone with gs201's HIDL effect HAL may be added: `EOS_V4A=1` in its devices file, its
-  `lineage_<device>` in `viper4android.mk`'s filter, then the `out` and `device` checks on its first
-  build (everything above was established on cheetah).
+- `tools/v4a-check.sh` is only for an `EOS_V4A=1` or `aidl` phone. `tree` checks the phone's SoC tree
+  and its own `EOS_DEVICE_TREE` and `EOS_VENDOR_DIR`, `device` wants the phone's own
+  `ro.product.device`, and `out` checks the product out it's given (the phone is `EOS_DEVICE`, else
+  the out folder's name).
+- A phone with gs201's HIDL effect HAL may be added with `EOS_V4A=1`, one with an AIDL effect HAL
+  with `aidl` (and its own service label and rules, as husky's patch 0008): its `lineage_<device>`
+  in `viper4android.mk`, then the `out` and `device` checks on its first build.
 
 ## Files
 
 | File | What it does |
 |---|---|
 | `v4a.conf` | The pins (below), sourced by every script |
-| `fetch-v4a.sh [--out <dir>]` | Downloads the APK, the app's LICENSE and the driver zip into `~/android-dt/v4a/` (`V4A_CACHE` overrides it) and checks them: sizes and SHA-256, the APK's package, version, v2 signer, permissions and uses-library tags (`tools/apk-info.py`, no build tools needed), then extracts only the arm64 library and LICENSE (`unzip -j`) into a fresh temporary folder and checks those. A download is renamed into the cache only once it matches; a cached file that doesn't match is deleted. `V4A_OFFLINE=1` never downloads. With `--out`, the four verified files appear in `<dir>` only when everything passed. Last line `V4A_FETCH=OK app=2.1.1 fx=v2.1.1` |
-| `apply-v4a.sh [top]` | Default `~/expressiveos`. Fetches, stages `tree/` and the verified files into `vendor/extra/viper4android` (removes `Android.bp` first, copies the rest, writes `Android.bp` last only when every copy worked, and removes files the kit no longer ships), adds `$(call inherit-product, vendor/extra/viper4android/viper4android.mk)` to `vendor/extra/product.mk` if that line isn't there at the top level (creating the file if needed; it fails if the line is only inside an `ifeq`/`ifdef`/`define` block), puts `patches/frameworks_av/` in with `lib.sh`'s `am_patches`, as `apply.sh` does the tree's own patches (on ExpressiveOS's manifest, frameworks/av is ExpressiveOS's `frameworks_av` fork, which has both as commits: they're only checked, and a missing one or one changed in place fails; on another manifest they're local commits, `git am --3way`, skipping a patch whose subject is already in the log; it refuses to start while frameworks/av has a `git am` or rebase in progress, aborts only its own `am` on a conflict, and fails if `git am` makes no commit because the change is already there), then runs `tools/v4a-check.sh tree`. A second run changes nothing. Last line `V4A_APPLY=OK ...` |
+| `fetch-v4a.sh [--out <dir>]` | Downloads the APK, the app's LICENSE and the driver zip into `~/android-dt/v4a/` (`V4A_CACHE` overrides it) and checks them: sizes and SHA-256, the APK's package, version, v2 signer, permissions and uses-library tags (`tools/apk-info.py`, no build tools needed), then extracts only the arm64 library and LICENSE (`unzip -j`) into a fresh temporary folder and checks those. A download is renamed into the cache only once it matches; a cached file that doesn't match is deleted. `V4A_OFFLINE=1` never downloads. With `--out`, the four verified files appear in `<dir>` only when everything passed. It also downloads the AIDL zip and checks the AIDL library and config it extracts. Last line `V4A_FETCH=OK app=2.1.1 fx=v2.1.1 aidl=...` |
+| `apply-v4a.sh [top]` | Default `~/expressiveos`. Fetches, stages `tree/` and the verified files into `vendor/extra/viper4android` (removes `Android.bp` first, copies the rest, writes `Android.bp` last only when every copy worked, and removes files the kit no longer ships), adds `$(call inherit-product, vendor/extra/viper4android/viper4android.mk)` to `vendor/extra/product.mk` if that line isn't there at the top level (creating the file if needed; it fails if the line is only inside an `ifeq`/`ifdef`/`define` block), puts `patches/frameworks_av/` in with `lib.sh`'s `am_patches`, as `apply.sh` does the tree's own patches (on ExpressiveOS's manifest, frameworks/av is ExpressiveOS's `frameworks_av` fork, which has both as commits: they're only checked, and a missing one or one changed in place fails; on another manifest they're local commits, `git am --3way`, skipping a patch whose subject is already in the log; it refuses to start while frameworks/av has a `git am` or rebase in progress, aborts only its own `am` on a conflict, and fails if `git am` makes no commit because the change is already there), then runs `tools/v4a-check.sh tree`. A second run changes nothing. Last line `V4A_APPLY=OK ... driver=hidl` (cheetah) or `driver=aidl` (husky) |
 | `tree/` | What lands in `vendor/extra/viper4android`: `Android.bp`, `viper4android.mk`, the two XMLs, `NOTICE.viperdsp`, `NOTICE.pffft` and a `README.md` with the sources and credits |
 | `patches/frameworks_av/` | The two fixes below |
 | `tools/v4a-check.sh` | `tree`, `out` and `device` checks (below). Every check prints `PASS`, `FAIL` or `INFO`; all of them run; exit 1 on any `FAIL`; last line `V4A_CHECK=OK` or `V4A_CHECK=FAIL` |
@@ -151,6 +186,18 @@ its last line is `V4A_CHECK=OK`.
   user update replaced it) with `MODIFY_AUDIO_ROUTING: granted=true`; no privapp allowlist
   violation; the hidden-API sysconfig is installed; no `avc: denied` for `hal_audio_default` or
   the app. Driver Status in the app is checked by hand.
+- husky (`EOS_V4A=aidl`) runs other driver checks in place of the HIDL ones above. `tree`: no
+  `audio_effects_config.xml` in zuma, shusky or husky's vendor (the build's must be the only one), the
+  VINTF still declares the AIDL `IFactory`, patch 0008's service label and rules are in zuma, and no
+  other ViPER in those trees. `out`: `libv4a_aidl.so` and the config have the pinned sha256 and are the
+  only driver and config (no `libv4a_re`), the audio HAL is arm64, the VINTF declares the AIDL effect
+  HAL, and `vendor_service_contexts` and `vendor_sepolicy.cil` carry the label and the add and find
+  rules; the vendor NOTICE needs only the ViPERDSP and PFFFT notices. `device`: the library's label
+  and sha256 (INFO when adb can't read it), the config is the build's (a module mounted over it
+  fails), `IFactory/default` and `viper.control` are registered, logcat's `AServiceManager_addService
+  viper.control -> 0`, and whether the HAL's dump lists ViPER's uuid. By hand, once per build: the
+  effects `dumpsys android.hardware.audio.effect.IFactory/default` lists are a build without
+  ViPER4Android's plus ViPER's (Pixel's own effects still load with the new config).
 
 ## Pins (`v4a.conf`)
 
@@ -248,6 +295,8 @@ exactly one v4a library line. Not done, because it isn't needed today.
   Pommier) under the FFTPACK licence, whose binary redistributions must reproduce its notice:
   `NOTICE.pffft` is `pffft.c` lines 1-53, verbatim. `tree/Android.bp` labels the driver
   `legacy_restricted` and ships all three texts.
+- **AIDL driver (husky):** the AIDL zip has no LICENSE at all and its source isn't published; the
+  library carries the same ViPERDSP and PFFFT, so the same two notices and terms apply.
 - **Decision:** knowing those terms, Daryl chose on 2026-10-26 to ship it built in, in public builds.
   Keep the feature away from donations or any other monetization.
 - **Credits:** pittvandewitt, MrWhite214, Zackptg5, Martmists, Iscle and llsl (ViPER4Android RE);
@@ -272,6 +321,9 @@ exactly one v4a library line. Not done, because it isn't needed today.
 - **Hidden APIs:** whether Android 17 adds checks the sysconfig doesn't lift is untested.
 - **Behaviour:** offload is refused while V4A is on; spatializer, multichannel, FAST/MMAP/DIRECT,
   Bluetooth and call paths are unprocessed or untested.
+- **husky's config:** before ViPER4Android, husky has no `audio_effects_config.xml`. If Google's aoc
+  HAL treated the new file as the full list and dropped effects of its own, Pixel audio features
+  would change. The by-hand `device` comparison above decides, on the first husky build.
 
 ## Untested
 
@@ -296,3 +348,12 @@ and fake build outputs, never with a download, a real build or a phone.
       copy, and a module flashed on top being registered only once (patch 0001).
 - [ ] Whether anything else in `~/expressiveos` defines a module named `ViPER4Android` or `libv4a_re`
       (only the cheetah trees and `packages/apps/ViPER4AndroidFX` are checked).
+
+husky (tested offline 2026-11-07/08: the real downloads matched the pins; `apply-v4a.sh` and the
+`tree`, `out` and `device` checks ran on a fake husky tree, a fake product out and a canned adb, and
+failed where they should):
+
+- [ ] A real Soong build of `libv4a_aidl` (its vendor `shared_libs`) and `v4a_audio_effects_config.xml`,
+      and zuma's sepolicy with patch 0008 (no `m` was run).
+- [ ] On a phone: the aoc HAL loads `libv4a_aidl.so` with no denials, `viper.control` registers, the
+      app finds it (Driver Status), Pixel's own effects still list, and the outputs above.
