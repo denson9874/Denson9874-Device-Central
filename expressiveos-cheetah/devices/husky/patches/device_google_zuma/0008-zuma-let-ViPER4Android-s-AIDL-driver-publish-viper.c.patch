@@ -1,0 +1,44 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <daryldenson0405@gmail.com>
+Date: Sun, 8 Nov 2026 02:40:00 +0100
+Subject: [PATCH] zuma: let ViPER4Android's AIDL driver publish viper.control
+
+The driver runs inside the audio HAL (hal_audio_default) and registers the
+binder service viper.control; the ViPER4Android app, a privileged system_ext
+app (priv_app), looks it up and calls it for every setting. Label the
+service and allow both sides, as ViPERFX_RE v2.1.1's AIDL module does at
+runtime (its rules name untrusted_app; here the app is priv_app).
+---
+ sepolicy/vendor/service_contexts |  1 +
+ sepolicy/vendor/viper4android.te | 10 ++++++++++
+ 2 files changed, 11 insertions(+)
+ create mode 100644 sepolicy/vendor/viper4android.te
+
+diff --git a/sepolicy/vendor/service_contexts b/sepolicy/vendor/service_contexts
+index f7f3bc6..114c2a7 100644
+--- a/sepolicy/vendor/service_contexts
++++ b/sepolicy/vendor/service_contexts
+@@ -49,3 +49,4 @@ vendor.google.radio_ext.IRadioExt/default u:object_r:hal_radio_ext_service:s0
+ vendor.google.whitechapel.audio.extension.IAudioExtension/default u:object_r:hal_audio_ext_service:s0
+ vendor.google.wireless_charger.IWirelessCharger/default u:object_r:hal_wireless_charger_service:s0
+ vendor.google.wireless_charger.service.IWlcService/default u:object_r:hal_wlcservice_service:s0
++viper.control u:object_r:viper_control_service:s0
+diff --git a/sepolicy/vendor/viper4android.te b/sepolicy/vendor/viper4android.te
+new file mode 100644
+index 0000000..b2b1bbc
+--- /dev/null
++++ b/sepolicy/vendor/viper4android.te
+@@ -0,0 +1,10 @@
++# ViPER4Android RE's AIDL driver, /vendor/lib64/soundfx/libv4a_aidl.so (the ExpressiveOS kit's
++# viper4android folder, husky only). The audio HAL loads it from audio_effects_config.xml, and it
++# then publishes the binder service viper.control, which the ViPER4Android app (a privileged
++# system_ext app, so priv_app) uses for every setting and for the driver status.
++type viper_control_service, service_manager_type;
++
++allow hal_audio_default viper_control_service:service_manager add;
++
++allow priv_app viper_control_service:service_manager find;
++binder_call(priv_app, hal_audio_default)
+-- 
+2.43.0
+

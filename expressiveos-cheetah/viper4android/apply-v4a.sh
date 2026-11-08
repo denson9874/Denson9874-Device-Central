@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Put ViPER4Android RE into an ExpressiveOS cheetah tree (idempotent: a second run
-# changes nothing):
-#   1. fetch-v4a.sh: the pinned app APK and driver library, verified;
+# Put ViPER4Android RE into an ExpressiveOS tree for a phone that has it (idempotent: a second
+# run changes nothing):
+#   1. fetch-v4a.sh: the pinned app APK and both driver libraries (and the AIDL config), verified;
 #   2. stage them with tree/ into vendor/extra/viper4android (Android.bp removed
 #      first and written last, so Soong never sees it without its files);
 #   3. vendor/extra/product.mk inherits viper4android.mk (Evolution X's vendor_evolution,
@@ -10,8 +10,9 @@
 #      ExpressiveOS's frameworks_av fork already, else local commits by git am --3way);
 #   5. tools/v4a-check.sh tree: the pre-build guards.
 # Run it on every build, after the tree's own patches (repo sync drops local commits).
-# A phone with EOS_V4A=0 in its devices/<device>.conf (all but cheetah) gets none of this:
-# the run touches nothing and ends with V4A_APPLY=OK skipped.
+# A phone with EOS_V4A=0 in its devices/<device>.conf (the Pixel 11s) gets none of this:
+# the run touches nothing and ends with V4A_APPLY=OK skipped. EOS_V4A=1 (cheetah) and aidl
+# (husky) stage the same folder; viper4android.mk gives each product its own driver.
 # Nothing is written through a symlink that leads out of the tree, nor into a git folder
 # outside it.
 #
@@ -32,11 +33,11 @@ source "$here/v4a.conf" || fail "can't read $here/v4a.conf"
 
 arg=${1:-$HOME/expressiveos}
 [[ $# -le 1 ]] || fail "usage: apply-v4a.sh [top]"
-# Only for a phone whose devices/<device>.conf has EOS_V4A=1 (EOS_DEVICE, cheetah unless set;
+# Only for a phone whose devices/<device>.conf has EOS_V4A=1 or aidl (EOS_DEVICE, cheetah unless set;
 # lib.sh reads it). For the others this leaves the tree as it is (below, after the checks on
 # where it writes), but for tree/viper4android.mk, which adds nothing to their products
 read -r v4a_dev v4a_on <<<"$(source "$here/../lib.sh" && printf '%s %s' "$EOS_DEVICE" "$EOS_V4A")"
-[[ -n ${v4a_dev:-} && ${v4a_on:-} =~ ^[01]$ ]] || fail "can't read this phone's EOS_V4A (lib.sh, devices/<device>.conf)"
+[[ -n ${v4a_dev:-} && ${v4a_on:-} =~ ^(0|1|aidl)$ ]] || fail "can't read this phone's EOS_V4A (lib.sh, devices/<device>.conf)"
 [[ -d "$arg" ]] || fail "no tree at $arg"
 top="$(cd "$arg" && pwd -P)"
 [[ -f "$top/build/envsetup.sh" ]] || fail "$top isn't an Android tree (no build/envsetup.sh)"
@@ -53,13 +54,13 @@ in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top
 for p in vendor/extra vendor/extra/viper4android vendor/extra/product.mk frameworks/av; do in_top "$top/$p"; done
 if [[ $v4a_on = 0 ]]; then
     # An older kit staged viper4android.mk for every product: refresh that one file (the
-    # guarded one, ViPER4Android for the EOS_V4A=1 products only), or this phone's build would
+    # guarded one, ViPER4Android for the products that have it only), or this phone's build would
     # install it (eos-images.sh's identity check refuses that)
     f=$top/vendor/extra/viper4android/viper4android.mk
     if [[ -f $f ]] && ! cmp -s -- "$here/tree/viper4android.mk" "$f"; then
         t=$top/vendor/extra/viper4android/.viper4android.mk.tmp
         { cp -- "$here/tree/viper4android.mk" "$t" && chmod 0644 "$t" && mv -f -- "$t" "$f"; } || fail "can't update $f"
-        echo "staged: vendor/extra/viper4android/viper4android.mk (ViPER4Android for the EOS_V4A=1 products only)"
+        echo "staged: vendor/extra/viper4android/viper4android.mk (ViPER4Android for the products that have it only)"
     fi
     done=1
     echo "V4A_APPLY=OK skipped (ViPER4Android is off for $v4a_dev)"
@@ -71,7 +72,7 @@ gd=$(git -C "$av" rev-parse --absolute-git-dir) && gd=$(realpath -- "$gd") || fa
 # cleanup (am --abort) would drop the commits it already made
 [[ ! -e "$gd/rebase-apply" && ! -e "$gd/rebase-merge" ]] \
     || fail "frameworks/av has a git am or rebase in progress ($gd/rebase-apply or rebase-merge); finish it or abort it yourself, then run this again"
-echo "== ViPER4Android RE -> $top"
+echo "== ViPER4Android RE -> $top ($v4a_dev, EOS_V4A=$v4a_on)"
 
 # 1. Fetch and verify into a fresh folder
 work=$(mktemp -d "${TMPDIR:-/tmp}/v4a-apply.XXXXXX")
@@ -117,7 +118,7 @@ else
 fi
 
 # 3. vendor/extra/product.mk (ExpressiveOS's own; read for every phone the tree builds, so
-#    viper4android.mk itself adds ViPER4Android only for the EOS_V4A=1 products)
+#    viper4android.mk itself adds ViPER4Android only for the products that have it)
 pm="$top/vendor/extra/product.mk"
 line='$(call inherit-product, vendor/extra/viper4android/viper4android.mk)'
 where=$([[ ! -f "$pm" ]] || want="$line" awk -f "$here/tools/mk-line.awk" -- "$pm") || fail "can't read $pm"
@@ -141,10 +142,11 @@ fi
 
 # 4. frameworks/av patches: lib.sh's am_patches, as apply.sh puts the tree's own. On
 # ExpressiveOS's manifest frameworks/av is ExpressiveOS's frameworks_av fork, which has them as
-# commits already: they're only checked there, and a missing or edited one fails (README.md)
+# commits already: they're only checked there, and a missing or edited one fails (README.md).
+# 0002 (AudioFlinger's suspend exemption by uuid) matters to the AIDL driver too: same uuid
 ( source "$here/../lib.sh" && am_patches "$av" frameworks_av "$here"/patches/frameworks_av/*.patch )
 
 # 5. Pre-build guards
 "$here/tools/v4a-check.sh" tree "$top" || fail "the tree checks above failed; don't build"
 done=1
-echo "V4A_APPLY=OK app=$V4A_APP_VERSION fx=$V4A_FX_VERSION"
+echo "V4A_APPLY=OK app=$V4A_APP_VERSION fx=$V4A_FX_VERSION driver=$([[ $v4a_on = aidl ]] && echo aidl || echo hidl)"

@@ -5,7 +5,7 @@
 #   2. eos-keys-check.sh tree and vars: ExpressiveOS's own keys are in the tree's key folder
 #      (vendor/expressiveos-priv/keys; vendor/evolution-priv/keys before 1.1's move) and the
 #      build will sign with them, not with test keys or Evolution X's;
-#   3. the kits: viper4android/apply-v4a.sh on a phone with EOS_V4A=1,
+#   3. the kits: viper4android/apply-v4a.sh on a phone with EOS_V4A=1 or aidl,
 #      bootanimation/apply-bootanim.sh, wallpapers/apply-wallpapers.sh,
 #      launcher/apply-launcher.sh (Expressive Launcher in Pixel Launcher's place);
 #   4. the name and version the build will carry (dumpvars), and a record of its sources
@@ -90,13 +90,14 @@ trap 'rc=$?; rm -rf -- "$work"; [[ $done = 1 ]] || { echo "BUILD_EXIT=1"; exit $
 step "prepare.sh" 'PREPARE_OK.*' "$kit/prepare.sh" "$top"
 step "keys: tree" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" tree "$top"
 step "keys: build variables" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vars "$top"
-# ViPER4Android only where devices/<device>.conf turns it on: it needs gs201's HIDL effect HAL
-if [[ $EOS_V4A = 1 ]]; then
+# ViPER4Android only where devices/<device>.conf turns it on: EOS_V4A=1, the HIDL driver
+# (gs201's HIDL effect HAL), or aidl, the AIDL driver (husky's AIDL effect HAL)
+if [[ $EOS_V4A != 0 ]]; then
     step "ViPER4Android" 'V4A_APPLY=OK.*' "$kit/viper4android/apply-v4a.sh" "$top"
 else
     echo "== ViPER4Android: off for $EOS_DEVICE (EOS_V4A=$EOS_V4A, devices/$EOS_DEVICE.conf)"
     # It stages nothing then, but brings an older kit's viper4android.mk (every product's) up
-    # to the one that adds ViPER4Android to the EOS_V4A=1 phones only
+    # to the one that adds ViPER4Android to the phones that have it only
     step "ViPER4Android's makefile" 'V4A_APPLY=OK.*' "$kit/viper4android/apply-v4a.sh" "$top"
 fi
 step "boot animation" 'BOOTANIM_APPLY=OK.*' "$kit/bootanimation/apply-bootanim.sh" "$top"
@@ -136,14 +137,24 @@ echo "OK: $EOS_LUNCH installs ExpressiveLauncher, in Pixel Launcher's place"
 # share still holds of earlier builds (vendor/extra, the pantah fork's KernelSU lines)
 [[ $pkgs != *" KernelSUNext "* ]] \
     || fail "$EOS_LUNCH would install KernelSUNext: ExpressiveOS ships no root, and its device tree mustn't add the KernelSU Next manager"
-if [[ $EOS_V4A != 1 ]]; then
-    for m in ViPER4Android libv4a_re; do
-        [[ $EOS_V4A = 1 || $pkgs != *" $m "* ]] \
-            || fail "$EOS_LUNCH would install $m, but devices/$EOS_DEVICE.conf has EOS_V4A=0: vendor/extra/product.mk (apply-v4a.sh, from a cheetah build) has every product inherit viper4android.mk, which must add it for the phones with EOS_V4A=1 only"
-    done
+# vendor/extra/product.mk (apply-v4a.sh) has every product inherit viper4android.mk, whose
+# product filters must give each phone exactly its EOS_V4A's modules: the HIDL driver (1), the
+# AIDL driver and its effects config (aidl), or nothing (0)
+case $EOS_V4A in
+    0) v4a_want="" v4a_not="ViPER4Android libv4a_re libv4a_aidl v4a_audio_effects_config.xml" ;;
+    1) v4a_want="ViPER4Android libv4a_re" v4a_not="libv4a_aidl v4a_audio_effects_config.xml" ;;
+    aidl) v4a_want="ViPER4Android libv4a_aidl v4a_audio_effects_config.xml" v4a_not="libv4a_re" ;;
+esac
+for m in $v4a_want; do
+    [[ $pkgs = *" $m "* ]] || fail "$EOS_LUNCH doesn't install $m, but devices/$EOS_DEVICE.conf has EOS_V4A=$EOS_V4A: viper4android.mk's product filter must name ${EOS_LUNCH%%-*}"
+done
+for m in $v4a_not; do
+    [[ $pkgs != *" $m "* ]] || fail "$EOS_LUNCH would install $m, but devices/$EOS_DEVICE.conf has EOS_V4A=$EOS_V4A: viper4android.mk adds it for the wrong products"
+done
+if [[ $EOS_V4A = 0 ]]; then
     echo "OK: $EOS_LUNCH installs no KernelSU Next or ViPER4Android, as devices/$EOS_DEVICE.conf says"
 else
-    echo "OK: $EOS_LUNCH installs no KernelSU Next"
+    echo "OK: $EOS_LUNCH installs no KernelSU Next, and ViPER4Android's EOS_V4A=$EOS_V4A modules: $v4a_want"
 fi
 echo "OK: $name (the date is the build's own)"
 
