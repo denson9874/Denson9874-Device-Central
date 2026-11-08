@@ -9,9 +9,9 @@ newer releases from GitHub or the launcher's own updater install over the built-
 
 ## Launcher switch (Expressive Studio)
 
-Pixel Launcher ships next to Expressive Launcher, and a switch in Expressive Studio (the look & feel
+Pixel Launcher ships next to Expressive Launcher, and a switch in Expressive Studio (the Themes
 page, Home screen > Launcher; packages_apps_Evolver `LauncherSwitch.kt`) makes it the Home and the
-Recents app after a restart (Daryl, 2026-11-06; in December's release). A plain Home app pick doesn't
+Recents app after a restart (Daryl, 2026-11-06; in 1.1.2, Daryl, 2026-11-08). A plain Home app pick doesn't
 work: Pixel Launcher only gets the permissions it needs (`INTERNAL_SYSTEM_WINDOW`,
 `MANAGE_ACTIVITY_TASKS`, `READ_FRAME_BUFFER`, `STATUS_BAR_SERVICE`) as the Recents app, and its Home
 activity is direct-boot aware while Expressive Launcher's isn't, so it ran before the first unlock and

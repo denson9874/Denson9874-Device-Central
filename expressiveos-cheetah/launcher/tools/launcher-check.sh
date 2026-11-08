@@ -578,7 +578,7 @@ device)
     [[ -n "$r" ]] && pass "notification access (dots): $r" \
         || info "Expressive Launcher has no notification access yet (a dirty flash keeps the old grants: Settings > Notifications > Device & app notifications)"
     info "by hand: swipe up for Home and hold for Overview, swipe along the bottom to switch apps, check the taskbar on a large screen, then run this again (it looks for failed binder calls)"
-    info "by hand: in Settings > Expressive Studio's look & feel page, Home screen > Launcher, switch to Pixel Launcher (the phone restarts), unlock, check its home screen, At a Glance, the Google feed, swipe up, Overview and quick switch, run this again, then switch back and run it once more"
+    info "by hand: in Settings > Expressive Studio > Themes, Home screen > Launcher, switch to Pixel Launcher (the phone restarts), unlock, check its home screen, At a Glance, the Google feed, swipe up, Overview and quick switch, run this again, then switch back and run it once more"
     ;;
 *) usage ;;
 esac
