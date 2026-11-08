@@ -25,7 +25,8 @@
 #       the phone is in (persist.sys.expressiveos.launcher, set by Expressive Studio's switch):
 #       Expressive Launcher (or Pixel Launcher, in Pixel Launcher mode) is the Home app and the
 #       Recents app SystemUI is bound to, Pixel Launcher is built in with its Home activity on
-#       only in its mode, the privileged permissions are granted, nothing crashed, and no
+#       only in its mode and Expressive Launcher's on only outside it, the privileged permissions
+#       are granted, nothing crashed, and no
 #       binder call into it failed (run it again after trying the gestures).
 set -euo pipefail
 fails=0 finished=0 T=
@@ -468,8 +469,10 @@ device)
         info "launcher mode: Expressive Launcher ($MODE_PROP=${mode:-unset})"
         want_home=$EL_PACKAGE want_rec=$RECENTS
     fi
-    # (--brief prints pkg/.Class when the class starts with the package: spell it out)
-    long() { sed -E 's#^([^/]+)/\.#\1/\1.#'; }
+    # (--brief prints pkg/.Class when the class starts with the package: spell it out;
+    # query-activities indents its lines)
+    long() { sed -E 's#^[[:space:]]+##; s#^([^/]+)/\.#\1/\1.#'; }
+    EL_HOME="$EL_PACKAGE/$EL_HOME_ACTIVITY"
     homes=$(a cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME | long)
     if [[ "$mode" = pixel ]]; then
         grep -qxF "$PIXEL_HOME" <<<"$homes" && pass "Pixel Launcher's Home activity is on (its Recents code looks it up)" \
@@ -477,6 +480,14 @@ device)
     else
         grep -qxF "$PIXEL_HOME" <<<"$homes" && bad "Pixel Launcher's Home activity is on in Expressive Launcher's mode: before the first unlock it would run and crash ($PIXEL_SYSCONFIG's default overridden?)" \
             || pass "Pixel Launcher's Home activity is off ($PIXEL_SYSCONFIG)"
+    fi
+    # Expressive Launcher's Home priority (1) beats the Home role, so Pixel mode needs it off
+    if [[ "$mode" = pixel ]]; then
+        grep -qxF "$EL_HOME" <<<"$homes" && bad "Expressive Launcher's Home activity is on in Pixel Launcher mode: its priority 1 wins Home after the first unlock (switch back and forth in Expressive Studio)" \
+            || pass "Expressive Launcher's Home activity is off (Pixel Launcher mode)"
+    else
+        grep -qxF "$EL_HOME" <<<"$homes" && pass "Expressive Launcher's Home activity is on" \
+            || bad "Expressive Launcher's Home activity is off in Expressive Launcher's mode: Home has no launcher after the first unlock (or the phone hasn't been unlocked since this boot)"
     fi
     r=$(a cmd overlay list android | grep -F "org.expressiveos.overlay.launcher.pixelmode" || true)
     if [[ "$mode" = pixel ]]; then
@@ -488,7 +499,7 @@ device)
     home=$(a cmd role get-role-holders --user 0 android.app.role.HOME)
     case "$home" in
         "$want_home") pass "$want_home holds the Home role" ;;
-        "$EL_PACKAGE"|"$PIXEL") info "$home holds the Home role, not the mode's $want_home: someone picked it in Default apps (the switch sets both)" ;;
+        "$EL_PACKAGE"|"$PIXEL") bad "$home holds the Home role, not the mode's $want_home: the switch didn't finish (neither launcher can be picked in Default apps in the other's mode)" ;;
         "") bad "nobody holds the Home role (a chooser comes up on Home): Expressive Launcher's Home priority should have made it the default" ;;
         *) bad "the Home role holder is '$home', not $EL_PACKAGE or $PIXEL" ;;
     esac
@@ -496,7 +507,7 @@ device)
     if [[ "$home" = "$PIXEL" ]]; then
         [[ "$r" = "$PIXEL_HOME" ]] && pass "Home resolves to $r" || bad "Home resolves to '${r:-nothing}', not $PIXEL_HOME, the Home role holder's"
     else
-        [[ "$r" = "$EL_PACKAGE/$EL_HOME_ACTIVITY" ]] && pass "Home resolves to $r" || bad "Home resolves to '${r:-nothing}', not $EL_PACKAGE/$EL_HOME_ACTIVITY"
+        [[ "$r" = "$EL_HOME" ]] && pass "Home resolves to $r" || bad "Home resolves to '${r:-nothing}', not $EL_HOME"
     fi
     # The overlays' values as the framework and the setup wizard see them
     r=$(a cmd overlay lookup android android:string/config_recentsComponentName)
