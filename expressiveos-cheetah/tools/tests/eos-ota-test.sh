@@ -169,6 +169,29 @@ import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]
 assert len(r)==1 and r[0][\"base_timestamp\"]==1764700000 and r[0][\"download\"].endswith(\"/ota/test/$C-incremental-from-20261203.zip\")
 " "$W/r2/expressiveos/cheetah/ota/test/cheetah.json"'
 ok "  the live feed's R2 files untouched" '[[ -f $W/r2/expressiveos/cheetah/ota/$B.zip ]]'
+# C tested and released (eos-pack.sh --release: its target-files a hard link to check/'s): the
+# release's incremental is check/'s, the one the phone test installed, not made again
+ln "$D/check/$C-target_files.zip" "$D/target-files/$C-target_files.zip"
+(cd "$D/target-files" && sha256sum -- "$C-target_files.zip" > "$C-target_files.zip.sha256")
+echo "$C-target_files.zip" > "$D/target-files/LATEST"
+cp "$D/check/$C-fastboot.zip" "$D/$C-fastboot.zip"; (cd "$D" && sha256sum -- "$C-fastboot.zip" > "$C-fastboot.zip.sha256")
+echo "notes for $C" > "$D/$C-changelog.txt"
+"$H/ota_from_target_files" -k x "$D/target-files/$C-target_files.zip" "$D/ota/$C.zip"
+(cd "$D/ota" && sha256sum -- "$C.zip" > "$C.zip.sha256")
+: > "$HOME/otf.log"
+rc=$(ota); ok "release C: check/'s tested incremental, not made again" '[[ $rc = 0 ]] && grep -q "the candidate incremental the phone test installed" "$W/out.log" && [[ ! -s $HOME/otf.log ]] && cmp -s "$D/ota/$C-incremental-from-20261203.zip" "$D/check/$C-incremental-from-20261203.zip"'
+ok "  its .sha256 names the release's file, its .base the same base and target-files" '(cd "$D/ota" && sha256sum -c --quiet "$C-incremental-from-20261203.zip.sha256") && cmp -s "$D/ota/$C-incremental-from-20261203.zip.base" "$D/check/$C-incremental-from-20261203.zip.base"'
+ok "  feed: that incremental first" 'python3 -c "
+import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]
+assert r[0][\"filename\"]==\"$C-incremental-from-20261203.zip\" and r[0][\"base_timestamp\"]==1764700000
+" "$D/ota/feed/builds/cheetah.json"'
+# A candidate incremental made to other target-files (an older build of the same name): made again
+rm -f "$D/ota/$C-incremental-from-20261203.zip"*
+sed -i 's/ [0-9a-f]*$/ 0000/' "$D/check/$C-incremental-from-20261203.zip.base"
+: > "$HOME/otf.log"
+rc=$(ota); ok "  a candidate incremental to other target-files isn't taken: made again" '[[ $rc = 0 ]] && ! grep -q "phone test installed" "$W/out.log" && grep -qx "src=$B-target_files.zip full=boot,init_boot,vbmeta" "$HOME/otf.log"'
+rm -f "$D/target-files/$C-target_files.zip"* "$D/ota/$C"* "$D/$C-fastboot.zip"* "$D/$C-changelog.txt"
+echo "$B-target_files.zip" > "$D/target-files/LATEST"
 # A tree from before 1.1's key move (or after its revert): the key folder's old name
 mv "$top/vendor/expressiveos-priv" "$top/vendor/evolution-priv"
 rm -f "$D/check/$C-incremental-from-20261203.zip"*

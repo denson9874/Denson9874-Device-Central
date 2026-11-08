@@ -30,7 +30,9 @@
 #   its own, and the firmware is whichever stock release the user flashed. The dynamic
 #   partitions are the target-files' byte for byte on every phone of the base build, however
 #   it was installed (eos-target-files.sh's incremental base, which --release needs), so those
-#   are patched block by block.
+#   are patched block by block. When check/ still holds the candidate incremental --candidate
+#   made from the same base to the same target-files (the one the phone test installed), the
+#   release takes that very package instead of making another (about 3-4 minutes a phone).
 # - the base: the build the feed's full entry offers now; when that is this release already
 #   (a rerun), the base its incremental was made from the first time (ota/<release>.base).
 #   With no full entry in the feed (the first release) there's no incremental.
@@ -316,8 +318,30 @@ fi
 
 if [[ -n $inc ]]; then
     echo "== the incremental: ${inc##*/}"
-    if sha_ok "$inc" && [[ -f $inc.base && "$(cat -- "$inc.base")" = "$BASE $BTS $(sha256sum -- "$BTF" | cut -d' ' -f1)" ]]; then
+    # <inc>.base: the base's name, timestamp and target-files sha256, then the sha256 of the
+    # target-files it goes to (a .base of three fields, from a kit before that, never matches:
+    # the incremental is made again)
+    ibase="$BASE $BTS $(sha256sum -- "$BTF" | cut -d' ' -f1) $(cut -d' ' -f1 "$TF.sha256")"
+    # The release's incremental is check/'s candidate one when that was made from the same base
+    # to the same target-files: the very package the phone test installed (eos-ota.sh
+    # --candidate), not a second one made from the same files. check_pkg checks it as any other
+    tested=
+    if [[ $mode != --candidate ]]; then
+        for f in "$CHECK"/*-incremental-from-"$bid".zip; do
+            [[ -f $f && -f $f.base && "$(cat -- "$f.base")" = "$ibase" ]] && sha_ok "$f" && tested=$f
+        done
+    fi
+    if sha_ok "$inc" && [[ -f $inc.base && "$(cat -- "$inc.base")" = "$ibase" ]]; then
         echo "note: made already from the same base ($inc.base)"
+    elif [[ -n $tested ]]; then
+        echo "OK: the candidate incremental the phone test installed, from the same base to the same target-files: $tested"
+        mkdir -p -- "$OUT"
+        rm -f -- "$inc" "$inc.sha256" "$inc.base"
+        ln -- "$tested" "$inc" 2>/dev/null \
+            || { cp -- "$tested" "$OUT/.${inc##*/}.part" && mv -- "$OUT/.${inc##*/}.part" "$inc"; } || fail "can't write $inc"
+        (cd "$OUT" && sha256sum -- "${inc##*/}" > "${inc##*/}.sha256")
+        [[ "$(cut -d' ' -f1 "$inc.sha256")" = "$(cut -d' ' -f1 "$tested.sha256")" ]] || fail "$inc isn't $tested"
+        echo "$ibase" > "$inc.base"
     else
         # Its own temporary folder: ota_from_target_files unpacks both target-files there
         mkdir -- "$T/tmp"
@@ -337,7 +361,7 @@ if [[ -n $inc ]]; then
         cp -- "$T/inc.zip" "$OUT/.${inc##*/}.part" && mv -- "$OUT/.${inc##*/}.part" "$inc" || fail "can't write $inc"
         rm -f -- "$T/inc.zip"
         (cd "$OUT" && sha256sum -- "${inc##*/}" > "${inc##*/}.sha256")
-        echo "$BASE $BTS $(sha256sum -- "$BTF" | cut -d' ' -f1)" > "$inc.base"
+        echo "$ibase" > "$inc.base"
     fi
     check_pkg "$inc" "$bincr"
     if [[ $mode != --candidate ]]; then

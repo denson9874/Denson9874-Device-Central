@@ -135,6 +135,16 @@ in_top "$top/${tf%/*}"
 pkgs() { rm -f -- "$O"/ExpressiveOS-*.zip "$O"/ExpressiveOS-*.zip.sha256sum "$O/$EOS_DEVICE.json" "$tf"; }
 pkgs
 echo "== make: m $goal, BUILD_DATETIME $BUILD_DATETIME"
+# The phone whose make ran in this tree before this one, for the make's TIME line (prev=, lib.sh's
+# eos_step): a change of phone redoes the steps that depend on the product (API stubs, SystemUI's
+# ksp, and SystemUI and Settings when the other side of the HiLight split built last). Written
+# before m: a make that stops part way has switched the tree all the same. A modules= compile
+# check doesn't write it
+lastmake=$HOME/.expressiveos-last-make
+EOS_PREV_DEVICE=$(head -c 32 -- "$lastmake" 2>/dev/null | tr -cd 'a-z0-9-' || true)
+EOS_PREV_DEVICE=${EOS_PREV_DEVICE:--}
+printf '%s\n' "$EOS_DEVICE" > "$lastmake" 2>/dev/null || true
+echo "note: the make before this one in the tree was ${EOS_PREV_DEVICE/#-/unknown}'s"
 m -j"$(nproc)" "$goal" || fail "make failed"
 pass="the build"
 zips=()
