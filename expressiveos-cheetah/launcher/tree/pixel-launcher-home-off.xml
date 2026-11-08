@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pixel Launcher's Home activity is off by default: it only works as the Recents app, which
+     it is only in Pixel Launcher mode, and its activity is direct-boot aware while Expressive
+     Launcher's isn't, so before the first unlock the system would start it and it would
+     crash. The launcher switch in Expressive Studio turns it on for Pixel Launcher mode
+     (a user setting, which wins over this default) and back to the default for Expressive
+     Launcher's. -->
+<config>
+    <component-override package="com.google.android.apps.nexuslauncher">
+        <component class="com.google.android.apps.nexuslauncher.NexusLauncherActivity" enabled="false" />
+    </component-override>
+</config>
