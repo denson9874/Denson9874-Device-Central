@@ -848,7 +848,7 @@ jobs:
       - name: ExpressiveOS devices check (read-only)
         if: inputs.action == 'expressiveos-devices'
         run: |
-          [[ -z "$QUERY" || "$QUERY" = recovery ]] || { echo "::error::query is empty or 'recovery'"; exit 1; }
+          [[ -z "$QUERY" || "$QUERY" = recovery || "$QUERY" = kernels ]] || { echo "::error::query is empty, 'recovery' or 'kernels'"; exit 1; }
           bash expressiveos-cheetah/tools/devices-check.sh ${QUERY:+"$QUERY"}
 
       # The monthly update and its dry run: this ref's kit, run from the job's checkout (nothing
