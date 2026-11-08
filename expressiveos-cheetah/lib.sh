@@ -401,6 +401,48 @@ fastboot_files() {   # fastboot_files: what the fastboot zip takes from the prod
     } | awk '!seen[$0]++'
 }
 
+kit_version() {   # kit_version: the kit's commit, as sources.txt's "kit:" line says it (a copy the runner installed, rsync with no .git, names the commit it came from), " (with local changes)" when it has any
+    echo "$(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")$([[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || echo " (with local changes)")"
+}
+
+# eos-pack.sh's candidate run comes right after eos-images.sh in a build session, and verified
+# the same build again (about 1.5 minutes a phone; 2026-11-08). eos-images.sh keeps what its
+# eos-verify.sh run checked (verified_save), and the candidate run takes that verify instead of
+# running it again only while images_verified holds. A release (--release, --upload) always
+# verifies again
+verified_save() {   # verified_save <log>: after eos-verify.sh passed a full build (<log> its output; run from $top), keep the log as EOS_STATE's images-verify.log and the sha256 of every file the fastboot zip takes from out/ as verified.ok. Should one be missing, it keeps neither, and the pack verifies again
+    local x
+    local -a f
+    rm -f -- "$EOS_STATE/verified.ok" "$EOS_STATE/images-verify.log"
+    [[ -f $EOS_PRODUCT_OUT/fastboot-info.txt ]] || { echo "note: no $EOS_PRODUCT_OUT/fastboot-info.txt: eos-pack.sh will verify again"; return 0; }
+    mapfile -t f < <(fastboot_files)
+    f=("${f[@]/#/$EOS_PRODUCT_OUT/}")
+    for x in "${f[@]}"; do [[ -f $x ]] || { echo "note: no $x: eos-pack.sh will verify again"; return 0; }; done
+    if cp -- "$1" "$EOS_STATE/images-verify.log" && sha256sum -- "${f[@]}" > "$EOS_STATE/.verified.ok.part" \
+        && mv -f -- "$EOS_STATE/.verified.ok.part" "$EOS_STATE/verified.ok"; then
+        echo "OK: kept this verify for eos-pack.sh's candidate run: $EOS_STATE/images-verify.log, and the sha256 of the ${#f[@]} files its zip takes from out/ in $EOS_STATE/verified.ok"
+    else
+        rm -f -- "$EOS_STATE/verified.ok" "$EOS_STATE/.verified.ok.part" "$EOS_STATE/images-verify.log"
+        echo "note: couldn't keep this verify: eos-pack.sh will verify again"
+    fi
+    return 0
+}
+
+images_verified() {   # images_verified <package, relative to top>: true when eos-images.sh's verify (images-verify.log, ending VERIFY=OK) checked this very package, with this kit at the commit sources.txt names and no local changes, and every file the fastboot zip takes from out/ is the one it verified (verified.ok names exactly those, and they match). Run from $top
+    local kv log=$EOS_STATE/images-verify.log ok=$EOS_STATE/verified.ok
+    local -a f
+    [[ -f $log && -f $ok && -f $EOS_STATE/sources.txt && -f $EOS_PRODUCT_OUT/fastboot-info.txt ]] || return 1
+    kv=$(kit_version)
+    [[ $kv != *"(with local changes)" && $kv != "not a git checkout" && $kv != "installed from " ]] || return 1
+    [[ "$(sed -n 's/^kit: //p' "$EOS_STATE/sources.txt")" = "$kv" ]] || return 1
+    [[ "$(tail -n 1 -- "$log")" = VERIFY=OK ]] || return 1
+    [[ "$(sed -n 's/^VERIFIED //p' "$log")" = "$top/$1" ]] || return 1
+    mapfile -t f < <(fastboot_files)
+    f=("${f[@]/#/$EOS_PRODUCT_OUT/}")
+    [[ "$(printf '%s\n' "${f[@]}" | sort)" = "$(sed -E 's/^[0-9a-f]{64}  //' "$ok" | sort)" ]] || return 1
+    sha256sum --quiet --strict -c -- "$ok" > /dev/null 2>&1
+}
+
 # The build locks: ExpressiveOS's own (setup, build, pack, OTA, the monthly update), then the
 # tree lock, which a build and server-cleanup.sh's delete hold. The tree lock was
 # ~/.evolution-tree.lock, the build server routines' name for it, until 1.1: through 1.1 the
