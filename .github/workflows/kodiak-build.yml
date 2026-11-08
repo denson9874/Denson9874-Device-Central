@@ -107,7 +107,8 @@
 # module sizes, firmware zips, fastboot files and board names, AVB and Updater makefile lines,
 # the audio effect HAL type, build times, device-ok records and the release folders' names.
 # Names, sizes, SHAs, versions and build-file lines only. query "recovery": the Pixel 11s'
-# stock boot chain beside ExpressiveOS's (recovery-check.sh).
+# stock boot chain beside ExpressiveOS's (recovery-check.sh). query "v4a": what the Pixel 11s'
+# stock vendor images say about ViPER4Android's AIDL driver (v4a-p11-check.sh).
 #
 # expressiveos-update-check (read-only on the tree) is the dry run of ExpressiveOS's monthly
 # update (expressiveos-cheetah/sources/update-check.sh): what LineageOS has added since the
@@ -835,7 +836,7 @@ jobs:
       - name: ExpressiveOS devices check (read-only)
         if: inputs.action == 'expressiveos-devices'
         run: |
-          [[ -z "$QUERY" || "$QUERY" = recovery ]] || { echo "::error::query is empty or 'recovery'"; exit 1; }
+          [[ -z "$QUERY" || "$QUERY" = recovery || "$QUERY" = v4a ]] || { echo "::error::query is empty, 'recovery' or 'v4a'"; exit 1; }
           bash expressiveos-cheetah/tools/devices-check.sh ${QUERY:+"$QUERY"}
 
       # The monthly update and its dry run: this ref's kit, run from the job's checkout (nothing
