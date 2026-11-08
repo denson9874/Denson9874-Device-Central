@@ -1,24 +1,23 @@
 #!/usr/bin/env bash
-# Free disk on the build server. Fourth round (2026-11-07), after ExpressiveOS 1.1: its
-# releases are on R2 and Google Drive, the feed is live, the web installer lists 1.1 only.
-# Daryl's rule of 2026-11-06: the server keeps only what release builds, deltas and test
-# builds need, and check/ and out/ files go once they're no longer needed. The groups come
-# from the runner's server-usage listing of 2026-11-07 (run 42391326621, sizes then).
-# Rounds 1-3 (2026-10-26, 10-31, 11-06) are in git history.
-#   1  the 1.1 releases' zips in ~/releases, all six phones: each release's fastboot zip (on
+# Free disk on the build server. Fifth round (2026-11-08), after ExpressiveOS 1.1.1: its
+# releases are on R2 and Google Drive, the feed is live (expressiveos_ota #8), the web
+# installer lists 1.1.1 only. Daryl's rule of 2026-11-06: the server keeps only what release
+# builds, deltas and test builds need, and check/ and out/ files go once they're no longer
+# needed. Rounds 1-4 (2026-10-26, 10-31, 11-06, 11-07) are in git history.
+#   1  the 1.1.1 releases' zips in ~/releases, all six phones: each release's fastboot zip (on
 #      R2 and Drive; its .sha256 stays, as eos-ota.sh expects) and its full and incremental
 #      OTA packages in ota/ (on R2, the live feed's; the full ones are hard links of out/'s,
-#      so those free their space with group 3, or with cheetah's out/ later)         ~50 GB
-#   2  the released 1.1 candidates in check/ of all six phones: the fastboot zip, its
+#      so those free their space with group 3, or with cheetah's out/ later)
+#   2  the released 1.1.1 candidates in check/ of all six phones: the fastboot zip, its
 #      .pack-ok and its target-files (a hard link of target-files/'s, which stays), and
 #      cheetah's candidate incremental (the 7 Pro's test package) with its .base. The text
-#      files (announcement, changelog, manifests, sources) and every .device-ok stay  ~34 GB
+#      files (announcement, changelog, manifests, sources) and every .device-ok stay
 #   3  the build output of husky, kodiak, grizzly, cubs and yogi: out/target/product/<phone>
 #      and each product's own files in out/ and out/soong (Kati's and Soong's ninja files,
 #      raw-lineage_<phone>/ ...). Each phone's next build starts its product over; the shared
-#      build output and ccache stay                                                ~200 GB
-#   4  the Nov 3 (1.0) target-files of all six phones: the 1.1 incrementals are built and
-#      on R2, 1.1's target-files are the next delta's base, and Drive keeps 1.0's     ~41 GB
+#      build output and ccache stay
+#   4  the 1.1 target-files of all six phones: the 1.1.1 incrementals are built and on R2,
+#      1.1.1's target-files are the next delta's base, and Drive keeps 1.1's
 # Kept, whatever the groups say: cheetah's build output (the test builds), out-kernel, the
 # ExpressiveOS records (out/eos*), the firmware the pack scripts read, each phone's newest
 # release target-files (the next delta's base), every .device-ok record, ccache's cache.
@@ -47,9 +46,10 @@ groups=${2:-1,2,3,4}
 X=expressiveos/out R=releases
 ALL=(cheetah husky kodiak grizzly cubs yogi)
 DONE=(husky kodiak grizzly cubs yogi)  # build output to remove; cheetah's is the test builds'
-rel() { echo "ExpressiveOS-17.0-20261107-$1-1.1-Official"; }
-old() { echo "ExpressiveOS-17.0-20261103-$1-1.0-Official"; }
-inc=incremental-from-20261103
+# 1.1.1's build dates: the Pixel 7 Pro and 8 Pro built on Nov 7, the Pixel 11s after midnight UTC
+rel() { local day=20261108; [[ $1 = cheetah || $1 = husky ]] && day=20261107; echo "ExpressiveOS-17.0-$day-$1-1.1.1-Official"; }
+old() { echo "ExpressiveOS-17.0-20261107-$1-1.1-Official"; }
+inc=incremental-from-20261107
 g1=() g2=() g3=() g4=()
 for d in "${ALL[@]}"; do
     g1+=("$R/expressiveos-$d/$(rel "$d")-fastboot.zip" "$R/expressiveos-$d/ota/$(rel "$d").zip"
