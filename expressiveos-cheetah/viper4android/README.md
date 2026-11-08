@@ -69,8 +69,11 @@ Evolution X's libeffects loader never run there, so husky gets upstream's AIDL d
 | `/vendor/etc/audio_effects_config.xml` | The zip's `common/audio_effects_config.xml`, unchanged: library `v4a_aidl`, ViPER's effect, applied on USB and remote-submix outputs | same zip |
 | The app, its two XMLs, the vendor and system_ext NOTICE files | As on cheetah (no `libv4a_re.so`, no GPL-2.0: the AIDL zip has no LICENSE) | as above |
 
-- **The config.** The AIDL HAL reads the first `audio_effects_config.xml` in `/odm/etc`,
-  `/vendor/etc`, `/system/etc` and loads libraries from `/vendor/lib64/soundfx`. husky's stock vendor
+- **The config.** Google's aoc HAL reads only `/vendor/etc/audio_effects_config.xml`, when it exists,
+  and dlopens each library it names as `/vendor/lib64/soundfx/<name>` (AOSP's example effect service
+  searches `/odm/etc`, `/vendor/etc`, `/system/etc`; Google's doesn't). It registers its own built-in
+  effects first either way, so the config only adds ViPER. The template's `<deviceEffects>` block
+  uses the HIDL-era `<devicePort>`, which AOSP's AIDL parser ignores. husky's stock vendor
   has no such file (it's in neither LineageOS's `proprietary-files-vendor.txt` nor its
   `skip-files-vendor.txt`, which between them list the whole stock vendor), and upstream's installer
   writes this same file on a phone that has none. `out` fails if the build has any other
@@ -79,7 +82,9 @@ Evolution X's libeffects loader never run there, so husky gets upstream's AIDL d
   from the audio HAL, and the app (`priv_app` here, as a system_ext priv-app) talks to it.
   `../devices/husky/patches/device_google_zuma/0008-*.patch` labels it `viper_control_service` in
   zuma's vendor `service_contexts` and adds `sepolicy/vendor/viper4android.te`: the audio HAL may add
-  it, `priv_app` may find it and call the HAL. No neverallow in AOSP forbids those.
+  it, `priv_app` may find it and call the HAL, and `priv_app` may list servicemanager's services
+  (the app turns on its AIDL mode only when `ServiceManager.listServices()` names the effect
+  `IFactory`; platform policy grants that to untrusted apps only). No neverallow in AOSP forbids those.
 - **frameworks/av.** Patch 0002 (AudioFlinger's suspend exemption) goes by ViPER's uuid, which the
   AIDL driver keeps, so it matters on husky too. Patch 0001 is in libeffects, which husky's AIDL HAL
   doesn't use.
@@ -191,8 +196,8 @@ its last line is `V4A_CHECK=OK`.
   VINTF still declares the AIDL `IFactory`, patch 0008's service label and rules are in zuma, and no
   other ViPER in those trees. `out`: `libv4a_aidl.so` and the config have the pinned sha256 and are the
   only driver and config (no `libv4a_re`), the audio HAL is arm64, the VINTF declares the AIDL effect
-  HAL, and `vendor_service_contexts` and `vendor_sepolicy.cil` carry the label and the add and find
-  rules; the vendor NOTICE needs only the ViPERDSP and PFFFT notices. `device`: the library's label
+  HAL, and `vendor_service_contexts` and `vendor_sepolicy.cil` carry the label and the add, find and
+  list rules; the vendor NOTICE needs only the ViPERDSP and PFFFT notices. `device`: the library's label
   and sha256 (INFO when adb can't read it), the config is the build's (a module mounted over it
   fails), `IFactory/default` and `viper.control` are registered, logcat's `AServiceManager_addService
   viper.control -> 0`, and whether the HAL's dump lists ViPER's uuid. By hand, once per build: the

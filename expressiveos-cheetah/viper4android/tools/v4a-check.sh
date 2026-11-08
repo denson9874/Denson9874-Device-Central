@@ -122,6 +122,7 @@ tree_aidl() {   # uses $top
     if grep -qE '^type viper_control_service, service_manager_type;' "$f" 2>/dev/null \
         && grep -qE '^allow hal_audio_default viper_control_service:service_manager add;' "$f" \
         && grep -qE '^allow priv_app viper_control_service:service_manager find;' "$f" \
+        && grep -qE '^allow priv_app servicemanager:service_manager list;' "$f" \
         && grep -qE '^binder_call\(priv_app, hal_audio_default\)' "$f"; then
         pass "${f#"$top"/} lets the audio HAL publish $V4A_AIDL_SERVICE and the app (priv_app) use it"
     else
@@ -177,10 +178,11 @@ out_aidl() {   # uses $O
         bad "vendor/etc/selinux/vendor_service_contexts doesn't label $V4A_AIDL_SERVICE"
     fi
     if grep -qE '\(allow hal_audio_default viper_control_service \(service_manager \(.*add' "$cil" 2>/dev/null \
-        && grep -qE '\(allow priv_app(_[0-9]+)? viper_control_service \(service_manager \(.*find' "$cil"; then
+        && grep -qE '\(allow priv_app(_[0-9]+)? viper_control_service \(service_manager \(.*find' "$cil" \
+        && grep -qE '\(allow priv_app(_[0-9]+)? servicemanager(_[0-9]+)? \(service_manager \(.*list' "$cil"; then
         pass "vendor_sepolicy.cil lets the audio HAL add $V4A_AIDL_SERVICE and the app find it"
     else
-        bad "vendor/etc/selinux/vendor_sepolicy.cil lacks viper_control_service's add (hal_audio_default) or find (priv_app) rule"
+        bad "vendor/etc/selinux/vendor_sepolicy.cil lacks viper_control_service's add (hal_audio_default) or find (priv_app) rule, or priv_app's servicemanager list (the app's AIDL mode needs it)"
     fi
 }
 device_aidl() {   # uses a, a2, denied, $T
@@ -591,7 +593,7 @@ device)
         && pass "hidden-API sysconfig for the app is installed" || bad "no /system_ext/etc/sysconfig/hiddenapi-$V4A_APP_PACKAGE.xml"
     # Not adb shell's own: on a user build this check's ls, sha256sum and file are denied
     hits=$(grep -F 'avc:' "$T/logs" | grep -F 'denied' | grep -vF 'scontext=u:r:shell:s0' \
-        | grep -E "hal_audio_default|$V4A_APP_PACKAGE|libv4a_re|libv4a_aidl|viper_control_service" | tail -5 || true)
+        | grep -E "hal_audio_default|$V4A_APP_PACKAGE|libv4a_re|libv4a_aidl|viper_control_service|scontext=u:r:priv_app:[^ ]* tcontext=u:r:servicemanager:" | tail -5 || true)
     [[ -z "$hits" ]] && pass "no SELinux denials for hal_audio_default or the app" || bad "SELinux denials:"$'\n'"$hits"
     grep -qF 'Welcome to ViPER FX' "$T/logs" && info "logcat: a ViPER effect instance was created (the app is on)" \
         || info "no ViPER effect instance in the log yet: turn the app's master switch on, play something, run again"
