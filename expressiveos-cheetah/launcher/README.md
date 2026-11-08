@@ -26,10 +26,14 @@ crashed at every unlock (7 Pro, 2026-11-05).
   it); a user setting wins over this default.
 - ExpressiveOS/frameworks_base doesn't cache static overlays (`PackageCacher`, PR #9), or a cached
   parse would keep the overlay after the property turns it off.
-- The switch (Settings, the system uid) sets the property, turns Pixel Launcher's Home activity on
-  (Pixel mode) or back to its default (Expressive mode), makes the chosen launcher the Home role holder
-  and restarts the phone. The shell can do none of the first two on a user build, so there is no adb
-  way to switch; `tools/launcher-check.sh device` checks either mode.
+- The switch (Settings, the system uid) sets the property, turns the chosen launcher's Home activity
+  on, makes that launcher the Home role holder, then turns the other one's Home activity off (Pixel
+  Launcher's back to its sysconfig default, Expressive Launcher's disabled) and restarts the phone; a
+  failed role change puts everything back. Expressive Launcher's has to go off because its Home
+  priority (1) beats the Home role: Android takes the highest-priority Home activity before it looks
+  at the role, so with it on, Pixel Launcher was Home only until the first unlock (7 Pro, 1.1.2 test,
+  2026-11-08). The shell can do none of the component changes on a user build, so there is no adb way
+  to switch; `tools/launcher-check.sh device` checks either mode.
 
 The proof build (2026-11-06, a quick cheetah build on the 7 Pro, switched by hand with an init
 property bridge this kit no longer ships) showed the overlay on and off across restarts, the
@@ -114,6 +118,7 @@ overlay may change them.
 Home itself needs no config: the Home role's default is the highest-priority system Home app
 (PermissionController), and the pinned release's Home priority (1) puts Expressive Launcher above Pixel
 Launcher (0), and Pixel Launcher's Home activity is off anyway until the launcher switch turns it on.
+The same priority is why the switch turns Expressive Launcher's Home activity off in Pixel Launcher mode.
 
 ## Files
 
@@ -201,8 +206,10 @@ Pixel Launcher.
 - `device` (adb, read-only; `ANDROID_SERIAL` picks the phone): an ExpressiveOS phone; the launcher is
   the built-in copy (INFO when an update from GitHub runs over it), Pixel Launcher is built in; in the
   mode `persist.sys.expressiveos.launcher` names (Expressive Launcher's unless `pixel`): Pixel
-  Launcher's Home activity is on only in Pixel Launcher mode, the Pixel mode overlay is on only then,
-  the Home role holder is the mode's launcher (the other one is INFO, a pick in Default apps; nobody
+  Launcher's Home activity is on only in Pixel Launcher mode and Expressive Launcher's only outside it,
+  the Pixel mode overlay is on only then,
+  the Home role holder is the mode's launcher (the other one fails: neither can be picked in Default
+  apps in the other's mode, so it means a switch didn't finish; nobody
   fails, as a chooser would come up) and Home resolves to that holder, the recents component is the
   mode's, and SystemUI is bound to that launcher's `TouchInteractionService`; `cmd overlay lookup` shows
   the listener list, Evolution X's launcher list and the setup wizard's two values; the 9 privileged
@@ -276,10 +283,20 @@ https://github.com/denson9874/ExpressiveLauncher/tree/a1e27964210493582f3dff9e34
   Pixel Launcher (launcher icon theming, the glanceable hub's widget picker, app-grid option icons);
   Google Restore can't restore a Pixel Launcher layout into it. They work again in Pixel Launcher mode.
 - **The switch and other users:** the property is phone-wide, but the switch sets the Home role and
-  Pixel Launcher's Home activity only for the user who flips it. Another full user then gets Pixel
-  Launcher's Recents with its own Home app. Picking Expressive Launcher in Default apps > Home app in
-  Pixel Launcher mode does the same (Pixel Launcher stays the Recents app, as with a third-party launcher
-  on a stock Pixel) until the switch is used.
+  both launchers' Home activities only for the user who flips it. Another full user then gets Pixel
+  Launcher's Recents with its own Home app (Expressive Launcher, whose Home activity is still on there).
+  The reverse also holds: if another user switches to Pixel Launcher and this one switches back, the
+  other user keeps Expressive Launcher's Home activity off while Expressive Launcher is the Recents app
+  again, and its quickstep service can't start without its own Home activity. In Pixel Launcher mode
+  Expressive Launcher isn't offered in Default apps > Home app and its drawer icon goes too (one
+  activity carries both); the switch is the way back. Disabling Expressive Launcher in App info there
+  makes the switch back fail ("Nothing was changed") until it's enabled again.
+- **No reconciler at boot:** only the switch sets the components. A build that drops Pixel Launcher
+  must turn Expressive Launcher's Home activity back on for phones left in Pixel Launcher mode (Studio
+  hides the switch without both launchers, and the shell can't), or they boot to no Home app. A
+  launcher update that renames or adds a Home activity while in Pixel Launcher mode comes up on and
+  wins Home again until the switch is run twice. A boot-time check in Settings would cover all of
+  these (a follow-up).
 - **Dexpreopt:** Evolution X sets `DONT_DEXPREOPT_PREBUILTS := true`; Pixel Launcher wasn't compiled
   ahead of time either.
 
