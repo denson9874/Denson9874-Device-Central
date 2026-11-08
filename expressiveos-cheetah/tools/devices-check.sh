@@ -33,6 +33,31 @@ kernel_image() {  # <boot image> <out Image>: the uncompressed kernel of a boot 
 }
 koinfo() { python3 -I "$kit/tools/ko-info.py" "$@"; }
 
+# Query "kernels": the kernel version of each phone's newest release, read off the release's
+# target-files (target-files/LATEST names it; IMAGES/boot.img, else BOOT/kernel), for the XDA
+# posts' kernel source section. Read-only: unzip -p into the scratch folder.
+if [[ ${1:-} = kernels ]]; then
+    for d in "${DEVICES[@]}"; do
+        tfd=~/releases/expressiveos-$d/target-files
+        tf=$tfd/$(cat "$tfd/LATEST" 2> /dev/null)
+        [[ -f $tf ]] || { echo "$d: no target-files named by $tfd/LATEST"; continue; }
+        if unzip -p "$tf" IMAGES/boot.img > "$work/boot.$d.img" 2> /dev/null && [[ -s $work/boot.$d.img ]] \
+                && kernel_image "$work/boot.$d.img" "$work/Image.$d"; then
+            src="IMAGES/boot.img sha256 $(sha256sum < "$work/boot.$d.img" | cut -c1-16)"
+        elif unzip -p "$tf" BOOT/kernel > "$work/kernel.$d" 2> /dev/null && [[ -s $work/kernel.$d ]]; then
+            src="BOOT/kernel"
+            if lz4 -t "$work/kernel.$d" > /dev/null 2>&1; then lz4 -dcq "$work/kernel.$d" > "$work/Image.$d"
+            elif gzip -t "$work/kernel.$d" 2> /dev/null; then gzip -dc "$work/kernel.$d" > "$work/Image.$d"
+            else cp "$work/kernel.$d" "$work/Image.$d"; fi
+        else
+            echo "$d: ${tf##*/}: no IMAGES/boot.img or BOOT/kernel"; continue
+        fi
+        echo "$d: ${tf##*/} ($src): $(strings "$work/Image.$d" | grep -m1 '^Linux version' | cut -c1-200)"
+        rm -f "$work/boot.$d.img" "$work/kernel.$d" "$work/Image.$d"
+    done
+    exit 0
+fi
+
 # Query "recovery": the Pixel 11s' stock boot chain beside ExpressiveOS's (recovery-check.sh)
 if [[ ${1:-} = recovery ]]; then
     # shellcheck source=recovery-check.sh

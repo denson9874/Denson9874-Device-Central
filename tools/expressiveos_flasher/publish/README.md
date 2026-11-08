@@ -10,7 +10,7 @@ python3 -I flasher_publish.py <device> <path to ...-fastboot.zip> [--testers] [-
     [--rclone ~/bin/rclone] [--keep N] [--dry-run]
 
 # e.g. the tested release, then a candidate eos-pack.sh --testers sent (the path on its TESTERS line)
-python3 -I flasher_publish.py cheetah ~/releases/expressiveos-cheetah/ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL-fastboot.zip
+python3 -I flasher_publish.py cheetah ~/releases/expressiveos-cheetah/ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL-fastboot.zip --keep 1
 python3 -I flasher_publish.py cheetah ~/releases/expressiveos-cheetah/testers/ExpressiveOS-17.0-20261031-cheetah-1.0-OFFICIAL-r2-fastboot.zip --testers
 ```
 
