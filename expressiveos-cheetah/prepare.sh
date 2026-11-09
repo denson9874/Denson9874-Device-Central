@@ -105,19 +105,40 @@ esac
 
 # Ensure prebuilt boot.img has valid os_version and os_patch_level in its header
 # so KeyMint does not receive boot_patch_level 20000000 causing live RKP HTTP 400 errors
-for b in "$top"/device/google/*-kernels/*/boot.img; do
+spl=""
+if [[ -f "$top/build/make/core/version_defaults.mk" ]]; then
+    spl=$(grep -E '^[[:space:]]*PLATFORM_SECURITY_PATCH *:= *[0-9]{4}-[0-9]{2}' "$top/build/make/core/version_defaults.mk" | head -1 | sed -E 's/.*:= *([0-9]{4}-[0-9]{2}).*/\1/' || true)
+fi
+if [[ -z "$spl" ]]; then
+    spl=$(grep -hoE '[0-9]{4}-[0-9]{2}-[0-9]{2}' "$top"/vendor/*/release/flag_values/*/RELEASE_PLATFORM_SECURITY_PATCH.textproto "$top"/build/release/flag_values/*/RELEASE_PLATFORM_SECURITY_PATCH.textproto 2>/dev/null | sort -u | tail -1 | cut -c1-7 || true)
+fi
+if [[ -z "$spl" ]]; then
+    spl=$(date +%Y-%m)
+fi
+
+for b in "$top"/device/google/*-kernels/*/boot.img "$top"/vendor/google/*-images/boot.img; do
     [[ -f $b ]] || continue
     t=$(mktemp -d "${TMPDIR:-/tmp}/boot_patch.XXXXXX")
     if python3 "$top/system/tools/mkbootimg/unpack_bootimg.py" --boot_img "$b" --out "$t" >/dev/null 2>&1; then
         out=$(python3 "$top/system/tools/mkbootimg/unpack_bootimg.py" --boot_img "$b" --out "$t")
-        if echo "$out" | grep -q 'os patch level: None'; then
-            echo "Patching boot.img header os_patch_level for ${b#"$top"/}"
-            python3 "$top/system/tools/mkbootimg/mkbootimg.py" \
-                --header_version 4 \
-                --kernel "$t/kernel" \
-                --os_version 14.0.0 \
-                --os_patch_level 2026-10 \
-                -o "$b" || echo "WARNING: failed to repack $b"
+        current_spl=$(echo "$out" | grep -E '^[[:space:]]*os patch level:' | head -1 | sed -E 's/^[[:space:]]*os patch level:[[:space:]]*//' || true)
+        current_os_ver=$(echo "$out" | grep -E '^[[:space:]]*os version:' | head -1 | sed -E 's/^[[:space:]]*os version:[[:space:]]*//' || true)
+        if [[ "$current_os_ver" = "None" || -z "$current_os_ver" ]]; then
+            current_os_ver="14.0.0"
+        fi
+        if [[ "$current_spl" != "$spl" ]]; then
+            echo "Patching boot.img header os_patch_level from '${current_spl}' to '$spl' for ${b#"$top"/}"
+            mkboot_args=(
+                --header_version 4
+                --kernel "$t/kernel"
+                --os_version "$current_os_ver"
+                --os_patch_level "$spl"
+                -o "$b"
+            )
+            if [[ -f "$t/ramdisk" && -s "$t/ramdisk" ]]; then
+                mkboot_args+=(--ramdisk "$t/ramdisk")
+            fi
+            python3 "$top/system/tools/mkbootimg/mkbootimg.py" "${mkboot_args[@]}" || echo "WARNING: failed to repack $b"
         fi
     fi
     rm -rf -- "$t"
