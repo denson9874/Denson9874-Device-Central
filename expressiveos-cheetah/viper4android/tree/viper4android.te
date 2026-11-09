@@ -1,0 +1,35 @@
+# ViPER4Android RE on Google's stock vendor image (EOS_V4A=aidl-overlay: the Pixel 11s). Product
+# policy: viper4android.mk adds this folder to PRODUCT_PRIVATE_SEPOLICY_DIRS for those products
+# only, so the stock vendor policy stays untouched. Its file_contexts, service_contexts and
+# property_contexts sit beside this file.
+#
+# The AIDL driver (/vendor/lib64/soundfx/libv4a_aidl.so, laid over the stock folder by
+# init.viper4android.rc) runs inside Google's audio HAL and publishes the binder service
+# viper.control (viper.fx.IViperControl) for the app, a system_ext priv-app. The HAL's domain is
+# a vendor type this policy can't name (hal_audio_default on the stock images), but it is in the
+# public attribute hal_audio_server, which isn't versioned: the stock vendor policy adds its
+# domain to it when init compiles the split policy at boot, so these rules reach it.
+type viper_control_service, service_manager_type;
+
+# The driver registers viper.control from the audio HAL's process
+add_service(hal_audio_server, viper_control_service)
+
+# The app turns on its AIDL mode only when ServiceManager.listServices() names the effect
+# IFactory (ViPER4Android 2.1.1 ViperRepository.kt aidlMode); platform policy grants list to
+# untrusted apps but not to priv-apps. Then it finds and calls viper.control. priv_app_36 is the
+# domain of a priv-app that targets SDK 36 or lower (seapp_contexts); 2.1.1 targets 37.
+allow { priv_app priv_app_36 } servicemanager:service_manager list;
+allow { priv_app priv_app_36 } viper_control_service:service_manager find;
+binder_call({ priv_app priv_app_36 }, hal_audio_server)
+
+# init lays /product/vendor_overlay/0/etc over /vendor/etc (vendor_configs_file; it may already
+# mount on vendor_file, /vendor/lib64/soundfx). overlayfs checks the mounter's credentials on the
+# files it serves, so init must also be allowed what the HAL does with them: read (init reads all
+# vendor files already) and execute the driver when the HAL maps it.
+allow init vendor_configs_file:dir mounton;
+allow init vendor_file:file execute;
+
+# The off switch (init.viper4android.rc): persist.eos.v4a.off, which adb shell may set on a user
+# build, and the restart counter eos.v4a.*, which only init sets
+product_restricted_prop(eos_v4a_prop)
+set_prop(shell, eos_v4a_prop)

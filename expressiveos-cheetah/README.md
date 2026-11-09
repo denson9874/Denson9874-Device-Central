@@ -682,11 +682,12 @@ build holds `~/.expressiveos.lock`).
 
 - **husky** builds like cheetah: LineageOS's husky, shusky and zuma trees with TheMuppets' blobs (its
   firmware is that vendor repo's own), and the same gs-6.1 kernel source and GKI `boot.img` as cheetah.
-  Its audio effects run on the AIDL effect HAL: no ViPER4Android.
+  Its audio effects run on the AIDL effect HAL, so it gets ViPER4Android's AIDL driver (`EOS_V4A=aidl`).
 - **The Pixel 11s** (kodiak, grizzly, cubs, yogi) run Google's stock kernel (the factory image's
   android16-6.12 GKI `boot.img`, prebuilt) and stock vendor, vendor_dlkm, system_dlkm and dtbo images:
-  init_boot is the build's own, stock, as on every phone, and no ViPER4Android (no HIDL effect HAL)
-  for now. Their vendor blobs, `vendor/google/<device>`, aren't in
+  init_boot is the build's own, stock, as on every phone. ViPER4Android's AIDL driver reaches the
+  read-only stock vendor through `/product/vendor_overlay`, laid over it at boot (`EOS_V4A=aidl-overlay`,
+  kodiak first; [`viper4android/`](viper4android/README.md)). Their vendor blobs, `vendor/google/<device>`, aren't in
   ExpressiveOS's manifest (Google's files, never pushed anywhere): the build server's own repo of
   them is in the tree (copied there on 2026-11-02, before the old trees were deleted), `prepare.sh` only
   reads it and stops when it's missing, and `sources.txt` records its commit. `vendor/google/<device>-images` (those images and
@@ -734,6 +735,6 @@ too. An older release's can go once its `.uploaded` marker is there.
   adb shell "su -c 'chmod 755 /data/local/tmp/update_engine_client; cp /data/local/tmp/meta.bin /data/ota_package/eos-meta.bin; /data/local/tmp/update_engine_client --verify --metadata=/data/ota_package/eos-meta.bin; echo rc=\$?; rm -f /data/ota_package/eos-meta.bin'"
   adb logcat -d | grep -E 'Failed to validate metadata signature|Payload is (not )?applicable'
   ```
-- ViPER4Android on the Pixel 11s: ViPER4Android on the AIDL effect HAL (husky's too).
+- ViPER4Android on grizzly, cubs and yogi (`EOS_V4A=aidl-overlay`) once kodiak passes its phone test.
 - Decisions still open: patch-level properties in cheetah's vbmeta, purging the old keystore from this
   repo's history.

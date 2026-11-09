@@ -1,29 +1,35 @@
 #!/usr/bin/env bash
 # ViPER4Android RE checks for ExpressiveOS. Each check prints PASS, FAIL or
 # INFO; all of them run, the exit status is 1 if any FAILed, and the last line is
-# V4A_CHECK=OK or V4A_CHECK=FAIL. Only for a phone with EOS_V4A=1 (the HIDL driver: cheetah) or
-# aidl (the AIDL driver: husky) in its devices/<device>.conf (EOS_DEVICE, cheetah unless set; out
-# falls back to the product out's name): tree and device read the phone's device tree, vendor
+# V4A_CHECK=OK or V4A_CHECK=FAIL. Only for a phone with EOS_V4A=1 (the HIDL driver: cheetah),
+# aidl (the AIDL driver: husky) or aidl-overlay (the AIDL driver laid over Google's stock vendor at
+# boot: the Pixel 11s, kodiak first) in its devices/<device>.conf (EOS_DEVICE, cheetah unless set;
+# out falls back to the product out's name): tree and device read the phone's device tree, vendor
 # repo and name from there (cheetah: device/google/pantah, vendor/google/cheetah, and gs201,
 # whose HIDL effect HAL the HIDL driver needs; husky: device/google/shusky, vendor/google/husky,
-# and zuma, which carries the vendor sepolicy for the AIDL driver's viper.control service).
+# and zuma, which carries the vendor sepolicy for the AIDL driver's viper.control service;
+# kodiak: device/google/kodiak and vendor/google/kodiak-images' vendor.img).
 #
 #   v4a-check.sh tree <top>
 #       Before the build (apply-v4a.sh runs it). HIDL: Evolution X's ViPER loader is still in
 #       libeffects, the effect HAL is still HIDL @7.0 and built 64-bit. AIDL: the vendor VINTF
 #       declares the AIDL effect HAL, the trees ship no effects config of their own, and
-#       viper.control is labelled and allowed. Both: nothing else registers or ships ViPER,
+#       viper.control is labelled and allowed. Overlay: the phone ships Google's vendor.img as it
+#       is, and nothing in its trees ships ViPER or installs under vendor_overlay. All: nothing else registers or ships ViPER,
 #       this kit's frameworks/av patches are in, vendor/extra/viper4android matches the kit
 #       and v4a.conf, and nothing the kit writes leads out of the tree.
 #   v4a-check.sh out <product_out> [host_out]
 #       After the build, before packing (the ExpressiveOS OTA script runs it):
 #       what landed in the product out it's given (out/target/product/<device>).
-#       host_out (out/host/linux-x86) is only used for apksigner.
+#       host_out (out/host/linux-x86) is used for apksigner, and on an overlay phone (where it's
+#       needed) for fsck.erofs and secilc: out unpacks the vendor.img the build ships, checks Google's
+#       image still fits the overlay, and compiles the split policy with it (check-sepolicy.sh).
 #   v4a-check.sh device
 #       On a phone over adb (ANDROID_SERIAL picks one). Read-only. Run it soon after a
 #       boot, while logcat still holds the boot. HIDL: whether libeffects loaded the driver
 #       comes from dumpsys media.audio_flinger --effects. AIDL: whether the audio HAL loaded it
-#       comes from viper.control in the service list. On a user build adb shell may not read the
+#       comes from viper.control in the service list; overlay: also the two mounts and the off
+#       switch. On a user build adb shell may not read the
 #       driver or the audio HAL: those checks are INFO there (v4a-check.sh out checks the
 #       files in the build).
 set -euo pipefail
@@ -72,7 +78,7 @@ eos_device() {   # sets EOS_DEVICE, EOS_DEVICE_TREE, EOS_VENDOR_DIR and EOS_V4A 
     local v
     v=$(source "$kit/../lib.sh" && printf '%s %s %s %s' "$EOS_DEVICE" "$EOS_DEVICE_TREE" "$EOS_VENDOR_DIR" "$EOS_V4A") || return 1
     read -r EOS_DEVICE EOS_DEVICE_TREE EOS_VENDOR_DIR EOS_V4A <<<"$v"
-    [[ -n $EOS_DEVICE && -n $EOS_DEVICE_TREE && -n $EOS_VENDOR_DIR && $EOS_V4A =~ ^(1|aidl)$ ]] \
+    [[ -n $EOS_DEVICE && -n $EOS_DEVICE_TREE && -n $EOS_VENDOR_DIR && $EOS_V4A =~ ^(1|aidl|aidl-overlay)$ ]] \
         || { echo "FAIL: $EOS_DEVICE has EOS_V4A=${EOS_V4A:-?} in devices/$EOS_DEVICE.conf: no ViPER4Android to check" >&2; return 1; }
 }
 
@@ -122,6 +128,7 @@ tree_aidl() {   # uses $top
     if grep -qE '^type viper_control_service, service_manager_type;' "$f" 2>/dev/null \
         && grep -qE '^allow hal_audio_default viper_control_service:service_manager add;' "$f" \
         && grep -qE '^allow priv_app viper_control_service:service_manager find;' "$f" \
+        && grep -qE '^allow priv_app servicemanager:service_manager list;' "$f" \
         && grep -qE '^binder_call\(priv_app, hal_audio_default\)' "$f"; then
         pass "${f#"$top"/} lets the audio HAL publish $V4A_AIDL_SERVICE and the app (priv_app) use it"
     else
@@ -171,16 +178,17 @@ out_aidl() {   # uses $O
     hits=$([[ ! -d "$O/vendor/etc/vintf" ]] || aidl_effect "$O/vendor/etc/vintf")
     if [[ -n "$hits" ]]; then pass "built VINTF declares the AIDL effect HAL"; else bad "built VINTF (vendor/etc/vintf) doesn't declare the AIDL effect HAL"; fi
     sc="$O/vendor/etc/selinux/vendor_service_contexts" cil="$O/vendor/etc/selinux/vendor_sepolicy.cil"
-    if grep -qE "^$V4A_AIDL_SERVICE[[:space:]]+u:object_r:viper_control_service:s0" "$sc" 2>/dev/null; then
+    if grep -qE "^${V4A_AIDL_SERVICE}[[:space:]]+u:object_r:viper_control_service:s0" "$sc" 2>/dev/null; then
         pass "vendor_service_contexts labels $V4A_AIDL_SERVICE viper_control_service"
     else
         bad "vendor/etc/selinux/vendor_service_contexts doesn't label $V4A_AIDL_SERVICE"
     fi
     if grep -qE '\(allow hal_audio_default viper_control_service \(service_manager \(.*add' "$cil" 2>/dev/null \
-        && grep -qE '\(allow priv_app(_[0-9]+)? viper_control_service \(service_manager \(.*find' "$cil"; then
+        && grep -qE '\(allow priv_app(_[0-9]+)? viper_control_service \(service_manager \(.*find' "$cil" \
+        && grep -qE '\(allow priv_app(_[0-9]+)? servicemanager(_[0-9]+)? \(service_manager \(.*list' "$cil"; then
         pass "vendor_sepolicy.cil lets the audio HAL add $V4A_AIDL_SERVICE and the app find it"
     else
-        bad "vendor/etc/selinux/vendor_sepolicy.cil lacks viper_control_service's add (hal_audio_default) or find (priv_app) rule"
+        bad "vendor/etc/selinux/vendor_sepolicy.cil lacks viper_control_service's add (hal_audio_default) or find (priv_app) rule, or priv_app's servicemanager list (the app's AIDL mode needs it)"
     fi
 }
 device_aidl() {   # uses a, a2, denied, $T
@@ -224,6 +232,221 @@ device_aidl() {   # uses a, a2, denied, $T
     info "by hand, once per new build: the effects the HAL lists (dumpsys android.hardware.audio.effect.IFactory/default) are a build without ViPER4Android's plus ViPER's, so Pixel's own effects still load"
 }
 
+# --- The AIDL driver over Google's stock vendor (EOS_V4A=aidl-overlay: the Pixel 11s) ---------
+# The Pixel 11s ship Google's vendor.img as it is (read-only erofs, BOARD_PREBUILT_VENDORIMAGE).
+# Its audio HAL is Google's aoc HAL, as husky's: it loads the libraries
+# /vendor/etc/audio_effects_config.xml names from /vendor/lib64/soundfx, and the stock image has
+# no such config. So husky's two files install under /product/vendor_overlay/0 (Android.mk),
+# init.viper4android.rc lays them over those two vendor folders at boot (read-only overlayfs,
+# with an off switch), and product policy (viper4android.te and its contexts) labels viper.control.
+# Everything here depends on what Google's image holds, so out reads the vendor.img this build
+# ships and checks it still fits (the stock guard) and that the split policy compiles with it.
+OVL=product/vendor_overlay/0
+OVL_HAL=bin/hw/android.hardware.audio.service-aidl.aoc OVL_HAL_SVC=vendor.audio-hal-aidl
+tree_overlay() {   # uses $top
+    local dt vgc img f hits
+    dt="$top/$EOS_DEVICE_TREE" vgc="$top/$EOS_VENDOR_DIR" img="$top/vendor/google/$EOS_DEVICE-images/images/vendor.img"
+    [[ -d "$dt" ]] || bad "missing ${dt#"$top"/}"
+    # The overlay is for a phone that ships Google's vendor image as it is
+    if grep -qE '^[[:space:]]*BOARD_PREBUILT_VENDORIMAGE[[:space:]]*:?=' "$dt"/BoardConfig*.mk 2>/dev/null && [[ -f "$img" ]]; then
+        pass "${dt#"$top"/} ships Google's prebuilt vendor image (${img#"$top"/}), which the overlay leaves as it is"
+    else
+        bad "${dt#"$top"/} sets no BOARD_PREBUILT_VENDORIMAGE or ${img#"$top"/} is missing: aidl-overlay is for a stock prebuilt vendor (a vendor built from source takes EOS_V4A=aidl)"
+    fi
+    # v4a-check.sh out compiles the split policy with the tree's own check-sepolicy.sh
+    [[ -f "$dt/check-sepolicy.sh" ]] && pass "${dt#"$top"/}/check-sepolicy.sh is there (v4a-check.sh out compiles the policy with it)" \
+        || bad "no ${dt#"$top"/}/check-sepolicy.sh: v4a-check.sh out couldn't check the policy against the stock vendor's"
+    # The build reads vendor/extra/viper4android/Android.mk only if no Android.mk above it stops the search
+    [[ ! -e "$top/vendor/extra/Android.mk" ]] && pass "no vendor/extra/Android.mk (the build reads vendor/extra/viper4android/Android.mk)" \
+        || bad "vendor/extra/Android.mk exists: the build would never read vendor/extra/viper4android/Android.mk (the overlay's files)"
+    # The phone's own trees must not label viper.control or the off switch's properties, ship an
+    # effects config, or ViPER, or anything under /product/vendor_overlay (it would cover stock files)
+    hits=$(grep -rIlE --exclude-dir=.git 'viper|libv4a|90380da3|eos\.v4a|vendor_overlay' -- "$dt" "$vgc" 2>/dev/null | sed "s#^$top/##" | paste -sd' ' || true)
+    if [[ -z "$hits" ]]; then pass "nothing in ${dt#"$top"/} or ${vgc#"$top"/} ships ViPER, labels viper.control or installs under vendor_overlay"; else bad "ViPER, viper.control, eos.v4a or vendor_overlay already in $EOS_DEVICE's trees: $hits"; fi
+    hits=$(find "$dt" "$vgc" -name 'audio_effects*' -not -path '*/.git/*' 2>/dev/null | sort | sed "s#^$top/##" | paste -sd' ' || true)
+    if [[ -z "$hits" ]]; then pass "no audio_effects config in ${dt#"$top"/} or ${vgc#"$top"/}"; else bad "effects configs in $EOS_DEVICE's trees: $hits (the overlay's would cover or collide with them)"; fi
+    if [[ -e "$top/packages/apps/ViPER4AndroidFX" ]]; then
+        bad "packages/apps/ViPER4AndroidFX exists: Evolution X's other ViPER stack (libv4a_re, libviperaidl) would fight this one"
+    else
+        pass "no packages/apps/ViPER4AndroidFX"
+    fi
+    hits=$(grep -rIl --exclude-dir=.git TARGET_INCLUDE_VIPERFX -- "$dt" "$vgc"/*.mk 2>/dev/null || true)
+    if [[ -z "$hits" ]]; then pass "no TARGET_INCLUDE_VIPERFX in the $EOS_DEVICE trees"; else bad "TARGET_INCLUDE_VIPERFX set in: $hits"; fi
+}
+ovl_extract() {   # ovl_extract <vendor.img> <dir>: Google's image, unpacked rootless with the host's fsck.erofs
+    local raw=$1 fsck=$H/bin/fsck.erofs s2i=$H/bin/simg2img
+    [[ -x "$fsck" ]] || { echo "no $fsck (host_out with a built fsck.erofs)"; return 1; }
+    if [[ "$(od -An -tx1 -N4 -- "$1" | tr -d ' \n')" = 3aff26ed ]]; then   # a sparse image
+        [[ -x "$s2i" ]] || { echo "a sparse image and no $s2i"; return 1; }
+        raw=$T/vendor.raw
+        "$s2i" "$1" "$raw" > /dev/null 2>&1 || { echo "simg2img failed"; return 1; }
+    fi
+    "$fsck" --extract="$2" --no-preserve-owner "$raw" > "$T/fsck.log" 2>&1 \
+        || { rm -rf -- "$2"; "$fsck" --extract="$2" --no-preserve "$raw" > "$T/fsck.log" 2>&1; } \
+        || { echo "fsck.erofs: $(tail -2 "$T/fsck.log" | tr '\n' ' ')"; return 1; }
+    [[ $raw = "$1" ]] || rm -f -- "$raw"
+}
+ovl_stock_guard() {   # ovl_stock_guard <vendor dir>: Google's vendor still fits the overlay
+    local V=$1 se=$1/etc/selinux hits rc types vft t odd
+    hits=$(cd "$V" && find . \( -iname '*audio_effects*' -o -name 'libv4a*' \) 2>/dev/null | sed 's#^\./##' | sort | paste -sd' ' || true)
+    if [[ -z "$hits" ]]; then pass "stock vendor: no effects config and no ViPER of its own (the overlay's config adds, covers nothing)"
+    else bad "stock vendor now has $hits: the overlay's audio_effects_config.xml would hide Google's (merge ViPER's library and effect into a copy of it instead; README.md)"; fi
+    if [[ -f "$V/$OVL_HAL" ]] && grep -aqF /vendor/etc/audio_effects_config.xml "$V/$OVL_HAL" && grep -aqF /vendor/lib64/soundfx/ "$V/$OVL_HAL"; then
+        pass "stock vendor: /vendor/$OVL_HAL still reads /vendor/etc/audio_effects_config.xml and loads from /vendor/lib64/soundfx/"
+    else
+        bad "stock vendor: /vendor/$OVL_HAL is gone or no longer names /vendor/etc/audio_effects_config.xml and /vendor/lib64/soundfx/: the overlaid folders may not be the ones it reads"
+    fi
+    [[ -d "$V/lib64/soundfx" && -d "$V/etc" ]] && pass "stock vendor: lib64/soundfx and etc are folders (overlayfs needs them)" || bad "stock vendor: no lib64/soundfx or etc folder"
+    rc=$(grep -lE "^service $OVL_HAL_SVC /vendor/$OVL_HAL" "$V"/etc/init/*.rc "$V"/etc/init/hw/*.rc 2>/dev/null | head -1 || true)
+    if [[ -n "$rc" ]] && grep -qE '^[[:space:]]+class[[:space:]]+hal([[:space:]]|$)' "$rc" && ! grep -qE '^[[:space:]]+critical([[:space:]]|$)' "$rc"; then
+        pass "stock vendor: service $OVL_HAL_SVC (class hal, not critical) runs the HAL: it starts after the mounts, and the off switch watches it"
+    else
+        bad "stock vendor: no 'service $OVL_HAL_SVC /vendor/$OVL_HAL' with class hal and not critical in etc/init: init.viper4android.rc's mounts may come too late or its off switch watch the wrong service"
+    fi
+    if grep -hqE '^ro\.vndk\.version=' "$V/build.prop" "$V/etc/build.prop" "$V/default.prop" 2>/dev/null; then
+        bad "stock vendor sets ro.vndk.version: fs_mgr would mount its own /product/vendor_overlay/<version> too"
+    else
+        pass "stock vendor sets no ro.vndk.version (fs_mgr's own vendor overlay stays off)"
+    fi
+    hits=$(grep -oE '\(typeattributeset hal_audio_server \([^)]*\)\)' "$se/vendor_sepolicy.cil" 2>/dev/null | sed -E 's/.*\(([^()]*)\)\)$/\1/' || true)
+    [[ -n "$hits" ]] && pass "stock vendor policy: hal_audio_server is $hits (viper4android.te's rules reach the HAL through it)" \
+        || bad "stock vendor policy puts nothing in hal_audio_server: viper4android.te's rules wouldn't reach the audio HAL"
+    hits=$(grep -rliE 'viper|eos_v4a' "$se" 2>/dev/null | sed "s#^$V/##" | paste -sd' ' || true)
+    [[ -z "$hits" ]] && pass "stock vendor policy names no viper or eos_v4a" || bad "stock vendor policy names viper or eos_v4a: $hits (two labels for one service abort servicemanager)"
+    # overlayfs checks the mounter's (init's) access on every file it serves from /vendor/etc: each
+    # label there must be one init reads. init reads every vendor_file_type; the others allowed
+    # here are the platform types /vendor/etc/selinux carries, which init reads too
+    types=$(grep -E '^/(\(vendor\|system/vendor\)|vendor|system/vendor)/etc' "$se/vendor_file_contexts" 2>/dev/null | awk '{print $NF}' | sed -E 's/^u:object_r:([^:]+):.*/\1/' | sort -u)
+    vft=$(grep -oE '\(typeattributeset vendor_file_type \([^)]*\)\)' "$se/vendor_sepolicy.cil" 2>/dev/null | tr ' ()' '\n\n\n' | sort -u)
+    odd=
+    for t in $types; do
+        grep -qx -- "$t" <<<"$vft" && continue
+        case $t in vendor_configs_file|vendor_service_contexts_file|sepolicy_file|file_contexts_file|property_contexts_file) continue ;; esac
+        odd="$odd $t"
+    done
+    [[ -z "$odd" ]] && pass "stock vendor labels under /vendor/etc are all ones init reads ($(paste -sd' ' <<<"$types"))" \
+        || bad "stock vendor labels files under /vendor/etc with types init may not read:$odd (overlaying /vendor/etc would break whatever reads them: add init's read in viper4android.te)"
+    hits=$(for l in libbase libfmq libcutils; do [[ -f "$V/lib64/$l.so" ]] || printf '%s ' "$l.so"; done)
+    [[ -z "$hits" ]] && pass "stock vendor has the driver's vendor libraries (libbase, libfmq, libcutils)" || bad "stock vendor lacks $hits: the driver wouldn't load"
+}
+out_overlay() {   # uses $O, $H
+    local lib cfg hits configs se top dt img V out n f
+    lib="$O/$OVL/lib64/soundfx/libv4a_aidl.so" cfg="$O/$OVL/etc/audio_effects_config.xml"
+    if [[ -f "$lib" && "$(sha "$lib")" = "$V4A_AIDL_LIB_SHA256" ]]; then
+        pass "$OVL/lib64/soundfx/libv4a_aidl.so is upstream's $V4A_FX_VERSION AIDL arm64 library ($V4A_AIDL_LIB_SHA256)"
+    else
+        bad "$OVL/lib64/soundfx/libv4a_aidl.so is $( [[ -f "$lib" ]] && sha "$lib" || echo missing), want $V4A_AIDL_LIB_SHA256"
+    fi
+    if [[ -f "$cfg" && "$(sha "$cfg")" = "$V4A_AIDL_CONFIG_SHA256" ]]; then
+        pass "$OVL/etc/audio_effects_config.xml is the AIDL zip's config, unchanged ($V4A_AIDL_CONFIG_SHA256)"
+    else
+        bad "$OVL/etc/audio_effects_config.xml is $( [[ -f "$cfg" ]] && sha "$cfg" || echo missing), want the AIDL zip's $V4A_AIDL_CONFIG_SHA256"
+    fi
+    # Anything else under the overlay would cover a stock vendor file of the same name
+    hits=$(cd "$O" && find product/vendor_overlay -mindepth 1 \! -type d 2>/dev/null | sort | paste -sd' ' || true)
+    if [[ "$hits" = "$OVL/etc/audio_effects_config.xml $OVL/lib64/soundfx/libv4a_aidl.so" ]]; then
+        pass "product/vendor_overlay holds ViPER's two files only (nothing else covers a stock vendor file)"
+    else
+        bad "product/vendor_overlay holds: ${hits:-nothing} (want only $OVL/etc/audio_effects_config.xml and $OVL/lib64/soundfx/libv4a_aidl.so)"
+    fi
+    hits=$(cd "$O" && find vendor odm system system_ext product \( -name 'libv4a_aidl*' -o -name 'libv4a_re*' \) 2>/dev/null | sort | paste -sd' ' || true)
+    if [[ "$hits" = "$OVL/lib64/soundfx/libv4a_aidl.so" ]]; then pass "one ViPER driver in the images: $OVL/lib64/soundfx/libv4a_aidl.so"; else bad "ViPER driver files: ${hits:-none} (want only $OVL/lib64/soundfx/libv4a_aidl.so)"; fi
+    configs=$(cd "$O" && find vendor odm system system_ext product -name 'audio_effects*' 2>/dev/null | sort | paste -sd' ' || true)
+    if [[ "$configs" = "$OVL/etc/audio_effects_config.xml" || "$configs" = "$OVL/etc/audio_effects_config.xml system/etc/audio_effects.xml" ]]; then
+        pass "effects configs: $configs (the overlay's becomes /vendor/etc/audio_effects_config.xml, the one the AIDL HAL reads)"
+    else
+        bad "effects configs: ${configs:-none} (want $OVL/etc/audio_effects_config.xml, and at most AOSP's system/etc/audio_effects.xml)"
+    fi
+    f="$O/product/etc/init/init.viper4android.rc"
+    cmp -s -- "$f" "$kit/tree/init.viper4android.rc" && pass "product/etc/init/init.viper4android.rc is the kit's (the mounts and the off switch)" \
+        || bad "product/etc/init/init.viper4android.rc is missing or not the kit's: nothing would lay the overlay over /vendor"
+    grep -qxF 'persist.eos.v4a.off=0' "$O/product/etc/build.prop" 2>/dev/null && pass "product build.prop sets the off switch's default (persist.eos.v4a.off=0, on)" \
+        || bad "product/etc/build.prop lacks persist.eos.v4a.off=0: init.viper4android.rc would never mount"
+    se="$O/product/etc/selinux"
+    grep -qE "^${V4A_AIDL_SERVICE}[[:space:]]+u:object_r:viper_control_service:s0" "$se/product_service_contexts" 2>/dev/null \
+        && pass "product_service_contexts labels $V4A_AIDL_SERVICE viper_control_service" || bad "product/etc/selinux/product_service_contexts doesn't label $V4A_AIDL_SERVICE"
+    grep -qF '/(product|system/product)/vendor_overlay/0/etc(/.*)?' "$se/product_file_contexts" 2>/dev/null \
+        && grep -F '/(product|system/product)/vendor_overlay/0/etc(/.*)?' "$se/product_file_contexts" | grep -qF u:object_r:vendor_configs_file:s0 \
+        && pass "product_file_contexts labels $OVL/etc vendor_configs_file (/vendor/etc keeps its label)" \
+        || bad "product/etc/selinux/product_file_contexts doesn't label $OVL/etc vendor_configs_file: /vendor/etc would turn vendor_file"
+    grep -qE '^persist\.eos\.v4a\.[[:space:]]+u:object_r:eos_v4a_prop:s0' "$se/product_property_contexts" 2>/dev/null \
+        && grep -qE '^eos\.v4a\.[[:space:]]+u:object_r:eos_v4a_prop:s0' "$se/product_property_contexts" \
+        && pass "product_property_contexts labels the off switch's properties eos_v4a_prop" || bad "product/etc/selinux/product_property_contexts doesn't label persist.eos.v4a. and eos.v4a."
+    f="$se/product_sepolicy.cil"
+    if grep -qE '\(allow hal_audio_server viper_control_service \(service_manager \(.*add' "$f" 2>/dev/null \
+        && grep -qE '\(allow priv_app viper_control_service \(service_manager \(.*find' "$f" \
+        && grep -qE '\(allow priv_app servicemanager \(service_manager \(.*list' "$f" \
+        && grep -qE '\(allow priv_app hal_audio_server \(binder \(.*call' "$f" \
+        && grep -qE '\(allow init vendor_configs_file \(dir \(.*mounton' "$f" \
+        && grep -qE '\(allow shell eos_v4a_prop \(property_service \(.*set' "$f"; then
+        pass "product_sepolicy.cil: the HAL adds $V4A_AIDL_SERVICE, the app lists, finds and calls it, init mounts on /vendor/etc, adb shell sets the off switch"
+    else
+        bad "product/etc/selinux/product_sepolicy.cil lacks viper4android.te's rules (hal_audio_server add, priv_app list/find/call, init mounton, shell set)"
+    fi
+    # Google's image as this build ships it
+    img="$O/vendor.img" V="$T/stock-vendor"
+    if [[ -z "$H" ]]; then
+        bad "no host_out given: the stock vendor.img can't be unpacked (fsck.erofs) nor the policy compiled (secilc)"
+        return
+    fi
+    if [[ ! -f "$img" ]]; then bad "no vendor.img in $O: nothing to check the overlay against"; return; fi
+    if ! out=$(ovl_extract "$img" "$V"); then bad "can't unpack $O/vendor.img: $out"; return; fi
+    info "stock vendor: $(grep -hE '^ro\.vendor\.build\.fingerprint=' "$V/build.prop" "$V/etc/build.prop" 2>/dev/null | head -1)"
+    ovl_stock_guard "$V"
+    # Exactly one label for viper.control across the partitions (servicemanager refuses two)
+    n=$(cat "$O"/system/etc/selinux/plat_service_contexts "$O"/system_ext/etc/selinux/system_ext_service_contexts \
+        "$se/product_service_contexts" "$V/etc/selinux/vendor_service_contexts" 2>/dev/null | grep -cE "^${V4A_AIDL_SERVICE}[[:space:]]" || true)
+    [[ $n = 1 ]] && pass "one $V4A_AIDL_SERVICE label across system, system_ext, product and the stock vendor" || bad "$V4A_AIDL_SERVICE is labelled $n times across the partitions (want 1)"
+    # The split policy as init compiles it at boot, with the stock vendor's: a failure is a bootloop
+    top=${O%/out/target/product/*} dt=
+    [[ $top = "$O" ]] || dt="$top/$EOS_DEVICE_TREE"
+    if [[ -z "$dt" || ! -f "$dt/check-sepolicy.sh" ]]; then
+        bad "can't find $EOS_DEVICE's check-sepolicy.sh (the product out isn't <top>/out/target/product/<device>?): the policy isn't compiled against the stock vendor's"
+    elif [[ ! -x "$H/bin/secilc" ]]; then
+        bad "no $H/bin/secilc: the policy isn't compiled against the stock vendor's"
+    elif out=$(bash "$dt/check-sepolicy.sh" "$H/bin/secilc" "$O" "$V" 2>&1) && grep -q '^OK: split policy compiles' <<<"$out"; then
+        pass "${dt#"$top"/}/check-sepolicy.sh: $(grep '^OK: split policy compiles' <<<"$out")"
+    else
+        bad "${dt#"$top"/}/check-sepolicy.sh fails with the stock vendor's policy (a bootloop):"$'\n'"$(tail -5 <<<"$out")"
+    fi
+    rm -rf -- "$V"
+}
+device_overlay() {   # uses a, a2, denied, $T
+    local d m l off n
+    a cat /proc/mounts > "$T/mounts"
+    off=$(a getprop persist.eos.v4a.off) n=$(a getprop eos.v4a.restarts)
+    case "$off" in
+        0) pass "the off switch is on (persist.eos.v4a.off=0)" ;;
+        1|2)
+            if [[ $off = 1 ]]; then
+                bad "ViPER4Android is turned off by hand (persist.eos.v4a.off=1): adb shell setprop persist.eos.v4a.off 0, then reboot"
+            else
+                bad "the automatic switch turned ViPER4Android off: the audio HAL kept restarting (persist.eos.v4a.off=2; logcat -b crash shows why). adb shell setprop persist.eos.v4a.off 0 and reboot to try again"
+            fi
+            m=$(awk '$2 == "/vendor/lib64/soundfx" && $3 == "overlay"' "$T/mounts")
+            [[ -z "$m" ]] && pass "the driver is taken away as the switch says (no overlay on /vendor/lib64/soundfx; eos.v4a.restarts=${n:-unset})" \
+                || bad "the switch is off but /vendor/lib64/soundfx is still overlaid: the rc's unmount failed (logcat -b all | grep init: shows why)"
+            return ;;
+        *) bad "persist.eos.v4a.off is '${off}', not 0, 1 or 2: the build's default (product build.prop) is missing" ;;
+    esac
+    info "audio HAL restarts counted this boot: ${n:-none (no mount this boot)} (6 turn it off)"
+    for d in /vendor/lib64/soundfx /vendor/etc; do
+        m=$(awk -v d="$d" '$2 == d && $3 == "overlay" { print $4 }' "$T/mounts" | tail -1)
+        if [[ ",$m," = *,ro,* && "$m" = *"lowerdir=/$OVL/"* ]]; then
+            pass "$d: ViPER's read-only overlay from /$OVL is mounted"
+        else
+            bad "$d: no read-only overlay from /$OVL (${m:-not mounted}): init.viper4android.rc didn't mount it (logcat -b all | grep init: shows why)"
+        fi
+    done
+    l=$(a2 ls -dZ /vendor/etc)
+    [[ "$l" = *u:object_r:vendor_configs_file:s0* ]] && pass "/vendor/etc keeps its label (vendor_configs_file)" || bad "/vendor/etc: ${l:-unreadable} (want u:object_r:vendor_configs_file:s0)"
+    l=$(a2 ls -dZ /vendor/lib64/soundfx)
+    if denied "$l"; then info "adb shell may not look at /vendor/lib64/soundfx here: its label isn't checked"
+    else [[ "$l" = *u:object_r:vendor_file:s0* ]] && pass "/vendor/lib64/soundfx keeps its label (vendor_file)" || bad "/vendor/lib64/soundfx: ${l:-unreadable} (want u:object_r:vendor_file:s0)"; fi
+    device_aidl
+    info "by hand, once on kodiak's first build: adb shell setprop persist.eos.v4a.off 1 takes the driver away at once (this check then shows soundfx not overlaid, viper.control gone, Pixel's effects still listed), and again after a reboot; setprop 0 and a reboot bring it back"
+}
+
 mode=${1:-}; shift || true
 case "$mode" in
 tree)
@@ -245,6 +468,8 @@ tree)
     ecpp="$top/frameworks/av/services/audioflinger/Effects.cpp"
     if [[ $EOS_V4A = aidl ]]; then
         tree_aidl
+    elif [[ $EOS_V4A = aidl-overlay ]]; then
+        tree_overlay
     else
         # gs201's HIDL effect HAL is what the driver needs; the phone's own device tree and vendor
         # repo are its devices/<device>.conf's (cheetah: device/google/pantah, vendor/google/cheetah)
@@ -363,6 +588,8 @@ out)
     echo "== ViPER4Android RE build checks: $O"
     if [[ $EOS_V4A = aidl ]]; then
         out_aidl
+    elif [[ $EOS_V4A = aidl-overlay ]]; then
+        out_overlay
     else
         lib="$O/vendor/lib64/soundfx/libv4a_re.so"
         if [[ -f "$lib" && "$(sha "$lib")" = "$V4A_FX_LIB_SHA256" ]]; then
@@ -462,14 +689,15 @@ out)
     info "MusicFX: ${hits:-not in this build}"
     # The licence texts must ship with every build (the build writes these unless
     # DISABLE_NOTICE_XML_GENERATION is set)
-    for p in vendor system_ext; do
+    # (the overlay's driver and config are product modules, so their notices are product's)
+    for p in $([[ $EOS_V4A = aidl-overlay ]] && echo product || echo vendor) system_ext; do
         n="$O/$p/etc/NOTICE.xml.gz"
         if [[ ! -f "$n" ]]; then bad "no $p/etc/NOTICE.xml.gz: the build must ship the ViPER4Android licence texts"; continue; fi
         gzip -dc -- "$n" > "$T/notice" 2>/dev/null || { bad "$p/etc/NOTICE.xml.gz doesn't decompress"; continue; }
-        if [[ $p = vendor && $EOS_V4A = aidl ]]; then
+        if [[ $p = product || ( $p = vendor && $EOS_V4A = aidl ) ]]; then
             grep -qF 'Zhuhang' "$T/notice" && grep -qF 'Julien Pommier' "$T/notice" \
-                && pass "vendor NOTICE carries the ViPERDSP and PFFFT notices (the AIDL driver)" \
-                || bad "vendor NOTICE lacks NOTICE.viperdsp or NOTICE.pffft"
+                && pass "$p NOTICE carries the ViPERDSP and PFFFT notices (the AIDL driver)" \
+                || bad "$p NOTICE lacks NOTICE.viperdsp or NOTICE.pffft"
         elif [[ $p = vendor ]]; then
             grep -qF 'Zhuhang' "$T/notice" && grep -qF 'Julien Pommier' "$T/notice" && grep -qF 'Version 2, June 1991' "$T/notice" \
                 && pass "vendor NOTICE carries the ViPERDSP and PFFFT notices and the driver's GPL-2.0" \
@@ -498,6 +726,8 @@ device)
     tr -d '\r' < "$T/log" > "$T/logs"
     if [[ $EOS_V4A = aidl ]]; then
         device_aidl
+    elif [[ $EOS_V4A = aidl-overlay ]]; then
+        device_overlay
     else
         l=$(a2 ls -lZ /vendor/lib64/soundfx/libv4a_re.so)
         if denied "$l"; then
@@ -591,8 +821,8 @@ device)
         && pass "hidden-API sysconfig for the app is installed" || bad "no /system_ext/etc/sysconfig/hiddenapi-$V4A_APP_PACKAGE.xml"
     # Not adb shell's own: on a user build this check's ls, sha256sum and file are denied
     hits=$(grep -F 'avc:' "$T/logs" | grep -F 'denied' | grep -vF 'scontext=u:r:shell:s0' \
-        | grep -E "hal_audio_default|$V4A_APP_PACKAGE|libv4a_re|libv4a_aidl|viper_control_service" | tail -5 || true)
-    [[ -z "$hits" ]] && pass "no SELinux denials for hal_audio_default or the app" || bad "SELinux denials:"$'\n'"$hits"
+        | grep -E "hal_audio_default|$V4A_APP_PACKAGE|libv4a_re|libv4a_aidl|viper_control_service|eos_v4a_prop|scontext=u:r:priv_app:[^ ]* tcontext=u:r:servicemanager:|scontext=u:r:init:s0 tcontext=u:object_r:vendor_(configs_)?file:" | tail -5 || true)
+    [[ -z "$hits" ]] && pass "no SELinux denials for hal_audio_default, the app or init's overlay" || bad "SELinux denials:"$'\n'"$hits"
     grep -qF 'Welcome to ViPER FX' "$T/logs" && info "logcat: a ViPER effect instance was created (the app is on)" \
         || info "no ViPER effect instance in the log yet: turn the app's master switch on, play something, run again"
     info "by hand: ViPER4Android > menu > Driver Status shows Version $V4A_FX_VERSION, Version Code $V4A_FX_VERSION_CODE, Streaming: Active while music plays"

@@ -1,6 +1,7 @@
 // ViPER4Android RE for ExpressiveOS: the unmodified upstream app, its HIDL effect driver
-// (cheetah) and its AIDL effect driver with the effects config that loads it (husky).
-// viper4android.mk picks each product's modules. expressiveos-cheetah/viper4android/apply-v4a.sh
+// (cheetah) and its AIDL effect driver with the effects config that loads it (husky; the Pixel
+// 11s get the same two files from Android.mk, under /product/vendor_overlay, and the init script
+// below). viper4android.mk picks each product's modules. expressiveos-cheetah/viper4android/apply-v4a.sh
 // stages this folder into vendor/extra/viper4android: the binaries first, this file last.
 // README.md has the sources, the pins and the credits.
 
@@ -138,4 +139,14 @@ prebuilt_etc {
     filename: "audio_effects_config.xml",
     vendor: true,
     required: ["libv4a_aidl"],
+}
+
+// /product/etc/init/init.viper4android.rc (EOS_V4A=aidl-overlay: the Pixel 11s, whose vendor is
+// Google's stock image): lays /product/vendor_overlay/0 (Android.mk) over /vendor/lib64/soundfx
+// and /vendor/etc at boot, with the off switch
+prebuilt_etc {
+    name: "init.viper4android.rc",
+    src: "init.viper4android.rc",
+    sub_dir: "init",
+    product_specific: true,
 }

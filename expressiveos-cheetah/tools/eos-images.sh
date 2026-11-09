@@ -5,7 +5,7 @@
 #   2. eos-keys-check.sh tree and vars: ExpressiveOS's own keys are in the tree's key folder
 #      (vendor/expressiveos-priv/keys; vendor/evolution-priv/keys before 1.1's move) and the
 #      build will sign with them, not with test keys or Evolution X's;
-#   3. the kits: viper4android/apply-v4a.sh on a phone with EOS_V4A=1 or aidl,
+#   3. the kits: viper4android/apply-v4a.sh on a phone with EOS_V4A=1, aidl or aidl-overlay,
 #      bootanimation/apply-bootanim.sh, wallpapers/apply-wallpapers.sh,
 #      launcher/apply-launcher.sh (Expressive Launcher as default Home and Recents app);
 #   4. the name and version the build will carry (dumpvars), and a record of its sources
@@ -91,7 +91,8 @@ step "prepare.sh" 'PREPARE_OK.*' "$kit/prepare.sh" "$top"
 step "keys: tree" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" tree "$top"
 step "keys: build variables" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vars "$top"
 # ViPER4Android only where devices/<device>.conf turns it on: EOS_V4A=1, the HIDL driver
-# (gs201's HIDL effect HAL), or aidl, the AIDL driver (husky's AIDL effect HAL)
+# (gs201's HIDL effect HAL), aidl, the AIDL driver (husky's AIDL effect HAL), or aidl-overlay, the
+# AIDL driver laid over Google's stock vendor at boot (the Pixel 11s)
 if [[ $EOS_V4A != 0 ]]; then
     step "ViPER4Android" 'V4A_APPLY=OK.*' "$kit/viper4android/apply-v4a.sh" "$top"
 else
@@ -139,11 +140,14 @@ echo "OK: $EOS_LUNCH installs ExpressiveLauncher, the default Home and Recents a
     || fail "$EOS_LUNCH would install KernelSUNext: ExpressiveOS ships no root, and its device tree mustn't add the KernelSU Next manager"
 # vendor/extra/product.mk (apply-v4a.sh) has every product inherit viper4android.mk, whose
 # product filters must give each phone exactly its EOS_V4A's modules: the HIDL driver (1), the
-# AIDL driver and its effects config (aidl), or nothing (0)
+# AIDL driver and its effects config (aidl), the same two under /product/vendor_overlay with the
+# init script that lays them over the stock vendor (aidl-overlay), or nothing (0)
+v4a_ovl="v4a_overlay_libv4a_aidl v4a_overlay_audio_effects_config.xml init.viper4android.rc"
 case $EOS_V4A in
-    0) v4a_want="" v4a_not="ViPER4Android libv4a_re libv4a_aidl v4a_audio_effects_config.xml" ;;
-    1) v4a_want="ViPER4Android libv4a_re" v4a_not="libv4a_aidl v4a_audio_effects_config.xml" ;;
-    aidl) v4a_want="ViPER4Android libv4a_aidl v4a_audio_effects_config.xml" v4a_not="libv4a_re" ;;
+    0) v4a_want="" v4a_not="ViPER4Android libv4a_re libv4a_aidl v4a_audio_effects_config.xml $v4a_ovl" ;;
+    1) v4a_want="ViPER4Android libv4a_re" v4a_not="libv4a_aidl v4a_audio_effects_config.xml $v4a_ovl" ;;
+    aidl) v4a_want="ViPER4Android libv4a_aidl v4a_audio_effects_config.xml" v4a_not="libv4a_re $v4a_ovl" ;;
+    aidl-overlay) v4a_want="ViPER4Android $v4a_ovl" v4a_not="libv4a_re libv4a_aidl v4a_audio_effects_config.xml" ;;
 esac
 for m in $v4a_want; do
     [[ $pkgs = *" $m "* ]] || fail "$EOS_LUNCH doesn't install $m, but devices/$EOS_DEVICE.conf has EOS_V4A=$EOS_V4A: viper4android.mk's product filter must name ${EOS_LUNCH%%-*}"
