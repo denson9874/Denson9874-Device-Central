@@ -893,7 +893,7 @@ jobs:
       - name: Record the 1.1.2 candidates for release
         if: inputs.action == 'expressiveos-device-ok-1.1.2'
         env:
-          GO: ''
+          GO: 'Release go: Daryl picked "Release now" on the card "Release ExpressiveOS 1.1.2 to all six phones now?", 2026-11-08 8:34 PM ET (2026-11-09 01:34 UTC).'
         run: |
           [[ -n $GO ]] || { echo "::error::no release go recorded in this step yet (GO)"; exit 1; }
           if [[ "$QUERY" =~ ^device=(cheetah|kodiak)\ tested\ sha=([0-9a-f]{64})$ ]]; then
