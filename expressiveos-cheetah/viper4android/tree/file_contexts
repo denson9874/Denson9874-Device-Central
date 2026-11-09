@@ -1,0 +1,4 @@
+# /vendor/etc keeps its label (vendor_configs_file) once /product/vendor_overlay/0/etc is laid over
+# it: an overlay's top folder takes its uppermost layer's label, and platform policy labels
+# /product/vendor_overlay/<n>/... vendor_file
+/(product|system/product)/vendor_overlay/0/etc(/.*)?        u:object_r:vendor_configs_file:s0

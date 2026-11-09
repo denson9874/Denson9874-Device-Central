@@ -5,7 +5,7 @@
 #   2. eos-keys-check.sh tree and vars: ExpressiveOS's own keys are in the tree's key folder
 #      (vendor/expressiveos-priv/keys; vendor/evolution-priv/keys before 1.1's move) and the
 #      build will sign with them, not with test keys or Evolution X's;
-#   3. the kits: viper4android/apply-v4a.sh on a phone with EOS_V4A=1,
+#   3. the kits: viper4android/apply-v4a.sh on a phone with EOS_V4A=1, aidl or aidl-overlay,
 #      bootanimation/apply-bootanim.sh, wallpapers/apply-wallpapers.sh,
 #      launcher/apply-launcher.sh (Expressive Launcher as default Home and Recents app);
 #   4. the name and version the build will carry (dumpvars), and a record of its sources
@@ -59,7 +59,7 @@ eos_top "${1:-}"
 clean_env
 cd "$top" || fail "can't cd to $top"
 PATH=$HOME/bin:$PATH
-rm -f -- "$EOS_STATE/build.ok" "$EOS_STATE/target-files.ok" "$EOS_STATE/quick.ok"
+rm -f -- "$EOS_STATE/build.ok" "$EOS_STATE/target-files.ok" "$EOS_STATE/quick.ok" "$EOS_STATE/verified.ok" "$EOS_STATE/images-verify.log"
 # The build type under its 1.1 name and its old one (a tree from before 1.1 reads that), as
 # eos-make.sh exports them. patches/device_google_pantah/0010 sets TARGET_INCLUDE_BOOT_ANIMATIONS
 # too; apply-bootanim.sh checks for it here
@@ -90,13 +90,15 @@ trap 'rc=$?; rm -rf -- "$work"; [[ $done = 1 ]] || { echo "BUILD_EXIT=1"; exit $
 step "prepare.sh" 'PREPARE_OK.*' "$kit/prepare.sh" "$top"
 step "keys: tree" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" tree "$top"
 step "keys: build variables" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vars "$top"
-# ViPER4Android only where devices/<device>.conf turns it on: it needs gs201's HIDL effect HAL
-if [[ $EOS_V4A = 1 ]]; then
+# ViPER4Android only where devices/<device>.conf turns it on: EOS_V4A=1, the HIDL driver
+# (gs201's HIDL effect HAL), aidl, the AIDL driver (husky's AIDL effect HAL), or aidl-overlay, the
+# AIDL driver laid over Google's stock vendor at boot (the Pixel 11s)
+if [[ $EOS_V4A != 0 ]]; then
     step "ViPER4Android" 'V4A_APPLY=OK.*' "$kit/viper4android/apply-v4a.sh" "$top"
 else
     echo "== ViPER4Android: off for $EOS_DEVICE (EOS_V4A=$EOS_V4A, devices/$EOS_DEVICE.conf)"
     # It stages nothing then, but brings an older kit's viper4android.mk (every product's) up
-    # to the one that adds ViPER4Android to the EOS_V4A=1 phones only
+    # to the one that adds ViPER4Android to the phones that have it only
     step "ViPER4Android's makefile" 'V4A_APPLY=OK.*' "$kit/viper4android/apply-v4a.sh" "$top"
 fi
 step "boot animation" 'BOOTANIM_APPLY=OK.*' "$kit/bootanimation/apply-bootanim.sh" "$top"
@@ -136,14 +138,27 @@ echo "OK: $EOS_LUNCH installs ExpressiveLauncher, the default Home and Recents a
 # share still holds of earlier builds (vendor/extra, the pantah fork's KernelSU lines)
 [[ $pkgs != *" KernelSUNext "* ]] \
     || fail "$EOS_LUNCH would install KernelSUNext: ExpressiveOS ships no root, and its device tree mustn't add the KernelSU Next manager"
-if [[ $EOS_V4A != 1 ]]; then
-    for m in ViPER4Android libv4a_re; do
-        [[ $EOS_V4A = 1 || $pkgs != *" $m "* ]] \
-            || fail "$EOS_LUNCH would install $m, but devices/$EOS_DEVICE.conf has EOS_V4A=0: vendor/extra/product.mk (apply-v4a.sh, from a cheetah build) has every product inherit viper4android.mk, which must add it for the phones with EOS_V4A=1 only"
-    done
+# vendor/extra/product.mk (apply-v4a.sh) has every product inherit viper4android.mk, whose
+# product filters must give each phone exactly its EOS_V4A's modules: the HIDL driver (1), the
+# AIDL driver and its effects config (aidl), the same two under /product/vendor_overlay with the
+# init script that lays them over the stock vendor (aidl-overlay), or nothing (0)
+v4a_ovl="v4a_overlay_libv4a_aidl v4a_overlay_audio_effects_config.xml init.viper4android.rc"
+case $EOS_V4A in
+    0) v4a_want="" v4a_not="ViPER4Android libv4a_re libv4a_aidl v4a_audio_effects_config.xml $v4a_ovl" ;;
+    1) v4a_want="ViPER4Android libv4a_re" v4a_not="libv4a_aidl v4a_audio_effects_config.xml $v4a_ovl" ;;
+    aidl) v4a_want="ViPER4Android libv4a_aidl v4a_audio_effects_config.xml" v4a_not="libv4a_re $v4a_ovl" ;;
+    aidl-overlay) v4a_want="ViPER4Android $v4a_ovl" v4a_not="libv4a_re libv4a_aidl v4a_audio_effects_config.xml" ;;
+esac
+for m in $v4a_want; do
+    [[ $pkgs = *" $m "* ]] || fail "$EOS_LUNCH doesn't install $m, but devices/$EOS_DEVICE.conf has EOS_V4A=$EOS_V4A: viper4android.mk's product filter must name ${EOS_LUNCH%%-*}"
+done
+for m in $v4a_not; do
+    [[ $pkgs != *" $m "* ]] || fail "$EOS_LUNCH would install $m, but devices/$EOS_DEVICE.conf has EOS_V4A=$EOS_V4A: viper4android.mk adds it for the wrong products"
+done
+if [[ $EOS_V4A = 0 ]]; then
     echo "OK: $EOS_LUNCH installs no KernelSU Next or ViPER4Android, as devices/$EOS_DEVICE.conf says"
 else
-    echo "OK: $EOS_LUNCH installs no KernelSU Next"
+    echo "OK: $EOS_LUNCH installs no KernelSU Next, and ViPER4Android's EOS_V4A=$EOS_V4A modules: $v4a_want"
 fi
 echo "OK: $name (the date is the build's own)"
 
@@ -186,7 +201,7 @@ fi
 {
     echo "ExpressiveOS $EOS_VERSION $EOS_BUILD_TYPE, $EOS_DEVICE, $(date -u '+%F %T') UTC"
     # A copy the runner installed (rsync, no .git) names the commit it came from
-    echo "kit: $(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")$([[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || echo " (with local changes)")"
+    echo "kit: $(kit_version)"
     # GPL-3.0-or-later code ships in it (launcher/README.md, "Licence and credits")
     echo "Expressive Launcher: $(sed -n 's/^EL_VERSION=//p' "$kit/launcher/launcher.conf") ($(sed -n 's/^EL_VERSION_CODE=//p' "$kit/launcher/launcher.conf")), source $(sed -n 's/^EL_SRC=//p' "$kit/launcher/launcher.conf") $(sed -n 's/^EL_COMMIT=//p' "$kit/launcher/launcher.conf")"
     echo "Patched projects: upstream revision (repo's m/$EOS_MANIFEST_BRANCH), then HEAD with the kit's commits"
@@ -234,6 +249,8 @@ zip=$(sed -n 's/^VERIFIED //p' "$work/step.log" | tail -1)
 [[ -f $zip ]] || fail "eos-verify.sh named no package"
 tf=$(tf_zip)
 [[ -f $tf ]] || fail "no $tf (eos-verify.sh checked it)"
+# This verify (step.log, the last step's output), for eos-pack.sh's candidate run (lib.sh)
+verified_save "$work/step.log"
 # The target-files eos-verify.sh checked against the package, for eos-pack.sh (written
 # first: build.ok is what says the run finished)
 echo "$(sha256sum -- "$tf" | cut -d' ' -f1)  ${tf##*/}" > "$EOS_STATE/target-files.ok"

@@ -4,7 +4,9 @@
 # zip's init_boot is the build's stock one.
 #
 #   eos-pack.sh             # verify, then pack the candidate into ~/<EOS_RELEASES>/check
-#                           # (replaced each time)
+#                           # (replaced each time). Right after eos-images.sh it takes that
+#                           # run's verify instead, while lib.sh's images_verified holds
+#                           # (same package, same kit, out/'s files unchanged)
 #   eos-pack.sh --release   # the tested candidate into ~/<EOS_RELEASES>
 #   eos-pack.sh --upload    # --release, then upload its target-files to R2 (EOS_R2_REMOTE):
 #                           # no SourceForge (Daryl, 2026-11-03); the zip goes to the web
@@ -337,10 +339,18 @@ else
     read -r sha name < "$EOS_STATE/build.ok" || true
     ota=$O/$name
     [[ -f $ota && "$(sha256sum -- "$ota" | cut -d' ' -f1)" = "$sha" ]] || fail "$ota isn't the package eos-images.sh built and verified (out/ changed since)"
-    "$kit/tools/eos-verify.sh" "$top" > "$EOS_STATE/verify.log" 2>&1 || true
-    tail -1 "$EOS_STATE/verify.log" | grep -qx VERIFY=OK || { grep -E '^FAIL' "$EOS_STATE/verify.log" >&2 || tail -5 "$EOS_STATE/verify.log" >&2; fail "eos-verify.sh failed ($EOS_STATE/verify.log)"; }
-    [[ "$(sed -n 's/^VERIFIED //p' "$EOS_STATE/verify.log")" = "$top/$ota" ]] || fail "eos-verify.sh checked another package"
-    echo "OK: $name verified ($EOS_STATE/verify.log)"
+    if [[ -z "$mode" ]] && images_verified "$ota"; then
+        # A candidate run right after eos-images.sh (the build session): its verify of this
+        # very package, with this kit, and out/'s files unchanged since (lib.sh). A release
+        # always verifies again
+        cp -- "$EOS_STATE/images-verify.log" "$EOS_STATE/verify.log" || fail "can't write $EOS_STATE/verify.log"
+        echo "OK: $name verified by this build's eos-images.sh run (kit $(kit_version)), and the files the zip takes from out/ are unchanged since ($EOS_STATE/verified.ok): not verified again"
+    else
+        "$kit/tools/eos-verify.sh" "$top" > "$EOS_STATE/verify.log" 2>&1 || true
+        tail -1 "$EOS_STATE/verify.log" | grep -qx VERIFY=OK || { grep -E '^FAIL' "$EOS_STATE/verify.log" >&2 || tail -5 "$EOS_STATE/verify.log" >&2; fail "eos-verify.sh failed ($EOS_STATE/verify.log)"; }
+        [[ "$(sed -n 's/^VERIFIED //p' "$EOS_STATE/verify.log")" = "$top/$ota" ]] || fail "eos-verify.sh checked another package"
+        echo "OK: $name verified ($EOS_STATE/verify.log)"
+    fi
     # The target-files zip eos-images.sh kept with it (eos-verify.sh checked it's the package's)
     tf=$(tf_zip)
     [[ -f $EOS_STATE/target-files.ok ]] || fail "no $EOS_STATE/target-files.ok: the last eos-images.sh run kept no target-files (patches/vendor_lineage/0003)"

@@ -1,6 +1,8 @@
-// ViPER4Android RE for ExpressiveOS (cheetah): the unmodified upstream app and its
-// HIDL effect driver. expressiveos-cheetah/viper4android/apply-v4a.sh stages this folder
-// into vendor/extra/viper4android: the binaries first, this file last.
+// ViPER4Android RE for ExpressiveOS: the unmodified upstream app, its HIDL effect driver
+// (cheetah) and its AIDL effect driver with the effects config that loads it (husky; the Pixel
+// 11s get the same two files from Android.mk, under /product/vendor_overlay, and the init script
+// below). viper4android.mk picks each product's modules. expressiveos-cheetah/viper4android/apply-v4a.sh
+// stages this folder into vendor/extra/viper4android: the binaries first, this file last.
 // README.md has the sources, the pins and the credits.
 
 soong_namespace {
@@ -24,6 +26,18 @@ license {
     license_kinds: ["legacy_restricted"],
     license_text: [
         "LICENSE.driver",
+        "NOTICE.viperdsp",
+        "NOTICE.pffft",
+    ],
+}
+
+// The AIDL driver: the same ViPERDSP (and PFFFT) as libv4a_re.so, built by upstream. Its
+// zip carries no LICENSE and ViPERFX_RE doesn't publish the AIDL driver's source.
+license {
+    name: "viper4android_re_aidl_license",
+    visibility: [":__subpackages__"],
+    license_kinds: ["legacy_restricted"],
+    license_text: [
         "NOTICE.viperdsp",
         "NOTICE.pffft",
     ],
@@ -85,4 +99,54 @@ cc_prebuilt_library_shared {
     strip: {
         none: true,
     },
+}
+
+// /vendor/lib64/soundfx/libv4a_aidl.so, which husky's audio HAL (Google's aoc HAL, serving the
+// AIDL effect IFactory) loads because audio_effects_config.xml below names it. It exports the
+// AIDL effect entry points (createEffect, queryEffect, destroyEffect) and publishes the binder
+// service viper.control for the app. 64-bit only: husky has no 32-bit arch. Not stripped.
+cc_prebuilt_library_shared {
+    name: "libv4a_aidl",
+    licenses: ["viper4android_re_aidl_license"],
+    vendor: true,
+    relative_install_path: "soundfx",
+    compile_multilib: "64",
+    arch: {
+        arm64: {
+            srcs: ["libv4a_aidl_arm64-v8a.so"],
+        },
+    },
+    // Its NEEDED, besides libc, libm and libdl (the default system_shared_libs)
+    shared_libs: [
+        "libbase",
+        "libbinder_ndk",
+        "libcutils",
+        "libfmq",
+        "liblog",
+    ],
+    strip: {
+        none: true,
+    },
+}
+
+// /vendor/etc/audio_effects_config.xml: the AIDL zip's own config, unchanged (its installer
+// writes the same file on a phone that has none, as husky's vendor hasn't). It registers
+// library v4a_aidl with ViPER's effect, and applies it on USB and remote-submix outputs.
+prebuilt_etc {
+    name: "v4a_audio_effects_config.xml",
+    licenses: ["viper4android_re_aidl_license"],
+    src: "audio_effects_config.aidl.xml",
+    filename: "audio_effects_config.xml",
+    vendor: true,
+    required: ["libv4a_aidl"],
+}
+
+// /product/etc/init/init.viper4android.rc (EOS_V4A=aidl-overlay: the Pixel 11s, whose vendor is
+// Google's stock image): lays /product/vendor_overlay/0 (Android.mk) over /vendor/lib64/soundfx
+// and /vendor/etc at boot, with the off switch
+prebuilt_etc {
+    name: "init.viper4android.rc",
+    src: "init.viper4android.rc",
+    sub_dir: "init",
+    product_specific: true,
 }

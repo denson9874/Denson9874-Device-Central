@@ -28,7 +28,7 @@
 #      vbmeta_system are ExpressiveOS's; its patch levels are the build's; the
 #      target-files zip kept with it, for incremental OTAs, is its own (eos-target-files.sh);
 #   5. no root: out/'s init_boot is the stock one (no kernelsu.ko, signed with the tree's key);
-#   6. ViPER4Android (v4a-check.sh out; with EOS_V4A=0, none of its files shipped), the
+#   6. ViPER4Android (v4a-check.sh out, for the HIDL or AIDL driver, or the AIDL driver laid over the stock vendor; with EOS_V4A=0, none of its files shipped), the
 #      boot animation (bootanim.conf's zips, the everyday one and the holiday one with its
 #      /metadata hint rc, a BootAnimation that reads the hint and its SELinux label, and no
 #      other styles), the wallpaper
@@ -130,9 +130,9 @@ n=0
 mapfile -t dirs < <(kit_patch_dirs)
 for d in "${dirs[@]}"; do
     [[ -d $d ]] || continue
-    # Only those this phone's build applies: ViPER4Android's with EOS_V4A=1 only (eos-images.sh)
+    # Only those this phone's build applies: ViPER4Android's with EOS_V4A=1, aidl or aidl-overlay only (eos-images.sh)
     case $d in
-        "$kit"/viper4android/patches/*) [[ $EOS_V4A = 1 ]] || continue ;;
+        "$kit"/viper4android/patches/*) [[ $EOS_V4A != 0 ]] || continue ;;
     esac
     p=$(patch_project "$d")
     [[ -d $p ]] || fail "${d#"$kit"/} patches $p, which this tree doesn't have"
@@ -332,18 +332,18 @@ stock_ib "$O/init_boot.img"
 echo "OK: $O/init_boot.img has no KernelSU, verifies and is signed with the tree's key"
 
 echo "== ViPER4Android, boot animation and wallpaper"
-if [[ $EOS_V4A = 1 ]]; then
+if [[ $EOS_V4A != 0 ]]; then
     checked "ViPER4Android" 'V4A_CHECK=OK' "$kit/viper4android/tools/v4a-check.sh" out "$top/$O" "$top/out/host/linux-x86"
 else
-    # No ViPER4Android for this phone (EOS_V4A=0: its effect HAL isn't gs201's HIDL one): none
-    # of the files v4a-check.sh out looks for, nor Evolution X's other ViPER stack
+    # No ViPER4Android for this phone (EOS_V4A=0): none of the files v4a-check.sh out looks
+    # for (either driver), nor Evolution X's other ViPER stack
     v4apkg=$(sed -n 's/^V4A_APP_PACKAGE=//p' "$kit/viper4android/v4a.conf")
     [[ -n $v4apkg ]] || fail "viper4android/v4a.conf names no V4A_APP_PACKAGE"
-    hits=$(cd "$O" && { find vendor odm system system_ext product \( -name 'libv4a_re*' -o -name 'libviperaidl*' \
-            -o -name "privapp-permissions-$v4apkg.xml" -o -name "hiddenapi-$v4apkg.xml" \) -print 2>/dev/null
+    hits=$(cd "$O" && { find vendor odm system system_ext product \( -name 'libv4a_re*' -o -name 'libv4a_aidl*' -o -name 'libviperaidl*' \
+            -o -name "privapp-permissions-$v4apkg.xml" -o -name "hiddenapi-$v4apkg.xml" -o -name init.viper4android.rc \) -print 2>/dev/null
         find system system_ext product vendor -path '*app/ViPER4Android*' -prune -print 2>/dev/null; } | sort -u | paste -sd' ' || true)
     [[ -z "$hits" ]] || fail "ViPER4Android shipped, but devices/$EOS_DEVICE.conf says EOS_V4A=0: $hits"
-    echo "OK: no ViPER4Android (EOS_V4A=0): no libv4a_re, ViPER app or its permissions in the images"
+    echo "OK: no ViPER4Android (EOS_V4A=0): no libv4a_re, libv4a_aidl, ViPER app, its permissions or init script in the images"
 fi
 # shellcheck source=../bootanimation/bootanim.conf
 source "$kit/bootanimation/bootanim.conf"

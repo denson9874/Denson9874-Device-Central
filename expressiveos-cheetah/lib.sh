@@ -68,7 +68,7 @@ done
 unset _v
 _e() { [[ " $2 " == *" ${!1} "* ]] || fail "devices/$EOS_DEVICE.conf: $1 is '${!1}', not one of: $2"; }
 _e EOS_FIRMWARE_MODE "cache blobs images"; _e EOS_KERNEL "gs-6.1 prebuilt"
-_e EOS_V4A "0 1"; _e EOS_SUPER_EMPTY "out factory"; _e EOS_FLASH_VKB "0 1"; _e EOS_SYSUI_ODEX "0 1"
+_e EOS_V4A "0 1 aidl aidl-overlay"; _e EOS_SUPER_EMPTY "out factory"; _e EOS_FLASH_VKB "0 1"; _e EOS_SYSUI_ODEX "0 1"
 _e EOS_KMI "android14-6.1 android16-6.12"
 unset -f _e
 # Where a device's build keeps its own records: cheetah's are where they always were, so its
@@ -85,14 +85,16 @@ fi
 # finished step's time in EOS_TIMES (every phone's, one file), which its estimates start from.
 # EOS_RUN_KIND (full, quick or kernel; eos-pack.sh: full, quick, testers, release or upload) and
 # EOS_RUN_FRESH (1: the product out wasn't there when the build began, so every module was
-# built; - when it doesn't apply) say what the times are of
+# built; - when it doesn't apply) say what the times are of. The make's TIME line also says
+# prev=<phone>: whose make ran in the tree before (eos-make.sh's EOS_PREV_DEVICE), since a
+# change of phone redoes work
 EOS_TIMES=$HOME/expressiveos-build-times.txt
 eos_step() {   # eos_step <step>|end: say this run is at <step> now, after recording how long the step before took (a failure records nothing)
     local now
     now=$(date -u +%s)
     [[ $1 != "${_eos_step:-}" ]] || return 0
     if [[ -n ${_eos_step:-} ]]; then
-        echo "TIME $_eos_step device=$EOS_DEVICE kind=${EOS_RUN_KIND:--} fresh=${EOS_RUN_FRESH:--} at=$(date -ud "@$now" +%FT%TZ) secs=$((now - _eos_step_at))" \
+        echo "TIME $_eos_step device=$EOS_DEVICE kind=${EOS_RUN_KIND:--} fresh=${EOS_RUN_FRESH:--} at=$(date -ud "@$now" +%FT%TZ) secs=$((now - _eos_step_at))${EOS_PREV_DEVICE:+ prev=$EOS_PREV_DEVICE}" \
             >> "$EOS_TIMES" 2>/dev/null || true
     fi
     _eos_step=$1 _eos_step_at=$now
@@ -397,6 +399,48 @@ fastboot_files() {   # fastboot_files: what the fastboot zip takes from the prod
         [[ $EOS_SUPER_EMPTY != out ]] || echo super_empty.img
         [[ $EOS_FLASH_VKB != 1 ]] || echo vendor_kernel_boot.img
     } | awk '!seen[$0]++'
+}
+
+kit_version() {   # kit_version: the kit's commit, as sources.txt's "kit:" line says it (a copy the runner installed, rsync with no .git, names the commit it came from), " (with local changes)" when it has any
+    echo "$(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")$([[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || echo " (with local changes)")"
+}
+
+# eos-pack.sh's candidate run comes right after eos-images.sh in a build session, and verified
+# the same build again (about 1.5 minutes a phone; 2026-11-08). eos-images.sh keeps what its
+# eos-verify.sh run checked (verified_save), and the candidate run takes that verify instead of
+# running it again only while images_verified holds. A release (--release, --upload) always
+# verifies again
+verified_save() {   # verified_save <log>: after eos-verify.sh passed a full build (<log> its output; run from $top), keep the log as EOS_STATE's images-verify.log and the sha256 of every file the fastboot zip takes from out/ as verified.ok. Should one be missing, it keeps neither, and the pack verifies again
+    local x
+    local -a f
+    rm -f -- "$EOS_STATE/verified.ok" "$EOS_STATE/images-verify.log"
+    [[ -f $EOS_PRODUCT_OUT/fastboot-info.txt ]] || { echo "note: no $EOS_PRODUCT_OUT/fastboot-info.txt: eos-pack.sh will verify again"; return 0; }
+    mapfile -t f < <(fastboot_files)
+    f=("${f[@]/#/$EOS_PRODUCT_OUT/}")
+    for x in "${f[@]}"; do [[ -f $x ]] || { echo "note: no $x: eos-pack.sh will verify again"; return 0; }; done
+    if cp -- "$1" "$EOS_STATE/images-verify.log" && sha256sum -- "${f[@]}" > "$EOS_STATE/.verified.ok.part" \
+        && mv -f -- "$EOS_STATE/.verified.ok.part" "$EOS_STATE/verified.ok"; then
+        echo "OK: kept this verify for eos-pack.sh's candidate run: $EOS_STATE/images-verify.log, and the sha256 of the ${#f[@]} files its zip takes from out/ in $EOS_STATE/verified.ok"
+    else
+        rm -f -- "$EOS_STATE/verified.ok" "$EOS_STATE/.verified.ok.part" "$EOS_STATE/images-verify.log"
+        echo "note: couldn't keep this verify: eos-pack.sh will verify again"
+    fi
+    return 0
+}
+
+images_verified() {   # images_verified <package, relative to top>: true when eos-images.sh's verify (images-verify.log, ending VERIFY=OK) checked this very package, with this kit at the commit sources.txt names and no local changes, and every file the fastboot zip takes from out/ is the one it verified (verified.ok names exactly those, and they match). Run from $top
+    local kv log=$EOS_STATE/images-verify.log ok=$EOS_STATE/verified.ok
+    local -a f
+    [[ -f $log && -f $ok && -f $EOS_STATE/sources.txt && -f $EOS_PRODUCT_OUT/fastboot-info.txt ]] || return 1
+    kv=$(kit_version)
+    [[ $kv != *"(with local changes)" && $kv != "not a git checkout" && $kv != "installed from " ]] || return 1
+    [[ "$(sed -n 's/^kit: //p' "$EOS_STATE/sources.txt")" = "$kv" ]] || return 1
+    [[ "$(tail -n 1 -- "$log")" = VERIFY=OK ]] || return 1
+    [[ "$(sed -n 's/^VERIFIED //p' "$log")" = "$top/$1" ]] || return 1
+    mapfile -t f < <(fastboot_files)
+    f=("${f[@]/#/$EOS_PRODUCT_OUT/}")
+    [[ "$(printf '%s\n' "${f[@]}" | sort)" = "$(sed -E 's/^[0-9a-f]{64}  //' "$ok" | sort)" ]] || return 1
+    sha256sum --quiet --strict -c -- "$ok" > /dev/null 2>&1
 }
 
 # The build locks: ExpressiveOS's own (setup, build, pack, OTA, the monthly update), then the

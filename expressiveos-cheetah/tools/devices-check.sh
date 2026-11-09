@@ -2,7 +2,8 @@
 # Read-only: what ExpressiveOS's builds for the six phones (cheetah, husky, kodiak, grizzly,
 # cubs, yogi) look like on the build server, read off ExpressiveOS's tree (~/expressiveos) and
 # ~/android-dt. The runner's expressiveos-devices action runs it
-# (.github/workflows/kodiak-build.yml); query "recovery" runs recovery-check.sh instead.
+# (.github/workflows/kodiak-build.yml); query "recovery" runs recovery-check.sh instead, query
+# "v4a" v4a-p11-check.sh, query "kernels" reads each phone's newest release kernel.
 #
 # It changes nothing: no repo or git command that writes (GIT_OPTIONAL_LOCKS=0), no build,
 # scratch files only under a mktemp folder it removes. It prints names, sizes, commit SHAs,
@@ -58,6 +59,12 @@ if [[ ${1:-} = kernels ]]; then
     exit 0
 fi
 
+# Query "v4a": what the Pixel 11s' stock vendor images say about ViPER4Android (v4a-p11-check.sh)
+if [[ ${1:-} = v4a ]]; then
+    # shellcheck source=v4a-p11-check.sh
+    source "$(dirname -- "$(readlink -f -- "$0")")/v4a-p11-check.sh"
+    exit 0
+fi
 # Query "recovery": the Pixel 11s' stock boot chain beside ExpressiveOS's (recovery-check.sh)
 if [[ ${1:-} = recovery ]]; then
     # shellcheck source=recovery-check.sh

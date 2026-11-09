@@ -30,6 +30,9 @@ It prints these. Every field is always there, "-" when unknown, and times are UT
   SESSION name=<eos-build|eos-pack|-> state=<running|done|failed|none> exit=<n> started=<ISO>
   LOG device=<phone> <line>: the session log's last 40 lines (the running phone's, else the
       last phone's), with ANSI codes and control characters dropped, each cut at 400 characters
+  TIME <step> device=... kind=... fresh=... at=... secs=<n> [prev=<phone>]: the last 40 lines of
+      ~/expressiveos-build-times.txt as they are (prev: the phone whose make ran in the tree
+      before this one, from kits since it was added; a change of phone redoes work)
   PROGRESS_OK
 Then, after a blank line, the same in words for people, with US Eastern times.
 
@@ -198,14 +201,24 @@ def builds_kernel(d):
     return m.group(1) == 'gs-6.1' if m else d in ('cheetah', 'husky')
 
 
+TIME_RE = r'TIME (\w+) device=([a-z0-9]+) kind=(\S+) fresh=(\S+) at=\S+ secs=(\d+)(?: prev=[a-z0-9-]+)?'
+
+
 def history():
     """Past builds' step times: (step, device, kind, fresh, seconds), oldest first."""
     rows = []
     for line in read(TIMES, 256 * 1024).decode('utf-8', 'replace').splitlines():
-        m = re.fullmatch(r'TIME (\w+) device=([a-z0-9]+) kind=(\S+) fresh=(\S+) at=\S+ secs=(\d+)', line.strip())
+        m = re.fullmatch(TIME_RE, line.strip())
         if m:
             rows.append((m.group(1), m.group(2), m.group(3), m.group(4), int(m.group(5))))
     return rows
+
+
+def recent_times(n=40):
+    """The last n TIME lines of EOS_TIMES as they are (step times of the newest builds, for
+    measuring where a build's time went without reading the server's files)."""
+    lines = [l.strip() for l in read(TIMES, 256 * 1024).decode('utf-8', 'replace').splitlines()]
+    return [l for l in lines if re.fullmatch(TIME_RE, l)][-n:]
 
 
 HIST = []
@@ -717,9 +730,11 @@ def main():
     d, lines = run.log_tail()
     for line in lines:
         print(f'LOG device={d} {line}')
+    for line in recent_times():
+        print(line)
     print('PROGRESS_OK')
     print()
-    head = {'running': 'is running', 'done': 'has finished', 'failed': 'ended without finishing'}[state]
+    head ={'running': 'is running', 'done': 'has finished', 'failed': 'ended without finishing'}[state]
     who = f'The {run.name} session' if run.name != '-' else 'A build started by hand (no runner session)'
     print(f'{who} {head}' + (f', since {eastern(run.started)}' if run.started and state == 'running' else '') + '.')
     for name in run.order:

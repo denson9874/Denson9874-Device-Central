@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # Get the ViPER4Android RE release files pinned in v4a.conf (the app APK, the app's
-# LICENSE and the driver's module zip) into a cache, and check each against
-# v4a.conf: size and SHA-256 of every file, then the APK's package, v2 signer,
-# permissions and uses-library tags, then the zip's arm64 library and LICENSE,
-# extracted (unzip -j, nothing else) into a fresh temporary folder.
+# LICENSE, the non-AIDL driver's module zip and the AIDL driver's) into a cache, and check
+# each against v4a.conf: size and SHA-256 of every file, then the APK's package, v2 signer,
+# permissions and uses-library tags, then the non-AIDL zip's arm64 library and LICENSE and the
+# AIDL zip's arm64 library and effects config, extracted (unzip -j, nothing else) into fresh
+# temporary folders. Both drivers are fetched for every phone: the staged folder is one for the
+# whole tree, and viper4android.mk picks each product's.
 # A download lands under a temporary name and is renamed only once it matches, so
 # the cache never holds a half-written or unverified file under a pinned name.
 #
 #   fetch-v4a.sh [--out <dir>]
 #       --out: also put the verified files there (<dir> must not exist yet; it
 #       appears only once everything passed): ViPER4Android.apk,
-#       libv4a_re_arm64-v8a.so, LICENSE.app, LICENSE.driver. apply-v4a.sh uses it.
+#       libv4a_re_arm64-v8a.so, LICENSE.app, LICENSE.driver, libv4a_aidl_arm64-v8a.so,
+#       audio_effects_config.aidl.xml. apply-v4a.sh uses it.
 #   V4A_CACHE=<dir>   cache folder (default ~/android-dt/v4a)
 #   V4A_OFFLINE=1     never download: fail when a file isn't in the cache
 set -euo pipefail
@@ -36,13 +39,14 @@ case "${1:-}" in
 esac
 
 # v4a.conf sanity: a typo there must not turn into a download from somewhere else
-for v in V4A_APP_SHA256 V4A_APP_CERT_SHA256 V4A_APP_LICENSE_SHA256 V4A_FX_ZIP_SHA256 V4A_FX_LIB_SHA256 V4A_FX_LICENSE_SHA256; do
+for v in V4A_APP_SHA256 V4A_APP_CERT_SHA256 V4A_APP_LICENSE_SHA256 V4A_FX_ZIP_SHA256 V4A_FX_LIB_SHA256 V4A_FX_LICENSE_SHA256 \
+    V4A_AIDL_ZIP_SHA256 V4A_AIDL_LIB_SHA256 V4A_AIDL_CONFIG_SHA256; do
     [[ "${!v:-}" =~ ^[0-9a-f]{64}$ ]] || fail "v4a.conf: $v must be a 64-hex SHA-256"
 done
-for v in V4A_APP_SIZE V4A_FX_ZIP_SIZE V4A_FX_LIB_SIZE; do
+for v in V4A_APP_SIZE V4A_FX_ZIP_SIZE V4A_FX_LIB_SIZE V4A_AIDL_ZIP_SIZE V4A_AIDL_LIB_SIZE; do
     [[ "${!v:-}" =~ ^[1-9][0-9]*$ ]] || fail "v4a.conf: $v must be a size in bytes"
 done
-for v in V4A_APP_FILE V4A_APP_LICENSE_FILE V4A_FX_FILE; do
+for v in V4A_APP_FILE V4A_APP_LICENSE_FILE V4A_FX_FILE V4A_AIDL_FILE; do
     [[ "${!v:-}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || fail "v4a.conf: $v must be a plain file name"
 done
 [[ "$V4A_APP_URL" == "https://github.com/likelikeslike/ViPER4Android/releases/download/$V4A_APP_TAG/"* ]] \
@@ -53,6 +57,10 @@ done
     || fail "v4a.conf: V4A_FX_URL must be a $V4A_FX_TAG release asset of likelikeslike/ViPERFX_RE"
 [[ "$V4A_FX_LIB_MEMBER" == common/files/libv4a_re_arm64-v8a.so && "$V4A_FX_LICENSE_MEMBER" == LICENSE ]] \
     || fail "v4a.conf: the zip members must be common/files/libv4a_re_arm64-v8a.so and LICENSE"
+[[ "$V4A_AIDL_URL" == "https://github.com/likelikeslike/ViPERFX_RE/releases/download/$V4A_FX_TAG/"* ]] \
+    || fail "v4a.conf: V4A_AIDL_URL must be a $V4A_FX_TAG release asset of likelikeslike/ViPERFX_RE (the non-AIDL driver's release)"
+[[ "$V4A_AIDL_LIB_MEMBER" == common/files/libv4a_aidl_arm64-v8a.so && "$V4A_AIDL_CONFIG_MEMBER" == common/audio_effects_config.xml ]] \
+    || fail "v4a.conf: the AIDL zip members must be common/files/libv4a_aidl_arm64-v8a.so and common/audio_effects_config.xml"
 for tool in sha256sum unzip python3; do
     command -v "$tool" >/dev/null || fail "$tool is not installed"
 done
@@ -92,8 +100,10 @@ get() {   # get <what> <url> <file in the cache> <sha256> [<size>]
 get "app $V4A_APP_VERSION" "$V4A_APP_URL" "$V4A_APP_FILE" "$V4A_APP_SHA256" "$V4A_APP_SIZE"
 get "app LICENSE" "$V4A_APP_LICENSE_URL" "$V4A_APP_LICENSE_FILE" "$V4A_APP_LICENSE_SHA256"
 get "driver zip $V4A_FX_VERSION" "$V4A_FX_URL" "$V4A_FX_FILE" "$V4A_FX_ZIP_SHA256" "$V4A_FX_ZIP_SIZE"
-apk="$cache/$V4A_APP_FILE" zip="$cache/$V4A_FX_FILE"
-[[ "$(size "$apk")" = "$V4A_APP_SIZE" && "$(size "$zip")" = "$V4A_FX_ZIP_SIZE" ]] || fail "cached file sizes don't match v4a.conf"
+get "AIDL driver zip $V4A_FX_VERSION" "$V4A_AIDL_URL" "$V4A_AIDL_FILE" "$V4A_AIDL_ZIP_SHA256" "$V4A_AIDL_ZIP_SIZE"
+apk="$cache/$V4A_APP_FILE" zip="$cache/$V4A_FX_FILE" azip="$cache/$V4A_AIDL_FILE"
+[[ "$(size "$apk")" = "$V4A_APP_SIZE" && "$(size "$zip")" = "$V4A_FX_ZIP_SIZE" && "$(size "$azip")" = "$V4A_AIDL_ZIP_SIZE" ]] \
+    || fail "cached file sizes don't match v4a.conf"
 
 # Work folder next to --out, so the finished set appears there with one rename
 if [[ -n "$out" ]]; then
@@ -138,12 +148,31 @@ have=$(sha "$work/zip/LICENSE")
 [[ "$have" = "$V4A_FX_LICENSE_SHA256" ]] || fail "driver: LICENSE is $have, v4a.conf wants $V4A_FX_LICENSE_SHA256"
 echo "OK: driver LICENSE ($have)"
 
+# The AIDL driver: only the arm64 library and the effects config come out of its zip
+members=$(unzip -Z1 "$azip") || fail "$azip isn't a readable zip"
+grep -qxF -- "$V4A_AIDL_LIB_MEMBER" <<<"$members" || fail "AIDL driver zip has no $V4A_AIDL_LIB_MEMBER"
+grep -qxF -- "$V4A_AIDL_CONFIG_MEMBER" <<<"$members" || fail "AIDL driver zip has no $V4A_AIDL_CONFIG_MEMBER"
+mkdir "$work/azip"
+unzip -qq -j "$azip" "$V4A_AIDL_LIB_MEMBER" "$V4A_AIDL_CONFIG_MEMBER" -d "$work/azip" || fail "can't extract from $azip"
+alib="$work/azip/${V4A_AIDL_LIB_MEMBER##*/}" acfg="$work/azip/${V4A_AIDL_CONFIG_MEMBER##*/}"
+[[ "$(find "$work/azip" -mindepth 1 | wc -l)" = 2 && -f "$alib" && -f "$acfg" ]] \
+    || fail "unzip didn't give exactly ${V4A_AIDL_LIB_MEMBER##*/} and ${V4A_AIDL_CONFIG_MEMBER##*/}"
+have=$(sha "$alib")
+[[ "$have" = "$V4A_AIDL_LIB_SHA256" && "$(size "$alib")" = "$V4A_AIDL_LIB_SIZE" ]] \
+    || fail "AIDL driver: ${V4A_AIDL_LIB_MEMBER##*/} is $have ($(size "$alib") bytes), v4a.conf wants $V4A_AIDL_LIB_SHA256 ($V4A_AIDL_LIB_SIZE bytes)"
+echo "OK: AIDL driver ${V4A_AIDL_LIB_MEMBER##*/} ($have)"
+have=$(sha "$acfg")
+[[ "$have" = "$V4A_AIDL_CONFIG_SHA256" ]] || fail "AIDL driver: ${V4A_AIDL_CONFIG_MEMBER##*/} is $have, v4a.conf wants $V4A_AIDL_CONFIG_SHA256"
+echo "OK: AIDL driver effects config ${V4A_AIDL_CONFIG_MEMBER##*/} ($have)"
+
 if [[ -n "$out" ]]; then
     mkdir "$work/out"
     cp -- "$apk" "$work/out/ViPER4Android.apk"
     cp -- "$cache/$V4A_APP_LICENSE_FILE" "$work/out/LICENSE.app"
     cp -- "$lib" "$work/out/libv4a_re_arm64-v8a.so"
     cp -- "$work/zip/LICENSE" "$work/out/LICENSE.driver"
+    cp -- "$alib" "$work/out/libv4a_aidl_arm64-v8a.so"
+    cp -- "$acfg" "$work/out/audio_effects_config.aidl.xml"
     chmod 0644 "$work/out"/*
     # Check the copies too: they are what gets staged
     while read -r want f; do
@@ -153,9 +182,11 @@ $V4A_APP_SHA256 ViPER4Android.apk
 $V4A_APP_LICENSE_SHA256 LICENSE.app
 $V4A_FX_LIB_SHA256 libv4a_re_arm64-v8a.so
 $V4A_FX_LICENSE_SHA256 LICENSE.driver
+$V4A_AIDL_LIB_SHA256 libv4a_aidl_arm64-v8a.so
+$V4A_AIDL_CONFIG_SHA256 audio_effects_config.aidl.xml
 EOF
     mv -- "$work/out" "$out"
     echo "OK: verified files in $out"
 fi
 done=1
-echo "V4A_FETCH=OK app=$V4A_APP_VERSION fx=$V4A_FX_VERSION"
+echo "V4A_FETCH=OK app=$V4A_APP_VERSION fx=$V4A_FX_VERSION aidl=$V4A_FX_VERSION"
