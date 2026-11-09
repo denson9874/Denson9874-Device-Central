@@ -78,6 +78,13 @@
 # as a pull request, and phones see the update once Daryl merges it. Query candidate: an
 # incremental to check/'s candidate, uploaded to R2's ota/test/ with a test feed, to try on a
 # phone on the feed's build before the release.
+# expressiveos-storage (expressiveos-cheetah/tools/eos-storage.sh; Daryl, 2026-11-03: R2 holds
+# each phone's current release only, Google Drive the last two): list (read-only, the default)
+# shows R2's bucket, Drive's backup folder and each phone's newest release; drive device=<phone>
+# (or all) copies that release to Drive and leaves the newest two there; prune (device=<phone>
+# for one) removes from R2 what neither the live feed nor the newest release names. dry-run
+# with any of them says what it would do. A release: pack release, ota upload, flasher-release, storage
+# drive; storage prune once Daryl has merged the feed pull request.
 # expressiveos-build's 'quick' (EOS_QUICK=1) builds the images only, m droid where a full build
 # runs m bacon (droid plus the OTA package and its target-files zip, about 5 minutes more):
 # for testing a change on a phone. eos-pack.sh packs it as check/<name>-quick-fastboot.zip, which
@@ -108,7 +115,8 @@
 # the audio effect HAL type, build times, device-ok records and the release folders' names.
 # Names, sizes, SHAs, versions and build-file lines only. query "recovery": the Pixel 11s'
 # stock boot chain beside ExpressiveOS's (recovery-check.sh). query "v4a": what the Pixel 11s'
-# stock vendor images say about ViPER4Android's AIDL driver (v4a-p11-check.sh).
+# stock vendor images say about ViPER4Android's AIDL driver (v4a-p11-check.sh). query
+# "kernels": the kernel version of each phone's newest release, for the XDA posts.
 #
 # expressiveos-update-check (read-only on the tree) is the dry run of ExpressiveOS's monthly
 # update (expressiveos-cheetah/sources/update-check.sh): what LineageOS has added since the
@@ -217,6 +225,7 @@ on:
           - expressiveos-pack
           - expressiveos-ota
           - expressiveos-flasher-release
+          - expressiveos-storage
       tree_ref:
         description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
@@ -255,6 +264,10 @@ on:
           (required): tree, product, then up to two products to compare, e.g.
           'expressiveos lineage_cheetah lineage_husky'. expressiveos-kit (optional): diff
           (the default) or adopt. expressiveos-firmware (optional): check.
+          expressiveos-storage (optional): list (read-only, the default), drive
+          device=<phone>|all (the newest release to Google Drive, the newest two kept
+          there) or prune [device=<phone>] (R2 keeps the current release only, permanent),
+          each with dry-run to say what it would do.
           expressiveos-keys-move (optional): check (read-only, the default), move or
           revert (only when Daryl says so).
           expressiveos-update (required):
@@ -299,7 +312,7 @@ jobs:
           # or syncs, as server-cleanup does)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-flasher-release)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-flasher-release|expressiveos-storage)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -312,7 +325,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release|expressiveos-storage)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -836,7 +849,7 @@ jobs:
       - name: ExpressiveOS devices check (read-only)
         if: inputs.action == 'expressiveos-devices'
         run: |
-          [[ -z "$QUERY" || "$QUERY" = recovery || "$QUERY" = v4a ]] || { echo "::error::query is empty, 'recovery' or 'v4a'"; exit 1; }
+          [[ -z "$QUERY" || "$QUERY" = recovery || "$QUERY" = kernels || "$QUERY" = v4a ]] || { echo "::error::query is empty, 'recovery', 'kernels' or 'v4a'"; exit 1; }
           bash expressiveos-cheetah/tools/devices-check.sh ${QUERY:+"$QUERY"}
 
       # The monthly update and its dry run: this ref's kit, run from the job's checkout (nothing
@@ -890,7 +903,63 @@ jobs:
           [[ -f $z && -f $z.sha256 ]] || { echo "::error::no $z with its .sha256"; exit 1; }
           [[ -f $z.uploaded ]] || { echo "::error::$z isn't released yet (eos-pack.sh --upload)"; exit 1; }
           echo "release: $z"
-          python3 -I tools/expressiveos_flasher/publish/flasher_publish.py "$d" "$z"
+          # The web installer lists the current release only (R2 keeps nothing older:
+          # expressiveos-storage prune removes the files it no longer lists)
+          python3 -I tools/expressiveos_flasher/publish/flasher_publish.py "$d" "$z" --keep 1
+
+      - name: Check out the storage script
+        if: inputs.action == 'expressiveos-storage'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: expressiveos-cheetah
+          fetch-depth: 1
+
+      # Releases off the server: R2 the current one only, Google Drive the last two. Reads the
+      # release folders, never writes them, so it may run beside a build
+      - name: Storage
+        if: inputs.action == 'expressiveos-storage'
+        env:
+          # Google Drive's sign-in for the backup (rclone's drive.file scope: only the folders
+          # rclone made itself), as the gdrive: remote from the environment. rclone saves a
+          # refreshed token to its config file, so this step's rclone uses a private copy of it
+          # (r2: is there) that goes at the end: the token stays off the server's own config
+          # The secret holds the token = {...} value of `rclone config show gdrive` on Daryl's
+          # Mac (the whole line, or that output, works too)
+          GDRIVE_TOKEN: ${{ secrets.RCLONE_DRIVE_TOKEN }}
+          # Daryl's own Google OAuth client for rclone (Google throttles rclone's shared one). A
+          # token only refreshes with the client that made it, so the token above has to come
+          # from `rclone config reconnect gdrive:` after this client went into the Mac's remote
+          GDRIVE_CLIENT_ID: ${{ secrets.RCLONE_DRIVE_CLIENT_ID }}
+          GDRIVE_CLIENT_SECRET: ${{ secrets.RCLONE_DRIVE_CLIENT_SECRET }}
+        run: |
+          if [[ -n ${GDRIVE_TOKEN:-} ]]; then
+            t=$(printf '%s\n' "$GDRIVE_TOKEN" | python3 -I -c 'import re, sys; s = sys.stdin.read(); m = re.search(r"^\s*token\s*=\s*(\{.*\})\s*$", s, re.M); print((m.group(1) if m else s).strip())')
+            [[ $t == \{*refresh_token*\} ]] || echo "::warning::the RCLONE_DRIVE_TOKEN secret isn't an rclone token ({...\"refresh_token\"...})"
+            src=$(~/bin/rclone config file | tail -n 1)
+            cfg=$(mktemp) && trap 'rm -f -- "$cfg"' EXIT
+            [[ ! -f $src ]] || cp -- "$src" "$cfg"
+            export RCLONE_CONFIG=$cfg RCLONE_CONFIG_GDRIVE_TYPE=drive RCLONE_CONFIG_GDRIVE_SCOPE=drive.file RCLONE_CONFIG_GDRIVE_TOKEN=$t
+            unset t
+            id=${GDRIVE_CLIENT_ID//[[:space:]]/} sec=${GDRIVE_CLIENT_SECRET//[[:space:]]/}
+            if [[ -n $id && -n $sec ]]; then
+              export RCLONE_CONFIG_GDRIVE_CLIENT_ID=$id RCLONE_CONFIG_GDRIVE_CLIENT_SECRET=$sec
+              echo "Drive: own Google client"
+            elif [[ -n $id$sec ]]; then
+              echo "::warning::only one of the RCLONE_DRIVE_CLIENT_ID and RCLONE_DRIVE_CLIENT_SECRET secrets is set, so rclone's shared client is used"
+            fi
+            unset id sec
+          fi
+          unset GDRIVE_TOKEN GDRIVE_CLIENT_ID GDRIVE_CLIENT_SECRET
+          p='(cheetah|husky|kodiak|grizzly|cubs|yogi)'
+          [[ "$QUERY" =~ ^(|list|drive\ device=($p|all)(\ dry-run)?|prune(\ device=$p)?(\ dry-run)?)$ ]] \
+            || { echo "::error::query must be: list, drive device=<phone>|all [dry-run], or prune [device=<phone>] [dry-run]"; exit 1; }
+          read -r -a q <<< "${QUERY:-list}"
+          a=("${q[0]}")
+          for w in "${q[@]:1}"; do
+            case $w in device=*) a+=("${w#device=}") ;; dry-run) a+=(--dry-run) ;; esac
+          done
+          bash expressiveos-cheetah/tools/eos-storage.sh "${a[@]}"
 
       - name: Check out expressiveos-cheetah
         if: contains(fromJSON('["expressiveos-setup","expressiveos-build","expressiveos-pack","expressiveos-ota"]'), inputs.action)
