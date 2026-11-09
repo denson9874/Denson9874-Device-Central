@@ -1,0 +1,78 @@
+# ViPER4Android RE on Google's stock vendor image (EOS_V4A=aidl-overlay: the Pixel 11s; installed
+# as /product/etc/init/init.viper4android.rc, so init runs it as init). Google's audio HAL loads
+# effect libraries only from /vendor/lib64/soundfx/ and reads only
+# /vendor/etc/audio_effects_config.xml, both on the read-only stock vendor image. This lays
+# /product/vendor_overlay/0 over those two folders with read-only overlayfs: every stock file
+# stays as it is and visible, and ViPER's driver and config appear beside them. Nothing is written
+# to the vendor image. expressiveos-cheetah/viper4android/README.md has the details.
+#
+# early-boot comes before "on boot" starts class hal, the audio HAL's class. A mount that fails is
+# logged and skipped: the phone boots with stock audio and no ViPER.
+on early-boot
+    mount overlay overlay /vendor/lib64/soundfx ro nosuid nodev noatime lowerdir=/product/vendor_overlay/0/lib64/soundfx:/vendor/lib64/soundfx,userxattr
+    mount overlay overlay /vendor/etc ro nosuid nodev noatime lowerdir=/product/vendor_overlay/0/etc:/vendor/etc,userxattr
+    setprop eos.v4a.restarts 0
+
+# Turning it off takes the driver away: soundfx is unmounted and the audio HAL restarted, which
+# then skips the config's missing library (its config parser counts it as skipped) and runs with
+# Google's effects only. /vendor/etc stays overlaid; its only addition is that config.
+#
+# The off switch, persist.eos.v4a.off: 0 (the build's default) is on; 1 is off by hand ("adb shell
+# setprop persist.eos.v4a.off 1" takes it away at once; 0 brings it back at the next boot); 2 is
+# off by the automatic switch below. Persistent properties load after "on boot" has started the
+# HAL, so on a boot with the switch off ViPER is taken away as soon as they're loaded.
+on property:ro.persistent_properties.ready=true && property:persist.eos.v4a.off=1
+    setprop eos.v4a.restarts off
+    umount /vendor/lib64/soundfx
+    setprop eos.v4a.unloaded 1
+
+on property:ro.persistent_properties.ready=true && property:persist.eos.v4a.off=2
+    setprop eos.v4a.restarts off
+    umount /vendor/lib64/soundfx
+    setprop eos.v4a.unloaded 1
+
+# Restart the HAL once it's running (if it starts only after the unmount, this restart is spare)
+on property:eos.v4a.unloaded=1 && property:init.svc.vendor.audio-hal-aidl=running
+    setprop eos.v4a.unloaded 2
+    restart vendor.audio-hal-aidl
+
+# The automatic switch: the audio HAL (Google's service vendor.audio-hal-aidl, class hal, not
+# critical) restarting six times in one boot means something keeps killing it, and the driver is
+# the new thing in its process. Then soundfx is unmounted at once (the HAL's next start runs
+# without the driver) and persist.eos.v4a.off=2 keeps it off on later boots. One HAL crash may
+# count twice (its onrestart restarts audioserver, which can restart it), so six is three crashes
+# or more. "armed" makes each restart count once: it's cleared before the count moves and set
+# again when the HAL is back up.
+on property:init.svc.vendor.audio-hal-aidl=running
+    setprop eos.v4a.armed 1
+
+on property:init.svc.vendor.audio-hal-aidl=restarting && property:eos.v4a.armed=1 && property:eos.v4a.restarts=0
+    setprop eos.v4a.armed 0
+    setprop eos.v4a.restarts 1
+
+on property:init.svc.vendor.audio-hal-aidl=restarting && property:eos.v4a.armed=1 && property:eos.v4a.restarts=1
+    setprop eos.v4a.armed 0
+    setprop eos.v4a.restarts 2
+
+on property:init.svc.vendor.audio-hal-aidl=restarting && property:eos.v4a.armed=1 && property:eos.v4a.restarts=2
+    setprop eos.v4a.armed 0
+    setprop eos.v4a.restarts 3
+
+on property:init.svc.vendor.audio-hal-aidl=restarting && property:eos.v4a.armed=1 && property:eos.v4a.restarts=3
+    setprop eos.v4a.armed 0
+    setprop eos.v4a.restarts 4
+
+on property:init.svc.vendor.audio-hal-aidl=restarting && property:eos.v4a.armed=1 && property:eos.v4a.restarts=4
+    setprop eos.v4a.armed 0
+    setprop eos.v4a.restarts 5
+
+on property:init.svc.vendor.audio-hal-aidl=restarting && property:eos.v4a.armed=1 && property:eos.v4a.restarts=5
+    setprop eos.v4a.armed 0
+    setprop eos.v4a.restarts tripped
+    umount /vendor/lib64/soundfx
+    setprop persist.eos.v4a.off 2
+
+# A persistent property set before they're loaded isn't saved: if the switch tripped that early,
+# set it again once they are
+on property:ro.persistent_properties.ready=true && property:eos.v4a.restarts=tripped
+    setprop persist.eos.v4a.off 2

@@ -2,17 +2,18 @@
 # Put ViPER4Android RE into an ExpressiveOS tree for a phone that has it (idempotent: a second
 # run changes nothing):
 #   1. fetch-v4a.sh: the pinned app APK and both driver libraries (and the AIDL config), verified;
-#   2. stage them with tree/ into vendor/extra/viper4android (Android.bp removed
-#      first and written last, so Soong never sees it without its files);
+#   2. stage them with tree/ into vendor/extra/viper4android (Android.bp and Android.mk removed
+#      first and written last, so the build never sees them without their files);
 #   3. vendor/extra/product.mk inherits viper4android.mk (Evolution X's vendor_evolution,
 #      checked out at vendor/lineage, has config/common.mk inherit vendor/extra/product.mk);
 #   4. patches/frameworks_av/*.patch in frameworks/av (lib.sh's am_patches: commits of
 #      ExpressiveOS's frameworks_av fork already, else local commits by git am --3way);
 #   5. tools/v4a-check.sh tree: the pre-build guards.
 # Run it on every build, after the tree's own patches (repo sync drops local commits).
-# A phone with EOS_V4A=0 in its devices/<device>.conf (the Pixel 11s) gets none of this:
-# the run touches nothing and ends with V4A_APPLY=OK skipped. EOS_V4A=1 (cheetah) and aidl
-# (husky) stage the same folder; viper4android.mk gives each product its own driver.
+# A phone with EOS_V4A=0 in its devices/<device>.conf gets none of this: the run touches
+# nothing and ends with V4A_APPLY=OK skipped. EOS_V4A=1 (cheetah), aidl (husky) and aidl-overlay
+# (the Pixel 11s, from kodiak) stage the same folder; viper4android.mk gives each product its own
+# driver, and the overlay its init script and product policy.
 # Nothing is written through a symlink that leads out of the tree, nor into a git folder
 # outside it.
 #
@@ -33,11 +34,11 @@ source "$here/v4a.conf" || fail "can't read $here/v4a.conf"
 
 arg=${1:-$HOME/expressiveos}
 [[ $# -le 1 ]] || fail "usage: apply-v4a.sh [top]"
-# Only for a phone whose devices/<device>.conf has EOS_V4A=1 or aidl (EOS_DEVICE, cheetah unless set;
+# Only for a phone whose devices/<device>.conf has EOS_V4A=1, aidl or aidl-overlay (EOS_DEVICE, cheetah unless set;
 # lib.sh reads it). For the others this leaves the tree as it is (below, after the checks on
 # where it writes), but for tree/viper4android.mk, which adds nothing to their products
 read -r v4a_dev v4a_on <<<"$(source "$here/../lib.sh" && printf '%s %s' "$EOS_DEVICE" "$EOS_V4A")"
-[[ -n ${v4a_dev:-} && ${v4a_on:-} =~ ^(0|1|aidl)$ ]] || fail "can't read this phone's EOS_V4A (lib.sh, devices/<device>.conf)"
+[[ -n ${v4a_dev:-} && ${v4a_on:-} =~ ^(0|1|aidl|aidl-overlay)$ ]] || fail "can't read this phone's EOS_V4A (lib.sh, devices/<device>.conf)"
 [[ -d "$arg" ]] || fail "no tree at $arg"
 top="$(cd "$arg" && pwd -P)"
 [[ -f "$top/build/envsetup.sh" ]] || fail "$top isn't an Android tree (no build/envsetup.sh)"
@@ -100,18 +101,21 @@ if [[ $changed = 0 ]]; then
     echo "unchanged: vendor/extra/viper4android"
 else
     mkdir -p -- "$dest"
-    rm -f -- "$dest/Android.bp"
+    rm -f -- "$dest/Android.bp" "$dest/Android.mk"
     for n in ${stale[@]+"${stale[@]}"}; do
         rm -f -- "$dest/$n"; echo "removed: vendor/extra/viper4android/$n"
     done
     for f in "$work/stage"/*; do
         n=${f##*/}
-        [[ "$n" != Android.bp ]] || continue
+        [[ "$n" != Android.bp && "$n" != Android.mk ]] || continue
         cmp -s -- "$f" "$dest/$n" && continue
-        cp -p -- "$f" "$dest/.$n.tmp" || fail "can't stage $n in $dest (Android.bp stays out until a run succeeds)"
-        mv -f -- "$dest/.$n.tmp" "$dest/$n" || fail "can't stage $n in $dest (Android.bp stays out until a run succeeds)"
+        cp -p -- "$f" "$dest/.$n.tmp" || fail "can't stage $n in $dest (Android.bp and Android.mk stay out until a run succeeds)"
+        mv -f -- "$dest/.$n.tmp" "$dest/$n" || fail "can't stage $n in $dest (Android.bp and Android.mk stay out until a run succeeds)"
         echo "staged: vendor/extra/viper4android/$n"
     done
+    cp -p -- "$work/stage/Android.mk" "$dest/.Android.mk.tmp" || fail "can't stage Android.mk in $dest"
+    mv -f -- "$dest/.Android.mk.tmp" "$dest/Android.mk" || fail "can't stage Android.mk in $dest"
+    echo "staged: vendor/extra/viper4android/Android.mk"
     cp -p -- "$work/stage/Android.bp" "$dest/.Android.bp.tmp" || fail "can't stage Android.bp in $dest"
     mv -f -- "$dest/.Android.bp.tmp" "$dest/Android.bp" || fail "can't stage Android.bp in $dest"
     echo "staged: vendor/extra/viper4android/Android.bp (last)"
@@ -149,4 +153,4 @@ fi
 # 5. Pre-build guards
 "$here/tools/v4a-check.sh" tree "$top" || fail "the tree checks above failed; don't build"
 done=1
-echo "V4A_APPLY=OK app=$V4A_APP_VERSION fx=$V4A_FX_VERSION driver=$([[ $v4a_on = aidl ]] && echo aidl || echo hidl)"
+echo "V4A_APPLY=OK app=$V4A_APP_VERSION fx=$V4A_FX_VERSION driver=$(case $v4a_on in 1) echo hidl ;; *) echo "$v4a_on" ;; esac)"
