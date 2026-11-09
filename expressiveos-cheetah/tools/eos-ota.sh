@@ -198,6 +198,9 @@ else
     sha_ok "$FULL" || fail "$FULL isn't the package its .sha256 names (changed since the release?)"
     # (The release zip itself may be cleaned up once it's uploaded; its .sha256 stays)
     [[ -f $DEST/$REL-fastboot.zip.sha256 ]] || fail "no $DEST/$REL-fastboot.zip.sha256: $TFD/LATEST isn't a release of this folder"
+    if [[ $mode = --upload ]]; then
+        [[ -f $DEST/$REL-fastboot.zip.uploaded ]] || fail "no $DEST/$REL-fastboot.zip.uploaded: the release hasn't been uploaded yet (eos-pack.sh --upload)"
+    fi
 fi
 sha_ok "$TF" || fail "$TF is missing or isn't the zip its .sha256 names"
 tflist "$TF" "$T/tf.list"

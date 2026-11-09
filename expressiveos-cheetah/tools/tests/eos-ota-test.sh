@@ -130,11 +130,14 @@ release "$A" 1762100000 eng.a
 rc=$(ota); ok "first release, no feed file: full only, preview" '[[ $rc = 0 ]] && grep -q "the full package only" "$W/out.log" && grep -q OTA_PREVIEW "$W/out.log" && [[ ! -d $W/r2/expressiveos ]]'
 ok "  feed JSON: one full entry" 'python3 -c "import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]; assert len(r)==1 and \"base_timestamp\" not in r[0] and r[0][\"timestamp\"]==1762100000 and r[0][\"version\"]==\"1.0\" and r[0][\"download\"].endswith(\"/expressiveos/cheetah/ota/$A.zip\")" "$D/ota/feed/builds/cheetah.json"'
 ok "  changelog copied" 'grep -qx "notes for $A" "$D/ota/feed/changelogs/cheetah.txt"'
+rc=$(ota --upload); ok "no .uploaded: refuses --upload" '[[ $rc = 1 ]] && grep -q "the release hasn.t been uploaded yet" "$W/out.log"'
+touch "$D/$A-fastboot.zip.uploaded"
 rc=$(ota --upload); ok "--upload: full on R2, feed printed" '[[ $rc = 0 ]] && [[ -f $W/r2/expressiveos/cheetah/ota/$A.zip ]] && grep -q "^OTA_FEED_READY" "$W/out.log" && grep -q "^===== OTA_FEED builds/cheetah.json" "$W/out.log"'
 cp "$D/ota/feed/builds/cheetah.json" "$W/feed/cheetah.json"   # the feed PR merged
 rc=$(ota --upload); ok "rerun of A once A is in the feed: still full only" '[[ $rc = 0 ]] && grep -q "the full package only" "$W/out.log"'
 
 release "$B" 1764700000 eng.b
+touch "$D/$B-fastboot.zip.uploaded"
 : > "$HOME/otf.log"
 rc=$(ota --upload); ok "B: incremental from A" '[[ $rc = 0 ]] && [[ -f $D/ota/$B-incremental-from-20261103.zip ]] && grep -qx "src=$A-target_files.zip full=boot,init_boot,vbmeta" "$HOME/otf.log"'
 ok "  signed with the key in vendor/expressiveos-priv (-k)" 'tail -1 "$HOME/otf-k.log" | grep -qx vendor/expressiveos-priv/keys/testkey'
