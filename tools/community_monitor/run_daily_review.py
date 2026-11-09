@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Master Daily Review Runner for ExpressiveOS / Evolution X.
+Master Daily Review Runner for the Evolution X and DerpFest builds.
 Coordinates Telegram and XDA ingestion, triages comments, updates COMMUNITY_TRIAGE.md,
 and prepares daily response drafts and summary briefing.
 """
@@ -106,7 +106,7 @@ def get_mock_feed(date_str: str) -> List[Dict[str, Any]]:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ExpressiveOS Daily Community Review Runner")
+    parser = argparse.ArgumentParser(description="Evolution X / DerpFest Daily Community Review Runner")
     parser.add_argument("--dry-run", action="store_true", help="Run without writing state or triage updates")
     parser.add_argument("--mock-feed", action="store_true", help="Use simulated mock feed for testing (implies --dry-run)")
     parser.add_argument("--date", type=str, default=None, help="Target date in YYYY-MM-DD format")
@@ -141,7 +141,7 @@ def main():
     replies_dir.mkdir(parents=True, exist_ok=True)
 
     state = load_state(state_file)
-    print(f"=== ExpressiveOS Daily Community Review: {date_str} ===")
+    print(f"=== Evolution X / DerpFest Daily Community Review: {date_str} ===")
 
     all_raw_items = []
     xda_warnings = []

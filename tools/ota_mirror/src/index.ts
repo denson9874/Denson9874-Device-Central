@@ -13,6 +13,12 @@ export default {
 
 		const headers = new Headers();
 		head.writeHttpMetadata(headers);
+		if (key.endsWith("/keybox.xml")) {
+			headers.set("Cache-Control", "no-store");
+			if (!headers.has("Content-Type")) {
+				headers.set("Content-Type", "application/xml; charset=utf-8");
+			}
+		}
 		headers.set("ETag", head.httpEtag);
 		headers.set("Accept-Ranges", "bytes");
 		let start = 0;

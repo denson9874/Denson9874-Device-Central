@@ -21,12 +21,19 @@ PRODUCT_SHIPPING_API_LEVEL := 37
 # LineageOS laguna). The rest of the Pixel telephony stack, including
 # PixelImsMediaService, is stock blobs.
 PRODUCT_PACKAGES += \
+    EuiccSupportPixelOverlayKodiak \
     FrameworkResOverlayKodiak \
     ImsStack \
     Iwlan \
+    MediaProviderOverlayKodiak \
+    NfcOverlayKodiak \
     PixelImsMediaServiceOverlayKodiak \
     PixelWifiOverlay2026Kodiak \
+    SystemUIOverlayKodiak \
     TeleServiceOverlayKodiak \
+    TelephonyProviderOverlayKodiak \
+    TerminalOverlayKodiak \
+    TetheringOverlayKodiak \
     UpdaterOverlayKodiak
 
 # HIDL: shipping API 37 drops these, but stock kodiak's system still ships
@@ -71,6 +78,13 @@ PRODUCT_PACKAGES += \
     servicemanager.recovery \
     shell_and_utilities_recovery \
     watchdogd.recovery
+
+# Recovery and fastbootd run from our vendor_boot, which doesn't see the stock
+# vendor's build.prop: give them stock's USB IDs (vendor/build.prop).
+PRODUCT_VENDOR_PROPERTIES += \
+    ro.recovery.usb.vid=18D1 \
+    ro.recovery.usb.adb.pid=D001 \
+    ro.recovery.usb.fastboot.pid=4EE0
 
 PRODUCT_HOST_PACKAGES += \
     e2fsdroid \
@@ -138,3 +152,7 @@ $(call inherit-product, vendor/google/kodiak-images/kodiak-images.mk)
 
 # Proprietary system_ext/product blobs (extract-files.py)
 $(call inherit-product, vendor/google/kodiak/kodiak-vendor.mk)
+
+# Face unlock enrollment app's user types, from stock preinstalled-packages-tuscany.xml
+PRODUCT_COPY_FILES += \
+    device/google/kodiak/configs/sysconfig/preinstalled-packages-faceenroll.xml:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/sysconfig/preinstalled-packages-faceenroll.xml

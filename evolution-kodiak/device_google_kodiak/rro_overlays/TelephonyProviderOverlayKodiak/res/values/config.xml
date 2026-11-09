@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SPDX-FileCopyrightText: The LineageOS Project
+    SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- From stock TelephonyProvider__kodiak__auto_generated_rro_product (CD1A.261005.003),
+         as LineageOS laguna does: take APNs from CarrierSettings, the same source as
+         carrier config, instead of the generic apns-conf.xml. -->
+    <string name="apn_source_service" translatable="false">com.google.android.carrier/.ApnSourceService</string>
+</resources>

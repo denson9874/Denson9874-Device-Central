@@ -1,5 +1,9 @@
 # Evolution X (Android 17) for the Pixel 7 Pro (cheetah)
 
+> **Retired 2026-11-02.** Evolution X no longer builds on the server (its tree was deleted after
+> `expressiveos-cheetah/tools/evo-retire.sh keep`), and the runner's cheetah-* actions are gone. This
+> folder is kept as a record. Cheetah's firmware fetcher moved to the ExpressiveOS kit (below).
+
 > **Unofficial.** Pixel 7 Pro has an official Evolution X maintainer for Android 16 (nhansp, last build
 > 11.10 on 2026-08-08). Evolution X hasn't published official Android 17 (`cnb`) cheetah builds yet:
 > Evolution-X/OTA `cnb` lists only marble, raphael, tissot and venus. These builds are labelled
@@ -78,27 +82,21 @@ The weekly routine runs all of that: `~/p11-routine.sh cheetah` (see "Release sc
    `FIRMWARE_SOURCE`, and commits locally. It's skipped if the cached release is older than what the
    vendor repo already ships.
 
-`repo sync` drops the local commits; `prepare.sh` puts them back. Run `fetch-firmware.sh` when Google
-ships a monthly release (`--check` only reports the newest one).
-
-**Where the factory image link comes from:** Google now shows the per-device tables only after a visitor
-accepts its terms of use, so the script can't read them unattended. A person opens
-https://developers.google.com/android/images#cheetah, accepts the terms, and copies the newest generic
-Android 17 release (no carrier suffix) into `firmware.conf`:
-
-```
-url=https://dl.google.com/dl/android/aosp/cheetah-<build>-factory-<8 hex>.zip
-sha256=<the 64-hex SHA-256 from the same row>
-```
-
-Commit it, run the runner's `cheetah-setup` (installs the kit) and `cheetah-firmware`. Without
-`firmware.conf` the script still tries Google's page, and says what it saw if that fails.
+`repo sync` drops the local commits; `prepare.sh` puts them back. Since 2026-11-02 (Evolution X retired
+from the build server) the fetcher and its pin live in the ExpressiveOS kit only:
+`expressiveos-cheetah/tools/fetch-firmware.sh` and `expressiveos-cheetah/firmware/cheetah.conf`, run by
+the runner action `expressiveos-firmware` (how to update the pin: `expressiveos-cheetah/README.md`).
 
 ## Shared patches
 
 `device/google/kodiak/apply-patches.sh` patches shared projects (build/make, frameworks/base,
-system/memory/lmkd, vendor/gms) for every build from this tree, cheetah's included. None of them
-depends on the Pixel 11:
+system/memory/lmkd, vendor/gms, vendor/lineage) for every build from this tree, cheetah's included.
+None of them depends on the Pixel 11:
+
+- frameworks/base `0011`-`0020` (2026-10-26) stop SystemUI animations that ran forever with the
+  screen off or on AOD. The big one was the face unlock scan pulse on an icon copy that's never on
+  screen: on this phone SystemUI went from 11% of a core to 2% on AOD, and SurfaceFlinger from 16-18%
+  to 0.7%. vendor/lineage `0002` restores stock's 60 fps game default.
 
 - The Extreme Charging tile hides itself where the power HAL has no BODEGA hint, as on cheetah (no
   charge-thermal profile yet: it changes charging temperature limits on a phone that runs warm, so it

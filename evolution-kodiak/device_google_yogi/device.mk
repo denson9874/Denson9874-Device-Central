@@ -21,15 +21,21 @@ PRODUCT_SHIPPING_API_LEVEL := 37
 # LineageOS laguna). The rest of the Pixel telephony stack, including
 # PixelImsMediaService, is stock blobs.
 PRODUCT_PACKAGES += \
+    EuiccSupportPixelOverlayYogi \
     FrameworkResOverlayYogi \
     GRilServiceOverlayYogi \
     ImsStack \
     Iwlan \
+    MediaProviderOverlayYogi \
+    NfcOverlayYogi \
     PixelImsMediaServiceOverlayYogi \
     PixelWifiOverlay2026Yogi \
     SettingsOverlayYogi \
     SystemUIOverlayYogi \
     TeleServiceOverlayYogi \
+    TelephonyProviderOverlayYogi \
+    TerminalOverlayYogi \
+    TetheringOverlayYogi \
     UpdaterOverlayYogi
 
 # HIDL: shipping API 37 drops these, but stock yogi's system still ships
@@ -74,6 +80,13 @@ PRODUCT_PACKAGES += \
     servicemanager.recovery \
     shell_and_utilities_recovery \
     watchdogd.recovery
+
+# Recovery and fastbootd run from our vendor_boot, which doesn't see the stock
+# vendor's build.prop: give them stock's USB IDs (vendor/build.prop).
+PRODUCT_VENDOR_PROPERTIES += \
+    ro.recovery.usb.vid=18D1 \
+    ro.recovery.usb.adb.pid=D001 \
+    ro.recovery.usb.fastboot.pid=4EE0
 
 PRODUCT_HOST_PACKAGES += \
     e2fsdroid \
@@ -134,3 +147,7 @@ $(call inherit-product, vendor/google/yogi-images/yogi-images.mk)
 
 # Proprietary system_ext/product blobs (extract-files.py)
 $(call inherit-product, vendor/google/yogi/yogi-vendor.mk)
+
+# Face unlock enrollment app's user types, from stock preinstalled-packages-tuscany.xml
+PRODUCT_COPY_FILES += \
+    device/google/yogi/configs/sysconfig/preinstalled-packages-faceenroll.xml:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/sysconfig/preinstalled-packages-faceenroll.xml

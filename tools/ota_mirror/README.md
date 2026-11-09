@@ -9,9 +9,14 @@ R2 doesn't charge for downloads, and a file is downloadable as soon as its uploa
 |---|---|
 | `<dev>/17/<EvolutionX zip>` | `evolution-kodiak/tools/p11-ota.sh <dev> --upload` |
 | `derpfest/<dev>/<DerpFest zip>` | `derpfest-husky/tools/derp-ota.sh <dev> --upload` |
+| `expressiveos/<dev>/target-files/<target-files zip>` | `expressiveos-cheetah/tools/eos-pack.sh --upload` |
+| `expressiveos/<dev>/ota/<OTA package>` (full and incremental) | `expressiveos-cheetah/tools/eos-ota.sh --upload` |
+| `expressiveos/<dev>/ota/test/<incremental>`, `<dev>.json` (a test feed) | `expressiveos-cheetah/tools/eos-ota.sh --candidate` |
+| `expressiveos/keybox.xml` | `expressiveos-cheetah/tools/eos-keybox.py upload <keybox.xml>` |
 
 The scripts still upload every release to SourceForge for manual downloads (the XDA and Telegram links). The mirror keeps
 only each device's current and previous build: the scripts delete older ones after publishing the Updater JSON.
+ExpressiveOS's `ota/` keeps what its new feed and the feed phones read now name; `ota/test/` only the latest test.
 
 ## Deploy the Worker
 

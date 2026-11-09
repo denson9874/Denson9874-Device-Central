@@ -202,7 +202,7 @@ so a regression can be bisected by reverting one.
 ## 2c. Test round of 2026-10-11 (supersedes 2b's checklist)
 
 Built and packed through the runner (section 11), run
-[#2](https://github.com/denson9874/ExpressiveOS/actions/runs/38103425494):
+[#2](https://github.com/denson9874/Denson9874-Device-Central/actions/runs/38103425494):
 - Sync → server tree `b16749b` (ExpressiveOS `evolution/kodiak-port@bd85ff9`). Extract brought in the new blobs.
 - Images built in 14:42, including the VINTF checks.
 - `check-sepolicy.sh`: `OK`, and all 11 new public types mapped for the stock vendor.
@@ -271,11 +271,11 @@ Follow-ups done after the test:
 
 | Runner run | ExpressiveOS commit | Zip on the server | sha256 | State |
 |---|---|---|---|---|
-| [#14](https://github.com/denson9874/ExpressiveOS/actions/runs/38109019533) | `9d13062` | `/tmp/kodiak-evox-img-45a812a.zip` | `bd22199bf63657e8227bd944bbf766169ef74dedf36ef6dba99c522832306934` | Flashed and checked (table below) |
-| [#17](https://github.com/denson9874/ExpressiveOS/actions/runs/38131554424) | `8cc9b64` | `/tmp/kodiak-evox-img-9190352.zip` | `f7d1122e294800d7985e82914659cc75dcd5133597424e4e5970e200e03c87ed` | **Flash stalled** at `super` 2/10 |
-| [#20](https://github.com/denson9874/ExpressiveOS/actions/runs/38133386540) | `1a10718` | `/tmp/kodiak-evox-img-acd4512.zip` | `0ef682095e5621e279308b6afcd896722fa4e88b9b6fa9c7996f6489de07db15` | Flashed and checked: TPU labels, TPU and camera services, no crashes |
-| [#21](https://github.com/denson9874/ExpressiveOS/actions/runs/38135812562) | `851b0ab` | none | none | Failed in kati: `SCONE-v77459` defined twice. Fixed by `41ea3b5` |
-| built by hand on the server | `41ea3b5` | `/tmp/kodiak-evox-img-e974478.zip` | `3d92c0d6bbdd6ac5d38742302cd07d6bb634c8daa29c381afa65bf90d5639362` | `BUILD_EXIT=0`; `check-sepolicy.sh: OK` ([#24](https://github.com/denson9874/ExpressiveOS/actions/runs/38138299112)). Flashed and checked |
+| [#14](https://github.com/denson9874/Denson9874-Device-Central/actions/runs/38109019533) | `9d13062` | `/tmp/kodiak-evox-img-45a812a.zip` | `bd22199bf63657e8227bd944bbf766169ef74dedf36ef6dba99c522832306934` | Flashed and checked (table below) |
+| [#17](https://github.com/denson9874/Denson9874-Device-Central/actions/runs/38131554424) | `8cc9b64` | `/tmp/kodiak-evox-img-9190352.zip` | `f7d1122e294800d7985e82914659cc75dcd5133597424e4e5970e200e03c87ed` | **Flash stalled** at `super` 2/10 |
+| [#20](https://github.com/denson9874/Denson9874-Device-Central/actions/runs/38133386540) | `1a10718` | `/tmp/kodiak-evox-img-acd4512.zip` | `0ef682095e5621e279308b6afcd896722fa4e88b9b6fa9c7996f6489de07db15` | Flashed and checked: TPU labels, TPU and camera services, no crashes |
+| [#21](https://github.com/denson9874/Denson9874-Device-Central/actions/runs/38135812562) | `851b0ab` | none | none | Failed in kati: `SCONE-v77459` defined twice. Fixed by `41ea3b5` |
+| built by hand on the server | `41ea3b5` | `/tmp/kodiak-evox-img-e974478.zip` | `3d92c0d6bbdd6ac5d38742302cd07d6bb634c8daa29c381afa65bf90d5639362` | `BUILD_EXIT=0`; `check-sepolicy.sh: OK` ([#24](https://github.com/denson9874/Denson9874-Device-Central/actions/runs/38138299112)). Flashed and checked |
 | built by hand on the server | `fd84141` | `/tmp/kodiak-evox-img-0423cc2.zip` | `1986f295df3efe92bdc76835b2a16df723b202c5446eb1896b8338a5ddfa48b0` | `BUILD_EXIT=0`; `check-sepolicy.sh: OK`. **Flashed and checked; newest** |
 
 Every build except #21 passed with `BUILD_EXIT=0` and `check-sepolicy.sh: OK`. In #20 the six types
@@ -872,8 +872,22 @@ What `p11-routine.sh` does (copy in `tools/`):
 - **Records:** writes `LAST_STATE`, `LAST_TREES`, `LAST_MANIFEST.xml` and `CHANGES-<date>.txt` (upstream commits since
   the last published build) under `~/releases/<dev>/`, and keeps the two newest zips on the server.
 - **Logs:** `~/routine-logs/<dev>-<time>.log`, plus `<dev>-latest.out`. The last line is
-  `ROUTINE_RESULT=PUBLISHED|NOCHANGE|FAILED`.
-- **Options:** `--dry-run`, `--force`, `--no-upload`, `--mark-current` (record the current tree as published).
+  `ROUTINE_RESULT=PUBLISHED|NOCHANGE|FAILED` (also `BUILT` with `--no-upload`, `DRYRUN`, `MARKED`, and
+  `SUPERSEDED` when the Updater already has a newer build).
+- **Options:** `--dry-run`, `--force`, `--no-upload`, `--mark-current` (record the current tree as published),
+  `--publish-staged` (alone: publish the newest staged release).
+- **Since 2026-10-27 (build speed, PR #28):** the routine stages a release under the tree lock (pack
+  script `--stage`, `p11-ota.sh --stage`) in `~/releases/<dev>/staged-<time>`, releases the lock, then
+  uploads (`p11-upload.sh`) and publishes (`p11-ota.sh --publish`, Updater JSON last), so the next device
+  builds during the uploads. A per-device publish lock (`~/.evolution-publish-<dev>.lock`) keeps one
+  routine per device. Routines waiting together take the tree in the order that rebuilds least (same
+  HiLight side as `~/.evolution-last-build` first, then kodiak, grizzly, yogi, cubs, husky, cheetah), so
+  the Sunday tasks' start times don't matter. A failed publish stays staged: `p11-routine.sh <dev>
+  --publish-staged` retries it (so does a run of the same tree, without building again), and a staged
+  build older than the Updater's is dropped (`SUPERSEDED`), never published. A JSON emptied by hand
+  (`{"response": []}`) counts as no build. If the Updater's JSON can't be read (GitHub down,
+  `~/evolution_ota` won't pull), the release stays staged and the run fails rather than rebuilding. `release-chain.sh [devices] [-- options]` runs several routines at once. Install
+  with the runner's `routine-install`; `routine-scripts` shows locks, queue and staged releases.
 
 Not automated:
 
@@ -2129,7 +2143,7 @@ Write multi-step logic to a script file instead.
 
 - **Never push** vendor trees, blobs or Google images to any remote.
   - On 2026-10-10 Daryl allowed pushing `evolution-kodiak/` (device-tree files only) to the **private**
-    repo `denson9874/ExpressiveOS`, on branch `evolution/kodiak-port`, so cloud sessions can work on it.
+    repo `denson9874/Denson9874-Device-Central` (named `ExpressiveOS` until 2026-10-25), on branch `evolution/kodiak-port`, so cloud sessions can work on it.
     It still must not go anywhere public.
   - `evolution-kodiak/` holds only tree files: no blobs, no images, and not the aospdtgen first commit
     (that commit contains Google kernel binaries).
@@ -2144,7 +2158,7 @@ Write multi-step logic to a script file instead.
 
 **Since 2026-10-11 the source of truth is GitHub, not the server.**
 - The runner's `sync` / `round` actions copy `evolution-kodiak/device_google_kodiak` from the chosen branch
-  into the server tree, then commit it as "sync from ExpressiveOS <branch>@<commit>".
+  into the server tree, then commit it as "sync from Denson9874-Device-Central <branch>@<commit>" ("sync from ExpressiveOS" before the 2026-10-25 rename).
 - A commit made only on the server is **overwritten** by the next sync. That nearly happened to `2c120d1` (section 2e).
 
 **If you do commit on the server** (a hand build), bring it to GitHub straight away (from the Mac):
@@ -2290,7 +2304,7 @@ git config --global pull.rebase true
 #### Step 7: Clone the ExpressiveOS Repository
 ```bash
 mkdir -p ~/Developer && cd ~/Developer
-git clone https://github.com/denson9874/ExpressiveOS.git
+git clone https://github.com/denson9874/Denson9874-Device-Central.git ExpressiveOS
 cd ExpressiveOS
 git checkout evolution/kodiak-port
 ```

@@ -1,0 +1,45 @@
+From e0219dd5c4070c27012c26043682166216301208 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 06:30:53 +0100
+Subject: [PATCH 12/16] SystemUI: Edge light: stop the effect when the pulse
+ ends
+
+With the rainbow colour or an animation effect (breathing, wave,
+sparkle, chase, comet) selected, an edge light pulse starts animators
+that repeat forever next to the one-shot fade that shows the edge.
+Only the fade ends on its own, and setPulsing(false) returned before
+doing anything, so the rainbow and effect animators kept invalidating
+the hidden view on every vsync for as long as the phone stayed dozing.
+
+Stop them and hide the view when the pulse ends, the same way waking
+up and unlocking already do.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../systemui/edgelight/EdgeLightViewController.kt      | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/edgelight/EdgeLightViewController.kt b/packages/SystemUI/src/com/android/systemui/edgelight/EdgeLightViewController.kt
+index 52cdc5fb3a..e6ee08ff3d 100644
+--- a/packages/SystemUI/src/com/android/systemui/edgelight/EdgeLightViewController.kt
++++ b/packages/SystemUI/src/com/android/systemui/edgelight/EdgeLightViewController.kt
+@@ -167,7 +167,15 @@ constructor(
+     }
+ 
+     override fun setPulsing(pulsing: Boolean) {
+-        if (!currentSettings.isEnabled || !pulsing || !isDozing) return
++        if (!currentSettings.isEnabled) return
++        if (!pulsing) {
++            // The rainbow and effect animators repeat forever; stop them with the pulse, or they
++            // keep invalidating the hidden view for the rest of doze.
++            edgeLightView.pulseRunning = false
++            edgeLightView.visible = false
++            return
++        }
++        if (!isDozing) return
+         edgeLightView.apply {
+             visible = true
+             pulseRunning = true
+-- 
+2.43.0
+

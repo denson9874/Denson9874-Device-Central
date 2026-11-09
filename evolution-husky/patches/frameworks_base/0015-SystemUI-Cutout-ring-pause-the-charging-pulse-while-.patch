@@ -1,0 +1,122 @@
+From 8447a78019b7f1c34bacc9c58e1e1352cc6b0e91 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 06:30:54 +0100
+Subject: [PATCH 15/16] SystemUI: Cutout ring: pause the charging pulse while
+ the screen is off
+
+While the phone charges, the cutout ring pulses its charging arc with
+a 900 ms animator that repeats forever. Its overlay window stays
+visible with the screen off and on AOD, and nothing else stopped the
+animator, so it asked for a frame on every vsync for the whole charge.
+
+Have CutoutProgressController forward the screen state (SCREEN_ON and
+SCREEN_OFF, i.e. whether the phone is interactive) to the ring, and
+pause the pulse while the phone is asleep or dozing, or while the
+overlay isn't visible. A paused ring is drawn at the charge level
+without the pulse; the pulse resumes when the screen turns back on.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../CutoutProgressController.java             | 15 +++++++++
+ .../cutoutprogress/ring/CutoutRingView.java   | 31 ++++++++++++++++++-
+ 2 files changed, 45 insertions(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/cutoutprogress/CutoutProgressController.java b/packages/SystemUI/src/com/android/systemui/cutoutprogress/CutoutProgressController.java
+index 53a7a81cc8..eb903df35e 100644
+--- a/packages/SystemUI/src/com/android/systemui/cutoutprogress/CutoutProgressController.java
++++ b/packages/SystemUI/src/com/android/systemui/cutoutprogress/CutoutProgressController.java
+@@ -23,6 +23,7 @@ import android.content.IntentFilter;
+ import android.graphics.PixelFormat;
+ import android.os.BatteryManager;
+ import android.os.Handler;
++import android.os.PowerManager;
+ import android.view.WindowManager;
+ 
+ import com.android.systemui.CoreStartable;
+@@ -92,6 +93,15 @@ public class CutoutProgressController implements CoreStartable {
+         }
+     };
+ 
++    // The ring's charging pulse repeats forever; let it hold still while the phone is asleep
++    // or dozing (not interactive), when nobody sees it pulse.
++    private final BroadcastReceiver mScreenReceiver = new BroadcastReceiver() {
++        @Override
++        public void onReceive(Context context, Intent intent) {
++            mRingView.setScreenOn(Intent.ACTION_SCREEN_ON.equals(intent.getAction()));
++        }
++    };
++
+     @Inject
+     public CutoutProgressController(
+             Context context,
+@@ -111,6 +121,11 @@ public class CutoutProgressController implements CoreStartable {
+         mRingView.applySettings(mSettings);
+         bindTrackerToView();
+ 
++        IntentFilter screenFilter = new IntentFilter(Intent.ACTION_SCREEN_ON);
++        screenFilter.addAction(Intent.ACTION_SCREEN_OFF);
++        mContext.registerReceiver(mScreenReceiver, screenFilter);
++        mRingView.setScreenOn(mContext.getSystemService(PowerManager.class).isInteractive());
++
+         mMusicController = new MusicRingController(mContext, mMainHandler, mRingView);
+         mMusicController.applySettings(mSettings);
+ 
+diff --git a/packages/SystemUI/src/com/android/systemui/cutoutprogress/ring/CutoutRingView.java b/packages/SystemUI/src/com/android/systemui/cutoutprogress/ring/CutoutRingView.java
+index bf86929ae3..a9caeb7071 100644
+--- a/packages/SystemUI/src/com/android/systemui/cutoutprogress/ring/CutoutRingView.java
++++ b/packages/SystemUI/src/com/android/systemui/cutoutprogress/ring/CutoutRingView.java
+@@ -100,6 +100,8 @@ public final class CutoutRingView extends View {
+     private boolean mChargingPulseEnabled = true;
+     private float mChargingPulsePhase = 0f;
+     private ValueAnimator mChargingPulseAnim = null;
++    private boolean mScreenOn = true;
++    private boolean mAggregatedVisible = true;
+     private float mChargingDisplayPct = 0f;
+     private ValueAnimator mChargingLevelAnim = null;
+ 
+@@ -425,6 +427,32 @@ public final class CutoutRingView extends View {
+             invalidate();
+         });
+         mChargingPulseAnim.start();
++        updateChargingPulsePaused();
++    }
++
++    /** Set by CutoutProgressController: false while the phone is asleep or dozing. */
++    public void setScreenOn(boolean screenOn) {
++        mScreenOn = screenOn;
++        updateChargingPulsePaused();
++    }
++
++    @Override
++    public void onVisibilityAggregated(boolean isVisible) {
++        super.onVisibilityAggregated(isVisible);
++        mAggregatedVisible = isVisible;
++        updateChargingPulsePaused();
++    }
++
++    // The pulse repeats forever and asks for a frame on every vsync. Hold it while it can't be
++    // seen; the ring is then drawn at the charge level without the pulse.
++    private void updateChargingPulsePaused() {
++        if (mChargingPulseAnim == null) return;
++        if (mScreenOn && mAggregatedVisible) {
++            mChargingPulseAnim.resume();
++        } else {
++            mChargingPulseAnim.pause();
++        }
++        invalidate();
+     }
+ 
+     private void stopChargingPulse() {
+@@ -716,7 +744,8 @@ public final class CutoutRingView extends View {
+         int levelColor = chargingColor(mChargingDisplayPct);
+         applyStroke(mChargingPaint, levelColor, sCfgStrokeDp * mDp, baseAlpha);
+ 
+-        if (mChargingPulseEnabled && sCfgChargingPulse && mChargingPulseAnim != null) {
++        if (mChargingPulseEnabled && sCfgChargingPulse && mChargingPulseAnim != null
++                && !mChargingPulseAnim.isPaused()) {
+             float drawFraction = mChargingPulsePhase * (mChargingDisplayPct / 100f);
+             drawSymmetricArc(canvas, drawFraction, mChargingPaint);
+         } else {
+-- 
+2.43.0
+

@@ -1,0 +1,82 @@
+From c14678696c8d72b2fd092105ed710feae983e92f Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 00:37:16 +0000
+Subject: [PATCH] Evolver: save picked images under /sdcard/ExpressiveOS
+
+ExpressiveOS is its own ROM: the custom AOD image, status bar logo and
+depth wallpaper subject were saved in a folder named Evolution-X on the
+user's storage. The saved file's full path is what gets stored in the
+setting, so images picked before keep working from the old folder.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ .../evolution/settings/fragments/lockscreen/WallpaperDepth.kt | 2 +-
+ src/org/evolution/settings/utils/ImageUtils.java              | 2 +-
+ src/org/evolution/settings/utils/StatusBarLogoImageUtils.java | 4 ++--
+ .../settings/utils/WallpaperSubjectExtractorService.kt        | 2 +-
+ 4 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/src/org/evolution/settings/fragments/lockscreen/WallpaperDepth.kt b/src/org/evolution/settings/fragments/lockscreen/WallpaperDepth.kt
+index 703436e..f86d394 100644
+--- a/src/org/evolution/settings/fragments/lockscreen/WallpaperDepth.kt
++++ b/src/org/evolution/settings/fragments/lockscreen/WallpaperDepth.kt
+@@ -241,7 +241,7 @@ class WallpaperDepth : SettingsPreferenceFragment(), Preference.OnPreferenceChan
+         private const val REQUEST_WRITE_STORAGE = 10002
+ 
+         private const val FILE_PREFIX = "DEPTH_WALLPAPER_SUBJECT"
+-        private const val SAVE_DIR = "Evolution-X/depthwallpaper"
++        private const val SAVE_DIR = "ExpressiveOS/depthwallpaper"
+ 
+         /**
+          * For search
+diff --git a/src/org/evolution/settings/utils/ImageUtils.java b/src/org/evolution/settings/utils/ImageUtils.java
+index 1802f68..ed5ef19 100644
+--- a/src/org/evolution/settings/utils/ImageUtils.java
++++ b/src/org/evolution/settings/utils/ImageUtils.java
+@@ -56,7 +56,7 @@ public class ImageUtils {
+                     .format(new Date());
+             String imageFileName = filePrefix + "_" + timeStamp + outputExtension;
+ 
+-            File directory = new File("/sdcard/Evolution-X/" + featurePath);
++            File directory = new File("/sdcard/ExpressiveOS/" + featurePath);
+             if (!directory.exists() && !directory.mkdirs()) {
+                 Log.e(TAG, "Failed to create directory: " + directory.getAbsolutePath());
+                 return null;
+diff --git a/src/org/evolution/settings/utils/StatusBarLogoImageUtils.java b/src/org/evolution/settings/utils/StatusBarLogoImageUtils.java
+index f20ca7a..99279d7 100644
+--- a/src/org/evolution/settings/utils/StatusBarLogoImageUtils.java
++++ b/src/org/evolution/settings/utils/StatusBarLogoImageUtils.java
+@@ -50,7 +50,7 @@ public class StatusBarLogoImageUtils {
+     /** Target dimension in pixels for the saved logo bitmap. */
+     private static final int TARGET_SIZE = 64;  // 64 px is crisp enough at any density
+ 
+-    /** Folder inside /sdcard/Evolution-X/ where the file is stored. */
++    /** Folder inside /sdcard/ExpressiveOS/ where the file is stored. */
+     private static final String FEATURE_PATH = "statusbar_logo";
+ 
+     /** Prefix used for the saved file and for cleaning up old copies. */
+@@ -80,7 +80,7 @@ public class StatusBarLogoImageUtils {
+                     ? source
+                     : Bitmap.createScaledBitmap(source, width, height, true);
+ 
+-            File directory = new File("/sdcard/Evolution-X/" + FEATURE_PATH);
++            File directory = new File("/sdcard/ExpressiveOS/" + FEATURE_PATH);
+             if (!directory.exists() && !directory.mkdirs()) {
+                 Log.e(TAG, "Failed to create directory: " + directory.getAbsolutePath());
+                 return null;
+diff --git a/src/org/evolution/settings/utils/WallpaperSubjectExtractorService.kt b/src/org/evolution/settings/utils/WallpaperSubjectExtractorService.kt
+index 9745db7..9d51c34 100644
+--- a/src/org/evolution/settings/utils/WallpaperSubjectExtractorService.kt
++++ b/src/org/evolution/settings/utils/WallpaperSubjectExtractorService.kt
+@@ -248,7 +248,7 @@ class WallpaperSubjectExtractorService : Service() {
+         var file: File? = null
+         return try {
+             val baseDir = Environment.getExternalStorageDirectory()
+-            val dir = File(baseDir, "Evolution-X/depthwallpaper")
++            val dir = File(baseDir, "ExpressiveOS/depthwallpaper")
+ 
+             if (!dir.exists() && !dir.mkdirs()) {
+                 Log.e(TAG, "Failed to create save directory")
+-- 
+2.43.0
+

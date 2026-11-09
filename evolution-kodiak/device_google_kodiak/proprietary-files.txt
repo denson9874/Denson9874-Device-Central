@@ -5,9 +5,30 @@
 # Carrier setup and settings
 product/etc/sysconfig/preinstalled-packages-pixel-carrier.xml
 product/priv-app/CarrierSettings/CarrierSettings.apk;PRESIGNED
-system_ext/priv-app/CarrierSetup/CarrierSetup.apk;PRESIGNED
+# CarrierSetup is platform-signed on stock and requests MANAGE_NETWORK_POLICY, a
+# signature-only permission it can't get under stock kodiak's key on our build.
+# No shared uid, so extract-utils re-signs it with our platform key.
+system_ext/priv-app/CarrierSetup/CarrierSetup.apk
 
-# eSIM
+# Face unlock enrollment: Settings' FaceEnrollActivityDirector hands enrollment to this
+# app (com.google.android.settings.future.biometrics.faceenroll); without it Settings
+# crashes when face unlock is set up. android.uid.system, so it's re-signed with our
+# platform key.
+system_ext/priv-app/SettingsGoogleFutureFaceEnroll/SettingsGoogleFutureFaceEnroll.apk
+
+# Wi-Fi calling emergency address (e911) screen: 48 CarrierSettings configs name it
+# (wfc_emergency_address_carrier_app_string), e.g. AT&T, Cricket, Rogers, Telus.
+# vendor/gms ships its privapp allowlist; Google-signed, so PRESIGNED.
+product/priv-app/WfcActivation/WfcActivation.apk;PRESIGNED
+
+# eSIM. EuiccGoogle (com.google.android.euicc) is the LPA: the only app with
+# android.service.euicc.EuiccService and the eSIM screens (add, switch, transfer).
+# Without it Settings' "Add SIM" and Setup Wizard's eSIM step resolve nothing
+# (EuiccConnector: "No valid EuiccService implementation found"), Setup Wizard
+# returns to the account screen, and a Play-installed copy isn't privileged and
+# crashes (READ_PRIVILEGED_PHONE_STATE). Stock runs it as priv_app with Google's
+# signature; vendor/gms ships its privapp allowlist and default permissions.
+product/priv-app/EuiccGoogle/EuiccGoogle.apk;PRESIGNED
 system_ext/etc/default-permissions/default-permissions-euiccpixel.xml
 system_ext/etc/permissions/com.google.euiccpixel.permissions.xml
 system_ext/etc/permissions/com.google.euiccpixel.xml
@@ -59,6 +80,27 @@ system_ext/priv-app/ril-extension/ril-extension.apk
 # TeleServiceOverlay names it config_gba_package, as stock's product RRO
 # does. It runs as android.uid.system, so it must NOT be PRESIGNED.
 system_ext/priv-app/GbaService/GbaService.apk
+
+# Wi-Fi: device settings for the mainline supplicant. PixelWifiOverlay2026Kodiak
+# sets config_wifiMainlineSupplicantEnabled (as stock does), so the Wi-Fi module
+# runs STA and P2P on the APEX's wpa_supplicant_mainline instead of the vendor
+# supplicant. That binary reads device settings only from these two files
+# (Passpoint, the P2P device driver params, BSS table size, WoWLAN triggers,
+# roaming offloads); without them it runs on the generic APEX template.
+system_ext/etc/wifi/p2p_supplicant_mainline_overlay.conf
+system_ext/etc/wifi/wpa_supplicant_mainline_overlay.conf
+
+# NFC: stock's libnfc-nci.conf. The NFC stack searches /product/etc first; without
+# it ours loaded the AOSP default (listen tech A+F only, different AID routing).
+product/etc/libnfc-nci.conf
+
+# FeliCa / Osaifu-Keitai (Japanese SKUs): middleware configs and PixelNfc, whose
+# DeviceInfoContentProvider they query for the SKU. PixelNfc is signed with the
+# per-device key and has no shared uid, so PRESIGNED.
+product/etc/felica/common.cfg
+product/etc/felica/mfm.cfg
+product/etc/felica/mfs.cfg
+system_ext/priv-app/PixelNfc/PixelNfc.apk;PRESIGNED
 
 # Radio config
 system_ext/etc/permissions/com.android.omadm.radioconfig.xml
@@ -130,7 +172,6 @@ product/etc/ambient/matcher_tah.leveldb
 product/etc/firmware/music_detector.descriptor
 product/etc/firmware/music_detector.sound_model
 product/etc/firmware/music_detector.sound_model_tflite
-product/etc/sysconfig/nowplaying_app_26q1.xml
 product/priv-app/HotwordEnrollmentOKGoogleFUSIONPro/HotwordEnrollmentOKGoogleFUSIONPro.apk;PRESIGNED
 product/priv-app/HotwordEnrollmentXGoogleFUSIONPro/HotwordEnrollmentXGoogleFUSIONPro.apk;PRESIGNED
 system_ext/etc/permissions/com.android.hotwordenrollment.common.util.xml
@@ -164,6 +205,7 @@ system_ext/framework/com.google.pixel.camera.services.lyricconfigprovider.jar
 # Policy: pixeldisplayservice_app.te.
 system_ext/lib64/libpixeldisplaymanager_jni.so
 system_ext/priv-app/PixelDisplayService/PixelDisplayService.apk
+product/overlay/PixelDisplayService__kodiak__auto_generated_rro_product.apk;MAKE_COPY_RULE_ONLY
 
 # com.google.pixel.camera.services (PersistentBackgroundCameraServices): publishes
 # the services the stock camera HAL looks up (IServiceBinder, LyricConfigProvider,
@@ -195,3 +237,9 @@ product/overlay/TrafficLightFaceOverlay.apk;MAKE_COPY_RULE_ONLY
 # Carrier Wi-Fi Hotspot auto-connect service and permissions
 product/priv-app/CarrierWifi/CarrierWifi.apk;PRESIGNED
 product/etc/permissions/privapp-permissions_com.google.android.apps.carrier.carrierwifi.xml
+product/etc/default-permissions/default-permissions_com.google.android.apps.carrier.carrierwifi.xml
+
+# Face feature declaration. The face HAL is in the stock vendor
+# (com.google.android.hardware.biometrics.face.apex); without this apps checking
+# FEATURE_FACE see no face sensor.
+product/etc/permissions/android.hardware.biometrics.face.xml

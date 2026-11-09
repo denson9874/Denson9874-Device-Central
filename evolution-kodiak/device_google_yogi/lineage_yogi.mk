@@ -57,8 +57,6 @@ WITH_GMS := true
 TARGET_HAS_UDFPS := false
 TARGET_INCLUDE_BOOT_ANIMATIONS := true
 TARGET_ENABLE_BLUR := true
-# Bring-up only: tolerate missing product packages
-TARGET_DISABLE_EPPE := true
 
 PRODUCT_BUILD_PROP_OVERRIDES += \
     BuildDesc="yogi-user 17 CD1A.261005.003 16262255 release-keys" \

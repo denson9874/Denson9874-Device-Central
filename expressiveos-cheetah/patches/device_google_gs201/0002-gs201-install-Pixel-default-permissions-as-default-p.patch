@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sun, 18 Oct 2026 00:19:54 +0200
+Subject: [PATCH 2/5] gs201: install Pixel default permissions as
+ default-permissions-gs201.xml
+
+Evolution X's vendor/gms installs its own product/etc/default-permissions/
+default-permissions.xml, which differs from gs201's. Both are needed and
+PermissionController reads every file in that directory, so give gs201's
+its own name, as husky's zuma 0002 does.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ common.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/common.mk b/common.mk
+index 220d8c07..29e702aa 100644
+--- a/common.mk
++++ b/common.mk
+@@ -222,7 +222,7 @@ endif
+ $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit_only.mk)
+ 
+ PRODUCT_COPY_FILES += \
+-	device/google/gs201/default-permissions.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/default-permissions/default-permissions.xml \
++	device/google/gs201/default-permissions.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/default-permissions/default-permissions-gs201.xml \
+ 	device/google/gs201/component-overrides.xml:$(TARGET_COPY_OUT_VENDOR)/etc/sysconfig/component-overrides.xml
+ 
+ # Audio HAL configurations
+-- 
+2.43.0
+

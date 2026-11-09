@@ -1,0 +1,187 @@
+From 244a42ae0767a604c6fcb2fc78532a31694a4431 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 22:54:21 +0000
+Subject: [PATCH] Updater: draw the wordmark in the Bloom colours
+
+Daryl, 2026-10-27: the neon ExpressiveOS wordmark takes the Bloom
+mark's colours, as in Settings' Android version banner. The main
+screen's logo and the top bar's swept a pink, violet and cyan gradient
+with a cyan and pink fringe. Sweep the mark's four petals instead
+(violet, blue, green, coral) with a blue and violet fringe: the mid
+tones (light tones for the fringe) on a light on-surface colour (a dark
+theme), the deep tones on a dark one. The colours follow the theme the
+way the shine already does.
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+---
+ .../evolution/updater/ui/EvolutionLogoGlow.kt | 68 ++++++++++++-------
+ .../main/res/values/evolution_logo_paths.xml  |  2 +-
+ 2 files changed, 46 insertions(+), 24 deletions(-)
+
+diff --git a/app/src/main/java/org/evolution/updater/ui/EvolutionLogoGlow.kt b/app/src/main/java/org/evolution/updater/ui/EvolutionLogoGlow.kt
+index dd39c6d..97afb5b 100644
+--- a/app/src/main/java/org/evolution/updater/ui/EvolutionLogoGlow.kt
++++ b/app/src/main/java/org/evolution/updater/ui/EvolutionLogoGlow.kt
+@@ -7,6 +7,7 @@ package org.evolution.updater.ui
+ 
+ import android.animation.ValueAnimator
+ import android.graphics.BlurMaskFilter
++import android.graphics.Color
+ import android.graphics.LinearGradient
+ import android.graphics.Matrix
+ import android.graphics.Paint
+@@ -39,9 +40,22 @@ import org.evolution.updater.R
+ private const val VIEWPORT_W = 1080f
+ private const val VIEWPORT_H = 240f
+ 
+-private val PINK = 0xFFFF2E9A.toInt()
+-private val VIOLET = 0xFF8B5CF6.toInt()
+-private val CYAN = 0xFF22D3EE.toInt()
++// The Bloom mark's petals in the boot animation wordmark's order, the first
++// repeated so the sweep loops: mid tones for dark surfaces, deep tones for light ones.
++private val BLOOM_ON_DARK = intArrayOf(
++    0xFFAE69FC.toInt(), 0xFF417BFC.toInt(), 0xFF4AD29D.toInt(), 0xFFFD7771.toInt(), 0xFFAE69FC.toInt(),
++)
++private val BLOOM_ON_LIGHT = intArrayOf(
++    0xFF6B2BBB.toInt(), 0xFF1842D1.toInt(), 0xFF18A07C.toInt(), 0xFFD33952.toInt(), 0xFF6B2BBB.toInt(),
++)
++private val BLOOM_STOPS = floatArrayOf(0f, 0.25f, 0.5f, 0.75f, 1f)
++
++// Fringe: the blue petal left, the violet petal right (light tones on dark
++// surfaces, deep tones on light ones)
++private val FRINGE_LEFT_ON_DARK = 0xFF76BCFB.toInt()
++private val FRINGE_RIGHT_ON_DARK = 0xFFF3B1FC.toInt()
++private val FRINGE_LEFT_ON_LIGHT = 0xFF1842D1.toInt()
++private val FRINGE_RIGHT_ON_LIGHT = 0xFF6B2BBB.toInt()
+ 
+ // Gradient vector (viewport units). One sweep moves it by its own length,
+ // so the repeating gradient loops seamlessly.
+@@ -81,10 +95,12 @@ private val SPARKLES = arrayOf(
+ )
+ 
+ /**
+- * The ExpressiveOS wordmark with a holographic treatment: a pink, violet and
+- * cyan gradient sweeping across the outline, a soft neon glow with a chromatic
+- * fringe, a periodic shine streak and a few twinkling sparkles. Shine and
+- * sparkles follow the theme's on-surface color. Mirrors GlowView in Settings.
++ * The ExpressiveOS wordmark in the Bloom mark's colours: its four petals
++ * (violet, blue, green, coral) as a gradient sweeping across the outline, a
++ * soft glow with a blue and violet fringe, a periodic shine streak and a few
++ * twinkling sparkles. Shine and sparkles follow the theme's on-surface color,
++ * and a light one (a dark surface) picks the petals' mid tones (light tones for
++ * the fringe) over their deep ones. Mirrors GlowView in Settings.
+  */
+ @Composable
+ fun EvolutionLogoGlow(
+@@ -142,17 +158,13 @@ private class GlowRenderer(pathData: Array<String>) {
+         strokeJoin = Paint.Join.ROUND
+         alpha = GLOW_ALPHA
+     }
+-    private val cyanPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
++    private val leftFringePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+         style = Paint.Style.STROKE
+         strokeJoin = Paint.Join.ROUND
+-        color = CYAN
+-        alpha = FRINGE_ALPHA
+     }
+-    private val pinkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
++    private val rightFringePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+         style = Paint.Style.STROKE
+         strokeJoin = Paint.Join.ROUND
+-        color = PINK
+-        alpha = FRINGE_ALPHA
+     }
+     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+         style = Paint.Style.FILL
+@@ -181,6 +193,7 @@ private class GlowRenderer(pathData: Array<String>) {
+         Shader.TileMode.CLAMP,
+     )
+     private var holo: LinearGradient? = null
++    private var holoColors = BLOOM_ON_DARK
+ 
+     private var width = 0f
+     private var height = 0f
+@@ -205,18 +218,18 @@ private class GlowRenderer(pathData: Array<String>) {
+ 
+         glowPaint.strokeWidth = GLOW_STROKE * scale
+         glowPaint.maskFilter = glowBlur
+-        cyanPaint.strokeWidth = FRINGE_STROKE * scale
+-        cyanPaint.maskFilter = fringeBlur
+-        pinkPaint.strokeWidth = FRINGE_STROKE * scale
+-        pinkPaint.maskFilter = fringeBlur
++        leftFringePaint.strokeWidth = FRINGE_STROKE * scale
++        leftFringePaint.maskFilter = fringeBlur
++        rightFringePaint.strokeWidth = FRINGE_STROKE * scale
++        rightFringePaint.maskFilter = fringeBlur
+         strokePaint.strokeWidth = MAIN_STROKE * scale
+         shineStroke.strokeWidth = MAIN_STROKE * scale
+ 
+         holo = LinearGradient(
+             ox + GRAD_X1 * scale, oy + GRAD_Y1 * scale,
+             ox + GRAD_X2 * scale, oy + GRAD_Y2 * scale,
+-            intArrayOf(PINK, VIOLET, CYAN, PINK),
+-            floatArrayOf(0f, 0.33f, 0.66f, 1f),
++            holoColors,
++            BLOOM_STOPS,
+             Shader.TileMode.REPEAT,
+         )
+     }
+@@ -227,11 +240,20 @@ private class GlowRenderer(pathData: Array<String>) {
+         shineFill.alpha = SHINE_FILL_ALPHA
+         shineStroke.color = color
+         sparklePaint.color = color
++
++        // Light ink means a dark surface
++        val onDark = Color.luminance(color) > 0.5f
++        holoColors = if (onDark) BLOOM_ON_DARK else BLOOM_ON_LIGHT
++        leftFringePaint.color = if (onDark) FRINGE_LEFT_ON_DARK else FRINGE_LEFT_ON_LIGHT
++        leftFringePaint.alpha = FRINGE_ALPHA
++        rightFringePaint.color = if (onDark) FRINGE_RIGHT_ON_DARK else FRINGE_RIGHT_ON_LIGHT
++        rightFringePaint.alpha = FRINGE_ALPHA
++        holo = null // layout() makes it again in the new colours
+     }
+ 
+     fun draw(canvas: android.graphics.Canvas, w: Float, h: Float, t: Long, inkColor: Int) {
+-        if (w != width || h != height || holo == null) layout(w, h)
+         if (inkColor != ink) applyInk(inkColor)
++        if (w != width || h != height || holo == null) layout(w, h)
+         val holo = holo ?: return
+         if (scale <= 0f) return
+ 
+@@ -246,17 +268,17 @@ private class GlowRenderer(pathData: Array<String>) {
+         fillPaint.shader = holo
+         strokePaint.shader = holo
+ 
+-        // Neon glow, then the cyan/pink chromatic fringe
++        // Soft glow, then the blue/violet fringe
+         canvas.drawPath(logo, glowPaint)
+ 
+         canvas.save()
+         canvas.translate(-FRINGE_SHIFT * scale, 0f)
+-        canvas.drawPath(logo, cyanPaint)
++        canvas.drawPath(logo, leftFringePaint)
+         canvas.restore()
+ 
+         canvas.save()
+         canvas.translate(FRINGE_SHIFT * scale, 0f)
+-        canvas.drawPath(logo, pinkPaint)
++        canvas.drawPath(logo, rightFringePaint)
+         canvas.restore()
+ 
+         // Glassy fill and gradient outline
+diff --git a/app/src/main/res/values/evolution_logo_paths.xml b/app/src/main/res/values/evolution_logo_paths.xml
+index beebc68..e41e713 100644
+--- a/app/src/main/res/values/evolution_logo_paths.xml
++++ b/app/src/main/res/values/evolution_logo_paths.xml
+@@ -5,7 +5,7 @@
+ -->
+ <resources>
+     <!-- Outline path data of the ExpressiveOS wordmark. Same geometry as
+-         ic_evolution_logo_outline, used by EvolutionLogoGlow to draw the holographic logo. -->
++         ic_evolution_logo_outline, used by EvolutionLogoGlow to draw the wordmark in the Bloom colours. -->
+     <string-array name="evolution_logo_paths" translatable="false">
+         <item>M219.74 147.99Q215.73 147.99 212.87 145.13Q210 142.26 210 138.26L210 85.26Q210 81.27 212.87 78.41Q215.73 75.55 219.74 75.55L252.23 75.55Q255.45 75.55 257.74 77.83Q260.03 80.12 260.03 83.27Q260.03 86.43 257.74 88.71Q255.45 91 252.23 91L227.49 91L227.49 104.9L250.28 104.9Q253.12 104.9 255.15 106.91Q257.18 108.92 257.18 111.72Q257.18 114.53 255.15 116.54Q253.12 118.55 250.28 118.55L227.49 118.55L227.49 132.68L252.68 132.68Q255.88 132.68 258.15 134.94Q260.43 137.21 260.43 140.34Q260.43 143.47 258.15 145.73Q255.88 147.99 252.68 147.99Z</item>
+         <item>M310.69 148.86Q308.98 148.86 307.45 148.03Q305.92 147.19 304.38 145.62L292.19 131.57L279.75 146.15Q278.49 147.44 277.15 148.14Q275.81 148.85 274.23 148.85Q269.27 148.85 267.48 144.52Q265.69 140.19 269.4 136.45L282.02 121.63L270.07 107.43Q266.37 103.63 268.32 99.08Q270.28 94.52 275.42 94.52Q277.56 94.52 279.22 95.65Q280.88 96.78 282.25 98.18L293.19 110.9L304.33 97.89Q305.62 96.58 307.23 95.55Q308.84 94.53 310.78 94.53Q315.6 94.53 317.24 98.84Q318.88 103.16 315.12 106.96L303.25 120.87L315.8 135.73Q319.69 139.7 317.76 144.28Q315.82 148.86 310.69 148.86Z</item>
+-- 
+2.43.0
+
