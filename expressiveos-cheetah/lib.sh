@@ -1,7 +1,6 @@
 # Shared by the ExpressiveOS scripts (sourced, never run): sets kit, reads eos.conf and
 # the phone's devices/<device>.conf (EOS_DEVICE, cheetah unless set), and holds the guards
-# they all use. The Evolution X tree (~/evolution) and the DerpFest tree (~/derpfest) are
-# never touched, nothing is written through a symlink that leads out of the ExpressiveOS
+# they all use. Nothing is written through a symlink that leads out of the ExpressiveOS
 # tree, and a git project is checked before git am runs in it.
 # shellcheck shell=bash
 
@@ -17,7 +16,7 @@ source "$kit/eos.conf" || fail "can't read $kit/eos.conf"
 # Nothing in it can move the keys, the feed or the manifest, which stay eos.conf's.
 EOS_DEVICE_KEYS=" EOS_LUNCH EOS_MODEL EOS_BOARD EOS_RELEASES EOS_SF_DIR EOS_R2_PREFIX EOS_DEVICE_TREE \
 EOS_BOARDCONFIG EOS_VENDOR_DIR EOS_RADIO_MK EOS_FIRMWARE EOS_FIRMWARE_MODE EOS_LFS_PROJECTS EOS_UPDATER_OVERLAY \
-EOS_SENTINEL EOS_KERNEL EOS_KMI EOS_KSU EOS_V4A EOS_SUPER_EMPTY EOS_FLASH_VKB EOS_SCONE_PATCH EOS_SYSUI_ODEX "
+EOS_SENTINEL EOS_KERNEL EOS_KMI EOS_V4A EOS_SUPER_EMPTY EOS_FLASH_VKB EOS_SCONE_PATCH EOS_SYSUI_ODEX "
 device_conf() {   # device_conf <file>: set the device keys it names (EOS_DEVICE_KEYS), checked
     local f=$1 line k v n=0 rel=${1#"$kit"/}
     [[ -f $f && -r $f ]] || fail "can't read $rel"
@@ -36,8 +35,8 @@ EOS_DEVICE=${EOS_DEVICE:-cheetah}
     || fail "EOS_DEVICE '$EOS_DEVICE' isn't one of the kit's devices: $(cd "$kit/devices" 2>/dev/null && printf '%s ' *.conf | sed 's/\.conf//g')"
 export EOS_DEVICE
 # A quick build (EOS_QUICK=1; the runner's expressiveos-build query quick) makes the images
-# only: m droid where a full build runs m evolution, which is droid plus the OTA package and
-# its target-files zip (vendor/lineage's build/tasks/evolution.mk), about 5 minutes more.
+# only: m droid where a full build runs m bacon (make_goal below), which is droid plus the OTA
+# package and its target-files zip (vendor/lineage's build/tasks/bacon.mk), about 5 minutes more.
 # eos-verify.sh and eos-keys-check.sh out skip only what reads those two, eos-images.sh
 # writes quick.ok instead of build.ok, and eos-pack.sh packs it as a quick candidate
 # (<name>-quick-fastboot.zip in check/) to flash and test, which it never releases, uploads
@@ -68,19 +67,17 @@ for _v in "$EOS_DEVICE_TREE" "$EOS_BOARDCONFIG" "$EOS_VENDOR_DIR" "$EOS_RADIO_MK
 done
 unset _v
 _e() { [[ " $2 " == *" ${!1} "* ]] || fail "devices/$EOS_DEVICE.conf: $1 is '${!1}', not one of: $2"; }
-_e EOS_FIRMWARE_MODE "cache blobs images"; _e EOS_KERNEL "gs-6.1 prebuilt"; _e EOS_KSU "lkm none"
-_e EOS_V4A "0 1"; _e EOS_SUPER_EMPTY "out factory"; _e EOS_FLASH_VKB "0 1"; _e EOS_SYSUI_ODEX "0 1"
+_e EOS_FIRMWARE_MODE "cache blobs images"; _e EOS_KERNEL "gs-6.1 prebuilt"
+_e EOS_V4A "0 1 aidl aidl-overlay"; _e EOS_SUPER_EMPTY "out factory"; _e EOS_FLASH_VKB "0 1"; _e EOS_SYSUI_ODEX "0 1"
 _e EOS_KMI "android14-6.1 android16-6.12"
 unset -f _e
-[[ $EOS_KSU = none || $EOS_KERNEL = gs-6.1 ]] || fail "devices/$EOS_DEVICE.conf: KernelSU Next (EOS_KSU=lkm) is built only against the gs-6.1 kernel source so far"
 # Where a device's build keeps its own records: cheetah's are where they always were, so its
 # builds, packs and logs don't move; the other phones' sit beside them in the one tree
 EOS_PRODUCT_OUT=out/target/product/$EOS_DEVICE
 if [[ $EOS_DEVICE = cheetah ]]; then
-    EOS_STATE=out/eos EOS_KSU_OUT=out/ksu EOS_BUILD_LOG=$HOME/expressiveos-build.log EOS_KSU_INIT_BOOT_VAR=CHEETAH_KSU_INIT_BOOT
+    EOS_STATE=out/eos EOS_BUILD_LOG=$HOME/expressiveos-build.log
 else
-    EOS_STATE=out/eos-$EOS_DEVICE EOS_KSU_OUT=out/ksu-$EOS_DEVICE
-    EOS_BUILD_LOG=$HOME/expressiveos-build-$EOS_DEVICE.log EOS_KSU_INIT_BOOT_VAR=EOS_KSU_INIT_BOOT
+    EOS_STATE=out/eos-$EOS_DEVICE EOS_BUILD_LOG=$HOME/expressiveos-build-$EOS_DEVICE.log
 fi
 
 # For the runner's expressiveos-progress (tools/eos-progress.py): a STEP line in the log as a
@@ -88,14 +85,16 @@ fi
 # finished step's time in EOS_TIMES (every phone's, one file), which its estimates start from.
 # EOS_RUN_KIND (full, quick or kernel; eos-pack.sh: full, quick, testers, release or upload) and
 # EOS_RUN_FRESH (1: the product out wasn't there when the build began, so every module was
-# built; - when it doesn't apply) say what the times are of
+# built; - when it doesn't apply) say what the times are of. The make's TIME line also says
+# prev=<phone>: whose make ran in the tree before (eos-make.sh's EOS_PREV_DEVICE), since a
+# change of phone redoes work
 EOS_TIMES=$HOME/expressiveos-build-times.txt
 eos_step() {   # eos_step <step>|end: say this run is at <step> now, after recording how long the step before took (a failure records nothing)
     local now
     now=$(date -u +%s)
     [[ $1 != "${_eos_step:-}" ]] || return 0
     if [[ -n ${_eos_step:-} ]]; then
-        echo "TIME $_eos_step device=$EOS_DEVICE kind=${EOS_RUN_KIND:--} fresh=${EOS_RUN_FRESH:--} at=$(date -ud "@$now" +%FT%TZ) secs=$((now - _eos_step_at))" \
+        echo "TIME $_eos_step device=$EOS_DEVICE kind=${EOS_RUN_KIND:--} fresh=${EOS_RUN_FRESH:--} at=$(date -ud "@$now" +%FT%TZ) secs=$((now - _eos_step_at))${EOS_PREV_DEVICE:+ prev=$EOS_PREV_DEVICE}" \
             >> "$EOS_TIMES" 2>/dev/null || true
     fi
     _eos_step=$1 _eos_step_at=$now
@@ -103,51 +102,60 @@ eos_step() {   # eos_step <step>|end: say this run is at <step> now, after recor
     echo "STEP $1 device=$EOS_DEVICE kind=${EOS_RUN_KIND:--} fresh=${EOS_RUN_FRESH:--} at=$(date -ud "@$now" +%FT%TZ)"
 }
 
-kit_patch_dirs() {   # kit_patch_dirs: the kit's patch folders for EOS_DEVICE, one a line: the shared ones (patches/, ksu/patches/, viper4android/patches/), then devices/<device>/patches/ and ksu-patches/
+kit_patch_dirs() {   # kit_patch_dirs: the kit's patch folders for EOS_DEVICE, one a line: the shared ones (patches/, viper4android/patches/), then devices/<device>/patches/
     local d
-    for d in "$kit"/patches/* "$kit"/ksu/patches/* "$kit"/viper4android/patches/* \
-             "$kit/devices/$EOS_DEVICE"/patches/* "$kit/devices/$EOS_DEVICE"/ksu-patches/*; do
+    for d in "$kit"/patches/* "$kit"/viper4android/patches/* "$kit/devices/$EOS_DEVICE"/patches/*; do
         [[ -d $d ]] && printf '%s\n' "$d"
     done
     return 0
 }
 
-# The other trees on the server, symlinks resolved (empty when absent)
-evo=$(cd "$HOME/evolution" 2>/dev/null && pwd -P) || evo=
-derp=$(cd "$HOME/derpfest" 2>/dev/null && pwd -P) || derp=
-
-not_other() {   # not_other <path>: <path>, as given and resolved, isn't in the Evolution X or DerpFest tree
-    local p=${1%/} r o
-    [[ "$p" != */evolution && "$p" != evolution && "$p" != */derpfest && "$p" != derpfest ]] \
-        || fail "$1 is the Evolution X or DerpFest tree; this kit is for the ExpressiveOS tree only"
-    r=$(realpath -m -- "$1") || fail "can't resolve $1"
-    for o in "$evo" "$derp"; do
-        [[ -z "$o" || ( "$r" != "$o" && "$r" != "$o"/* ) ]] || fail "$1 leads into $o; this kit is for the ExpressiveOS tree only"
-    done
-}
-
 eos_top() {   # eos_top [path]: sets top to the ExpressiveOS tree (default ~/expressiveos), checked
     local arg=${1:-$HOME/expressiveos}
-    not_other "$arg"
     [[ -d "$arg" ]] || fail "no tree at $arg (run setup.sh)"
     top=$(cd "$arg" && pwd -P)
-    not_other "$top"
     [[ -f "$top/build/envsetup.sh" ]] || fail "$top isn't an Android tree (no build/envsetup.sh)"
     # The build writes here before anything else checks: a linked out/ or out-kernel/ would
-    # build into another tree (Evolution X's kernel output is the same gs-6.1 source)
+    # build into another folder
     local p
-    for p in out out-kernel out-kernel/google out-kernel/google/gs-6.1 "$EOS_STATE" "$EOS_KSU_OUT" "$EOS_PRODUCT_OUT"; do
+    for p in out out-kernel out-kernel/google out-kernel/google/gs-6.1 "$EOS_STATE" "$EOS_PRODUCT_OUT"; do
         in_top "$top/$p"
     done
 }
 
-in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top and in no other tree
-    local r o
+in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top
+    local r
     r=$(realpath -m -- "$1") || fail "can't resolve $1"
     [[ "$r" == "$top"/* ]] || fail "${1#"$top"/} leads to $r, outside $top (a symlink?); this kit writes only inside the ExpressiveOS tree"
-    for o in "$evo" "$derp"; do
-        [[ -z "$o" || ( "$r" != "$o" && "$r" != "$o"/* ) ]] || fail "${1#"$top"/} leads into $o"
-    done
+}
+
+# ExpressiveOS's signing keys, in the tree: vendor/expressiveos-priv/keys since 1.1 (Saturday
+# 2026-11-07's move, tools/eos-keys-move.sh), vendor/evolution-priv/keys before. The scripts
+# take the new folder whenever it's there, and the old one only while the new one is missing:
+# a tree before the move, or after the move's revert. The keys are the same files either way
+# (moved, never made again), so 1.0 phones keep taking updates
+EOS_PRIV_NEW=vendor/expressiveos-priv
+EOS_PRIV_OLD=vendor/evolution-priv
+eos_priv() {   # eos_priv: the tree's key folder, relative to $top: EOS_PRIV_NEW when it's there (a link counts, for the checks to refuse), else EOS_PRIV_OLD when that is, else EOS_PRIV_NEW
+    if [[ -e $top/$EOS_PRIV_NEW || -L $top/$EOS_PRIV_NEW ]]; then
+        printf '%s\n' "$EOS_PRIV_NEW"
+    elif [[ -e $top/$EOS_PRIV_OLD || -L $top/$EOS_PRIV_OLD ]]; then
+        printf '%s\n' "$EOS_PRIV_OLD"
+    else
+        printf '%s\n' "$EOS_PRIV_NEW"
+    fi
+}
+
+# The make goal of a full build: bacon, as LineageOS names it (vendor/lineage's
+# build/tasks/bacon.mk since 1.1, which keeps evolution as an alias for one release). A tree
+# whose vendor/lineage has no bacon goal yet (one from before 1.1: a manifest revert) builds
+# the same package with evolution, its old name
+make_goal() {   # make_goal: bacon, or evolution in a tree whose vendor/lineage doesn't declare bacon
+    if grep -qsE '^bacon:' "$top"/vendor/lineage/build/tasks/*.mk; then
+        echo bacon
+    else
+        echo evolution
+    fi
 }
 
 project_ok() {   # project_ok <dir>: a git project of its own in this tree, git folder included, with no am or rebase running
@@ -207,7 +215,7 @@ am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local co
                 rm -f -- "$log"
                 fail "$label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change, and ${d#"$top"/} is ExpressiveOS's own repo ($own): change it with a new commit there, never by editing a kit patch (README.md, \"Sources\")"
             elif [[ $rc = 1 ]]; then
-                echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change. If apply.sh or apply-ksu.sh made it (an older version of the patch): repo sync -d ${d#"$top"/}, then build again (tools/eos-images.sh puts the kit's patches back). If it came with upstream source: compare the two, then drop or regenerate the patch"
+                echo "WARNING: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/} but not its change. If apply.sh made it (an older version of the patch): repo sync -d ${d#"$top"/}, then build again (tools/eos-images.sh puts the kit's patches back). If it came with upstream source: compare the two, then drop or regenerate the patch"
             elif [[ $rc != 0 ]]; then
                 echo "note: $label: ${d#"$top"/}'s commit ${h:0:12} has the subject of ${patch##*/}, but its change can't be compared with the patch here (no parent in this clone, or git failed)"
             fi
@@ -299,6 +307,8 @@ has_subject() {   # has_subject <dir> <subject>: the project's log has a commit 
 }
 
 clean_env() {   # drop what a shell set up for another tree: soong_ui and envsetup follow these
+    # (CHEETAH_KSU_INIT_BOOT and EOS_KSU_INIT_BOOT too: the pantah fork's device tree still ships
+    # a KernelSU init_boot when one names an image, and ExpressiveOS ships no root)
     unset TOP ANDROID_BUILD_TOP ANDROID_PRODUCT_OUT ANDROID_HOST_OUT OUT OUT_DIR OUT_DIR_COMMON_BASE \
         TARGET_PRODUCT TARGET_RELEASE TARGET_BUILD_VARIANT CHEETAH_KSU_INIT_BOOT EOS_KSU_INIT_BOOT KODIAK_PERSONAL \
         KERNEL_REPO_PROJECT_OBJECTS_DIR KERNEL_REPO_PROJECTS_DIR
@@ -306,11 +316,12 @@ clean_env() {   # drop what a shell set up for another tree: soong_ui and envset
 
 dump_vars() {   # dump_vars <var>...: VAR='value' lines for EOS_LUNCH, without lunch (which runs build_kernel)
     local product=${EOS_LUNCH%%-*} rest=${EOS_LUNCH#*-}
-    # What lunch would export: EVO_BUILD_TYPE as eos-images.sh builds (it decides whether
-    # keys.mk is read), and LINEAGE_BUILD, which check_product sets from the product name
+    # What lunch would export: the build type as eos-images.sh builds (it decides whether
+    # keys.mk is read; EXPRESSIVE_BUILD_TYPE since 1.1, and EVO_BUILD_TYPE, its old name, for
+    # a tree from before it), and LINEAGE_BUILD, which check_product sets from the product name
     # and vendor/lineage's version.mk puts in the zip's name
     (cd "$top" && clean_env &&
-        EVO_BUILD_TYPE=$EOS_BUILD_TYPE LINEAGE_BUILD=${product#lineage_} \
+        EXPRESSIVE_BUILD_TYPE=$EOS_BUILD_TYPE EVO_BUILD_TYPE=$EOS_BUILD_TYPE LINEAGE_BUILD=${product#lineage_} \
         TARGET_PRODUCT=$product TARGET_RELEASE=${rest%%-*} TARGET_BUILD_VARIANT=${rest#*-} \
         build/soong/soong_ui.bash --dumpvars-mode --vars="$*")
 }
@@ -319,7 +330,14 @@ var_of() {   # var_of <dumpvars output> <name>: one value from dump_vars' output
     sed -n "s/^$2='\(.*\)'\$/\1/p" <<<"$1"
 }
 
-tf_zip() {   # tf_zip: the target-files zip m evolution keeps (patches/vendor_lineage/0003), relative to the tree
+var_new_or_old() {   # var_new_or_old <dumpvars output> <name> <old name>: the name's value, or the old name's when it's empty (a tree from before 1.1, or a rollback)
+    local v
+    v=$(var_of "$1" "$2")
+    [[ -n $v ]] || v=$(var_of "$1" "$3")
+    printf '%s\n' "$v"
+}
+
+tf_zip() {   # tf_zip: the target-files zip a full build keeps (patches/vendor_lineage/0003), relative to the tree
     printf '%s\n' "$EOS_PRODUCT_OUT/obj/PACKAGING/target_files_intermediates/${EOS_LUNCH%%-*}-target_files.zip"
 }
 
@@ -383,24 +401,78 @@ fastboot_files() {   # fastboot_files: what the fastboot zip takes from the prod
     } | awk '!seen[$0]++'
 }
 
-eos_lock() {   # eos_lock <script> [arg]...: run <script> holding ~/.expressiveos.lock and ~/.evolution-tree.lock (shared with the build server routines), waiting up to 8 h for each
+kit_version() {   # kit_version: the kit's commit, as sources.txt's "kit:" line says it (a copy the runner installed, rsync with no .git, names the commit it came from), " (with local changes)" when it has any
+    echo "$(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")$([[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || echo " (with local changes)")"
+}
+
+# eos-pack.sh's candidate run comes right after eos-images.sh in a build session, and verified
+# the same build again (about 1.5 minutes a phone; 2026-11-08). eos-images.sh keeps what its
+# eos-verify.sh run checked (verified_save), and the candidate run takes that verify instead of
+# running it again only while images_verified holds. A release (--release, --upload) always
+# verifies again
+verified_save() {   # verified_save <log>: after eos-verify.sh passed a full build (<log> its output; run from $top), keep the log as EOS_STATE's images-verify.log and the sha256 of every file the fastboot zip takes from out/ as verified.ok. Should one be missing, it keeps neither, and the pack verifies again
+    local x
+    local -a f
+    rm -f -- "$EOS_STATE/verified.ok" "$EOS_STATE/images-verify.log"
+    [[ -f $EOS_PRODUCT_OUT/fastboot-info.txt ]] || { echo "note: no $EOS_PRODUCT_OUT/fastboot-info.txt: eos-pack.sh will verify again"; return 0; }
+    mapfile -t f < <(fastboot_files)
+    f=("${f[@]/#/$EOS_PRODUCT_OUT/}")
+    for x in "${f[@]}"; do [[ -f $x ]] || { echo "note: no $x: eos-pack.sh will verify again"; return 0; }; done
+    if cp -- "$1" "$EOS_STATE/images-verify.log" && sha256sum -- "${f[@]}" > "$EOS_STATE/.verified.ok.part" \
+        && mv -f -- "$EOS_STATE/.verified.ok.part" "$EOS_STATE/verified.ok"; then
+        echo "OK: kept this verify for eos-pack.sh's candidate run: $EOS_STATE/images-verify.log, and the sha256 of the ${#f[@]} files its zip takes from out/ in $EOS_STATE/verified.ok"
+    else
+        rm -f -- "$EOS_STATE/verified.ok" "$EOS_STATE/.verified.ok.part" "$EOS_STATE/images-verify.log"
+        echo "note: couldn't keep this verify: eos-pack.sh will verify again"
+    fi
+    return 0
+}
+
+images_verified() {   # images_verified <package, relative to top>: true when eos-images.sh's verify (images-verify.log, ending VERIFY=OK) checked this very package, with this kit at the commit sources.txt names and no local changes, and every file the fastboot zip takes from out/ is the one it verified (verified.ok names exactly those, and they match). Run from $top
+    local kv log=$EOS_STATE/images-verify.log ok=$EOS_STATE/verified.ok
+    local -a f
+    [[ -f $log && -f $ok && -f $EOS_STATE/sources.txt && -f $EOS_PRODUCT_OUT/fastboot-info.txt ]] || return 1
+    kv=$(kit_version)
+    [[ $kv != *"(with local changes)" && $kv != "not a git checkout" && $kv != "installed from " ]] || return 1
+    [[ "$(sed -n 's/^kit: //p' "$EOS_STATE/sources.txt")" = "$kv" ]] || return 1
+    [[ "$(tail -n 1 -- "$log")" = VERIFY=OK ]] || return 1
+    [[ "$(sed -n 's/^VERIFIED //p' "$log")" = "$top/$1" ]] || return 1
+    mapfile -t f < <(fastboot_files)
+    f=("${f[@]/#/$EOS_PRODUCT_OUT/}")
+    [[ "$(printf '%s\n' "${f[@]}" | sort)" = "$(sed -E 's/^[0-9a-f]{64}  //' "$ok" | sort)" ]] || return 1
+    sha256sum --quiet --strict -c -- "$ok" > /dev/null 2>&1
+}
+
+# The build locks: ExpressiveOS's own (setup, build, pack, OTA, the monthly update), then the
+# tree lock, which a build and server-cleanup.sh's delete hold. The tree lock was
+# ~/.evolution-tree.lock, the build server routines' name for it, until 1.1: through 1.1 the
+# kit takes and checks that name too, after the new one, so a run of an older kit or script
+# that takes only the old name still waits for this one, and this one for it
+EOS_LOCK=$HOME/.expressiveos.lock
+EOS_TREE_LOCK=$HOME/.expressiveos-tree.lock
+EOS_TREE_LOCK_OLD=$HOME/.evolution-tree.lock   # goes in 1.2
+
+eos_lock() {   # eos_lock <script> [arg]...: run <script> holding ~/.expressiveos.lock, ~/.expressiveos-tree.lock and ~/.evolution-tree.lock (the tree lock's old name), waiting up to 8 h for each
     local rc=0
-    # Its own lock first: waiting for an ExpressiveOS run (eos-pack.sh) never holds up the routines
-    echo "== waiting for ~/.expressiveos.lock, then ~/.evolution-tree.lock (ExpressiveOS build locks)"
-    env EOS_HOLDS_LOCK=1 flock -o -E 75 -w 28800 "$HOME/.expressiveos.lock" \
-        flock -o -E 75 -w 28800 "$HOME/.evolution-tree.lock" "$@" || rc=$?
+    # Its own lock first, then the tree lock's two names, always in this order (no two runs
+    # can each hold one the other waits for): waiting for an ExpressiveOS run (eos-pack.sh)
+    # never holds the tree lock
+    echo "== waiting for ~/.expressiveos.lock, then ~/.expressiveos-tree.lock and ~/.evolution-tree.lock (ExpressiveOS build locks)"
+    env EOS_HOLDS_LOCK=1 flock -o -E 75 -w 28800 "$EOS_LOCK" \
+        flock -o -E 75 -w 28800 "$EOS_TREE_LOCK" \
+        flock -o -E 75 -w 28800 "$EOS_TREE_LOCK_OLD" "$@" || rc=$?
     [[ $rc != 75 ]] || echo "FAIL: a lock was held for 8 hours; nothing was built" >&2
     return $rc
 }
 
-locks_held() {   # locks_held: fail unless this run's own eos_lock holds both locks (EOS_HOLDS_LOCK=1 says a parent does)
+locks_held() {   # locks_held: fail unless this run's own eos_lock holds all three locks (EOS_HOLDS_LOCK=1 says a parent does)
     local l n rc inode p=$$ up=' '
-    # eos_lock's two flock processes hold the locks: they're among this run's parents
+    # eos_lock's flock processes hold the locks: they're among this run's parents
     while [[ "$p" =~ ^[0-9]+$ && "$p" -gt 1 ]]; do
         up+="$p "
         p=$(sed -n 's/^PPid:[[:space:]]*//p' "/proc/$p/status" 2>/dev/null)
     done
-    for l in "$HOME/.expressiveos.lock" "$HOME/.evolution-tree.lock"; do
+    for l in "$EOS_LOCK" "$EOS_TREE_LOCK" "$EOS_TREE_LOCK_OLD"; do
         n=${l/#"$HOME"/\~}
         rc=0; flock -n "$l" true 2>/dev/null || rc=$?
         case $rc in
