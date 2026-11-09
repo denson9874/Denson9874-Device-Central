@@ -43,7 +43,7 @@ a = sys.argv[1:]; src = None; full = ''
 pos = []
 i = 0
 while i < len(a):
-    if a[i] in ('--path', '-k'): i += 2; continue
+    if a[i] in ('--path', '-k', '--changelog'): i += 2; continue
     if a[i] == '-i': src = a[i+1]; i += 2; continue
     if a[i] == '--full_ota_partitions': full = a[i+1]; i += 2; continue
     pos.append(a[i]); i += 1

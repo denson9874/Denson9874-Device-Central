@@ -286,6 +286,9 @@ check_pkg() {   # check_pkg <package> [<base incremental>]: A/B, this phone and 
     [[ $r = "PAYLOAD_SIG=OK $EOS_OTA_CERT_SHA256" ]] || fail "$n's payload isn't signed with ExpressiveOS's OTA key ($r)"
     python3 -I "$kit/tools/payload.py" partitions "$p" > "$T/parts" || fail "can't read $n's payload manifest"
     cmp -s -- "$T/ab" "$T/parts" || fail "$n's payload doesn't write exactly ${TF##*/}'s A/B partitions"
+    if unzip -Z1 -- "$p" changelog.txt > /dev/null 2>&1; then
+        echo "OK: $n has bundled changelog.txt ($(unzip -p -- "$p" changelog.txt | wc -c) bytes)"
+    fi
     echo "OK: $n ($(stat -c %s -- "$p") bytes): $EOS_DEVICE, $REL${2:+ from $BASE}, signed with the pinned key, all $(wc -l < "$T/ab") A/B partitions"
 }
 
@@ -302,7 +305,11 @@ if [[ -n $inc ]]; then
         # Its own temporary folder: ota_from_target_files unpacks both target-files there
         mkdir -- "$T/tmp"
         echo "ota_from_target_files -i ${BTF##*/} ${TF##*/}, written whole: $whole"
+        chlog=
+        [[ ! -f $DEST/$REL-changelog.txt ]] || chlog=$DEST/$REL-changelog.txt
+        [[ ! -f $CHECK/$REL-changelog.txt ]] || chlog=$CHECK/$REL-changelog.txt
         if ! PATH=$top/$H:$top/$jdk:$PATH TMPDIR=$T/tmp "$H/ota_from_target_files" --path out/host/linux-x86 -k "$key" \
+                ${chlog:+--changelog "$chlog"} \
                 -i "$BTF" --full_ota_partitions "$whole" "$TF" "$T/inc.zip" > "$T/ota.log" 2>&1; then
             grep -E 'Error|error:|Exception|FAIL' "$T/ota.log" | tail -10 >&2 || tail -10 "$T/ota.log" >&2
             fail "ota_from_target_files failed (above)"
