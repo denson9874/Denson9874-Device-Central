@@ -70,7 +70,13 @@
 # expressiveos-pack's 'release' runs eos-pack.sh --upload: check/'s tested candidate (its
 # device-ok) released, its target-files to R2 (no SourceForge since 2026-11-03; the zip goes
 # to the web installer with expressiveos-flasher-release). Only when Daryl
-# says so, and never for a build with try= commits.
+# says so, and never for a build with try= commits. 'release devices=<phone>,<phone>,...'
+# releases those phones in turn in the one eos-pack session (tools/eos-release.sh): for each,
+# eos-pack.sh --upload, eos-ota.sh --upload, then the web installer (this ref's
+# flasher_publish.py, --keep 1), stopping at the first step that fails, with a DEVICE line per
+# phone. It replaces the three dispatches per phone (on 1.1.2's release the server sat idle
+# about 45 minutes of 2 h 23 min between them); each phone's eos-ota.sh output stays in
+# ~/expressiveos-jobs/ota-<phone>.log, whose feed files expressiveos-progress's query feed prints.
 # expressiveos-ota runs eos-ota.sh in this job (minutes to an hour; its log is the job's): the
 # newest release's full OTA package and an incremental from the build the Updater feed offers
 # now, checked, with the feed files printed. Query upload: both to R2, where the OTA mirror
@@ -100,6 +106,8 @@
 # words with US Eastern times. Its estimates come from Soong's own (from how long the same
 # actions took before), the make's pace, the kit's record of past builds' step times
 # (~/expressiveos-build-times.txt, lib.sh's eos_step), or this server's typical times.
+# Query feed: the feed files of each phone the last release session (expressiveos-pack release
+# devices=) released, as eos-ota.sh printed them, for the feed's pull request.
 #
 # expressiveos-pins (read-only) prints the exact upstream commit every project of the
 # ExpressiveOS tree was synced to (repo's m/<manifest branch>, not HEAD: HEAD carries the
@@ -178,7 +186,8 @@ on:
           sessions, logs, keys and every phone's build. expressiveos-progress: read-only,
           a few seconds, fine while a build runs: each phone of the running (or last)
           eos-build or eos-pack session, its step, the make's actions done and when it
-          should be done (PROGRESS lines, then in words, US Eastern). expressiveos-kit: read-only
+          should be done (PROGRESS lines, then in words, US Eastern; query feed: the last
+          release session's feed files). expressiveos-kit: read-only
           diff of the installed kit against tree_ref's (query adopt: hand the runner a
           kit installed some other way, only when it matches tree_ref's exactly).
           expressiveos-firmware: cheetah's newest Google factory bootloader and radio
@@ -198,7 +207,8 @@ on:
           dispatch it on the branch that has the update's sources/updates/<id>).
           expressiveos-build: install the kit, then eos-images.sh and eos-pack.sh in
           tmux (cheetah, or the phone or phones in query). expressiveos-pack: install
-          the kit, then eos-pack.sh in tmux (query: the phone; testers; release).
+          the kit, then eos-pack.sh in tmux (query: the phone; testers; release; release
+          devices=<phone>,...: pack, OTA upload and web installer for each in one session).
           expressiveos-ota: install the kit, then eos-ota.sh in this job: the newest
           release's OTA packages, full and incremental (query: the phone; upload; candidate).
         type: choice
@@ -257,7 +267,10 @@ on:
           expressiveos/<phone>/testers; only when Daryl says so), try-ok (testers may
           send a candidate built with try=), release (eos-pack.sh --upload: check/'s tested
           candidate released, its target-files to R2, no SourceForge; only when Daryl says
-          so). expressiveos-ota (optional): device=<phone>, upload (eos-ota.sh --upload: the
+          so), devices=<phone>,<phone>,... with release (each phone in turn in one tmux
+          session: eos-pack.sh --upload, eos-ota.sh --upload, the web installer; stopping at
+          the first failure; only when Daryl says so). expressiveos-progress (optional): feed
+          (the last release session's feed files). expressiveos-ota (optional): device=<phone>, upload (eos-ota.sh --upload: the
           newest release's full and incremental OTA packages to R2, then the feed files for
           its pull request; only when Daryl says so), candidate (eos-ota.sh --candidate: an
           incremental to check/'s candidate on R2's ota/test/, for a phone test). build-explain
@@ -758,8 +771,9 @@ jobs:
       - name: ExpressiveOS progress (read-only)
         if: inputs.action == 'expressiveos-progress'
         run: |
+          [[ "${QUERY:-}" =~ ^(feed)?$ ]] || { echo "::error::query is empty (how the session is going) or feed (the last release session's feed files)"; exit 1; }
           out=$RUNNER_TEMP/progress.txt rc=0
-          python3 -I expressiveos-cheetah/tools/eos-progress.py > "$out" || rc=$?
+          python3 -I expressiveos-cheetah/tools/eos-progress.py ${QUERY:+--feed} > "$out" || rc=$?
           cat -- "$out"
           { echo '```'; cat -- "$out"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           exit "$rc"
@@ -969,6 +983,17 @@ jobs:
           sparse-checkout: expressiveos-cheetah
           fetch-depth: 1
 
+      # expressiveos-pack release devices=...: the web installer's publish script, this ref's as
+      # for expressiveos-flasher-release, copied beside the session's job script (the session
+      # outlives this job, and the next job's checkout empties this folder)
+      - name: Check out the flasher publish script for a release session
+        if: inputs.action == 'expressiveos-pack' && contains(inputs.query, 'devices=')
+        uses: actions/checkout@v4
+        with:
+          path: .eos-flasher
+          sparse-checkout: tools/expressiveos_flasher/publish
+          fetch-depth: 1
+
       - name: ExpressiveOS
         if: contains(fromJSON('["expressiveos-setup","expressiveos-build","expressiveos-pack","expressiveos-ota"]'), inputs.action)
         run: |
@@ -1020,7 +1045,7 @@ jobs:
               expressiveos-build:device=*|expressiveos-pack:device=*|expressiveos-ota:device=*)
                 [[ -z $dev && ${#devs[@]} = 0 ]] || fail "query names the phone twice ($o)"
                 dev=${o#device=}; phone "$dev" ;;
-              expressiveos-build:devices=*)
+              expressiveos-build:devices=*|expressiveos-pack:devices=*)
                 [[ -z $dev && ${#devs[@]} = 0 ]] || fail "query names the phone twice ($o)"
                 [[ ${o#devices=} =~ ^[a-z0-9]+(,[a-z0-9]+)*$ ]] || fail "devices= is phones with commas between them, e.g. devices=kodiak,grizzly"
                 IFS=, read -r -a devs <<< "${o#devices=}"
@@ -1030,10 +1055,13 @@ jobs:
                   [[ $seen != *" $d "* ]] || fail "devices= names $d twice"
                   seen+="$d "
                 done ;;
-              *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, installclean, quick, clean, try=<path>@<commit>, modules=<module>,...; expressiveos-pack takes device=<phone>, testers, try-ok, release; expressiveos-ota takes device=<phone>, upload, candidate)" ;;
+              *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, installclean, quick, clean, try=<path>@<commit>, modules=<module>,...; expressiveos-pack takes device=<phone>, testers, try-ok, release, devices=<phone>,<phone>,... with release; expressiveos-ota takes device=<phone>, upload, candidate)" ;;
             esac
           done
           (( testers + release < 2 )) || fail "testers and release are two different packs: one at a time"
+          if [[ $ACTION = expressiveos-pack ]] && (( ${#devs[@]} )); then
+            [[ $release = 1 ]] || fail "devices= with expressiveos-pack is for release: each phone released in turn in one session (pack, OTA upload, web installer)"
+          fi
           if (( ${#tries[@]} )) || [[ -n $mods ]]; then
             (( ${#devs[@]} == 0 && free_out == 0 )) || fail "try= and modules= are for one phone (device=, cheetah unless named), not with devices= or clean"
           fi
@@ -1433,11 +1461,17 @@ jobs:
                 fi
                 t=" --testers"
               elif [[ $release = 1 ]]; then
-                # A release is the tested zip, from ExpressiveOS's manifest only: never try= commits
-                if [[ -f $ck/try.txt || -f $st/try.txt ]]; then
-                  { echo "the $ph build was built with try= commits that aren't in ExpressiveOS's manifest:"; cat -- "$ck/try.txt" "$st/try.txt" 2>/dev/null | sed 's/^/  /'; } | tee -a "$GITHUB_STEP_SUMMARY"
-                  fail "not releasing a build with unmerged commits: merge them, build again, test that zip"
-                fi
+                # A release is the tested zip, from ExpressiveOS's manifest only: never try=
+                # commits. With devices=, every phone's records are checked before any is released
+                rel=("$ph")
+                (( ${#devs[@]} == 0 )) || rel=("${devs[@]}")
+                for d in "${rel[@]}"; do
+                  st=$(state_of "$d") ck=$(check_of "$d")
+                  if [[ -f $ck/try.txt || -f $st/try.txt ]]; then
+                    { echo "the $d build was built with try= commits that aren't in ExpressiveOS's manifest:"; cat -- "$ck/try.txt" "$st/try.txt" 2>/dev/null | sed 's/^/  /'; } | tee -a "$GITHUB_STEP_SUMMARY"
+                    fail "not releasing a build with unmerged commits ($d): merge them, build again, test that zip"
+                  fi
+                done
                 t=" --upload"
               else
                 if [[ -f $st/try.txt ]]; then
@@ -1446,5 +1480,20 @@ jobs:
                 # The candidate's record, as for a build (above)
                 mirror=" && { if [[ -f $(printf %q "$st/try.txt") ]]; then cp -- $(printf %q "$st/try.txt") $(printf %q "$ck/try.txt"); else rm -f -- $(printf %q "$ck/try.txt"); fi; }"
               fi
-              launch pack "$kit/tools/eos-pack.sh$t$mirror" ;;
+              if (( ${#devs[@]} )); then
+                # release devices=: each phone in turn in this one session (tools/eos-release.sh):
+                # eos-pack.sh --upload, eos-ota.sh --upload, then the web installer, with this
+                # ref's flasher_publish.py, as expressiveos-flasher-release runs it
+                [[ -f $kit/tools/eos-release.sh ]] || fail "$TREE_REF's kit has no tools/eos-release.sh: release devices= needs a kit that has it (or release one phone at a time)"
+                fp=$GITHUB_WORKSPACE/.eos-flasher/tools/expressiveos_flasher/publish/flasher_publish.py
+                [[ -f $fp ]] || fail "no $fp (the step that checks it out didn't run)"
+                # Nothing of ExpressiveOS's runs now (checked above), so no session reads the old copy
+                { cp -- "$fp" "$jobs/flasher_publish.py.new" && mv -f -- "$jobs/flasher_publish.py.new" "$jobs/flasher_publish.py"; } \
+                  || fail "can't copy flasher_publish.py to $jobs"
+                phones=${devs[*]}
+                echo "release, in turn: ${devs[*]} (each: eos-pack.sh --upload, eos-ota.sh --upload, the web installer; its script ${GITHUB_SHA:0:7})" | tee -a "$GITHUB_STEP_SUMMARY"
+                launch pack "bash $(printf %q "$kit/tools/eos-release.sh") $(printf %q "$jobs/flasher_publish.py") ${devs[*]}"
+              else
+                launch pack "$kit/tools/eos-pack.sh$t$mirror"
+              fi ;;
           esac

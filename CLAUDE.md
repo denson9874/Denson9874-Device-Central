@@ -95,15 +95,18 @@ Daryl says "fine" when things aren't: run every check yourself and keep the logs
 
 ## Releasing (each step after Daryl's go for it)
 
-device-ok -> `expressiveos-pack release` -> `expressiveos-ota upload` (it reuses the tested
-candidate incremental) -> `expressiveos-flasher-release` -> feed PR on expressiveos_ota
-(Daryl merges) -> Drive backup (keeps the last two) and R2 prune (current only) ->
+device-ok -> `expressiveos-pack release devices=cheetah,kodiak,grizzly,yogi,cubs,husky`: one
+session that, for each phone in turn, packs the release, uploads its OTA (reusing the tested
+candidate incremental) and publishes it to the web installer, stopping at the first failure
+(his go for it must cover the OTA upload too, as the 1.1.2 card did) -> `expressiveos-progress`
+with query `feed` prints the feed files -> feed PR on expressiveos_ota (Daryl merges) ->
+Drive backup (keeps the last two) and R2 prune (current only) ->
 `server-cleanup` (keep each phone's newest target-files, the next incremental's base, and
 husky's build output: its fresh build is the slowest, Daryl 11-08) ->
 XDA thread titles, ROM Information lines and kernel source links (no new go needed) ->
 Telegram and XDA drafts, posted only on his go.
-Dispatch each step as soon as the one before it ends; gaps between dispatches cost 3-6
-minutes a phone.
+Dispatch each step as soon as the one before it ends: on 1.1.2, with a dispatch per step and
+phone, the server sat idle about 45 of the chain's 143 minutes.
 
 ## How Claude works (from its own Nov 8 self-review of every thread)
 

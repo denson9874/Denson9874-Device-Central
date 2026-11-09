@@ -6,7 +6,9 @@ It reads these and writes nothing:
   ~/expressiveos-jobs/{build,pack}.{sh,log}: the runner's eos-build and eos-pack tmux sessions.
       The job script names the phones (its "# phones:" line, or build-devices.sh's list), and
       the log holds all that eos-images.sh and eos-pack.sh print. That includes their STEP lines
-      (lib.sh's eos_step) and, from older kits, the step headers ("== prepare.sh"...).
+      (lib.sh's eos_step) and, from older kits, the step headers ("== prepare.sh"...). A release
+      session (eos-release.sh: each phone's pack, OTA upload and web installer in turn) is kind
+      publish, its steps pack, ota and web.
   ~/expressiveos-build[-<device>].log: a build started some other way (by hand, a routine). It's
       read when no session runs but an eos-images.sh does.
   ~/expressiveos/out/build_progress.pb: Soong's own count of the make's actions (total,
@@ -23,8 +25,8 @@ It reads these and writes nothing:
 
 It prints these. Every field is always there, "-" when unknown, and times are UTC:
   PROGRESS device=<phone> state=<queued|running|done|failed|skipped>
-      step=<wait|prepare|kernel|make|target_files|ota_zip|verify|pack|done>
-      kind=<full|quick|kernel|modules|testers|release|upload> fresh=<1|0> started=<ISO>
+      step=<wait|prepare|kernel|make|target_files|ota_zip|verify|pack|ota|web|done>
+      kind=<full|quick|kernel|modules|testers|release|upload|publish> fresh=<1|0> started=<ISO>
       elapsed_s=<n> done=<n> total=<n> running=<n> failed=<n> eta_s=<n> eta=<ISO>
       eta_basis=<ninja|rate|history|typical|none>
   SESSION name=<eos-build|eos-pack|-> state=<running|done|failed|none> exit=<n> started=<ISO>
@@ -47,6 +49,10 @@ when the phone should be built and packed. Its basis says where the make's part 
 The other steps come from history, or from typical times.
 
   eos-progress.py
+  eos-progress.py --feed   # the feed files of each phone the last release session released,
+                           # from its ~/expressiveos-jobs/ota-<phone>.log as eos-ota.sh printed
+                           # them: a FEED line per phone, the "===== OTA_FEED" blocks of those
+                           # released, then FEED_OK (every phone released) or FEED_INCOMPLETE
 """
 import calendar
 import datetime
@@ -75,6 +81,9 @@ TYPICAL = {
     ('make', 'quick', '0'): 150, ('make', 'quick', '1'): 3600,
     ('verify', 'full', None): 100, ('verify', 'quick', None): 40,
     ('pack', 'full', None): 100, ('pack', 'quick', None): 50,
+    # A release's pack (cheetah's 9:11, 2026-11-09), OTA upload and web installer (about 5:30 and
+    # 3:20 a phone, the runner's jobs that night)
+    ('pack', 'upload', None): 550, ('ota', None, None): 330, ('web', None, None): 200,
 }
 # The end of a full build's make, which prints no progress: the target-files zip, then the OTA
 # package, about 50 s and 250 s (cheetah, 2026-11-02)
@@ -227,6 +236,8 @@ HIST = []
 def estimate(step, d, kind, fresh):
     """(seconds, basis): how long a whole <step> of this build should take: the median of the
     last 5 past ones most like it, else this server's typical time, else (None, 'none')."""
+    if kind == 'publish' and step == 'pack':
+        kind = 'upload'   # a release session's pack is eos-pack.sh --upload's
     rows = [r for r in HIST if r[0] == step and r[2] == kind]
     picks = []
     if fresh in ('0', '1'):
@@ -234,7 +245,7 @@ def estimate(step, d, kind, fresh):
     # Whether the product out was there decides the make's time, not the other steps'
     if step != 'make' or fresh not in ('0', '1'):
         picks.append([r for r in rows if r[1] == d])
-    if step in ('prepare', 'verify', 'pack'):
+    if step in ('prepare', 'verify', 'pack', 'ota', 'web'):
         picks.append(rows)
     for pick in picks:
         if pick:
@@ -249,6 +260,8 @@ def plan(d, kind):
     """The steps a phone's run goes through, in order."""
     if kind == 'modules':
         return ['make']
+    if kind == 'publish':
+        return ['pack', 'ota', 'web']
     if kind in ('testers', 'release', 'upload'):
         return ['pack']
     steps = ['prepare'] + (['kernel'] if builds_kernel(d) else [])
@@ -300,7 +313,9 @@ class Run:
         m = re.search(r'\benv\s+(.*?)\S*/tools/eos-images\.sh', sh)
         if m:
             envs += ' ' + m.group(1)
-        if 'build-modules.sh' in sh:
+        if 'eos-release.sh' in sh:
+            self.kind = 'publish'
+        elif 'build-modules.sh' in sh:
             self.kind = 'modules'
         elif '--testers' in sh:
             self.kind = 'testers'
@@ -347,15 +362,14 @@ class Run:
             if g:
                 self.started = parse_time(g.group(2), '%Y-%m-%d %H:%M:%S')
                 continue
-            g = re.fullmatch(r'== ([a-z0-9]+) \((\d+) of (\d+)\): eos-(images|pack)\.sh, ' + DATE, t)
+            g = re.fullmatch(r'== ([a-z0-9]+) \((\d+) of (\d+)\): (eos-images\.sh|eos-pack\.sh|eos-ota\.sh|flasher_publish\.py), ' + DATE, t)
             if g:
                 at = parse_time(g.group(5), '%Y-%m-%d %H:%M:%S')
                 p = self.cur = self.phone(g.group(1))
-                if g.group(4) == 'images':
-                    p.started = p.started or at
-                    self.set_step(p, 'wait', at)
-                else:
-                    self.set_step(p, 'pack', at)
+                # A build's phone starts with eos-images.sh, a release session's with eos-pack.sh
+                p.started = p.started or at
+                self.set_step(p, {'eos-images.sh': 'wait', 'eos-pack.sh': 'pack', 'eos-ota.sh': 'ota',
+                                  'flasher_publish.py': 'web'}[g.group(4)], at)
                 continue
             g = re.match(r'== ExpressiveOS \S+ \S+ for ([a-z0-9]+) in .*, ' + DATE + r': a (full|quick) build', t)
             if g:
@@ -372,7 +386,8 @@ class Run:
                 p = self.cur = self.phone(g.group(2))
                 p.stamped = True
                 self.set_step(p, g.group(1), at)
-                if g.group(3) != '-':
+                # A release session's phone stays publish (its pack's STEP lines say upload)
+                if g.group(3) != '-' and self.kind != 'publish':
                     p.kind = g.group(3)
                 if g.group(4) in ('0', '1'):
                     p.fresh = g.group(4)
@@ -385,6 +400,16 @@ class Run:
                 continue
             if t.startswith('== '):
                 self.header(p, t)
+                continue
+            g = re.fullmatch(r'DEVICE ([a-z0-9]+): RELEASE=(OK|FAIL)(.*)', t)
+            if g:
+                q = self.phone(g.group(1))
+                q.state = 'done' if g.group(2) == 'OK' else 'failed'
+                if g.group(2) == 'OK':
+                    q.step = 'done'
+                for rest in re.findall(r'; not released: ([a-z0-9 ]+)', g.group(3)):
+                    for d in rest.split():
+                        self.phone(d).state = 'skipped'
                 continue
             g = re.fullmatch(r'DEVICE ([a-z0-9]+): BUILD_EXIT=(\d)(.*)', t)
             if g:
@@ -467,7 +492,8 @@ class Run:
                 p.state = 'failed'    # its session ended or was stopped part way
             elif p.state == 'queued' and not self.running:
                 p.state = 'skipped'
-            if p.fresh is None and p.state in ('queued', 'skipped'):
+            # Whether the product out is there says nothing of a release session's steps
+            if p.fresh is None and p.state in ('queued', 'skipped') and p.kind != 'publish':
                 p.fresh = '0' if os.path.isdir(os.path.join(TOP, 'out/target/product', p.d)) else '1'
         # Each phone ends where the next one begins; the last, when the log was last written
         starts = [self.phones[d].started for d in self.order]
@@ -657,11 +683,12 @@ WORDS = {'ninja': "Soong's own estimate", 'rate': "the make's pace so far", 'his
 
 def words(p):
     kind = {'quick': 'quick build', 'kernel': 'kernel-only build', 'modules': 'compile check',
-            'testers': 'upload for testers'}.get(p.kind, 'full build')
+            'testers': 'upload for testers', 'publish': 'release'}.get(p.kind, 'full build')
     if p.state == 'running':
         what = {'wait': 'waiting for another build to finish', 'prepare': 'preparing the tree',
                 'kernel': 'building the kernel', 'make': 'compiling', 'target_files': 'zipping the target-files',
-                'ota_zip': 'making the OTA package', 'verify': 'checking the build', 'pack': 'packing the zip'}.get(p.step, p.step)
+                'ota_zip': 'making the OTA package', 'verify': 'checking the build', 'pack': 'packing the zip',
+                'ota': 'making and uploading the OTA packages', 'web': 'publishing to the web installer'}.get(p.step, p.step)
         if p.step in MAKE_STEPS and (p.counts or p.prog):
             done, total = (p.counts['done'], p.counts['total']) if p.counts else p.prog[:2]
             if total:
@@ -676,7 +703,8 @@ def words(p):
         s = f'{p.d}: {kind}, waiting its turn' + (' (its first build since its build output was removed: every module is built)' if p.fresh == '1' else '')
         return s + (f'; done around {eastern(p.eta)} ({WORDS[p.basis]}).' if p.eta else '.')
     if p.state == 'done':
-        s = f'{p.d}: {kind}, ' + ('built and packed' if p.kind not in ('kernel', 'modules', 'testers') else 'done')
+        s = f'{p.d}: {kind}, ' + ('released: packed, OTA packages uploaded, on the web installer' if p.kind == 'publish'
+                                  else 'built and packed' if p.kind not in ('kernel', 'modules', 'testers') else 'done')
         if p.started and p.ended:
             s += f' in {span(p.ended - p.started)} ({eastern(p.started)} to {eastern(p.ended)})'
         return s + '.'
@@ -685,12 +713,52 @@ def words(p):
         if p.started and p.ended:
             s += f' after {span(p.ended - p.started)} ({eastern(p.ended)})'
         return s + '. Its last log lines (LOG, above) and expressiveos-status say why.'
+    if p.kind == 'publish':
+        return f'{p.d}: not released (a phone before it failed, or the session was stopped).'
     return f'{p.d}: not built (a phone before it failed, or the session was stopped).'
 
 
+def feed():
+    """The feed files of the last release session's phones, for the feed's pull request."""
+    sh = read(os.path.join(JOBS, 'pack.sh')).decode('utf-8', 'replace')
+    m = re.search(r'^# phones: ([a-z0-9 ]+)$', sh, re.M)
+    if 'eos-release.sh' not in sh or not m:
+        print('FEED none: the last eos-pack session (~/expressiveos-jobs/pack.sh) was no release session')
+        print('FEED_INCOMPLETE')
+        return
+    since = mtime(os.path.join(JOBS, 'pack.sh')) or 0
+    phones, ok = m.group(1).split(), []
+    for d in phones:
+        log = os.path.join(JOBS, f'ota-{d}.log')
+        lines = read(log).decode('utf-8', 'replace').splitlines()
+        last = next((l for l in reversed(lines) if l.strip()), '')
+        if not lines:
+            print(f'FEED device={d} none (no ~/expressiveos-jobs/ota-{d}.log: its OTA step never ran)')
+        elif (mtime(log) or 0) < since:
+            print(f'FEED device={d} none (ota-{d}.log is older than the session)')
+        elif last != 'OTA=OK':
+            print(f'FEED device={d} none (its OTA step ended {last[:100]!r})')
+        else:
+            print(f'FEED device={d} ready')
+            ok.append((d, lines))
+    for d, lines in ok:
+        inside = False
+        for line in lines:
+            if line.startswith('===== OTA_FEED '):
+                inside = True
+            if inside or line.startswith(('UPLOADED_OTA ', 'OTA_FEED_READY ')):
+                print(line)
+            if line == '===== OTA_FEED_END':
+                inside = False
+    print('FEED_OK' if len(ok) == len(phones) else 'FEED_INCOMPLETE')
+
+
 def main():
+    if sys.argv[1:] == ['--feed']:
+        feed()
+        return
     if len(sys.argv) > 1:
-        sys.exit('usage: eos-progress.py')
+        sys.exit('usage: eos-progress.py [--feed]')
     global HIST
     HIST = history()
     procs = processes()
