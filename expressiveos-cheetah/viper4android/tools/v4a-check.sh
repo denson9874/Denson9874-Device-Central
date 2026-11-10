@@ -212,8 +212,10 @@ device_aidl() {   # uses a, a2, denied, $T
     grep -qF 'android.hardware.audio.effect.IFactory/default' "$T/services" \
         && pass "the AIDL effect HAL is running (android.hardware.audio.effect.IFactory/default)" \
         || bad "android.hardware.audio.effect.IFactory/default isn't registered"
-    if grep -qE "(^|[[:space:]])$V4A_AIDL_SERVICE: \[viper\.fx\.IViperControl\]" "$T/services"; then
-        pass "the audio HAL loaded the driver: $V4A_AIDL_SERVICE (viper.fx.IViperControl) is registered"
+    # kodiak's Android 17 user build lists the service with an empty descriptor ([]), as
+    # reported from its 2026-11-09 phone test: the registered name is what's checked
+    if grep -qE "(^|[[:space:]])$V4A_AIDL_SERVICE: \[(viper\.fx\.IViperControl)?\]" "$T/services"; then
+        pass "the audio HAL loaded the driver: $V4A_AIDL_SERVICE is registered"
     else
         bad "$V4A_AIDL_SERVICE isn't registered: the audio HAL didn't load libv4a_aidl.so, or SELinux kept it from publishing the service"
     fi

@@ -45,6 +45,7 @@ i = 0
 while i < len(a):
     if a[i] == '-k': open(os.environ['HOME'] + '/otf-k.log', 'a').write(a[i+1] + '\n'); i += 2; continue
     if a[i] == '--path': i += 2; continue
+    if a[i] == '--changelog': open(os.environ['HOME'] + '/otf-chlog.log', 'a').write(os.path.basename(a[i+1]) + '\n'); i += 2; continue
     if a[i] == '-i': src = a[i+1]; i += 2; continue
     if a[i] == '--full_ota_partitions': full = a[i+1]; i += 2; continue
     pos.append(a[i]); i += 1
@@ -139,8 +140,13 @@ rc=$(ota --upload); ok "rerun of A once A is in the feed: still full only" '[[ $
 release "$B" 1764700000 eng.b
 touch "$D/$B-fastboot.zip.uploaded"
 : > "$HOME/otf.log"
+# A tree whose ota_from_target_files knows --changelog: the release's notes go into the package
+mkdir -p "$top/build/make/tools/releasetools"
+echo '  extra_long_opts=["changelog="]' > "$top/build/make/tools/releasetools/ota_from_target_files.py"
+: > "$HOME/otf-chlog.log"
 rc=$(ota --upload); ok "B: incremental from A" '[[ $rc = 0 ]] && [[ -f $D/ota/$B-incremental-from-20261103.zip ]] && grep -qx "src=$A-target_files.zip full=boot,init_boot,vbmeta" "$HOME/otf.log"'
 ok "  signed with the key in vendor/expressiveos-priv (-k)" 'tail -1 "$HOME/otf-k.log" | grep -qx vendor/expressiveos-priv/keys/testkey'
+ok "  --changelog: the release's notes, since the tree's tool takes them" 'grep -qx "$B-changelog.txt" "$HOME/otf-chlog.log"'
 ok "  feed: incremental first (base A, ts+1), then full" 'python3 -c "
 import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]
 assert len(r)==2, r
@@ -165,7 +171,12 @@ echo zz > "$D/check/$C-fastboot.zip"
 printf 'sha256 %s\nkeys OK\nincremental-base OK\nbuild full\n' "$(sha256sum "$D/check/$C-fastboot.zip" | cut -d' ' -f1)" > "$D/check/$C-fastboot.zip.pack-ok"
 echo old > "$D/check/ExpressiveOS-17.0-20261201-cheetah-1.0-Unofficial-incremental-from-20261103.zip"
 : > "$HOME/otf.log"
+# An older tree (no --changelog in its ota_from_target_files): the option isn't passed
+rm -f "$top/build/make/tools/releasetools/ota_from_target_files.py"
+echo "notes for $C" > "$D/check/$C-changelog.txt"
+: > "$HOME/otf-chlog.log"
 rc=$(ota --candidate); ok "--candidate: incremental B->C to R2 test/ with a test feed" '[[ $rc = 0 ]] && [[ -f $D/check/$C-incremental-from-20261203.zip && -f $W/r2/expressiveos/cheetah/ota/test/$C-incremental-from-20261203.zip && -f $W/r2/expressiveos/cheetah/ota/test/cheetah.json ]] && grep -q "^OTA_TEST https://ota-mirror.daryldenson-apps.workers.dev/expressiveos/cheetah/ota/test/cheetah.json" "$W/out.log"'
+ok "  no --changelog for a tree whose tool doesn't know it" '[[ -s $HOME/otf.log && ! -s $HOME/otf-chlog.log ]]'
 ok "  older candidate incremental removed from check/" '[[ ! -e $D/check/ExpressiveOS-17.0-20261201-cheetah-1.0-Unofficial-incremental-from-20261103.zip ]]'
 ok "  test feed: the incremental only, its download in test/" 'python3 -c "
 import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]
