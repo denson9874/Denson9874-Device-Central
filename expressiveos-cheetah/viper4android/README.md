@@ -111,8 +111,10 @@ appear at those two paths without touching Google's image:
 | `/product/etc/selinux/product_*` | `tree/viper4android.te` and its `file_contexts`, `service_contexts` and `property_contexts`, as product policy (`PRODUCT_PRIVATE_SEPOLICY_DIRS`) |
 | The app, its two XMLs, the product and system_ext NOTICE files | As on husky |
 
-- **The off switch.** Off means the driver is taken away: soundfx is unmounted and the HAL
-  restarted; it then skips the config's missing library (the config parser it links,
+- **The off switch.** Off means the driver is taken away: the HAL is stopped, soundfx unmounted
+  and the HAL started again (the unmount fails with "Device or resource busy" while the HAL runs
+  and keeps the driver mapped, so the rc waits for `init.svc.vendor.audio-hal-aidl=stopped`); it
+  then skips the config's missing library (the config parser it links,
   `libeffectconfig`, counts that as a skipped element) and runs with Google's effects only.
   `persist.eos.v4a.off`: `0` (the build's default, in product `build.prop`) is on; `1` is off by hand
   (`adb shell setprop persist.eos.v4a.off 1` acts at once; `0` brings it back at the next boot); `2`

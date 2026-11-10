@@ -13,9 +13,15 @@ on early-boot
     mount overlay overlay /vendor/etc ro nosuid nodev noatime lowerdir=/product/vendor_overlay/0/etc:/vendor/etc,userxattr
     setprop eos.v4a.restarts 0
 
-# Turning it off takes the driver away: soundfx is unmounted and the audio HAL restarted, which
-# then skips the config's missing library (its config parser counts it as skipped) and runs with
-# Google's effects only. /vendor/etc stays overlaid; its only addition is that config.
+# Turning it off takes the driver away: the audio HAL is stopped, soundfx unmounted and the HAL
+# started again, which then skips the config's missing library (its config parser counts it as
+# skipped) and runs with Google's effects only. /vendor/etc stays overlaid; its only addition is
+# that config.
+#
+# The HAL has to be gone before the unmount: while it runs it keeps the driver mapped and umount
+# fails with "Device or resource busy" (kodiak, 2026-11-09: the switch did nothing until the next
+# boot). init reports "stopped" once the process is reaped, or at once if it never ran. A stop is
+# not a crash, so the automatic switch below doesn't count it.
 #
 # The off switch, persist.eos.v4a.off: 0 (the build's default) is on; 1 is off by hand ("adb shell
 # setprop persist.eos.v4a.off 1" takes it away at once; 0 brings it back at the next boot); 2 is
@@ -23,18 +29,18 @@ on early-boot
 # HAL, so on a boot with the switch off ViPER is taken away as soon as they're loaded.
 on property:ro.persistent_properties.ready=true && property:persist.eos.v4a.off=1
     setprop eos.v4a.restarts off
-    umount /vendor/lib64/soundfx
     setprop eos.v4a.unloaded 1
+    stop vendor.audio-hal-aidl
 
 on property:ro.persistent_properties.ready=true && property:persist.eos.v4a.off=2
     setprop eos.v4a.restarts off
-    umount /vendor/lib64/soundfx
     setprop eos.v4a.unloaded 1
+    stop vendor.audio-hal-aidl
 
-# Restart the HAL once it's running (if it starts only after the unmount, this restart is spare)
-on property:eos.v4a.unloaded=1 && property:init.svc.vendor.audio-hal-aidl=running
+on property:eos.v4a.unloaded=1 && property:init.svc.vendor.audio-hal-aidl=stopped
+    umount /vendor/lib64/soundfx
     setprop eos.v4a.unloaded 2
-    restart vendor.audio-hal-aidl
+    start vendor.audio-hal-aidl
 
 # The automatic switch: the audio HAL (Google's service vendor.audio-hal-aidl, class hal, not
 # critical) restarting six times in one boot means something keeps killing it, and the driver is
