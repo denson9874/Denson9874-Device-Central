@@ -112,9 +112,8 @@ fi
 if [[ -z "$spl" ]]; then
     spl=$(grep -hoE '[0-9]{4}-[0-9]{2}-[0-9]{2}' "$top"/vendor/*/release/flag_values/*/RELEASE_PLATFORM_SECURITY_PATCH.textproto "$top"/build/release/flag_values/*/RELEASE_PLATFORM_SECURITY_PATCH.textproto 2>/dev/null | sort -u | tail -1 | cut -c1-7 || true)
 fi
-if [[ -z "$spl" ]]; then
-    spl=$(date +%Y-%m)
-fi
+# No guess when the tree doesn't say (never today's month): an image without a level is then
+# left alone and named below.
 
 for b in "$top"/device/google/*-kernels/*/boot.img "$top"/vendor/google/*-images/boot.img; do
     [[ -f $b ]] || continue
@@ -126,7 +125,15 @@ for b in "$top"/device/google/*-kernels/*/boot.img "$top"/vendor/google/*-images
         if [[ "$current_os_ver" = "None" || -z "$current_os_ver" ]]; then
             current_os_ver="14.0.0"
         fi
-        if [[ "$current_spl" != "$spl" ]]; then
+        # Only an image with no level gets one. An image that has one keeps it: the Pixel 11s'
+        # stock GKI images (vendor/google/*-images) carry Google's own level, older than the
+        # platform's, and writing the platform's over it would claim kernel fixes they don't have.
+        if [[ "$current_spl" = "None" || -z "$current_spl" ]]; then
+            if [[ -z "$spl" ]]; then
+                echo "WARNING: ${b#"$top"/} has no os_patch_level and the tree's security patch level can't be read: left as it is"
+                rm -rf -- "$t"
+                continue
+            fi
             echo "Patching boot.img header os_patch_level from '${current_spl}' to '$spl' for ${b#"$top"/}"
             mkboot_args=(
                 --header_version 4
