@@ -349,7 +349,18 @@ if [[ -n $inc ]]; then
         # Its own temporary folder: ota_from_target_files unpacks both target-files there
         mkdir -- "$T/tmp"
         echo "ota_from_target_files -i ${BTF##*/} ${TF##*/}, written whole: $whole"
+        # This build's notes go into the package as changelog.txt, for the Updater to show
+        # without the feed. Only when the tree's ota_from_target_files knows --changelog
+        # (ExpressiveOS/build c60bded and later): an older one stops at an unknown option
+        chlog=$DEST/$REL-changelog.txt
+        [[ $mode != --candidate ]] || chlog=$CHECK/$REL-changelog.txt
+        if [[ -f $chlog ]] && grep -qs -- '"changelog="' build/make/tools/releasetools/ota_from_target_files.py; then
+            echo "changelog.txt in the package: ${chlog#"$DEST"/}"
+        else
+            chlog=
+        fi
         if ! PATH=$top/$H:$top/$jdk:$PATH TMPDIR=$T/tmp "$H/ota_from_target_files" --path out/host/linux-x86 -k "$key" \
+                ${chlog:+--changelog "$chlog"} \
                 -i "$BTF" --full_ota_partitions "$whole" "$TF" "$T/inc.zip" > "$T/ota.log" 2>&1; then
             grep -E 'Error|error:|Exception|FAIL' "$T/ota.log" | tail -10 >&2 || tail -10 "$T/ota.log" >&2
             fail "ota_from_target_files failed (above)"
