@@ -245,6 +245,11 @@ device_aidl() {   # uses a, a2, denied, $T
 # ships and checks it still fits (the stock guard) and that the split policy compiles with it.
 OVL=product/vendor_overlay/0
 OVL_HAL=bin/hw/android.hardware.audio.service-aidl.aoc OVL_HAL_SVC=vendor.audio-hal-aidl
+# Since CP4A.261105.040.D1 (kodiak, Nov 2026) Google ships that HAL, its rc and its own effect
+# libraries in a vendor APEX, not in /vendor/bin/hw. Its service name, class and the two /vendor
+# paths it reads are the same, and "on boot" still starts it (apexd sets apex.<name>.ready only on
+# a rebootless install, apexd.cpp LoadApexFromInit), so the stock guard reads either layout.
+OVL_HAL_APEX=com.google.pixel.audio.hal
 tree_overlay() {   # uses $top
     local dt vgc img f hits
     dt="$top/$EOS_DEVICE_TREE" vgc="$top/$EOS_VENDOR_DIR" img="$top/vendor/google/$EOS_DEVICE-images/images/vendor.img"
@@ -288,22 +293,39 @@ ovl_extract() {   # ovl_extract <vendor.img> <dir>: Google's image, unpacked roo
         || { echo "fsck.erofs: $(tail -2 "$T/fsck.log" | tr '\n' ' ')"; return 1; }
     [[ $raw = "$1" ]] || rm -f -- "$raw"
 }
+ovl_apex() {   # ovl_apex <file.apex> <dir>: an APEX's payload (an erofs image inside a zip), unpacked
+    mkdir -p -- "$T/apex" && unzip -q -o "$1" apex_payload.img -d "$T/apex" > "$T/unzip.log" 2>&1 \
+        || { echo "unzip: no apex_payload.img ($(tail -1 "$T/unzip.log"))"; return 1; }
+    ovl_extract "$T/apex/apex_payload.img" "$2" || return 1
+    rm -f -- "$T/apex/apex_payload.img"
+}
 ovl_stock_guard() {   # ovl_stock_guard <vendor dir>: Google's vendor still fits the overlay
-    local V=$1 se=$1/etc/selinux hits rc types vft t odd
+    local V=$1 se=$1/etc/selinux hits rc types vft t odd R=$1 at=/vendor apex=$1/apex/$OVL_HAL_APEX.apex out
+    # R is where the HAL's files are, at is that place's path on the phone
+    if [[ ! -f "$V/$OVL_HAL" && -f "$apex" ]]; then
+        if out=$(ovl_apex "$apex" "$T/stock-audio-hal"); then
+            R=$T/stock-audio-hal at=/apex/$OVL_HAL_APEX
+            info "stock vendor: the audio HAL is in the vendor APEX $OVL_HAL_APEX"
+        else
+            bad "stock vendor: can't unpack apex/$OVL_HAL_APEX.apex: $out"
+        fi
+    fi
     hits=$(cd "$V" && find . \( -iname '*audio_effects*' -o -name 'libv4a*' \) 2>/dev/null | sed 's#^\./##' | sort | paste -sd' ' || true)
     if [[ -z "$hits" ]]; then pass "stock vendor: no effects config and no ViPER of its own (the overlay's config adds, covers nothing)"
     else bad "stock vendor now has $hits: the overlay's audio_effects_config.xml would hide Google's (merge ViPER's library and effect into a copy of it instead; README.md)"; fi
-    if [[ -f "$V/$OVL_HAL" ]] && grep -aqF /vendor/etc/audio_effects_config.xml "$V/$OVL_HAL" && grep -aqF /vendor/lib64/soundfx/ "$V/$OVL_HAL"; then
-        pass "stock vendor: /vendor/$OVL_HAL still reads /vendor/etc/audio_effects_config.xml and loads from /vendor/lib64/soundfx/"
+    # The two paths are in the HAL binary, or (in the APEX) in the libraries beside it
+    if [[ -f "$R/$OVL_HAL" ]] && grep -aqF /vendor/etc/audio_effects_config.xml "$R/$OVL_HAL" "$R"/lib64/*.so 2>/dev/null \
+        && grep -aqF /vendor/lib64/soundfx/ "$R/$OVL_HAL" "$R"/lib64/*.so 2>/dev/null; then
+        pass "stock vendor: $at/$OVL_HAL still reads /vendor/etc/audio_effects_config.xml and loads from /vendor/lib64/soundfx/"
     else
-        bad "stock vendor: /vendor/$OVL_HAL is gone or no longer names /vendor/etc/audio_effects_config.xml and /vendor/lib64/soundfx/: the overlaid folders may not be the ones it reads"
+        bad "stock vendor: $at/$OVL_HAL is gone or no longer names /vendor/etc/audio_effects_config.xml and /vendor/lib64/soundfx/: the overlaid folders may not be the ones it reads"
     fi
     [[ -d "$V/lib64/soundfx" && -d "$V/etc" ]] && pass "stock vendor: lib64/soundfx and etc are folders (overlayfs needs them)" || bad "stock vendor: no lib64/soundfx or etc folder"
-    rc=$(grep -lE "^service $OVL_HAL_SVC /vendor/$OVL_HAL" "$V"/etc/init/*.rc "$V"/etc/init/hw/*.rc 2>/dev/null | head -1 || true)
+    rc=$(grep -lE "^service $OVL_HAL_SVC $at/$OVL_HAL" "$R"/etc/init/*.rc "$R"/etc/init/hw/*.rc "$R"/etc/*.rc 2>/dev/null | head -1 || true)
     if [[ -n "$rc" ]] && grep -qE '^[[:space:]]+class[[:space:]]+hal([[:space:]]|$)' "$rc" && ! grep -qE '^[[:space:]]+critical([[:space:]]|$)' "$rc"; then
         pass "stock vendor: service $OVL_HAL_SVC (class hal, not critical) runs the HAL: it starts after the mounts, and the off switch watches it"
     else
-        bad "stock vendor: no 'service $OVL_HAL_SVC /vendor/$OVL_HAL' with class hal and not critical in etc/init: init.viper4android.rc's mounts may come too late or its off switch watch the wrong service"
+        bad "stock vendor: no 'service $OVL_HAL_SVC $at/$OVL_HAL' with class hal and not critical in its init files: init.viper4android.rc's mounts may come too late or its off switch watch the wrong service"
     fi
     if grep -hqE '^ro\.vndk\.version=' "$V/build.prop" "$V/etc/build.prop" "$V/default.prop" 2>/dev/null; then
         bad "stock vendor sets ro.vndk.version: fs_mgr would mount its own /product/vendor_overlay/<version> too"
