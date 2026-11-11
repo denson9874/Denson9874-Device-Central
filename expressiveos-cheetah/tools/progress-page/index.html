@@ -1,0 +1,213 @@
+<!doctype html>
+<!-- The live build page: reads status.txt beside it (what tools/eos-progress-publish.sh sends
+     from the build server once a minute, eos-progress.py's output under a PUBLISHED line) and
+     shows it. Nothing here is loaded from anywhere else. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>ExpressiveOS builds</title>
+<style>
+:root {
+  --bg: #f6f3f8; --card: #ffffff; --ink: #1d1a22; --dim: #6a6472; --line: #e3dde9;
+  --accent: #7b4fd6; --ok: #1f8a4c; --bad: #c2362b; --wait: #8a8494; --term: #16131b; --term-ink: #d9d3e3;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #131017; --card: #1d1923; --ink: #ece7f2; --dim: #a39cae; --line: #302a39;
+          --accent: #b196f5; --ok: #5fd08e; --bad: #ff8478; --wait: #8a8494; --term: #0c0a10; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 720px; margin: 0 auto; padding: 16px 16px 40px; }
+h1 { font-size: 1.25rem; margin: 8px 0 2px; }
+#fresh { color: var(--dim); font-size: .9rem; min-height: 1.4em; }
+#fresh.bad { color: var(--bad); font-weight: 600; }
+#session { margin: 12px 0; font-weight: 600; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin: 10px 0; }
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.name { font-weight: 700; }
+.name small { font-weight: 400; color: var(--dim); margin-left: 6px; }
+.chip { font-size: .8rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.running { color: var(--accent); } .done { color: var(--ok); } .failed { color: var(--bad); }
+.queued, .skipped { color: var(--wait); }
+.bar { height: 10px; background: var(--line); border-radius: 999px; overflow: hidden; margin: 10px 0 6px; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.facts { color: var(--dim); font-size: .92rem; }
+.facts b { color: var(--ink); font-weight: 600; }
+h2 { font-size: 1rem; margin: 22px 0 6px; }
+pre { background: var(--term); color: var(--term-ink); border-radius: 12px; padding: 12px; margin: 0;
+      font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre-wrap; overflow-wrap: anywhere; max-height: 60vh; overflow-y: auto; }
+details { margin-top: 18px; color: var(--dim); }
+details p { white-space: pre-wrap; font-size: .92rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>ExpressiveOS builds</h1>
+  <div id="fresh">Loading…</div>
+  <div id="session"></div>
+  <div id="phones"></div>
+  <div id="logwrap" hidden>
+    <h2 id="logtitle">Server log</h2>
+    <pre id="log"></pre>
+  </div>
+  <details id="wordswrap" hidden><summary>In words</summary><p id="words"></p></details>
+</main>
+<script>
+"use strict";
+const MODELS = { cheetah: "Pixel 7 Pro", husky: "Pixel 8 Pro", kodiak: "Pixel 11 Pro XL",
+                 grizzly: "Pixel 11 Pro", yogi: "Pixel 11 Pro Fold", cubs: "Pixel 11" };
+const STEPS = { wait: "waiting", prepare: "preparing the tree", kernel: "kernel", make: "compiling",
+                target_files: "target files", ota_zip: "OTA package", verify: "verifying", pack: "packing",
+                ota: "uploading the OTA", web: "web installer", done: "done" };
+const KINDS = { full: "full build", quick: "quick build", kernel: "kernel only", modules: "modules",
+                testers: "testers pack", release: "release pack", upload: "upload", publish: "release" };
+const STATES = { queued: "Queued", running: "Running", done: "Done", failed: "Failed", skipped: "Skipped" };
+const SESSIONS = { "eos-build": "Build session", "eos-pack": "Pack session" };
+const $ = (id) => document.getElementById(id);
+const eastern = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+const easternDay = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
+let published = null, every = 60, running = false;
+
+function fields(rest) {
+  const o = {};
+  for (const w of rest.split(" ")) { const i = w.indexOf("="); if (i > 0) o[w.slice(0, i)] = w.slice(i + 1); }
+  return o;
+}
+// parse(text): what status.txt says. Exported for the kit's test (window.eosParse).
+function parse(text) {
+  const out = { published: null, every: 60, session: null, phones: [], log: [], logPhone: "", words: "", ok: false, error: "" };
+  const lines = text.split("\n");
+  let i = 0;
+  for (; i < lines.length; i++) {
+    const l = lines[i];
+    if (l.startsWith("PUBLISHED ")) {
+      const f = fields(l.slice(10));
+      out.published = Date.parse(f.at) || null;
+      out.every = Number(f.every) || 60;
+    } else if (l.startsWith("PROGRESS ")) out.phones.push(fields(l.slice(9)));
+    else if (l.startsWith("SESSION ")) out.session = fields(l.slice(8));
+    else if (l.startsWith("LOG device=")) {
+      const r = l.slice(11), s = r.indexOf(" ");
+      out.logPhone = s < 0 ? r : r.slice(0, s);
+      out.log.push(s < 0 ? "" : r.slice(s + 1));
+    } else if (l.startsWith("PUBLISH_ERROR ")) out.error = l.slice(14);
+    else if (l === "PROGRESS_OK") { out.ok = true; i++; break; }
+  }
+  out.words = lines.slice(i).join("\n").trim();
+  return out;
+}
+window.eosParse = parse;
+
+function span(s) {
+  s = Math.max(0, Math.round(s));
+  if (s < 60) return "under a minute";
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return h ? h + " h " + m + " min" : m + " min";
+}
+function when(ms) {
+  const d = new Date(ms);
+  const t = eastern.format(d);
+  return easternDay.format(d) === easternDay.format(new Date()) ? t : easternDay.format(d) + ", " + t;
+}
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function fact(parent, label, value) {
+  if (parent.childNodes.length) parent.append(" · ");
+  parent.append(label + " ", el("b", "", value));
+}
+
+function render(s) {
+  published = s.published; every = s.every;
+  const ses = s.session;
+  running = !!ses && ses.state === "running";
+  if (s.error) $("session").textContent = "The server could not read its build state (" + s.error + ").";
+  else if (!ses || ses.state === "none") $("session").textContent = "No build is running, and none has run yet.";
+  else {
+    const name = SESSIONS[ses.name] || ses.name;
+    const start = Date.parse(ses.started);
+    $("session").textContent = name + (ses.state === "running" ? " running" : ses.state === "done" ? " finished" : " failed")
+      + (start ? ", started " + when(start) : "") + (ses.state === "failed" && ses.exit !== "-" ? " (exit " + ses.exit + ")" : "") + ".";
+  }
+  const box = $("phones");
+  box.replaceChildren();
+  for (const p of s.phones) {
+    const state = STATES[p.state] ? p.state : "queued";
+    const card = el("div", "card");
+    const top = el("div", "top");
+    const name = el("div", "name", MODELS[p.device] || p.device);
+    name.append(el("small", "", p.device + (KINDS[p.kind] ? " · " + KINDS[p.kind] : "") + (p.fresh === "1" ? " · from scratch" : "")));
+    top.append(name, el("span", "chip " + state, STATES[state]));
+    card.append(top);
+    const done = Number(p.done), total = Number(p.total);
+    const facts = el("div", "facts");
+    if (state === "running" || state === "failed") fact(facts, state === "failed" ? "Failed at" : "Step", STEPS[p.step] || p.step);
+    if (state === "running" && p.step === "make" && total > 0) {
+      const pct = Math.min(100, Math.floor(100 * done / total));
+      const bar = el("div", "bar"), fill = el("i");
+      fill.style.width = pct + "%";
+      bar.append(fill);
+      card.append(bar);
+      fact(facts, "Compiled", pct + "% (" + done.toLocaleString("en-US") + " of " + total.toLocaleString("en-US") + ")");
+      if (Number(p.failed) > 0) fact(facts, "Failed actions", p.failed);
+    }
+    if (Number(p.elapsed_s) > 0) fact(facts, state === "running" ? "Running for" : "Took", span(Number(p.elapsed_s)));
+    const eta = Date.parse(p.eta);
+    if (eta && (state === "running" || state === "queued")) {
+      fact(facts, "Done around", when(eta));
+      if (state === "running" && published) fact(facts, "Left", "about " + span((eta - published) / 1000));
+    }
+    if (facts.childNodes.length) card.append(facts);
+    box.append(card);
+  }
+  $("logwrap").hidden = !s.log.length;
+  if (s.log.length) {
+    $("logtitle").textContent = "Server log" + (s.logPhone ? " (" + s.logPhone + ", last " + s.log.length + " lines)" : "");
+    const pre = $("log");
+    const atEnd = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 30 || !pre.textContent;
+    pre.textContent = s.log.join("\n");
+    if (atEnd) pre.scrollTop = pre.scrollHeight;
+  }
+  $("wordswrap").hidden = !s.words;
+  $("words").textContent = s.words;
+  document.title = (s.phones.some((p) => p.state === "failed") || (ses && ses.state === "failed") ? "Failed · " : running ? "Building · " : "") + "ExpressiveOS builds";
+  tick();
+}
+// The age of what's shown. A running session sends every minute: if that stops, say so,
+// so an old "running" is never read as news.
+function tick() {
+  const f = $("fresh");
+  if (!published) return;
+  const age = (Date.now() - published) / 1000;
+  const stale = running && age > 3 * every + 30;
+  f.className = stale ? "bad" : "";
+  f.textContent = stale
+    ? "The server stopped reporting " + span(age) + " ago (last report " + when(published) + "). What's below may be out of date."
+    : running ? "Updated " + (age < 90 ? Math.max(0, Math.round(age)) + " s" : span(age)) + " ago. Refreshes by itself."
+    : "Last report " + when(published) + ". Refreshes by itself when a build starts.";
+}
+async function load() {
+  try {
+    const r = await fetch("status.txt?t=" + Date.now(), { cache: "no-store" });
+    if (r.status === 404) { $("fresh").textContent = "No build has reported here yet."; return; }
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    render(parse(await r.text()));
+  } catch (e) {
+    if (!published) { $("fresh").className = "bad"; $("fresh").textContent = "Can't read the build status (" + e.message + "). Trying again."; }
+  }
+}
+load();
+setInterval(load, 30000);
+setInterval(tick, 5000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+</script>
+</body>
+</html>

@@ -211,6 +211,16 @@ total (Soong's own `out/build_progress.pb`), and an ETA for when the phone shoul
 Then come a `SESSION` line, the log's last 40 lines as `LOG` lines, and `PROGRESS_OK`, followed by the
 same in words with US Eastern times. The docstring at the top of the script spells out every field.
 
+**The live build page.** Every `eos-build` and `eos-pack` session the runner starts also sends that
+output to R2 once a minute (`tools/eos-progress-publish.sh`, started by the session's job script and
+ending with it, after one last send that holds the result). `tools/progress-page/index.html`, sent
+along and served by the OTA mirror, shows it: each phone's state, step, percent, ETA in US Eastern and
+the log's last lines, refreshed by itself, and a warning when a running session stops reporting. The
+mirror is public, so the page's address ends in a key made on the server
+(`~/.expressiveos-progress-key`); `bash ~/expressiveos-jobs/progress/eos-progress-publish.sh --where`
+prints the address on the server. Never run that in a runner job: Actions logs are public. A send
+that fails is silent and never touches the build. Test: `tools/tests/eos-progress-publish-test.sh`.
+
 To know where a build is, `lib.sh`'s `eos_step` prints a line as each step begins, such as
 `STEP make device=husky kind=full fresh=0 at=<UTC>`. `eos-images.sh` prints prepare and verify,
 `eos-make.sh` prints kernel (lunch and `build_kernel`, on the phones that build theirs) and make,

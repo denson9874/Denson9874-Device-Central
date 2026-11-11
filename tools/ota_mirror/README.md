@@ -11,6 +11,7 @@ R2 doesn't charge for downloads, and a file is downloadable as soon as its uploa
 | `expressiveos/<dev>/ota/<OTA package>` (full and incremental) | `expressiveos-cheetah/tools/eos-ota.sh --upload` |
 | `expressiveos/<dev>/ota/test/<incremental>`, `<dev>.json` (a test feed) | `expressiveos-cheetah/tools/eos-ota.sh --candidate` |
 | `expressiveos/keybox.xml` | `expressiveos-cheetah/tools/eos-keybox.py upload <keybox.xml>` |
+| `expressiveos/progress/<key>/index.html`, `status.txt` (the live build page) | `expressiveos-cheetah/tools/eos-progress-publish.sh` |
 
 The scripts still upload every release to SourceForge for manual downloads (the XDA and Telegram links). The mirror keeps
 only each device's current and previous build: the scripts delete older ones after publishing the Updater JSON.
