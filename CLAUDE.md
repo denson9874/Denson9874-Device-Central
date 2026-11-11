@@ -43,6 +43,7 @@ GEMINI.md's honesty rules apply to Claude too.
 - Kit scripts: run the offline tests as a non-root user
   (`runuser -u ubuntu -- expressiveos-cheetah/tools/tests/eos-ota-test.sh`); root hid a
   `cpio` failure that stopped the first build. `sources/tests/run.sh` after any update.py change.
+  `tools/tests/gms-drop-test.sh` after any gms-drop.py change.
 - Launcher (EL): `dex-refs.py` against the phone's BOOTCLASSPATH and a cold boot on an
   Android 12 emulator before every publish.
 
@@ -92,6 +93,15 @@ Daryl says "fine" when things aren't: run every check yourself and keep the logs
 - A rooted test phone: list root modules and their hidden paths before blaming the ROM. A
   ReSuSFS hidden-path list once crashed app zygotes and looked like a ROM bug.
 - Never call something fixed without the adb output or log line that shows it.
+
+## Each Pixel Drop
+
+- Follow the kit README's "Pixel Drops": sort Google's list into the four groups per phone
+  family, `tools/gms-drop.py compare` against the newest stock image, refresh vendor_gms by a
+  fork commit plus a manifest pin, then test on the 7 Pro and one Pixel 11.
+- A Drop feature is in the notes only with the adb output that shows it on that phone. Features
+  behind Google's device check (on-device Gemini) are listed as not available, never worked around.
+- Config XMLs in vendor_gms are never overwritten from stock: they carry our fixes (nowplaying.xml).
 
 ## Releasing (each step after Daryl's go for it)
 
