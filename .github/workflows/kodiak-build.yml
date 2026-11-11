@@ -1237,14 +1237,31 @@ jobs:
           state_of() { if [[ $1 = cheetah ]]; then echo "$HOME/expressiveos/out/eos"; else echo "$HOME/expressiveos/out/eos-$1"; fi; }
           check_of() { echo "$HOME/releases/expressiveos-$1/check"; }
           launch() {   # launch <name> <command>: run it in tmux session eos-<name>, outside this job, logged to ~/expressiveos-jobs/<name>.log
-            local s=eos-$1 job=$jobs/$1.sh log=$jobs/$1.log q
+            local s=eos-$1 job=$jobs/$1.sh log=$jobs/$1.log q pub=
             printf -v q '%q ' "${clean[@]}"
+            # The live build page's sender and what it needs, copied out of the kit: a script
+            # of the kit's folder would keep the next action from replacing the kit. A new
+            # folder each time, as the last session's sender may still be reading its own
+            if [[ $1 != setup && -f $kit/tools/eos-progress-publish.sh ]]; then
+              pub=$jobs/progress
+              rm -rf -- "$pub.new" "$pub.old"
+              if mkdir -- "$pub.new" && cp -- "$kit/tools/eos-progress-publish.sh" "$kit/tools/eos-progress.py" "$kit/tools/progress-page/index.html" "$pub.new/"; then
+                [[ ! -e $pub ]] || mv -- "$pub" "$pub.old"
+                mv -- "$pub.new" "$pub" && rm -rf -- "$pub.old"
+              else
+                echo "::warning::the live build page's files weren't copied: this session won't report to it"
+                pub=
+              fi
+            fi
             {
               echo '#!/bin/bash'
               echo "# $ACTION from the runner, kit $TREE_REF@${sha:0:7}, $(date -u '+%F %T') UTC"
               # The phones it builds or packs, for expressiveos-progress
               [[ -z ${phones:-} ]] || echo "# phones: $phones"
               echo 'cd ~ || exit 1'
+              # The live build page: sends expressiveos-progress's output to R2 once a minute
+              # until this script ends (tools/eos-progress-publish.sh; silent, never fails the job)
+              [[ -z $pub ]] || echo "bash --noprofile --norc $(printf %q "$pub/eos-progress-publish.sh") \$\$ < /dev/null > /dev/null 2>&1 &"
               echo "{ echo \"== $s, \$(date -u '+%F %T') UTC\"; $2; echo \"SESSION_EXIT=\$?\"; } 2>&1 | tee -- $(printf %q "$log")"
             } > "$job"
             [[ ! -f $log ]] || mv -f -- "$log" "$log.1"
