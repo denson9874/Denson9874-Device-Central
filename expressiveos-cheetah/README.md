@@ -27,22 +27,24 @@ vendor blob repos into `~/expressiveos/vendor/google/` and their keys and server
 `out/` and `out-kernel/` included), and build only while holding the tree lock,
 `~/.expressiveos-tree.lock`; through 1.1 they hold its old name, `~/.evolution-tree.lock`, too, so a
 run of an older kit still waits for them and they for it. The one exception is
-`tools/server-cleanup.sh` (Disk, below). Cheetah's firmware cache is filled by `tools/fetch-firmware.sh`
-(runner action `expressiveos-firmware`).
+`tools/server-cleanup.sh` (Disk, below). Cheetah's and husky's firmware caches are filled by
+`tools/fetch-firmware.sh` (runner action `expressiveos-firmware`, query `device=husky` for husky).
 
-**Cheetah's firmware pin.** Google shows the factory image tables only after a visitor accepts its
+**Cheetah's and husky's firmware pins.** Google shows the factory image tables only after a visitor accepts its
 terms, so the fetcher can't read them unattended. When Google ships a monthly release, a person opens
 https://developers.google.com/android/images#cheetah, accepts the terms, and copies the newest generic
-Android 17 release (no carrier suffix) into `firmware/cheetah.conf`:
+Android 17 release (no carrier suffix) into `firmware/cheetah.conf` (husky: `#husky`,
+`firmware/husky.conf`):
 
 ```
 url=https://dl.google.com/dl/android/aosp/cheetah-<build>-factory-<8 hex>.zip
 sha256=<the 64-hex SHA-256 from the same row>
 ```
 
-Merge it, then run the runner action `expressiveos-firmware` (query `check` only says what the pin and
-the cache hold). The next cheetah build's `prepare.sh` puts that bootloader and radio into
-`vendor/google/cheetah` through `update-firmware.sh`.
+Merge it, then run the runner action `expressiveos-firmware` (query empty for cheetah, `device=husky`
+for husky; `check` or `check device=husky` only says what the pin and the cache hold). The phone's next
+build's `prepare.sh` puts that bootloader and radio into `vendor/google/<device>` through
+`update-firmware.sh`.
 
 ## What's here
 
@@ -53,7 +55,7 @@ the cache hold). The next cheetah build's `prepare.sh` puts that bootloader and 
 | `setup.sh` | Sets up `~/expressiveos` (ExpressiveOS's own manifest, full history, Git LFS) or syncs it again (Sources, below) |
 | `pins/kernel.xml` | The exact kernel source ExpressiveOS builds |
 | `sources/` | Where ExpressiveOS's own sources came from: `eos-1.0-base/` (the 1.0 builds' sources) and `own-manifest.py` (ExpressiveOS's manifest); `update-check.sh`, `update.sh` and `update.py`, the monthly update (see below), and `tests/`, its tests; `updates/<id>/`, each update's own files |
-| `prepare.sh`, `apply.sh`, `patches/` | Git LFS files, the kit's tree patches (below), the phone's firmware (cheetah's: the newest cached, `update-firmware.sh`) |
+| `prepare.sh`, `apply.sh`, `patches/` | Git LFS files, the kit's tree patches (below), the phone's firmware (cheetah's and husky's: the newest cached, `update-firmware.sh`) |
 | `tools/eos-keys-check.sh` | The key guard: ExpressiveOS's own keys, never Evolution X's, DerpFest's or the AOSP test keys |
 | `tools/eos-keybox.py` | Checks an attestation `keybox.xml` against Google's live roots and CRL, checks `EOS_KEYBOX_URL`, and uploads to R2 |
 | `tools/eos-images.sh` | The build, start to finish |

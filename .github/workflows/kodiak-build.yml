@@ -31,9 +31,10 @@
 # by hand stops expressiveos-setup, -build and -pack; query adopt writes INSTALLED_FROM for
 # such a kit, and only when it matches tree_ref's exactly, so nothing in it is lost when the
 # runner next installs over it. expressiveos-firmware downloads the newest generic Google
-# factory image for cheetah, checks its SHA-256 and keeps only its bootloader and radio images
-# in ~/android-dt/firmware/cheetah, which prepare.sh reads at the start of each cheetah build
-# (expressiveos-cheetah/tools/fetch-firmware.sh; query check: just say which is newest).
+# factory image for cheetah (query device=husky: husky), checks its SHA-256 and keeps only its
+# bootloader and radio images in ~/android-dt/firmware/<device>, which prepare.sh reads at the
+# start of each build of that phone (expressiveos-cheetah/tools/fetch-firmware.sh; query check
+# [device=husky]: just say which is newest).
 #
 # The expressiveos-* actions run the ExpressiveOS builds in their own tree,
 # ~/expressiveos (expressiveos-cheetah/README.md), with tree_ref's kit installed as
@@ -190,8 +191,9 @@ on:
           release session's feed files). expressiveos-kit: read-only
           diff of the installed kit against tree_ref's (query adopt: hand the runner a
           kit installed some other way, only when it matches tree_ref's exactly).
-          expressiveos-firmware: cheetah's newest Google factory bootloader and radio
-          into ~/android-dt/firmware/cheetah (query check: read-only).
+          expressiveos-firmware: cheetah's (or with query device=husky, husky's) newest
+          Google factory bootloader and radio into ~/android-dt/firmware/<device> (query
+          check [device=husky]: read-only).
           expressiveos-setup: install tree_ref's
           expressiveos-cheetah, then setup.sh in tmux.
           expressiveos-keys-move: the key folder vendor/evolution-priv to
@@ -276,7 +278,7 @@ on:
           incremental to check/'s candidate on R2's ota/test/, for a phone test). build-explain
           (required): tree, product, then up to two products to compare, e.g.
           'expressiveos lineage_cheetah lineage_husky'. expressiveos-kit (optional): diff
-          (the default) or adopt. expressiveos-firmware (optional): check.
+          (the default) or adopt. expressiveos-firmware (optional): device=husky, check or check device=husky.
           expressiveos-storage (optional): list (read-only, the default), drive
           device=<phone>|all (the newest release to Google Drive, the newest two kept
           there) or prune [device=<phone>] (R2 keeps the current release only, permanent),
@@ -599,15 +601,16 @@ jobs:
           mv -- "$kit/INSTALLED_FROM.new" "$kit/INSTALLED_FROM"
           echo "ADOPTED: ~/expressiveos-cheetah is $TREE_REF@${sha:0:7}; expressiveos-setup, -build and -pack install over it from now on" | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: ExpressiveOS firmware (cheetah)
+      - name: ExpressiveOS firmware (cheetah, husky)
         if: inputs.action == 'expressiveos-firmware'
         run: |
-          [[ "${QUERY:-}" =~ ^(check)?$ ]] || { echo "::error::query is empty (fetch) or check (read-only)"; exit 1; }
-          if [[ "${QUERY:-}" = check ]]; then bash expressiveos-cheetah/tools/fetch-firmware.sh --check; exit 0; fi
-          # prepare.sh reads the cache at the start of every cheetah build: not while one runs
+          [[ "${QUERY:-}" =~ ^(check)?\ ?(device=(cheetah|husky))?$ ]] || { echo "::error::query is empty (fetch cheetah's), device=husky (fetch husky's) or check [device=husky] (read-only)"; exit 1; }
+          dev=cheetah; [[ "${QUERY:-}" =~ device=([a-z]+) ]] && dev=${BASH_REMATCH[1]}
+          if [[ "${QUERY:-}" = check* ]]; then bash expressiveos-cheetah/tools/fetch-firmware.sh --check "$dev"; exit 0; fi
+          # prepare.sh reads the cache at the start of every cheetah or husky build: not while one runs
           exec 8>~/.expressiveos.lock
           flock -n 8 || { echo "::error::~/.expressiveos.lock is held (an ExpressiveOS setup, build or pack is running)"; exit 1; }
-          bash expressiveos-cheetah/tools/fetch-firmware.sh 8>&-
+          bash expressiveos-cheetah/tools/fetch-firmware.sh "$dev" 8>&-
 
       # ---- ExpressiveOS for cheetah: expressiveos-cheetah/README.md ---------------
 

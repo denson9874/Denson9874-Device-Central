@@ -1,17 +1,27 @@
 #!/usr/bin/env bash
-# Download the newest Pixel 7 Pro (cheetah) factory image from Google, verify its
-# SHA-256 against Google's page, and keep only its bootloader and radio images in the
-# firmware cache that prepare.sh reads (EOS_FIRMWARE_MODE=cache: the newest cached release
-# goes into vendor/google/cheetah through update-firmware.sh at the start of each build).
+# Download the newest factory image Google lists for a phone whose firmware comes from the
+# cache (devices/<device>.conf EOS_FIRMWARE_MODE=cache: cheetah, husky), verify its SHA-256
+# against Google's page, and keep only its bootloader and radio images in the firmware
+# cache that prepare.sh reads (the newest cached release goes into vendor/google/<device>
+# through update-firmware.sh at the start of each build).
 # Run it when Google ships a new monthly release: runner action expressiveos-firmware.
-# Moved here from the old cheetah kit (2026-11-02), unchanged but for the paths.
+# Moved here from the old cheetah kit (2026-11-02), unchanged but for the paths; husky
+# joined on 2026-11-11 (its vendor repo's own firmware was October's).
 #
-#   fetch-firmware.sh [--check]     # --check: print the newest release, download nothing
+#   fetch-firmware.sh [--check] [device]   # device: cheetah (the default) or husky;
+#                                          # --check: print the newest release, download nothing
 #
-# Result in ~/android-dt/firmware/cheetah/: bootloader-cheetah-*.img,
-# radio-cheetah-*.img and CURRENT (the build id, e.g. cp3a.261005.005).
+# Result in ~/android-dt/firmware/<device>/: bootloader-<device>-*.img,
+# radio-<device>-*.img and CURRENT (the build id, e.g. cp3a.261005.005).
 set -euo pipefail
-dev=cheetah
+check=0; dev=cheetah
+for a in "$@"; do
+    case $a in
+    --check) check=1 ;;
+    cheetah|husky) dev=$a ;;
+    *) echo "usage: fetch-firmware.sh [--check] [cheetah|husky]" >&2; exit 1 ;;
+    esac
+done
 dir=~/android-dt/firmware/$dev; mkdir -p "$dir"
 here="$(cd "$(dirname "$0")" && pwd)"
 conf="$here/../firmware/$dev.conf"
@@ -23,7 +33,7 @@ conf="$here/../firmware/$dev.conf"
 # description ("..., Oct 2026, Verizon"). The device tables may sit on
 # the main page or on a per-device page it links to; both are tried.
 if [[ -f "$conf" ]]; then
-    # Copied by a person from https://developers.google.com/android/images#cheetah after
+    # Copied by a person from https://developers.google.com/android/images#<device> after
     # accepting Google's terms there: the newest generic Android 17 release's link and SHA-256.
     url=$(sed -n 's/^url=//p' "$conf" | head -1); sha=$(sed -n 's/^sha256=//p' "$conf" | head -1)
     build=$(sed -E -n "s#^https://dl\.google\.com/dl/android/aosp/$dev-([a-z0-9]{4}\.[0-9]{6}\.[0-9]{3}(\.[a-z0-9]+)?)-factory-[0-9a-f]{8}\.zip\$#\1#p" <<<"$url")
@@ -77,7 +87,7 @@ PY
 fi
 [[ -n "${url:-}" && -n "${sha:-}" && -n "${build:-}" ]] || { echo "couldn't find the newest $dev factory image on Google's page" >&2; exit 1; }
 echo "newest $dev factory image: $build ($url)"
-[[ ${1:-} == --check ]] && { echo "cached: $(cat "$dir/CURRENT" 2>/dev/null || echo none)"; exit 0; }
+(( check )) && { echo "cached: $(cat "$dir/CURRENT" 2>/dev/null || echo none)"; exit 0; }
 if [[ "$(cat "$dir/CURRENT" 2>/dev/null)" == "$build" ]] && ls "$dir"/bootloader-$dev-*.img "$dir"/radio-$dev-*.img >/dev/null 2>&1; then
     echo "already cached: $build"; exit 0
 fi
