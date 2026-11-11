@@ -74,6 +74,11 @@ echo '<config stock="1"/>' > "$S/product/etc/sysconfig/nowplaying.xml"
 echo '<config/>' > "$S/product/etc/sysconfig/same.xml"
 echo '<config/>' > "$S/product/etc/sysconfig/new_feature.xml"
 echo 'not a zip' > "$S/product/app/Broken/Broken.apk"
+mkapk "$S/system/system/priv-app/Platform/Platform.apk" com.android.platformthing 37 17
+mkdir -p "$S/system/system/etc/sysconfig" "$G/system/blobs/etc/sysconfig"
+echo '<config/>' > "$S/system/system/etc/sysconfig/platform.xml"
+echo '<config a="1"/>' > "$S/system/system/etc/sysconfig/oursys.xml"
+echo '<config a="2"/>' > "$G/system/blobs/etc/sysconfig/oursys.xml"
 
 before=$(cd "$G" && find . -type f -exec sha256sum {} + | sort | sha256sum)
 python3 -I "$tool" compare "$S" "$G" > "$T/c.log" 2>&1 || bad "compare exits 0"
@@ -85,13 +90,17 @@ has "$T/c.log" 'com.example.ahead  ours 5.0 (50), stock 4.0 (40)' "an app ahead 
 has "$T/c.log" 'com.example.oursonly  1 (1)' "an app stock lacks is listed"
 has "$T/c.log" 'Big.apk: Git LFS pointer' "an LFS pointer is reported, not parsed"
 has "$T/c.log" 'com.example.dropapp  1.0 (1)  product/app/NewDropApp/NewDropApp.apk' "a stock-only app is listed"
-has "$T/c.log" 'differ from stock (1)' "one config file differs"
+has "$T/c.log" 'differ from stock (2)' "two config files differ"
 has "$T/c.log" 'product/etc/sysconfig/nowplaying.xml' "the differing config file is named"
 has "$T/c.log" 'product/etc/permissions/dropped.xml' "a config file stock dropped is named"
 has "$T/c.log" 'product/etc/sysconfig/new_feature.xml' "a stock config file we lack is named"
 hasnt "$T/c.log" 'sysconfig/Android.bp' "build files are not compared"
 has "$T/c.log" 'stock APK not read: product/app/Broken/Broken.apk' "an unreadable stock APK is a note, not a crash"
-has "$T/c.log" 'GMS_DROP=CHANGES 5' "compare ends with the count"
+has "$T/c.log" 'GMS_DROP=CHANGES 5' "compare ends with the count of decisions (2 apps, 2 differing and 1 dropped config file)"
+has "$T/c.log" 'platform apps (com.android.*, android.*) we do not carry: 1, not listed' "stock platform apps are counted, not listed"
+hasnt "$T/c.log" 'com.android.platformthing' "a stock platform app is not listed"
+has "$T/c.log" 'system-partition config files we do not carry: 1, not listed' "system config files are counted, not listed"
+has "$T/c.log" 'system/system/etc/sysconfig/oursys.xml' "a system config path is printed as it is on disk"
 after=$(cd "$G" && find . -type f -exec sha256sum {} + | sort | sha256sum)
 [[ $before == "$after" ]] && ok "compare changes nothing" || bad "compare changes nothing"
 

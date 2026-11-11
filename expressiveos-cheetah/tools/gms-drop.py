@@ -16,6 +16,10 @@ versionCode is higher. It never adds an app (a new app needs its Android.bp and 
 written and reviewed), never downgrades, and never touches a file under blobs/: our sysconfig
 and permission XMLs carry fixes (nowplaying.xml), so their differences are printed for a person.
 
+Stock's own platform apps (com.android.*, android.*) and the system partition's config files are
+counted, not listed: they come from the Android source, not from this package. CHANGES counts
+what needs a decision: newer apps, and carried config files that differ or that stock dropped.
+
 Last line: GMS_DROP=NONE, GMS_DROP=CHANGES <n> (compare) or GMS_DROP=APPLIED <n> (apply).
 Exit status 0 unless the arguments or a folder are wrong.
 """
@@ -167,13 +171,14 @@ def scan(stock, gms):
     return ours, ours_other, theirs, parts_found, notes
 
 
-def etc_report(stock_parts, gms):
+def etc_report(stock_root, stock_parts, gms):
     """Differences in the config files we carry, and stock sysconfig/permissions we don't."""
-    differ, gone, new = [], [], []
+    differ, gone, new, platform = [], [], [], 0
     for part in PARTS:
         top, sp = os.path.join(gms, part, 'blobs', 'etc'), stock_parts.get(part)
         if not os.path.isdir(top) or sp is None:
             continue
+        shown = os.path.relpath(sp, stock_root)
         carried = set()
         for p in walk(top):
             rel = os.path.relpath(p, top)
@@ -182,16 +187,20 @@ def etc_report(stock_parts, gms):
             carried.add(rel)
             s = os.path.join(sp, 'etc', rel)
             if not os.path.isfile(s):
-                gone.append('%s/etc/%s' % (part, rel))
+                gone.append('%s/etc/%s' % (shown, rel))
             elif sha256(s) != sha256(p):
-                differ.append('%s/etc/%s' % (part, rel))
+                differ.append('%s/etc/%s' % (shown, rel))
         for sub in ('sysconfig', 'permissions', 'default-permissions'):
             d = os.path.join(sp, 'etc', sub)
             for p in walk(d, '.xml') if os.path.isdir(d) else ():
                 rel = os.path.relpath(p, os.path.join(sp, 'etc'))
-                if rel not in carried:
-                    new.append('%s/etc/%s' % (part, rel))
-    return differ, gone, new
+                if rel in carried:
+                    continue
+                if part == 'system':
+                    platform += 1
+                else:
+                    new.append('%s/etc/%s' % (shown, rel))
+    return differ, gone, new, platform
 
 
 def ver(info):
@@ -223,7 +232,9 @@ def main():
         else:
             same.append(pkg)
     only_stock = sorted((pkg,) + theirs[pkg] for pkg in theirs if pkg not in ours)
-    differ, gone, new = etc_report(stock_parts, gms)
+    n_platform = sum(1 for o in only_stock if o[0].startswith(('com.android.', 'android.')))
+    only_stock = [o for o in only_stock if not o[0].startswith(('com.android.', 'android.'))]
+    differ, gone, new, etc_platform = etc_report(stock, stock_parts, gms)
 
     print('== apps we carry that stock has newer (%d)%s' % (len(newer), ': apply copies these' if mode == 'compare' else ''))
     for pkg, path, info, spath, sinfo in newer:
@@ -241,6 +252,7 @@ def main():
     print('== stock apps we do not carry (%d): a new one may be a Drop app; adding it is a hand change' % len(only_stock))
     for pkg, spath, sinfo in only_stock:
         print('  %s  %s  %s' % (pkg, ver(sinfo), os.path.relpath(spath, stock)))
+    print('== stock platform apps (com.android.*, android.*) we do not carry: %d, not listed' % n_platform)
     print('== config files we carry that differ from stock (%d): diff by hand, ours carry fixes' % len(differ))
     for f in differ:
         print('  ' + f)
@@ -250,6 +262,7 @@ def main():
     print('== stock sysconfig/permission files we do not carry (%d)' % len(new))
     for f in new:
         print('  ' + f)
+    print('== stock system-partition config files we do not carry: %d, not listed' % etc_platform)
     for n in notes:
         print('note: ' + n)
 
@@ -261,7 +274,7 @@ def main():
             print('applied: %s %s -> %s' % (os.path.relpath(path, gms), ver(info), ver(sinfo)))
         print('GMS_DROP=APPLIED %d' % len(newer))
     else:
-        n = len(newer) + len(differ) + len(gone) + len(new)
+        n = len(newer) + len(differ) + len(gone)
         print('GMS_DROP=CHANGES %d' % n if n else 'GMS_DROP=NONE')
 
 
