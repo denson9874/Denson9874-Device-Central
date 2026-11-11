@@ -552,9 +552,19 @@ On each Drop:
 2. Get the newest stock image of the newest Pixel we support (it holds the widest app set): a
    person opens https://developers.google.com/android/images, accepts the terms, and copies that
    release's link and SHA-256, as for cheetah's firmware pin. On the build server, with no build
-   running, unpack its `product`, `system_ext` and `system` partitions into one folder
-   (`<stock>/product`, `<stock>/system_ext`, `<stock>/system`). This step is by hand; it isn't
-   scripted yet.
+   running and under the tree lock, unpack its `product`, `system_ext` and `system` images into
+   one folder. The Pixel 11 image zip in `~/android-dt/firmware/` holds them as plain EROFS images
+   (first run 2026-11-10, kodiak CD1A.261005.003, 30 seconds):
+
+   ```
+   S=~/gms-drop-scratch; mkdir -p $S/img $S/stock
+   unzip -q ~/android-dt/firmware/image-<device>-<build>.zip product.img system_ext.img system.img -d $S/img
+   for p in product system_ext system; do
+     ~/expressiveos/out/host/linux-x86/bin/fsck.erofs --extract=$S/stock/$p $S/img/$p.img
+   done
+   ```
+
+   Delete `$S` when the compare is done (about 13 GB): nothing stays on the server.
 3. Compare, changing nothing:
 
    ```
@@ -563,7 +573,8 @@ On each Drop:
 
    It matches apps by package name (stock's folder names carry versions and change), and lists the
    apps stock has newer, the stock apps we don't carry (a Drop's new app shows here), and every
-   config file that differs. It ends `GMS_DROP=NONE` or `GMS_DROP=CHANGES <n>`.
+   config file that differs. It ends `GMS_DROP=NONE` or `GMS_DROP=CHANGES <n>`, the number of
+   newer apps and changed config files to decide on.
 4. In a clone of ExpressiveOS/vendor_gms (with its Git LFS files), `gms-drop.py apply <stock> <clone>`
    copies stock's newer APKs over ours at our paths. It never downgrades, never adds an app and
    never touches `blobs/`: `nowplaying.xml` and others carry our fixes, so a config change or a new
