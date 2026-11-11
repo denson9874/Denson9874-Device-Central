@@ -25,7 +25,7 @@ ones, a patch for one of ExpressiveOS's own repos must already be a commit there
 | `EOS_VENDOR_DIR` | the vendor blobs project |
 | `EOS_RADIO_MK` | the makefile listing the firmware images with their sha1 (`radio/<x>.img,<sha1>`) |
 | `EOS_FIRMWARE` | the firmware partitions the OTA payload must carry |
-| `EOS_FIRMWARE_MODE` | `cache`: newest cached factory firmware put into the vendor repo (cheetah); `blobs`: the vendor repo's own (husky); `images`: `vendor/google/<device>-images` made from `~/android-dt/firmware/image-<device>-*.zip` by the tree's extract-images.sh (Pixel 11) |
+| `EOS_FIRMWARE_MODE` | `cache`: newest cached factory firmware put into the vendor repo (cheetah, husky: `firmware/<device>.conf`, runner action `expressiveos-firmware`); `blobs`: the vendor repo's own; `images`: `vendor/google/<device>-images` made from `~/android-dt/firmware/image-<device>-*.zip` by the tree's extract-images.sh (Pixel 11) |
 | `EOS_LFS_PROJECTS` | projects whose Git LFS files must all be present |
 | `EOS_UPDATER_OVERLAY` | the Updater overlay APK that must point at `denson9874/expressiveos_ota` |
 | `EOS_SENTINEL` | a file setup.sh expects after a sync |

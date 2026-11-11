@@ -3,9 +3,9 @@
 # set): every Git LFS file of its EOS_LFS_PROJECTS present, the kit's tree patches
 # (apply.sh), then the firmware its EOS_FIRMWARE_MODE says (devices/<device>.conf):
 #   cache   the newest cached Google firmware into its vendor repo unless that already ships
-#           newer (cheetah). The cache, ~/android-dt/firmware/<device>, is the one
+#           newer (cheetah, husky). The cache, ~/android-dt/firmware/<device>, is the one
 #           tools/fetch-firmware.sh fills (runner action expressiveos-firmware); only read here;
-#   blobs   the vendor repo's own (husky: TheMuppets' blobs carry the factory firmware);
+#   blobs   the vendor repo's own (husky until 1.2: TheMuppets' blobs carry the factory firmware);
 #   images  vendor/google/<device>-images made by the device tree's extract-images.sh from the
 #           newest ~/android-dt/firmware/image-<device>-*.zip, again only when that zip
 #           changed (the Pixel 11s: stock vendor, boot, dtbo and firmware images). Their
