@@ -63,6 +63,7 @@ the cache hold). The next cheetah build's `prepare.sh` puts that bootloader and 
 | `tools/eos-ota.sh` | A release's OTA packages for the Updater: the full one and an incremental from the feed's build, to R2 (Updates over the air, below; offline test `tools/tests/eos-ota-test.sh`) |
 | `tools/server-cleanup.sh` | Frees disk on the build server (runner actions `server-cleanup-list` and `server-cleanup`) |
 | `lib.sh`, `tools/payload.py`, `tools/payload-sig.py` | Shared guards and helpers; `payload-sig.py` checks a payload's signatures without update_engine's code |
+| `tools/gms-drop.py` | Compares the Google apps package (`vendor/gms`) with a stock Pixel image and copies stock's newer apps over ours (Pixel Drops, below) |
 
 Tree patches (`apply.sh`). In a project that's one of ExpressiveOS's own repos (Sources, below) each is a
 commit there already, and `apply.sh` only checks that commit is the patch's change; a new patch for such a
@@ -528,6 +529,53 @@ about 10 minutes; nothing leaves the machine, and nothing outside `$EOS_TEST_WOR
 `$TMPDIR/eos-update-tests`, is touched). Run it after any change to `update.py`; each script's header
 says what it checks (`devices.sh`: device projects, the lint, verify, and a kit missing what the update
 reads).
+
+## Pixel Drops
+
+Google ships a Pixel Drop every few months. Its features reach a phone four ways, and only the
+second needs a change here:
+
+1. **Play Store updates and Google's server switches.** Phone, Messages, Contacts and the other
+   Google apps update on ExpressiveOS as on stock. Nothing to do.
+2. **Pixel-only system apps and their config files**, which the ROM carries in `vendor/gms`
+   (ExpressiveOS/vendor_gms): Pixel Launcher, the wallpaper and icon apps, Pixel Search, the
+   sysconfig and permission XMLs. These move only when we refresh the package from a stock image.
+3. **Android platform changes** (a quarterly release). They come with the LineageOS base, through
+   the monthly update above.
+4. **Features behind Google's device check or behind hardware we don't have.** Not added, and not
+   worked around: on-device Gemini features, and anything a phone model lacks the parts for.
+
+On each Drop:
+
+1. Read Google's own post and sort every feature into the four groups, per phone family. Label
+   each line measured or inferred.
+2. Get the newest stock image of the newest Pixel we support (it holds the widest app set): a
+   person opens https://developers.google.com/android/images, accepts the terms, and copies that
+   release's link and SHA-256, as for cheetah's firmware pin. On the build server, with no build
+   running, unpack its `product`, `system_ext` and `system` partitions into one folder
+   (`<stock>/product`, `<stock>/system_ext`, `<stock>/system`). This step is by hand; it isn't
+   scripted yet.
+3. Compare, changing nothing:
+
+   ```
+   python3 -I tools/gms-drop.py compare <stock> ~/expressiveos/vendor/gms
+   ```
+
+   It matches apps by package name (stock's folder names carry versions and change), and lists the
+   apps stock has newer, the stock apps we don't carry (a Drop's new app shows here), and every
+   config file that differs. It ends `GMS_DROP=NONE` or `GMS_DROP=CHANGES <n>`.
+4. In a clone of ExpressiveOS/vendor_gms (with its Git LFS files), `gms-drop.py apply <stock> <clone>`
+   copies stock's newer APKs over ours at our paths. It never downgrades, never adds an app and
+   never touches `blobs/`: `nowplaying.xml` and others carry our fixes, so a config change or a new
+   app is a hand edit with its `Android.bp` and `gms_*.mk` entry, reviewed like any inherited code.
+   The result is a commit on the fork and a manifest pin, never a kit patch.
+5. The next test build carries it. On the 7 Pro and one Pixel 11, check each group 1 and 2 feature
+   over adb, with the standing checks (crash buffer, `SecurityException`, AICore associations, Now
+   Playing): a refreshed Google app can ask for a permission the old XMLs don't grant, and that
+   shows as a boot-time `Privileged permissions not in privapp-permissions allowlist` crash.
+6. Release notes name only the Drop features a phone test showed working, per phone.
+
+`tools/tests/gms-drop-test.sh` tests the tool offline (as a non-root user).
 
 ## Test and release
 
