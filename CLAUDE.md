@@ -79,17 +79,18 @@ Daryl says "fine" when things aren't: run every check yourself and keep the logs
   10 minutes.
 - Updater after the reboot: the installed build isn't listed, and What's new shows this
   release's notes for this phone (model and security patch right).
-- `adb reboot fastboot`, `fastboot getvar is-userspace` = yes, then recovery shows its menu.
-  Required once per phone family before its first release: the Pixel 11 recovery shipped
-  broken for 4 days because no Pixel 11 had been tested.
+- `adb reboot fastboot`, `fastboot getvar is-userspace` = yes, then recovery shows its menu,
+  on each phone we have (the Pixel 11 recovery once shipped broken for 4 days).
 - Every check must be able to fail: an empty feed is not "up to date". A bug found after a
   release adds its check line here before its fix merges.
 - Any crash, `SecurityException`, association or SELinux denial seen during a test is traced
   to a file and line, or reported as `UNEXPLAINED: <log line>`. Never write it off as noise,
   "usually" or pre-existing: the AICore denials were called "stock GMS noise" on Nov 1 and
   shipped in three releases.
-- A phone family nobody has tested goes to testers (`expressiveos-pack testers`), not to the
-  release channel. The web installer is announced for a family only after one real install.
+- Phone tests run only on the phones Daryl has (7 Pro, kodiak, his 8 Pro when he says so).
+  A phone nobody has (grizzly, cubs, yogi) needs no phone test: once its build passes its own
+  verify, it goes to the release channel with the others (Daryl, 11-11: "No tests are
+  needed"). Say plainly in the thread which phones were tested on a device.
 - A rooted test phone: list root modules and their hidden paths before blaming the ROM. A
   ReSuSFS hidden-path list once crashed app zygotes and looked like a ROM bug.
 - Never call something fixed without the adb output or log line that shows it.
