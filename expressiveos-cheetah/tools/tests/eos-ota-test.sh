@@ -39,13 +39,13 @@ for t in check_ota_package_signature delta_generator; do printf '#!/bin/sh\necho
 cat > "$H/ota_from_target_files" <<'EOF'
 #!/usr/bin/env python3
 import sys, zipfile, os
-a = sys.argv[1:]; src = None; full = ''
+a = sys.argv[1:]; src = None; full = ''; chlog = None
 pos = []
 i = 0
 while i < len(a):
     if a[i] == '-k': open(os.environ['HOME'] + '/otf-k.log', 'a').write(a[i+1] + '\n'); i += 2; continue
     if a[i] == '--path': i += 2; continue
-    if a[i] == '--changelog': open(os.environ['HOME'] + '/otf-chlog.log', 'a').write(os.path.basename(a[i+1]) + '\n'); i += 2; continue
+    if a[i] == '--changelog': chlog = a[i+1]; open(os.environ['HOME'] + '/otf-chlog.log', 'a').write(os.path.basename(chlog) + '\n'); i += 2; continue
     if a[i] == '-i': src = a[i+1]; i += 2; continue
     if a[i] == '--full_ota_partitions': full = a[i+1]; i += 2; continue
     pos.append(a[i]); i += 1
@@ -64,6 +64,7 @@ if src:
 with zipfile.ZipFile(out, 'w') as z:
     z.writestr('META-INF/com/android/metadata', '\n'.join(md) + '\n')
     z.writestr('payload.bin', zipfile.ZipFile(tgt).read('META/ab_partitions.txt'))
+    if chlog: z.write(chlog, 'changelog.txt')
 open(os.environ['HOME'] + '/otf.log', 'a').write('src=%s full=%s\n' % (src and os.path.basename(src), full))
 EOF
 chmod +x "$H/ota_from_target_files"
@@ -204,6 +205,25 @@ rm -f "$D/ota/$C-incremental-from-20261203.zip"*
 sed -i 's/ [0-9a-f]*$/ 0000/' "$D/check/$C-incremental-from-20261203.zip.base"
 : > "$HOME/otf.log"
 rc=$(ota); ok "  a candidate incremental to other target-files isn't taken: made again" '[[ $rc = 0 ]] && ! grep -q "phone test installed" "$W/out.log" && grep -qx "src=$B-target_files.zip full=boot,init_boot,vbmeta" "$HOME/otf.log"'
+# A tree whose tool takes --changelog: check/'s incremental carries the candidate's notes,
+# the release's were edited since (final release notes): made again, with the release's
+echo '  extra_long_opts=["changelog="]' > "$top/build/make/tools/releasetools/ota_from_target_files.py"
+rm -f "$D/ota/$C-incremental-from-20261203.zip"*
+ibase="$(cut -d' ' -f1-3 "$D/check/$C-incremental-from-20261203.zip.base") $(cut -d' ' -f1 "$D/target-files/$C-target_files.zip.sha256")"
+echo "draft notes for $C" > "$W/draft.txt"
+PATH=/x/jdk21/linux-x86/bin:$PATH TMPDIR=$HOME "$H/ota_from_target_files" -k x --changelog "$W/draft.txt" -i "$D/target-files/$B-target_files.zip" "$D/target-files/$C-target_files.zip" "$D/check/$C-incremental-from-20261203.zip"
+(cd "$D/check" && sha256sum -- "$C-incremental-from-20261203.zip" > "$C-incremental-from-20261203.zip.sha256")
+echo "$ibase" > "$D/check/$C-incremental-from-20261203.zip.base"
+: > "$HOME/otf.log"; : > "$HOME/otf-chlog.log"
+rc=$(ota); ok "  a candidate incremental with other notes than the release's isn't taken: made again" '[[ $rc = 0 ]] && ! grep -q "phone test installed" "$W/out.log" && grep -q "carries other notes" "$W/out.log" && grep -qx "src=$B-target_files.zip full=boot,init_boot,vbmeta" "$HOME/otf.log"'
+ok "  the new one carries the release's notes" '[[ "$(unzip -p "$D/ota/$C-incremental-from-20261203.zip" changelog.txt)" = "notes for $C" ]]'
+# The same candidate incremental, made with the release's notes: taken as before
+rm -f "$D/ota/$C-incremental-from-20261203.zip"*
+PATH=/x/jdk21/linux-x86/bin:$PATH TMPDIR=$HOME "$H/ota_from_target_files" -k x --changelog "$D/$C-changelog.txt" -i "$D/target-files/$B-target_files.zip" "$D/target-files/$C-target_files.zip" "$D/check/$C-incremental-from-20261203.zip"
+(cd "$D/check" && sha256sum -- "$C-incremental-from-20261203.zip" > "$C-incremental-from-20261203.zip.sha256")
+: > "$HOME/otf.log"
+rc=$(ota); ok "  a candidate incremental with the release's notes is taken" '[[ $rc = 0 ]] && grep -q "the candidate incremental the phone test installed" "$W/out.log" && [[ ! -s $HOME/otf.log ]]'
+rm -f "$top/build/make/tools/releasetools/ota_from_target_files.py"
 rm -f "$D/target-files/$C-target_files.zip"* "$D/ota/$C"* "$D/$C-fastboot.zip"* "$D/$C-changelog.txt"
 echo "$B-target_files.zip" > "$D/target-files/LATEST"
 # A tree from before 1.1's key move (or after its revert): the key folder's old name

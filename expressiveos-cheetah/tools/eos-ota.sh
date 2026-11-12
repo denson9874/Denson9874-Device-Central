@@ -328,13 +328,23 @@ if [[ -n $inc ]]; then
     # The release's incremental is check/'s candidate one when that was made from the same base
     # to the same target-files: the very package the phone test installed (eos-ota.sh
     # --candidate), not a second one made from the same files. check_pkg checks it as any other
+    # A package carries the notes it was made with as changelog.txt, and the Updater shows them
+    # before the feed's. A release made now takes the release's own notes (eos-pack.sh
+    # --release wrote them, perhaps edited since the candidate's), so an existing package is
+    # taken only when it carries exactly those
+    want_notes=
+    if [[ $mode != --candidate && -f $DEST/$REL-changelog.txt ]] && grep -qs -- '"changelog="' build/make/tools/releasetools/ota_from_target_files.py; then
+        want_notes=$DEST/$REL-changelog.txt
+    fi
+    same_notes() { [[ -z $want_notes ]] || unzip -p -- "$1" changelog.txt 2>/dev/null | cmp -s - "$want_notes"; }
     tested=
     if [[ $mode != --candidate ]]; then
         for f in "$CHECK"/*-incremental-from-"$bid".zip; do
-            [[ -f $f && -f $f.base && "$(cat -- "$f.base")" = "$ibase" ]] && sha_ok "$f" && tested=$f
+            [[ -f $f && -f $f.base && "$(cat -- "$f.base")" = "$ibase" ]] && sha_ok "$f" || continue
+            if same_notes "$f"; then tested=$f; else echo "note: ${f#"$DEST"/} carries other notes than ${want_notes#"$DEST"/}: making the incremental again"; fi
         done
     fi
-    if sha_ok "$inc" && [[ -f $inc.base && "$(cat -- "$inc.base")" = "$ibase" ]]; then
+    if sha_ok "$inc" && [[ -f $inc.base && "$(cat -- "$inc.base")" = "$ibase" ]] && same_notes "$inc"; then
         echo "note: made already from the same base ($inc.base)"
     elif [[ -n $tested ]]; then
         echo "OK: the candidate incremental the phone test installed, from the same base to the same target-files: $tested"
