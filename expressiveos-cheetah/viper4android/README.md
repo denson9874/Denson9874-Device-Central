@@ -143,21 +143,21 @@ appear at those two paths without touching Google's image:
   reads, or the driver's vendor libraries are gone. It then runs the device tree's
   `check-sepolicy.sh` with the host's `secilc`: the split policy as init compiles it at boot, with the
   stock vendor's. A failure there is a bootloop, so `out` fails.
-- **One phone first.** Only kodiak has `EOS_V4A=aidl-overlay` and a line in `viper4android.mk`.
-  grizzly, cubs and yogi get the same two edits after kodiak's phone test (nothing else differs:
-  same HAL, same paths, same policy).
+- **One phone first.** kodiak had `EOS_V4A=aidl-overlay` and its line in `viper4android.mk` first.
+  grizzly, cubs and yogi got the same two edits after kodiak's phone test (Daryl, 2026-11-11: nothing
+  else differs: same HAL, same paths, same policy).
 
 ## Other phones
 
 The ExpressiveOS tree builds every phone in `../devices/` (`EOS_DEVICE`, cheetah unless set), and
 `vendor/extra/product.mk` is read for all of them, so after one run every product inherits
 `viper4android.mk`. `EOS_V4A` in each phone's devices file decides: `1` for cheetah (gs201's HIDL
-effect HAL, the non-AIDL driver), `aidl` for husky (the AIDL driver), `aidl-overlay` for kodiak (the
-AIDL driver over Google's stock vendor, above), `0` for grizzly, cubs and yogi until kodiak passes. So:
+effect HAL, the non-AIDL driver), `aidl` for husky (the AIDL driver), `aidl-overlay` for the Pixel 11s (the
+AIDL driver over Google's stock vendor, above). So:
 
 - `tree/viper4android.mk` adds its namespace and packages only when `TARGET_PRODUCT` is
   `lineage_cheetah` (the app and `libv4a_re`), `lineage_husky` (the app, `libv4a_aidl` and the
-  config) or `lineage_kodiak` (the app, the two overlay files, the init script, the product policy and
+  config) or `lineage_kodiak`, `lineage_grizzly`, `lineage_cubs` and `lineage_yogi` (the app, the two overlay files, the init script, the product policy and
   the off switch's default). The other products get nothing from it, whatever a run staged in `vendor/extra`
   (`../tools/eos-images.sh` checks each product's `PRODUCT_PACKAGES` before building: the modules
   its `EOS_V4A` wants are there and the others aren't; `../tools/eos-verify.sh` checks that an

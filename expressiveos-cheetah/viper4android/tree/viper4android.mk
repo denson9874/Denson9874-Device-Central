@@ -36,9 +36,8 @@ endif
 # 11s): they install under /product/vendor_overlay/0 (Android.mk), init.viper4android.rc lays
 # them over /vendor/lib64/soundfx and /vendor/etc at boot, and this folder's product policy
 # (viper4android.te and its contexts) labels viper.control and the off switch's properties.
-# kodiak first; grizzly, cubs and yogi join (here and in their devices/<device>.conf) after
-# kodiak's phone test.
-ifneq ($(filter lineage_kodiak,$(TARGET_PRODUCT)),)
+# kodiak first; grizzly, cubs and yogi joined after kodiak's phone test (Daryl, 2026-11-11).
+ifneq ($(filter lineage_kodiak lineage_grizzly lineage_cubs lineage_yogi,$(TARGET_PRODUCT)),)
 
 PRODUCT_SOONG_NAMESPACES += \
     vendor/extra/viper4android
