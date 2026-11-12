@@ -1,4 +1,4 @@
-# vendor/extra/viper4android (ExpressiveOS: cheetah, husky and kodiak)
+# vendor/extra/viper4android (ExpressiveOS: cheetah, husky and the Pixel 11s)
 
 Staged by `expressiveos-cheetah/viper4android/apply-v4a.sh` from the ExpressiveOS repo; don't edit
 it here, the next run puts the kit's copy back. Only the ExpressiveOS tree has it.
@@ -13,7 +13,7 @@ it here, the next run puts the kit's copy back. Only the ExpressiveOS tree has i
 | `/vendor/lib64/soundfx/libv4a_re.so` (cheetah) | `common/files/libv4a_re_arm64-v8a.so` from the non-AIDL ViPERFX_RE v2.1.1 module zip, unmodified and unstripped | zip `LICENSE` GPL-2.0 (`LICENSE.driver`); the DSP inside is ViPERDSP, All Rights Reserved, personal and non-commercial use only (`NOTICE.viperdsp`); PFFFT/FFTPACK (`NOTICE.pffft`) |
 | `/vendor/lib64/soundfx/libv4a_aidl.so` (husky) | `common/files/libv4a_aidl_arm64-v8a.so` from the AIDL ViPERFX_RE v2.1.1 module zip, unmodified and unstripped | the zip has no `LICENSE`; ViPERDSP (`NOTICE.viperdsp`); PFFFT/FFTPACK (`NOTICE.pffft`) |
 | `/vendor/etc/audio_effects_config.xml` (husky) | `common/audio_effects_config.xml` from the same AIDL zip, unmodified | as above |
-| `/product/vendor_overlay/0/lib64/soundfx/libv4a_aidl.so` and `/product/vendor_overlay/0/etc/audio_effects_config.xml` (kodiak) | The same two AIDL files (`Android.mk`), laid over `/vendor/lib64/soundfx` and `/vendor/etc` at boot by `/product/etc/init/init.viper4android.rc` | as above |
+| `/product/vendor_overlay/0/lib64/soundfx/libv4a_aidl.so` and `/product/vendor_overlay/0/etc/audio_effects_config.xml` (the Pixel 11s) | The same two AIDL files (`Android.mk`), laid over `/vendor/lib64/soundfx` and `/vendor/etc` at boot by `/product/etc/init/init.viper4android.rc` | as above |
 
 On cheetah, Evolution X's libeffects loads `/vendor/lib64/soundfx/libv4a_re.so` by itself, so
 `audio_effects.xml` stays stock. On husky, Google's audio HAL loads the libraries that
