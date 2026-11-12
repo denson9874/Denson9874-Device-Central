@@ -286,8 +286,10 @@ https://github.com/denson9874/ExpressiveLauncher/tree/8d9519b9706e43efc9ae876e8c
   Expressive Launcher has no `SECONDARY_HOME` activity. cheetah has no display output.
 - **Pixel Launcher hooks that Expressive Launcher doesn't get:** Settings' gesture-pill switch toggles
   only Pixel Launcher's and Launcher3's no-hint overlays; Expressive Studio's navigation-bar icon styles
-  target Pixel Launcher; SystemUIGoogle's and the wallpaper picker's `launcher_overlayable_package` name
-  Pixel Launcher (launcher icon theming, the glanceable hub's widget picker, app-grid option icons);
+  target Pixel Launcher; the wallpaper picker's `launcher_overlayable_package` names Pixel Launcher
+  (app-grid option icons). SystemUIGoogle's names Expressive Launcher (the lock screen hub's "Add
+  widget" opens its widget picker; SystemUIGoogle asks for its picker permission), and
+  `ExpressiveLauncherSystemUIPixelModeOverlay` sets Pixel Launcher back in its mode;
   Google Restore can't restore a Pixel Launcher layout into it. They work again in Pixel Launcher mode.
 - **The switch and other users:** the property is phone-wide, but the switch sets the Home role and
   both launchers' Home activities only for the user who flips it. Another full user then gets Pixel

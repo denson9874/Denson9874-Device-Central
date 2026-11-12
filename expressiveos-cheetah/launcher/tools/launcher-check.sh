@@ -62,6 +62,7 @@ PIXEL=com.google.android.apps.nexuslauncher
 PIXEL_HOME="$PIXEL/com.google.android.apps.nexuslauncher.NexusLauncherActivity"
 PIXEL_RECENTS="$PIXEL/com.android.quickstep.RecentsActivity"
 PIXEL_OVERLAY=ExpressiveLauncherPixelModeOverlay PIXEL_SYSCONFIG=pixel-launcher-home-off.xml
+SUI_PIXEL_OVERLAY=ExpressiveLauncherSystemUIPixelModeOverlay
 MODE_PROP=persist.sys.expressiveos.launcher
 RECENTS="$EL_PACKAGE/$EL_RECENTS_ACTIVITY"
 ALL_SET="$EL_PACKAGE/$EL_ALL_SET_ACTION"
@@ -77,6 +78,9 @@ want_allset=$(xq string "$kit/tree/overlay/setupwizard/res/values/strings.xml" e
 # The launcher switch's build side: Pixel Launcher mode's Recents app, and its Home activity off
 want_pixel_recents=$(xq string "$kit/tree/overlay/pixelmode/res/values/config.xml" config_recentsComponentName)
 [[ "$want_pixel_recents" = "$PIXEL_RECENTS" ]] || bad "tree/overlay/pixelmode config_recentsComponentName is '$want_pixel_recents', not $PIXEL_RECENTS"
+# SystemUI's launcher package (the lock screen hub's widget picker): Pixel Launcher's in its mode
+want_sui_pixel=$(xq string "$kit/tree/overlay/systemui-pixelmode/res/values/config.xml" launcher_overlayable_package)
+[[ "$want_sui_pixel" = "$PIXEL" ]] || bad "tree/overlay/systemui-pixelmode launcher_overlayable_package is '$want_sui_pixel', not $PIXEL"
 grep -qF "class=\"${PIXEL_HOME#*/}\" enabled=\"false\"" "$kit/tree/$PIXEL_SYSCONFIG" \
     || bad "tree/$PIXEL_SYSCONFIG doesn't turn ${PIXEL_HOME#*/} off"
 # The lists in tree/overlay/framework: the build's own with Expressive Launcher added at the
@@ -403,6 +407,7 @@ out)
     ov "system_ext/overlay/$FW_OVERLAY.apk" framework "$want_recents" "$want_listeners"
     ov "system_ext/overlay/$SUW_OVERLAY.apk" setupwizard "$want_allset"
     ov "system_ext/overlay/$PIXEL_OVERLAY.apk" pixelmode "$want_pixel_recents"
+    ov "system_ext/overlay/$SUI_PIXEL_OVERLAY.apk" systemui-pixelmode "$want_sui_pixel"
     if cmp -s "$kit/tree/$PIXEL_SYSCONFIG" "$O/system_ext/etc/sysconfig/$PIXEL_SYSCONFIG"; then
         pass "system_ext/etc/sysconfig/$PIXEL_SYSCONFIG is the kit's (Pixel Launcher's Home activity off until the switch)"
     else
@@ -527,6 +532,18 @@ device)
         [[ "$r" = "$EL_PACKAGE" ]] && pass "the setup wizard's launcher_package is $r" || bad "the setup wizard's launcher_package is '${r:-unreadable}', not $EL_PACKAGE"
     else
         info "$SUW isn't installed here: the setup wizard overlay isn't checked"
+    fi
+    # The lock screen hub's "Add widget": SystemUI asks the mode's launcher for its widget picker,
+    # and may open Expressive Launcher's (a signature|privileged permission SystemUIGoogle asks for)
+    r=$(a cmd overlay lookup com.android.systemui com.android.systemui:string/launcher_overlayable_package)
+    [[ "$r" = "$want_home" ]] && pass "SystemUI's launcher package (widget picker) is $r" \
+        || bad "SystemUI's launcher_overlayable_package is '${r:-unreadable}', not the mode's $want_home: the lock screen hub's Add widget fails"
+    r=$(a cmd package resolve-activity --brief --user 0 -a android.intent.action.PICK -p "$want_home" | tail -1 | long)
+    [[ "$r" = "$want_home/"* ]] && pass "$want_home has a widget picker: $r" || bad "$want_home has no android.intent.action.PICK activity: '${r:-nothing}'"
+    if a dumpsys package com.android.systemui | grep -qF "$EL_PACKAGE.permission.START_WIDGET_PICKER_ACTIVITY: granted=true"; then
+        pass "SystemUI holds $EL_PACKAGE.permission.START_WIDGET_PICKER_ACTIVITY"
+    else
+        bad "SystemUI doesn't hold $EL_PACKAGE.permission.START_WIDGET_PICKER_ACTIVITY: Expressive Launcher's widget picker refuses it (SystemUIGoogle's manifest)"
     fi
     # SystemUI bound to the Recents app's quickstep service: gestures, Overview and the taskbar work
     rp=${want_rec%%/*}
