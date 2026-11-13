@@ -41,7 +41,8 @@ ALLOW = [
     (r"^.?EvolutionXLogoPref$", "a log tag"),
 ]
 # The apps (by APK name) whose resource XML and dex are scanned in full
-REBRANDED = {"SettingsGoogle", "Settings", "Updater", "EvoEgg", "AxSandbox", "LineageParts",
+REBRANDED = {"SettingsGoogle", "Settings", "Updater", "EvoEgg", "ExpressiveEgg", "AxSandbox",
+             "LineageParts",
              "LineageSettingsProvider", "SystemUIGoogle", "SystemUI", "framework-res",
              "org.lineageos.platform-res", "PixelSetupWizardOverlayExpressive"}
 JARS = ["system/framework/framework.jar", "system/framework/services.jar"]
