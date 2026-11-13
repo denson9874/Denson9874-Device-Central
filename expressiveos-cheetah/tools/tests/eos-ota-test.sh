@@ -107,7 +107,7 @@ mktf() {   # mktf <out> <name> <ts> <incr> [<security patch>]
     mkdir -p "$d/META" "$d/SYSTEM/etc/security"
     printf 'ab_update=true\ndynamic_partition_list=system vendor product\n' > "$d/META/misc_info.txt"
     printf 'boot\ninit_boot\nproduct\nsystem\nvbmeta\nvendor\n' > "$d/META/ab_partitions.txt"
-    printf 'ro.build.date.utc=%s\nro.build.version.incremental=%s\nro.build.version.security_patch=%s\nro.evolution.build.version=%s\n' "$3" "$4" "${5:-2026-11-05}" "$2" > "$d/SYSTEM/build.prop"
+    printf 'ro.build.date.utc=%s\nro.build.version.incremental=%s\nro.build.version.security_patch=%s\n%s=%s\n' "$3" "$4" "${5:-2026-11-05}" "${EOS_TEST_VERPROP:-ro.expressiveos.build.version}" "$2" > "$d/SYSTEM/build.prop"
     cp "$otacerts" "$d/SYSTEM/etc/security/otacerts.zip"
     (cd "$d" && zip -q -r "$1" META SYSTEM); rm -rf "$d"
 }

@@ -90,9 +90,10 @@ checked() {   # checked <title> <regex> <command>...: run it quietly; its last l
 }
 
 echo "== package"
-ver=$(prop ro.evolution.build.version)
+ver=$(prop ro.expressiveos.build.version)
+[[ -n $ver ]] || ver=$(prop ro.evolution.build.version)   # the name through 1.2
 [[ "$ver" =~ ^ExpressiveOS-17\.[0-9]+-[0-9]{8}-$EOS_DEVICE-${EOS_VERSION//./\\.}-$EOS_BUILD_TYPE$ ]] \
-    || fail "ro.evolution.build.version is '$ver', not ExpressiveOS-17.x-<date>-$EOS_DEVICE-$EOS_VERSION-$EOS_BUILD_TYPE"
+    || fail "ro.expressiveos.build.version is '$ver', not ExpressiveOS-17.x-<date>-$EOS_DEVICE-$EOS_VERSION-$EOS_BUILD_TYPE"
 if [[ $EOS_QUICK = 1 ]]; then
     # m droid packages nothing (eos-make.sh removed the last build's): any package or
     # target-files zip in out/ isn't this build's
@@ -117,7 +118,7 @@ fi
 
 echo "== identity"
 for kv in "ro.product.product.device=$EOS_DEVICE" "ro.product.product.model=$EOS_MODEL" "ro.product.vendor.device=$EOS_DEVICE" \
-          "ro.evolution.device=$EOS_DEVICE" ro.build.type=user; do
+          "ro.lineage.device=$EOS_DEVICE" ro.build.type=user; do
     [[ "$(prop "${kv%%=*}")" = "${kv#*=}" ]] || fail "${kv%%=*} is '$(prop "${kv%%=*}")', want '${kv#*=}'"
 done
 # A tree with a board-info file writes 'require board=<boards>' (pantah: cheetah|panther); the

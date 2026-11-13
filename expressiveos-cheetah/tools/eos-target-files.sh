@@ -8,7 +8,8 @@
 #   eos-target-files.sh <package> [top]      # default ~/expressiveos
 #
 #   1. it's the package's: its build.prop has the package's post-timestamp and name
-#      (ro.evolution.build.version), its ab_partitions.txt is the build's, and its
+#      (ro.expressiveos.build.version, or ro.evolution.build.version through 1.2), its
+#      ab_partitions.txt is the build's, and its
 #      misc_info.txt names the tree's own release key (what an incremental is signed with), in
 #      either key folder: vendor/expressiveos-priv since 1.1, vendor/evolution-priv before (the
 #      1.0 releases' target-files, an incremental's base, keep the old one; the same key);
@@ -66,7 +67,8 @@ ts=$(sed -n 's/^post-timestamp=//p' "$T/metadata")
 ver=${ota##*/}; ver=${ver%.zip}
 v=$(tfprop ro.build.date.utc)
 [[ -n "$ts" && "$v" = "$ts" ]] || fail "${tf##*/} isn't ${ota##*/}'s: its ro.build.date.utc is '$v', the package's post-timestamp '$ts'"
-v=$(tfprop ro.evolution.build.version)
+v=$(tfprop ro.expressiveos.build.version)
+[[ -n $v ]] || v=$(tfprop ro.evolution.build.version)   # the name through 1.2
 [[ "$v" = "$ver" ]] || fail "${tf##*/} is $v's, not $ver's"
 unzip -p -- "$tf" META/ab_partitions.txt > "$T/ab0" || fail "can't read its META/ab_partitions.txt"
 [[ -f $O/ab_partitions.txt ]] || fail "no $O/ab_partitions.txt (eos-make.sh writes it)"

@@ -208,7 +208,8 @@ for f in META/misc_info.txt META/ab_partitions.txt SYSTEM/build.prop SYSTEM/etc/
     grep -qxF -- "$f" "$T/tf.list" || fail "${TF##*/} has no $f"
 done
 ts=$(tfprop "$TF" ro.build.date.utc) incr=$(tfprop "$TF" ro.build.version.incremental)
-spl=$(tfprop "$TF" ro.build.version.security_patch) ver=$(tfprop "$TF" ro.evolution.build.version)
+spl=$(tfprop "$TF" ro.build.version.security_patch) ver=$(tfprop "$TF" ro.expressiveos.build.version)
+[[ -n $ver ]] || ver=$(tfprop "$TF" ro.evolution.build.version)   # the name through 1.2
 [[ $ts =~ ^[0-9]+$ && -n $incr ]] || fail "${TF##*/} has no ro.build.date.utc or ro.build.version.incremental"
 # The release name is the build's, with -r<n> for a second release of the same day
 [[ $REL = "$ver" || $REL =~ ^"$ver"-r[0-9]+$ ]] || fail "${TF##*/} is $ver's build, not $REL's"
