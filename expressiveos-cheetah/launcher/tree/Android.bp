@@ -68,6 +68,7 @@ android_app_import {
         "ExpressiveLauncherFrameworkOverlay",
         "ExpressiveLauncherSetupWizardOverlay",
         "ExpressiveLauncherPixelModeOverlay",
+        "ExpressiveLauncherSystemUIPixelModeOverlay",
         "pixel-launcher-home-off.xml",
     ],
 }
@@ -126,6 +127,16 @@ runtime_resource_overlay {
     name: "ExpressiveLauncherPixelModeOverlay",
     manifest: "overlay/pixelmode/AndroidManifest.xml",
     resource_dirs: ["overlay/pixelmode/res"],
+    system_ext_specific: true,
+}
+
+// Pixel Launcher mode, SystemUI's half: ExpressiveOS's SystemUIGoogle names Expressive Launcher
+// as the launcher (its widget picker serves the lock screen hub's "Add widget"); this sets Pixel
+// Launcher back under the same property.
+runtime_resource_overlay {
+    name: "ExpressiveLauncherSystemUIPixelModeOverlay",
+    manifest: "overlay/systemui-pixelmode/AndroidManifest.xml",
+    resource_dirs: ["overlay/systemui-pixelmode/res"],
     system_ext_specific: true,
 }
 
