@@ -380,6 +380,14 @@ wpd=$O$WALLPAPER_DEFAULT_PATH dvar="WALLPAPER_${WALLPAPER_DEFAULT#expressiveos_}
 # 1.0 keeps Pixel's wallpapers in the picker, which reads one partner APK only (wallpapers/README.md)
 [[ ! -e $O/product/app/ExpressiveWallpapers ]] || fail "ExpressiveWallpapers shipped: 1.0's picker keeps PixelWallpapers2026 (wallpapers/wallpapers.mk)"
 [[ -x $H/aapt2 ]] || fail "no $H/aapt2 (the build makes it)"
+# The feed overlay must target the Updater this build ships: an overlay aimed at another package
+# name is installed and ignored, and nothing else would notice
+upd=$(find "$O/system_ext/priv-app/Updater" -name Updater.apk -print -quit 2>/dev/null || true)
+[[ -n "$upd" ]] || fail "no Updater.apk under $O/system_ext/priv-app/Updater"
+updpkg=$("$H/aapt2" dump packagename "$upd" 2>/dev/null) || fail "aapt2 can't read $upd's package name"
+ovltgt=$("$H/aapt2" dump xmltree --file AndroidManifest.xml "$ovl" 2>/dev/null | sed -n 's/.*:targetPackage([^)]*)="\([^"]*\)".*/\1/p' | head -1 || true)
+[[ -n "$updpkg" && "$ovltgt" = "$updpkg" ]] || fail "$EOS_UPDATER_OVERLAY targets '$ovltgt', but the Updater is '$updpkg'"
+echo "OK: $EOS_UPDATER_OVERLAY targets the Updater ($updpkg)"
 rros=("$O"/product/overlay/framework-res__*auto_generated_rro_product.apk)
 [[ ${#rros[@]} = 1 && -f ${rros[0]} ]] || fail "not one framework-res product auto-RRO in $O/product/overlay: ${rros[*]}"
 "$H/aapt2" dump resources "${rros[0]}" > "$T/rro.txt" 2>&1 || fail "aapt2 can't read ${rros[0]}"
