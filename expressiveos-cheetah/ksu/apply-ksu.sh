@@ -102,6 +102,8 @@ if [[ -d "$dest" ]]; then
     while IFS= read -r -d '' f; do
         rel=${f#"$dest"/}
         [[ -d "$f" && ! -L "$f" && -d "$stage/$rel" ]] && continue
+        # A folder an older kit staged (KernelSU Next's lib/arm64): its files go below, then it
+        [[ -d "$f" && ! -L "$f" && ( $rel = lib || $rel = lib/arm64 ) ]] && { changed=1; continue; }
         [[ -f "$stage/$rel" ]] && continue
         [[ -f "$f" || -L "$f" ]] || fail "$f isn't a file this kit put there; move it out of the way"
         stale+=("$rel"); changed=1
@@ -114,6 +116,9 @@ else
     rm -f -- "$dest/Android.mk"
     for rel in ${stale[@]+"${stale[@]}"}; do
         rm -f -- "${dest:?}/$rel"; echo "removed: vendor/extra/ksu/$rel"
+    done
+    for d in lib/arm64 lib; do
+        if [[ -d "$dest/$d" && ! -L "$dest/$d" ]]; then rmdir -- "${dest:?}/${d:?}" || fail "$dest/$d holds files this kit didn't put there"; echo "removed: vendor/extra/ksu/$d/"; fi
     done
     while IFS= read -r -d '' f; do
         rel=${f#"$stage"/}
