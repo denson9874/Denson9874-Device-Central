@@ -1,0 +1,37 @@
+From 999235cd395109ffb792333c552a9c733013917a Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sun, 15 Nov 2026 00:13:15 +0100
+Subject: [PATCH] husky: ship Wild Kernels' boot image when the kit gives one
+
+ExpressiveOS is rooted out of the box with Wild Kernels' GKI, BakaSU and
+susfs built in (Daryl, 2026-11-14). The kit builds this tree's boot image
+again around Wild's kernel and sets EOS_WILD_BOOT to it: the build then
+takes it as BOARD_PREBUILT_BOOTIMAGE and signs it with the boot AVB key.
+Without the variable nothing changes. No manager ships: users install
+the BakaSU APK they want.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ BoardConfigCommon.mk | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/BoardConfigCommon.mk b/BoardConfigCommon.mk
+index 61f7daa..7cdefac 100644
+--- a/BoardConfigCommon.mk
++++ b/BoardConfigCommon.mk
+@@ -24,3 +24,12 @@ BOARD_VENDOR_SEPOLICY_DIRS += \
+ 
+ # WiFi
+ include $(DEVICE_PATH)/wifi/BoardConfig-wifi.mk
++
++# Wild Kernels (ExpressiveOS: root out of the box, Daryl 2026-11-14): expressiveos-cheetah/
++# tools/eos-make.sh builds boot-wild.img (ksu/tools/wild-boot.sh: this boot image with Wild
++# Kernels' BakaSU kernel for the phone's KMI) and sets EOS_WILD_BOOT to it, so the images
++# and the OTA ship it, signed with the boot AVB key like any prebuilt boot. Without the
++# variable nothing changes. Last in the file, after everything that sets the boot image.
++ifneq ($(EOS_WILD_BOOT),)
++BOARD_PREBUILT_BOOTIMAGE := $(EOS_WILD_BOOT)
++endif
+-- 
+2.43.0
+

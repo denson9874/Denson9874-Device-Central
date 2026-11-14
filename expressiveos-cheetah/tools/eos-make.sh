@@ -2,23 +2,22 @@
 # The make part of an ExpressiveOS build of a phone (EOS_DEVICE, cheetah unless set;
 # devices/<device>.conf). tools/eos-images.sh runs it after prepare.sh, the key checks and
 # the kits; run alone, it builds what the tree already has: lunch, build_kernel on a phone
-# that builds its kernel (EOS_KERNEL=gs-6.1: cheetah, husky). With SukiSU (EOS_KSU=lkm):
-# our kernelsu.ko on those phones (ksu/tools/ksu-module.sh; the Pixel 11s take SukiSU's
-# release module for Google's GKI), then two passes: pass 1 builds only the images
-# cheetah-ksu.sh reads (boot, init_boot and vendor_kernel_boot, whose ramdisk holds the
-# first-stage modules) with the stock init_boot, cheetah-ksu.sh patches that init_boot, and
-# pass 2 builds everything with CHEETAH_KSU_INIT_BOOT (ksu/patches/device_google_pantah/0102;
-# EOS_KSU_INIT_BOOT on the other phones, their devices/<device>/ksu-patches/ 0102). Pass 2
-# must ship the patched init_boot (ksu-check.sh images). Without it (EOS_KSU=none): one make
-# pass, which must ship the stock init_boot. Either way the build keeps its target-files zip
+# that builds its kernel (EOS_KERNEL=gs-6.1: cheetah, husky). With root (EOS_KSU=wild): the
+# tree's prebuilt boot image (BOARD_PREBUILT_BOOTIMAGE) with Wild Kernels' BakaSU kernel in
+# place of its own (ksu/tools/wild-boot.sh build), which the make takes as its boot image
+# through EOS_WILD_BOOT (ksu/patches/device_google_pantah/0101, each phone's
+# devices/<device>/ksu-patches/), one pass; it must ship that boot and the stock init_boot
+# (ksu-check.sh images), and wild-boot.sh stock then signs the stock boot as the build signed
+# boot.img, for users who want no root. Without root (EOS_KSU=none): the build's own boot and
+# init_boot. Either way one make pass, and the build keeps its target-files zip
 # (tf_zip in lib.sh). Every phone gets EOS_PRODUCT_OUT's ab_partitions.txt. A quick build
 # (EOS_QUICK=1, lib.sh) runs m droid where a full one runs m bacon: the same images, and
 # no OTA package or target-files zip, which it then must not leave in out/ either. The last
 # line is MAKE_EXIT=0 or MAKE_EXIT=1.
 #
 #   eos-make.sh [top]                    # default ~/expressiveos; lunch target EOS_LUNCH (devices/<device>.conf)
-#   KERNEL_ONLY=1 eos-make.sh [top]      # stop after build_kernel and kernelsu.ko (nothing to
-#                                        # build for a phone with a prebuilt kernel)
+#   KERNEL_ONLY=1 eos-make.sh [top]      # stop after build_kernel (nothing to build for a phone
+#                                        # with a prebuilt kernel)
 #   EOS_INSTALLCLEAN=1 eos-make.sh       # start with m installclean (a modules= compile check
 #                                        # asks the next build that makes images, full or
 #                                        # quick, for it itself)
@@ -48,9 +47,9 @@ PATH=$HOME/bin:$PATH
 O=$EOS_PRODUCT_OUT
 K=$EOS_KSU_OUT
 
-# The SukiSU pieces apply-ksu.sh puts in: the phone's device tree patches (cheetah's in
-# ksu/patches/, another phone's in devices/<device>/ksu-patches/) and vendor/extra/ksu
-if [[ $EOS_KSU = lkm ]]; then
+# The Wild piece apply-ksu.sh puts in: the phone's device tree patch (cheetah's in ksu/patches/,
+# another phone's in devices/<device>/ksu-patches/)
+if [[ $EOS_KSU = wild ]]; then
     if [[ $EOS_DEVICE = cheetah ]]; then
         kdirs=("$kit"/ksu/patches/device_google_pantah/)
     else
@@ -67,8 +66,9 @@ if [[ $EOS_KSU = lkm ]]; then
             n=$((n + 1))
         done
     done
-    (( n > 0 )) || fail "no SukiSU device tree patches for $EOS_DEVICE (devices/$EOS_DEVICE/ksu-patches/)"
-    [[ -f vendor/extra/ksu/Android.mk ]] || fail "no vendor/extra/ksu/Android.mk (run apply-ksu.sh)"
+    (( n > 0 )) || fail "no Wild device tree patch for $EOS_DEVICE (devices/$EOS_DEVICE/ksu-patches/)"
+    # The SukiSU kit's manager and first-boot setup: apply-ksu.sh removes them, nothing ships them now
+    [[ ! -e vendor/extra/ksu ]] || fail "vendor/extra/ksu is still in the tree (the SukiSU kit's; run apply-ksu.sh)"
 fi
 
 # eos_step (lib.sh): with EOS_KERNEL=gs-6.1 the kernel step is the kernel source's sync and
@@ -78,7 +78,7 @@ if [[ $EOS_KERNEL = gs-6.1 ]]; then
     # Before lunch, which runs build_kernel
     kernel_pinned
 elif [[ "${KERNEL_ONLY:-0}" = 1 ]]; then
-    echo "KERNEL_ONLY=1: $EOS_DEVICE builds no kernel (EOS_KERNEL=$EOS_KERNEL: its tree's prebuilt boot image) and no kernelsu.ko (EOS_KSU=$EOS_KSU): nothing to build"
+    echo "KERNEL_ONLY=1: $EOS_DEVICE builds no kernel (EOS_KERNEL=$EOS_KERNEL: its tree's prebuilt boot image): nothing to build"
     done=1; echo "MAKE_EXIT=0"; exit 0
 else
     eos_step make
@@ -144,16 +144,10 @@ else
         > "$EOS_STATE/kernel-manifest.xml" || fail "can't write $EOS_STATE/kernel-manifest.xml"
     echo "OK: $EOS_DEVICE's kernel is its tree's prebuilt boot image${pb:+ ($pb)}; nothing kernel-related to build"
 fi
-# Our own kernelsu.ko for a kernel built from source (its struct module is this build's); a
-# phone with Google's prebuilt GKI takes SukiSU's release module for its KMI (fetch-ksu.sh)
-if [[ $EOS_KSU = lkm && $EOS_KERNEL = gs-6.1 ]]; then
-    "$kit/ksu/tools/ksu-module.sh" "$top" || fail "ksu-module.sh failed"
-fi
 if [[ "${KERNEL_ONLY:-0}" = 1 ]]; then eos_step end; done=1; echo "MAKE_EXIT=0"; exit 0; fi
 
 eos_step make
-# Both passes must stamp the same build date and number, or pass 2 rebuilds every
-# partition whose build.prop changed (and names another zip after midnight)
+# One date and number for the whole build (and the zip's name)
 export BUILD_DATETIME=${BUILD_DATETIME:-$(date +%s)}
 export BUILD_NUMBER=${BUILD_NUMBER:-eng.$(whoami).$(date -ud "@$BUILD_DATETIME" +%Y%m%d.%H%M%S)}
 # Older builds' packages out of the way: after this run, out/ holds only this build's,
@@ -181,29 +175,23 @@ EOS_PREV_DEVICE=$(head -c 32 -- "$lastmake" 2>/dev/null | tr -cd 'a-z0-9-' || tr
 EOS_PREV_DEVICE=${EOS_PREV_DEVICE:--}
 printf '%s\n' "$EOS_DEVICE" > "$lastmake" 2>/dev/null || true
 echo "note: the make before this one in the tree was ${EOS_PREV_DEVICE/#-/unknown}'s"
-# Both names: the one the device tree's 0102 reads is EOS_KSU_INIT_BOOT_VAR (lib.sh)
-unset CHEETAH_KSU_INIT_BOOT EOS_KSU_INIT_BOOT
-if [[ $EOS_KSU = lkm ]]; then
-    rm -f -- "$K/init_boot-ksu.img" "$K/init_boot-stock.img"
-    echo "== make pass 1 (stock init_boot), BUILD_DATETIME $BUILD_DATETIME"
-    # Only what cheetah-ksu.sh reads, not the whole goal: EOS_KSU_INIT_BOOT_VAR changes the board
-    # config, so pass 2 runs Soong and Kati again and packages everything anyway. A phone with
-    # Google's prebuilt kernel copies its stock vendor_kernel_boot.img (a radio file) instead
-    # of building one
-    vkb=vendorkernelbootimage
-    [[ $EOS_KERNEL = gs-6.1 ]] || vkb=$O/vendor_kernel_boot.img
-    m -j"$(nproc)" bootimage initbootimage "$vkb" || fail "make pass 1 failed"
-    "$kit/ksu/tools/cheetah-ksu.sh" "$top" || fail "cheetah-ksu.sh failed"
-    export "$EOS_KSU_INIT_BOOT_VAR=$K/init_boot-ksu.img"
-    echo "== make pass 2 (SukiSU init_boot): m $goal"
-    m -j"$(nproc)" "$goal" || fail "make pass 2 failed"
-    pass="pass 2"
+unset EOS_WILD_BOOT
+if [[ $EOS_KSU = wild ]]; then
+    # The tree's own boot image (BOARD_PREBUILT_BOOTIMAGE without EOS_WILD_BOOT): Google's GKI,
+    # or on cheetah and husky the one build_kernel just made
+    sb=$(get_build_var BOARD_PREBUILT_BOOTIMAGE)
+    [[ -n $sb && -f $sb ]] || fail "BOARD_PREBUILT_BOOTIMAGE is '$sb', not a file: no stock boot image to build Wild's from"
+    "$kit/ksu/tools/wild-boot.sh" build "$sb" "$top" || fail "wild-boot.sh build failed"
+    export EOS_WILD_BOOT=$K/boot-wild.img
+    [[ "$(get_build_var BOARD_PREBUILT_BOOTIMAGE)" = "$EOS_WILD_BOOT" ]] \
+        || fail "the device tree doesn't take EOS_WILD_BOOT as its boot image (run apply-ksu.sh: ksu-patches 0101)"
+    echo "== make (Wild boot, stock init_boot): m $goal, BUILD_DATETIME $BUILD_DATETIME"
 else
-    # No SukiSU (EOS_KSU=none): one pass, the build's own init_boot ships
-    echo "== make (stock init_boot, no root: EOS_KSU=none): m $goal, BUILD_DATETIME $BUILD_DATETIME"
-    m -j"$(nproc)" "$goal" || fail "make failed"
-    pass="the build"
+    # No root (EOS_KSU=none): the build's own boot and init_boot ship
+    echo "== make (stock boot and init_boot, no root: EOS_KSU=none): m $goal, BUILD_DATETIME $BUILD_DATETIME"
 fi
+m -j"$(nproc)" "$goal" || fail "make failed"
+pass="the build"
 zips=()
 for z in "$O"/ExpressiveOS-*.zip; do if [[ -f $z ]]; then zips+=("$z"); fi; done
 if [[ $EOS_QUICK = 1 ]]; then
@@ -218,8 +206,10 @@ else
     [[ ${zips[0]##*/} == $want ]] || fail "$pass made ${zips[0]##*/}, want $want"
     [[ -f $tf ]] || fail "$pass kept no target-files zip ($tf): is patches/vendor_lineage/0003 in vendor/lineage?"
 fi
-if [[ $EOS_KSU = lkm ]]; then
-    "$kit/ksu/tools/ksu-check.sh" images "$top/$O" "$top" || fail "pass 2 didn't ship the SukiSU init_boot"
+if [[ $EOS_KSU = wild ]]; then
+    "$kit/ksu/tools/ksu-check.sh" images "$top/$O" "$top" || fail "the build didn't ship Wild's boot and the stock init_boot"
+    EOS_AVB_BOOT_KEY=$(get_build_var BOARD_AVB_BOOT_KEY_PATH) "$kit/ksu/tools/wild-boot.sh" stock "$top" \
+        || fail "wild-boot.sh stock failed"
 else
     # The init_boot it ships is the stock one: init, and no kernelsu.ko (an init_boot a KernelSU
     # build left in out/ would show here). Only those two files: its device nodes need root

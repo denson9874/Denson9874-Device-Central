@@ -67,7 +67,7 @@ for _v in "$EOS_DEVICE_TREE" "$EOS_BOARDCONFIG" "$EOS_VENDOR_DIR" "$EOS_RADIO_MK
 done
 unset _v
 _e() { [[ " $2 " == *" ${!1} "* ]] || fail "devices/$EOS_DEVICE.conf: $1 is '${!1}', not one of: $2"; }
-_e EOS_FIRMWARE_MODE "cache blobs images"; _e EOS_KERNEL "gs-6.1 prebuilt"; _e EOS_KSU "lkm none"
+_e EOS_FIRMWARE_MODE "cache blobs images"; _e EOS_KERNEL "gs-6.1 prebuilt"; _e EOS_KSU "wild none"
 _e EOS_V4A "0 1 aidl aidl-overlay"; _e EOS_SUPER_EMPTY "out factory"; _e EOS_FLASH_VKB "0 1"; _e EOS_SYSUI_ODEX "0 1"
 _e EOS_KMI "android14-6.1 android16-6.12"
 unset -f _e
@@ -75,10 +75,10 @@ unset -f _e
 # builds, packs and logs don't move; the other phones' sit beside them in the one tree
 EOS_PRODUCT_OUT=out/target/product/$EOS_DEVICE
 if [[ $EOS_DEVICE = cheetah ]]; then
-    EOS_STATE=out/eos EOS_KSU_OUT=out/ksu EOS_BUILD_LOG=$HOME/expressiveos-build.log EOS_KSU_INIT_BOOT_VAR=CHEETAH_KSU_INIT_BOOT
+    EOS_STATE=out/eos EOS_KSU_OUT=out/ksu EOS_BUILD_LOG=$HOME/expressiveos-build.log
 else
     EOS_STATE=out/eos-$EOS_DEVICE EOS_KSU_OUT=out/ksu-$EOS_DEVICE
-    EOS_BUILD_LOG=$HOME/expressiveos-build-$EOS_DEVICE.log EOS_KSU_INIT_BOOT_VAR=EOS_KSU_INIT_BOOT
+    EOS_BUILD_LOG=$HOME/expressiveos-build-$EOS_DEVICE.log
 fi
 
 # For the runner's expressiveos-progress (tools/eos-progress.py): a STEP line in the log as a
@@ -310,7 +310,7 @@ has_subject() {   # has_subject <dir> <subject>: the project's log has a commit 
 
 clean_env() {   # drop what a shell set up for another tree: soong_ui and envsetup follow these
     unset TOP ANDROID_BUILD_TOP ANDROID_PRODUCT_OUT ANDROID_HOST_OUT OUT OUT_DIR OUT_DIR_COMMON_BASE \
-        TARGET_PRODUCT TARGET_RELEASE TARGET_BUILD_VARIANT CHEETAH_KSU_INIT_BOOT EOS_KSU_INIT_BOOT KODIAK_PERSONAL \
+        TARGET_PRODUCT TARGET_RELEASE TARGET_BUILD_VARIANT CHEETAH_KSU_INIT_BOOT EOS_KSU_INIT_BOOT EOS_WILD_BOOT KODIAK_PERSONAL \
         KERNEL_REPO_PROJECT_OBJECTS_DIR KERNEL_REPO_PROJECTS_DIR
 }
 

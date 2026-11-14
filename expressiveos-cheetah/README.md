@@ -9,10 +9,10 @@ ExpressiveOS is its own ROM, built from its own sources like any standard custom
   (`~/releases/expressiveos-cheetah`), SourceForge folder (`expressiveos/cheetah`) and R2 prefix
   (`expressiveos/cheetah/`), all set in `eos.conf` and `devices/cheetah.conf`;
 - a clean install only: updates from other ROMs never install on it;
-- root out of the box with SukiSU (Daryl, 2026-11-14): `EOS_KSU=lkm` in every phone's
-  `devices/<device>.conf` builds SukiSU into `init_boot` and installs its manager on the first boot,
-  SukiSU only, no susfs or Zygisk ([`ksu/`](ksu/README.md)); the build's stock `init_boot` ships beside
-  each zip for users who want no root. ViPER4Android RE ([`viper4android/`](viper4android/README.md)), its
+- root out of the box with Wild Kernels' BakaSU kernel, susfs built in (Daryl, 2026-11-14):
+  `EOS_KSU=wild` in every phone's `devices/<device>.conf` ships Wild's kernel in `boot.img`, and no
+  manager: users install BakaSU's APK, release or nightly ([`ksu/`](ksu/README.md)); the stock `boot`
+  ships beside each zip for users who want no root. ViPER4Android RE ([`viper4android/`](viper4android/README.md)), its
   own boot animation ([`bootanimation/`](bootanimation/README.md)), its own wallpaper, Bloom, on a
   clean install's first screen ([`wallpapers/`](wallpapers/README.md)), and Daryl's Expressive
   Launcher as the default Home and Recents app, with Pixel Launcher next to it for the launcher
@@ -101,13 +101,13 @@ A folder is named after its project's path with `_` for `/`; a project whose nam
 
 1. **Disk and packages.** A full-history tree with `out/` and `out-kernel/` needs about 450 GB
    (`setup.sh` checks; 620 GB were free on 2026-10-26). Every host package the scripts need is
-   installed; `ksu/tools/ksu-module.sh` and `cheetah-ksu.sh` check theirs.
+   installed.
 2. **The kit.** Put this folder on the server as `~/expressiveos-cheetah`, or
    run it from a checkout of this repo: the scripts find their files next to themselves. `git am` needs a
    committer identity (`git config --global user.name` and `user.email`).
 3. **The tree:** `~/expressiveos-cheetah/setup.sh` (the first sync downloads a few hundred GB).
 4. **The keys**: never made again. Restore them from the backup (next section).
-5. **SukiSU:** `~/expressiveos-cheetah/ksu/fetch-ksu.sh`, again after every change to `ksu/ksu.conf`
+5. **Wild Kernels:** `~/expressiveos-cheetah/ksu/fetch-ksu.sh`, again after every change to `ksu/ksu.conf`
    (the build runs it too). ViPER4Android and Expressive Launcher fetch their own files during the build.
 
 Or from the runner (`.github/workflows/kodiak-build.yml`, with `tree_ref` the branch to install the kit
@@ -187,13 +187,13 @@ In tmux. A first build runs longer than the runner job's 4-hour limit.
 It waits for `~/.expressiveos.lock`, then the tree lock, `~/.expressiveos-tree.lock`, and through 1.1
 its old name, `~/.evolution-tree.lock`, and holds them to the end
 (never set `EOS_HOLDS_LOCK` yourself: the script checks that its own run holds them).
-`tools/eos-make.sh`, `ksu/tools/ksu-module.sh` and `cheetah-ksu.sh` run alone take the same locks. It runs `prepare.sh`, the key checks,
+`tools/eos-make.sh` run alone takes the same locks. It runs `prepare.sh`, the key checks,
 the three kits, checks the name and version the build will carry,
-records the sources, runs the two make passes (`tools/eos-make.sh`) and `eos-verify.sh`. Everything
+records the sources, runs the make (`tools/eos-make.sh`) and `eos-verify.sh`. Everything
 also goes to `~/expressiveos-build.log` (another phone's: `~/expressiveos-build-<device>.log`; the run
 before is kept as `.1`); the last line is `BUILD_EXIT=0` or `BUILD_EXIT=1`.
 
-- `KERNEL_ONLY=1`: stop after `build_kernel` and `kernelsu.ko`.
+- `KERNEL_ONLY=1`: stop after `build_kernel`.
 - `EOS_KERNEL_SYNC=1`: sync the kernel source to `pins/kernel.xml` again. Otherwise only the first
   build syncs it, and later ones check it's still on the pins.
 - `EOS_INSTALLCLEAN=1`: start the make with `m installclean` (the runner's `installclean`). A
@@ -299,12 +299,12 @@ package's sha256, which `eos-pack.sh` needs),
 `target-files.ok` (the sha256 of the target-files zip it was made from, which `m bacon` leaves in
 `obj/PACKAGING/target_files_intermediates/`),
 `manifest.xml` (the tree's `repo manifest -r`), `kernel-manifest.xml` (the kernel's) and `sources.txt`
-(the kit's commit, the SukiSU and Expressive Launcher sources, and each patched project's
+(the kit's commit, the Wild Kernels release and Expressive Launcher sources, and each patched project's
 upstream revision and HEAD).
 They're the record of what the build was made from, for the GPL source offer.
 A quick build (`EOS_QUICK=1`) writes `quick.ok` in place of `build.ok` and `target-files.ok`: the
 sha256 of every file its fastboot zip takes from out/ (`fastboot_files` in `lib.sh`) and, with
-SukiSU, of the stock init_boot.
+root, of the stock boot.
 
 `eos-verify.sh` checks, without a phone: the package (the build's own, A/B, for cheetah), the identity
 (cheetah, Pixel 7 Pro, user build, every kit patch in, the Updater on ExpressiveOS's feed), the keys
@@ -312,8 +312,8 @@ SukiSU, of the stock init_boot.
 also hold LineageOS's release certificate, which Evolution X adds there, and nothing else; the payload is
 signed with the pinned OTA key, `delta_generator` refuses AOSP's test key for it, and update_engine and
 recovery's update_engine_sideload carry the signature and downgrade checks), the payload (every
-partition plus the nine firmware images, its init_boot is out/'s SukiSU one, its boot, init_boot,
-vbmeta and vbmeta_system are ExpressiveOS's, patch levels), SukiSU and the stock init_boot,
+partition plus the nine firmware images, its boot carries Wild's kernel, its boot, init_boot,
+vbmeta and vbmeta_system are ExpressiveOS's, patch levels), Wild Kernels and the stock boot,
 ViPER4Android, Expressive Launcher (the only launcher, with its overlays and licences), the boot animation, the
 wallpaper, the branding (`tools/brand-check.py`: no app, framework string or
 tombstone header names Evolution X, apart from the few links it lists on purpose), the firmware and the
@@ -323,7 +323,7 @@ product and the rest, isn't byte for byte its copy there: an incremental OTA fro
 patch it on phones installed from the fastboot zip, so `eos-pack.sh --release` refuses such a build,
 though it still packs as a candidate; a note lists the other images, which target-files signs again
 with its own AVB salts and an incremental writes whole). Another phone's build is checked the same way
-against its `devices/<device>.conf`: its model, firmware, and what it ships or doesn't (SukiSU,
+against its `devices/<device>.conf`: its model, firmware, and what it ships or doesn't (root,
 ViPER4Android). A quick build has no package, payload or target-files: `eos-verify.sh` (and
 `eos-keys-check.sh out`) checks out/'s own vbmeta, init_boot, boot and vbmeta_system and their
 patch levels instead, that out/ holds no package or target-files zip, and everything else as above,
@@ -400,7 +400,7 @@ tree and pushes nothing. Against LineageOS's manifest today it shows:
   1.0 sources' base): projects added, removed, moved to a fork;
 - the security patch level before and after (our release config's flag in `vendor/lineage`, which
   LineageOS bumps monthly);
-- the kernel's 18 projects against `pins/kernel.xml` (Google's GKI tag), and SukiSU's newest
+- the kernel's 18 projects against `pins/kernel.xml` (Google's GKI tag), and Wild Kernels' newest
   release against `ksu/ksu.conf`.
 
 It also checks the manifest's text as plan will (the tree's, and GitHub's where that's newer). The report
@@ -611,12 +611,12 @@ cheetah's, as below; another phone's run the same with its own folders and board
 
 1. `tools/eos-pack.sh` packs the candidate into `~/releases/expressiveos-cheetah/check/`:
    `<name>-fastboot.zip` (what `fastboot-info.txt` flashes, with `android-info.txt` saying
-   `require board=cheetah` only, so it can't land on a Pixel 7), `<name>-init_boot-stock.img` for users
+   `require board=cheetah` only, so it can't land on a Pixel 7), `<name>-boot-stock.img` for users
    who want no root, `<name>-target_files.zip` (what the OTA package was made from), their `.sha256`,
    and the `out/eos/` records.
 2. Back up the phone. Then a clean install: unlock the bootloader, flash the latest stock firmware,
    then `fastboot -w update <name>-fastboot.zip`.
-3. Test on the phone: it boots, the SukiSU manager shows "Working", ViPER4Android's driver loads
+3. Test on the phone: it boots, the BakaSU manager (installed by hand) shows "Working", ViPER4Android's driver loads
    (`viper4android/tools/v4a-check.sh device`), Expressive Launcher is Home and Recents with gestures
    working (`launcher/tools/launcher-check.sh device`), the boot animation plays, the phone starts on Bloom
    with blue system colours, the Updater shows
@@ -639,7 +639,7 @@ cheetah's, as below; another phone's run the same with its own folders and board
 For a phone nobody has tested a build on yet, `tools/eos-pack.sh --testers` (the runner's
 `expressiveos-pack` with query `testers`, only when Daryl says so) uploads `check/`'s candidate for
 testers: no `.device-ok`, but the keys pinned and its images its target-files', as for a release.
-The fastboot zip, its `.sha256` and (with SukiSU) the stock init_boot go to SourceForge's
+The fastboot zip, its `.sha256` and (with root) the stock boot go to SourceForge's
 `expressiveos/<device>/testers/` and `~/releases/expressiveos-<device>/testers/`, never over another
 file; never to the release folder itself, target-files or the feed. It ends with
 `UPLOADED_TESTERS <url>`.
@@ -649,7 +649,7 @@ file; never to the release folder itself, target-files or the feed. It ends with
 To try a change on a phone, `EOS_QUICK=1 tools/eos-images.sh` (the runner's `expressiveos-build`
 with query `quick`, with `try=` or `device=` as usual) builds the images only, about 5 minutes
 sooner. `tools/eos-pack.sh` then packs it by itself as a quick candidate:
-`check/<name>-quick-fastboot.zip` (and `<name>-quick-init_boot-stock.img` with SukiSU), flashed
+`check/<name>-quick-fastboot.zip` (and `<name>-quick-boot-stock.img` with root), flashed
 the same way (step 2), with its `.sha256` and `.pack-ok` (`build quick`). It replaces `check/`'s
 candidate, as any candidate does, and it is never released or sent to testers: with no target-files,
 no incremental OTA could update phones installed from it, and a release must be the very zip that was
@@ -721,7 +721,7 @@ uploads nothing. The packages take a few GB in `ota/`; once they're on R2 an old
 `EOS_DEVICE` picks the phone, cheetah unless set: cheetah (Pixel 7 Pro), husky (Pixel 8 Pro), kodiak
 (Pixel 11 Pro XL), grizzly (Pixel 11 Pro), cubs (Pixel 11) and yogi (Pixel 11 Pro Fold). Each has a
 `devices/<device>.conf` holding what differs between them: lunch target, model, release and upload
-folders, device tree, vendor and firmware sources, kernel, and the SukiSU and ViPER4Android
+folders, device tree, vendor and firmware sources, kernel, and the Wild Kernels and ViPER4Android
 switches ([`devices/`](devices/README.md) lists the keys; the boot animation, the wallpaper and Expressive
 Launcher go on every phone, with no switch). The keys, feed, manifest and version stay
 `eos.conf`'s, one set for all of them, and so does the tree, `~/expressiveos`. cheetah's records stay
@@ -731,7 +731,7 @@ where they always were; another phone keeps its own beside them:
 |---|---|---|
 | Build output | `out/target/product/cheetah` | `out/target/product/<device>` |
 | Records (`build.ok`, `sources.txt`, ...) | `out/eos/` | `out/eos-<device>/` |
-| SukiSU's work | `out/ksu/` | `out/ksu-<device>/` |
+| Wild Kernels' work (boot-wild, boot-stock) | `out/ksu/` | `out/ksu-<device>/` |
 | Build log | `~/expressiveos-build.log` | `~/expressiveos-build-<device>.log` |
 | Releases; SourceForge and R2 | `~/releases/expressiveos-cheetah`; `expressiveos/cheetah` | `~/releases/expressiveos-<device>`; `expressiveos/<device>` |
 
@@ -759,10 +759,10 @@ build holds `~/.expressiveos.lock`).
 
 - **husky** builds like cheetah: LineageOS's husky, shusky and zuma trees with TheMuppets' blobs (its
   firmware is that vendor repo's own), and the same gs-6.1 kernel source and GKI `boot.img` as cheetah,
-  so the same self-built SukiSU module ([`ksu/`](ksu/README.md)). Its audio effects run on the AIDL effect HAL, so it gets ViPER4Android's AIDL driver (`EOS_V4A=aidl`).
+  so the same Wild 6.1.162 kernel ([`ksu/`](ksu/README.md)). Its audio effects run on the AIDL effect HAL, so it gets ViPER4Android's AIDL driver (`EOS_V4A=aidl`).
 - **The Pixel 11s** (kodiak, grizzly, cubs, yogi) run Google's stock kernel (the factory image's
   android16-6.12 GKI `boot.img`, prebuilt) and stock vendor, vendor_dlkm, system_dlkm and dtbo images:
-  SukiSU's release android16-6.12 module goes into the build's own init_boot ([`ksu/`](ksu/README.md)). ViPER4Android's AIDL driver reaches the
+  Wild's android16-6.12 kernel replaces the GKI's in boot ([`ksu/`](ksu/README.md)). ViPER4Android's AIDL driver reaches the
   read-only stock vendor through `/product/vendor_overlay`, laid over it at boot (`EOS_V4A=aidl-overlay`,
   kodiak first; [`viper4android/`](viper4android/README.md)). Their vendor blobs, `vendor/google/<device>`, aren't in
   ExpressiveOS's manifest (Google's files, never pushed anywhere): the build server's own repo of
@@ -774,7 +774,7 @@ build holds `~/.expressiveos.lock`).
   `require board=<device>` only (the factory zip's `android-info.txt` names all four).
 
 Testing is the same gate, on a phone of that model (`check/<zip>.device-ok`), less what it doesn't ship
-(SukiSU, ViPER4Android); until someone has tested one, `eos-pack.sh --testers` (Test and
+(root, ViPER4Android); until someone has tested one, `eos-pack.sh --testers` (Test and
 release) gets a candidate to testers.
 
 ## Disk
@@ -799,7 +799,7 @@ too. An older release's can go once its `.uploaded` marker is there.
   even when it streams one, but that has to be seen on a 1.0 phone first:
   `update_engine_client --verify` must refuse an Evolution X cheetah OTA's metadata
   (`kDownloadMetadataSignatureMismatch`) and take ExpressiveOS's ("Payload is applicable"). It writes
-  no partition; root comes from SukiSU. A user build doesn't install `update_engine_client`, so
+  no partition; root comes from Wild Kernels' BakaSU kernel. A user build doesn't install `update_engine_client`, so
   build it in the same tree (`m update_engine_client`) and copy
   `out/target/product/cheetah/system/bin/update_engine_client` out. Then delete it there, to keep out/'s
   system folder as the build made it (no rebuild: system.img packs only the build's own file list, so it

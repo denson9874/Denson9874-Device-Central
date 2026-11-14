@@ -190,7 +190,7 @@ AIDL driver over Google's stock vendor, above). So:
 
 ## How to run
 
-On the build server, with the kit copied to `~/expressiveos-cheetah` (the SukiSU part sits next
+On the build server, with the kit copied to `~/expressiveos-cheetah` (the root part sits next
 to it in `ksu/`):
 
 ```bash

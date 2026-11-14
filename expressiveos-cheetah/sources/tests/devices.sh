@@ -173,8 +173,8 @@ mv "$T/gh/LineageOS/android_device_google_zuma.git" "$T/gh/LineageOS/zuma-gone.g
 mv "$T/gh/TheMuppets/proprietary_vendor_google_husky.git" "$T/gh/TheMuppets/vh-gone.git"
 out=$(check 2>&1); rc=$?
 outs=$(section "Projects outside LineageOS's manifest" "$out")
-# (the test world can't reach SukiSU's GitHub: its line is its only problem)
-only_ksu() { [[ -z $(section "Couldn't check" "$1" | grep -vE '^SukiSU: |^$') ]]; }
+# (the test world can't reach Wild Kernels' GitHub: its line is its only problem)
+only_ksu() { [[ -z $(section "Couldn't check" "$1" | grep -vE '^Wild Kernels: |^$') ]]; }
 want "check rc $rc, or problems besides KernelSU's" '[[ $rc = 0 ]] && has "$out" "UPDATE_CHECK=" && only_ksu "$out"'
 want "no outside block with 2 pinned" 'has "$out" "== Projects outside LineageOS'"'"'s manifest (4): 2 pinned (no upstream: never move), 2 follow their own upstream, unreviewed (1 move)"'
 want "no shusky-kernels move" 'has "$outs" "device/google/shusky-kernels <- android_device_google_shusky-kernels lineage-24.0: 1 new commit"'

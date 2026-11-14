@@ -6,7 +6,7 @@
 #      (vendor/expressiveos-priv/keys; vendor/evolution-priv/keys before 1.1's move) and the
 #      build will sign with them, not with test keys or Evolution X's;
 #   3. the kits: ksu/fetch-ksu.sh (checks what it downloaded before, fetches only what's new
-#      in ksu.conf) and apply-ksu.sh on a phone with EOS_KSU=lkm (SukiSU),
+#      in ksu.conf) and apply-ksu.sh on a phone with EOS_KSU=wild (Wild Kernels),
 #      viper4android/apply-v4a.sh on one with EOS_V4A=1, aidl or aidl-overlay,
 #      bootanimation/apply-bootanim.sh, wallpapers/apply-wallpapers.sh,
 #      launcher/apply-launcher.sh (Expressive Launcher as default Home and Recents app);
@@ -20,7 +20,7 @@
 # Only a run that gets through all six writes build.ok and target-files.ok there (the
 # sha256 of the OTA package and of the target-files zip kept with it), which eos-pack.sh needs.
 # A quick one (EOS_QUICK=1: the images only, m droid; lib.sh) writes quick.ok instead (the
-# sha256 of every file the fastboot zip takes from out/, and with EOS_KSU=lkm the stock init_boot),
+# sha256 of every file the fastboot zip takes from out/, and with EOS_KSU=wild the stock boot),
 # which eos-pack.sh packs as a quick candidate to test on a phone, never to release.
 # Holds ~/.expressiveos.lock and the tree lock (~/.expressiveos-tree.lock, and through 1.1
 # its old name ~/.evolution-tree.lock; lib.sh's eos_lock) for the whole run, and first waits
@@ -93,12 +93,12 @@ trap 'rc=$?; rm -rf -- "$work"; [[ $done = 1 ]] || { echo "BUILD_EXIT=1"; exit $
 step "prepare.sh" 'PREPARE_OK.*' "$kit/prepare.sh" "$top"
 step "keys: tree" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" tree "$top"
 step "keys: build variables" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vars "$top"
-# SukiSU only where devices/<device>.conf turns it on (EOS_KSU=lkm)
-if [[ $EOS_KSU = lkm ]]; then
-    step "SukiSU downloads" 'FETCH_KSU_OK.*' "$kit/ksu/fetch-ksu.sh"
-    step "SukiSU" 'APPLY_KSU_OK.*' "$kit/ksu/apply-ksu.sh" "$top"
+# Root (Wild Kernels' BakaSU kernel) only where devices/<device>.conf turns it on (EOS_KSU=wild)
+if [[ $EOS_KSU = wild ]]; then
+    step "Wild downloads" 'FETCH_KSU_OK.*' "$kit/ksu/fetch-ksu.sh"
+    step "Wild" 'APPLY_KSU_OK.*' "$kit/ksu/apply-ksu.sh" "$top"
 else
-    echo "== SukiSU: off for $EOS_DEVICE (EOS_KSU=$EOS_KSU, devices/$EOS_DEVICE.conf): the build's own init_boot, no root"
+    echo "== Wild: off for $EOS_DEVICE (EOS_KSU=$EOS_KSU, devices/$EOS_DEVICE.conf): the build's own boot, no root"
 fi
 # ViPER4Android only where devices/<device>.conf turns it on: EOS_V4A=1, the HIDL driver
 # (gs201's HIDL effect HAL), aidl, the AIDL driver (husky's AIDL effect HAL), or aidl-overlay, the
@@ -144,13 +144,10 @@ pkgs=" $(var_of "$vars" PRODUCT_PACKAGES) "
 [[ $pkgs = *" ExpressiveLauncher "* ]] \
     || fail "$EOS_LUNCH doesn't install ExpressiveLauncher: launcher/launcher.mk's product list must name ${EOS_LUNCH%%-*}"
 echo "OK: $EOS_LUNCH installs ExpressiveLauncher, the default Home and Recents app"
-# Root exactly as devices/<device>.conf says, whatever the one tree all the phones share still
-# holds of earlier builds (vendor/extra): KernelSU Next's manager never, and SukiSU's package
-# (ksu/tree/Android.mk) only in the second make pass, which sets EOS_KSU_INIT_BOOT_VAR (each
-# phone's ksu-patches add it under that variable; ksu-check.sh manager checks the build has it)
+# No root manager ships, whatever the one tree all the phones share still holds of earlier
+# builds: users install BakaSU's APK themselves (ksu/ksu.conf's links)
 for m in KernelSUNext eos-sukisu; do
-    [[ $pkgs != *" $m "* ]] \
-        || fail "$EOS_LUNCH installs $m without a SukiSU init_boot: its device tree must add it only when $EOS_KSU_INIT_BOOT_VAR is set (ksu-patches 0101), KernelSU Next's never"
+    [[ $pkgs != *" $m "* ]] || fail "$EOS_LUNCH installs $m: no root manager ships (an old device tree or vendor/extra/ksu?)"
 done
 # vendor/extra/product.mk (apply-v4a.sh) has every product inherit viper4android.mk, whose
 # product filters must give each phone exactly its EOS_V4A's modules: the HIDL driver (1), the
@@ -170,7 +167,7 @@ for m in $v4a_not; do
     [[ $pkgs != *" $m "* ]] || fail "$EOS_LUNCH would install $m, but devices/$EOS_DEVICE.conf has EOS_V4A=$EOS_V4A: viper4android.mk adds it for the wrong products"
 done
 if [[ $EOS_V4A = 0 ]]; then
-    echo "OK: $EOS_LUNCH installs no ViPER4Android, as devices/$EOS_DEVICE.conf says (root: EOS_KSU=$EOS_KSU, added in the second make pass)"
+    echo "OK: $EOS_LUNCH installs no ViPER4Android, as devices/$EOS_DEVICE.conf says (root: EOS_KSU=$EOS_KSU)"
 else
     echo "OK: $EOS_LUNCH installs ViPER4Android's EOS_V4A=$EOS_V4A modules: $v4a_want"
 fi
@@ -216,10 +213,10 @@ fi
     echo "ExpressiveOS $EOS_VERSION $EOS_BUILD_TYPE, $EOS_DEVICE, $(date -u '+%F %T') UTC"
     # A copy the runner installed (rsync, no .git) names the commit it came from
     echo "kit: $(kit_version)"
-    if [[ $EOS_KSU = lkm ]]; then
-        echo "SukiSU: $(sed -n 's/^version=//p' "$kit/ksu/ksu.conf") $(sed -n 's/^src_commit=//p' "$kit/ksu/ksu.conf")"
+    if [[ $EOS_KSU = wild ]]; then
+        echo "Wild Kernels: $(sed -n 's/^version=//p' "$kit/ksu/ksu.conf") $(sed -n "s/^zip_$EOS_KMI=//p" "$kit/ksu/ksu.conf")"
     else
-        echo "SukiSU: none (EOS_KSU=$EOS_KSU)"
+        echo "Wild Kernels: none (EOS_KSU=$EOS_KSU)"
     fi
     # GPL-3.0-or-later code ships in it (launcher/README.md, "Licence and credits")
     echo "Expressive Launcher: $(sed -n 's/^EL_VERSION=//p' "$kit/launcher/launcher.conf") ($(sed -n 's/^EL_VERSION_CODE=//p' "$kit/launcher/launcher.conf")), source $(sed -n 's/^EL_SRC=//p' "$kit/launcher/launcher.conf") $(sed -n 's/^EL_COMMIT=//p' "$kit/launcher/launcher.conf")"
@@ -255,7 +252,7 @@ if [[ $EOS_QUICK = 1 ]]; then
         printf '%s\n' "${files[@]}" | grep -qxF -- "$need" || fail "$EOS_PRODUCT_OUT/fastboot-info.txt doesn't flash ${need%.img}"
     done
     files=("${files[@]/#/$EOS_PRODUCT_OUT/}")
-    [[ $EOS_KSU != lkm ]] || files+=("$EOS_KSU_OUT/init_boot-stock.img")
+    [[ $EOS_KSU != wild ]] || files+=("$EOS_KSU_OUT/boot-stock.img")
     for f in "${files[@]}"; do [[ -f $f ]] || fail "no $f (eos-verify.sh checked it)"; done
     { sha256sum -- "${files[@]}" > "$EOS_STATE/.quick.ok.part" && mv -f -- "$EOS_STATE/.quick.ok.part" "$EOS_STATE/quick.ok"; } \
         || fail "can't write $EOS_STATE/quick.ok"

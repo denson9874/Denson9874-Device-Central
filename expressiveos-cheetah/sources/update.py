@@ -24,7 +24,7 @@
 # Then what LineageOS's manifest itself changed since --lineage-base (projects added, removed,
 # moved to another repo or branch; Google's AOSP tag), the platform security patch level before
 # and after, the kernel (the kit's pins/kernel.xml against LineageOS's gs-6.1 kernel manifest
-# today) and SukiSU's newest release against ksu/ksu.conf. Google's
+# today) and Wild Kernels' newest release against ksu/ksu.conf. Google's
 # factory images (cheetah's firmware and vendor blobs) aren't checked here.
 #
 # Ends with UPDATE_CHECK=OK, or UPDATE_CHECK=INCOMPLETE and what couldn't be checked.
@@ -715,13 +715,13 @@ def check(a):
     except (ET.ParseError, RecursionError, KeyError, ValueError, OSError) as e:
         problems.append(f"kernel: {type(e).__name__}: {e}")
 
-    # SukiSU: newest release tag (v4.3.0, v4.3.0-r2...)
+    # Wild Kernels: newest release tag (r22, r23...)
     out()
-    out("== SukiSU (ksu/ksu.conf)")
-    for label, url, have in () if ksu is None else (("SukiSU", ksu.get("src_url"), ksu.get("version")),):
+    out("== Wild Kernels (ksu/ksu.conf)")
+    for label, url, have in () if ksu is None else (("Wild Kernels", ksu.get("src_url"), ksu.get("version")),):
         try:
-            tags = re.findall(r"refs/tags/(v?\d+(?:\.\d+)+(?:-r\d+)?)$", git("ls-remote", "--tags", url, timeout=180).stdout, re.M)
-            newest = max(tags, key=lambda t: tuple(int(x) for x in re.split(r"[.]|-r", t.lstrip("v"))) + ((0,) if "-r" not in t else ())) if tags else None
+            tags = re.findall(r"refs/tags/(r\d+)$", git("ls-remote", "--tags", url, timeout=180).stdout, re.M)
+            newest = max(tags, key=lambda t: int(t[1:])) if tags else None
             out(f"{label}: ksu.conf has {have}, newest release tag {newest}" + ("" if newest == have else " (newer)"))
         except (Fail, ValueError) as e:
             problems.append(f"{label}: {e}")
