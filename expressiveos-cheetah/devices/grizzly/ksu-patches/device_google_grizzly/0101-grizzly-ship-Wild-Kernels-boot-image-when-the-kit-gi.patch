@@ -1,19 +1,21 @@
-From f98bc407cb6aa958ddd8fc8e461ba1a1efa25ff1 Mon Sep 17 00:00:00 2001
+From 44309ee0ebd9beda677f1a9445f83ed75d74111e Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
-Date: Sun, 15 Nov 2026 00:13:15 +0100
+Date: Sun, 15 Nov 2026 00:29:29 +0100
 Subject: [PATCH] grizzly: ship Wild Kernels' boot image when the kit gives one
 
 ExpressiveOS is rooted out of the box with Wild Kernels' GKI, BakaSU and
 susfs built in (Daryl, 2026-11-14). The kit builds this tree's boot image
 again around Wild's kernel and sets EOS_WILD_BOOT to it: the build then
-takes it as BOARD_PREBUILT_BOOTIMAGE and signs it with the boot AVB key.
+takes it as BOARD_PREBUILT_BOOTIMAGE and signs it with the boot AVB key,
+with the kernel VINTF check off (Wild's release string isn't a GKI one).
 Without the variable nothing changes. No manager ships: users install
 the BakaSU APK they want.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  BoardConfig.mk | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ device.mk      | 8 ++++++++
+ 2 files changed, 17 insertions(+)
 
 diff --git a/BoardConfig.mk b/BoardConfig.mk
 index e207e2d..ec9e436 100644
@@ -31,6 +33,22 @@ index e207e2d..ec9e436 100644
 +# variable nothing changes. Last in the file, after everything that sets the boot image.
 +ifneq ($(EOS_WILD_BOOT),)
 +BOARD_PREBUILT_BOOTIMAGE := $(EOS_WILD_BOOT)
++endif
+diff --git a/device.mk b/device.mk
+index 8314a36..c36e653 100644
+--- a/device.mk
++++ b/device.mk
+@@ -149,3 +149,11 @@ $(call inherit-product, vendor/google/grizzly/grizzly-vendor.mk)
+ # Face unlock enrollment app's user types, from stock preinstalled-packages-tuscany.xml
+ PRODUCT_COPY_FILES += \
+     device/google/grizzly/configs/sysconfig/preinstalled-packages-faceenroll.xml:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/sysconfig/preinstalled-packages-faceenroll.xml
++
++# Wild Kernels' boot (EOS_WILD_BOOT, BoardConfig): its release, 6.x.y-androidNN-Wild, isn't a
++# GKI release string, so the build's kernel VINTF check can't tell its kernel FCM level and
++# fails. Off for that boot only: the kernel is Google's GKI of the same KMI with BakaSU and
++# susfs added, booted on a phone first. A product variable, so here and not in BoardConfig.
++ifneq ($(EOS_WILD_BOOT),)
++PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false
 +endif
 -- 
 2.43.0

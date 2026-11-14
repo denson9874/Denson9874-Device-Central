@@ -24,7 +24,8 @@ the release notes). `EOS_KSU=none` ships the stock boot and no root.
   and cmdline: `out/ksu*/boot-wild.img`. The make takes it as `BOARD_PREBUILT_BOOTIMAGE` through
   `EOS_WILD_BOOT` (each phone's device tree patch: `patches/device_google_pantah/0101` for cheetah,
   `../devices/<device>/ksu-patches/` for the others) and signs it with the tree's boot AVB key like
-  any prebuilt boot. One make pass.
+  any prebuilt boot, with the build's kernel VINTF check off for it (its release,
+  `6.x.y-androidNN-Wild`, isn't a GKI release string the check can read). One make pass.
 - **No root wanted.** After the make, `wild-boot.sh stock` signs the stock boot exactly as the build
   signed `boot.img` (same key, algorithm, rollback index and props): `out/ksu*/boot-stock.img`, which
   `eos-pack.sh` publishes beside the zip as `<name>-boot-stock.img`. Flashing it gives the same build
