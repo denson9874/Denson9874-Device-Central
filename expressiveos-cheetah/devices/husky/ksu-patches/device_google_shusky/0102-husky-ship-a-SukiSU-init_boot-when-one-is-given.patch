@@ -1,0 +1,33 @@
+From b9805949fdd896bddfd7010d006bff033efa2ac1 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 14 Nov 2026 19:20:57 +0100
+Subject: [PATCH 102/102] husky: ship a SukiSU init_boot when one is given
+
+The kit's second make pass sets EOS_KSU_INIT_BOOT to the init_boot it
+patched with SukiSU; the images and the OTA ship that one, signed with
+the tree's init_boot AVB key. Without the variable nothing changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ husky/BoardConfig.mk | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/husky/BoardConfig.mk b/husky/BoardConfig.mk
+index f7c77e9..21474b4 100644
+--- a/husky/BoardConfig.mk
++++ b/husky/BoardConfig.mk
+@@ -29,3 +29,11 @@ include $(VENDOR_PATH)/BoardConfigVendor.mk
+ # AOT code after every update and run interpreted/JIT until background
+ # dexopt catches up (~183 MB, well inside super).
+ BOARD_USES_SYSTEM_OTHER_ODEX :=
++
++# SukiSU (ExpressiveOS only): expressiveos-cheetah/tools/eos-make.sh builds once, patches that
++# build's init_boot with SukiSU (ksu/tools/cheetah-ksu.sh), then builds again with
++# EOS_KSU_INIT_BOOT set, so the images and the OTA ship the patched init_boot (re-signed with
++# the tree's init_boot AVB key like a built one).
++ifneq ($(EOS_KSU_INIT_BOOT),)
++BOARD_PREBUILT_INIT_BOOT_IMAGE := $(EOS_KSU_INIT_BOOT)
++endif
+-- 
+2.43.0
+

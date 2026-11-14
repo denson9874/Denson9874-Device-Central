@@ -1,0 +1,18 @@
+# ExpressiveOS: install SukiSU's manager once, on the first boot with SukiSU loaded.
+# Installed to /product/etc/init by LOCAL_INIT_RC on the eos-sukisu module (Android.mk), so it
+# ships exactly when SukiSU does; ksu-firstboot.sh says what it does.
+#
+# seclabel u:r:ksu:s0: the domain SukiSU's kernelsu.ko adds to the live policy (permissive), the
+# one its own init.rc lines run /data/adb/ksud in (kernel/selinux/rules.c). On a stock init_boot
+# (no kernelsu.ko, a user who flashed the stock one for no root) that context doesn't exist:
+# setexeccon fails in the forked child, which exits, and nothing is installed.
+
+service eos_ksu_bc /system/bin/sh /product/etc/eos/ksu-firstboot.sh
+    user root
+    group root system
+    seclabel u:r:ksu:s0
+    oneshot
+    disabled
+
+on property:sys.boot_completed=1
+    start eos_ksu_bc

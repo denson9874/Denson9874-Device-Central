@@ -13,7 +13,7 @@
 #           files, never pushed anywhere): the build server's own repo of them is in the tree
 #           (copied there on 2026-11-02, before the old trees were deleted), only read here;
 #           eos-images.sh records its commit in sources.txt.
-# eos-images.sh runs this before the ViPER4Android, boot animation, wallpaper and launcher
+# eos-images.sh runs this before the SukiSU, ViPER4Android, boot animation, wallpaper and launcher
 # kits.
 #
 #   prepare.sh [top]      # default ~/expressiveos

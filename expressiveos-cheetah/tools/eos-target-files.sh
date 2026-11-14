@@ -14,7 +14,8 @@
 #      either key folder: vendor/expressiveos-priv since 1.1, vendor/evolution-priv before (the
 #      1.0 releases' target-files, an incremental's base, keep the old one; the same key);
 #   2. it holds an image (IMAGES/ or RADIO/) of every partition the package's payload writes;
-#   3. its init_boot carries out/'s ramdisk: a WARNING says when it isn't;
+#   3. its init_boot carries out/'s SukiSU ramdisk (pass 2's), on a phone with
+#      SukiSU (EOS_KSU=lkm); on the others a WARNING says when its ramdisk isn't out/'s;
 #   4. for incrementals: the images of the dynamic partitions (system, vendor, product...:
 #      misc_info.txt's dynamic_partition_list, what an incremental patches block by block)
 #      are the fastboot zip's (out/'s) byte for byte: patches/device_google_gs201/0005 has
@@ -99,12 +100,15 @@ for i in init_boot vbmeta vbmeta_system vbmeta_vendor; do
 done
 ramdisk() { "$H/unpack_bootimg" --boot_img "$1" --out "$2" > /dev/null || fail "can't unpack $1"; }
 ramdisk "$T/img/init_boot.img" "$T/ib-tf"; ramdisk "$O/init_boot.img" "$T/ib-out"
-# init_boot is the build's own, which target-files packs again from the same ramdisk files
-# rather than taking it as built
-if cmp -s -- "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk"; then
-    echo "OK: its init_boot carries out/'s ramdisk"
+if [[ $EOS_KSU = lkm ]]; then
+    cmp -s -- "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk" || fail "its init_boot ramdisk isn't out/'s (pass 2's SukiSU one)"
+    echo "OK: its init_boot carries out/'s SukiSU ramdisk"
+# No SukiSU on this phone (EOS_KSU=none): init_boot is the build's own, which
+# target-files packs again from the same ramdisk files rather than taking it as built
+elif cmp -s -- "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk"; then
+    echo "OK: its init_boot carries out/'s ramdisk (no SukiSU on $EOS_DEVICE)"
 elif cpio_same "$T/ib-tf/ramdisk" "$T/ib-out/ramdisk"; then
-    echo "OK: its init_boot ramdisk holds out/'s files, packed again"
+    echo "OK: its init_boot ramdisk holds out/'s files, packed again (no KernelSU: EOS_KSU=none)"
 else
     echo "WARNING: its init_boot ramdisk isn't out/'s: phones updated by OTA would get another init_boot ramdisk than the fastboot zip's (compare the two with unpack_bootimg)"
 fi

@@ -347,6 +347,12 @@ verdict "c. kernel project with a new linkfile: a 'change the pins by hand' note
 # d. The dry run: "has it already" only when every changed attribute matches. LineageOS changes
 #    external/foo's groups (the harness's), and development's clone-depth and linkfiles
 world
+for r in SukiSU-Ultra:v4.3.0-r2; do   # ksu.conf's repo, here (the dry run reads its tags)
+    w=$(mktemp -d "$T/w/k.XXXX"); git -C "$w" init -q -b main; echo x > "$w/x"; git -C "$w" add -A
+    git -C "$w" commit -qm x; git init -q --bare "$T/ksu/${r%%:*}.git"; git -C "$w" push -q "$T/ksu/${r%%:*}.git" main
+    git --git-dir="$T/ksu/${r%%:*}.git" tag "${r#*:}" main; rm -rf "$w"
+done
+sed -i "s#^src_url=.*#src_url=file://$T/ksu/SukiSU-Ultra.git#" "$kit/ksu/ksu.conf"
 newcommit "$T/gh/LineageOS/android.git" $LB "development: depth, a linkfile" \
   "sed -i 's#<project name=\"LineageOS/android_development\" path=\"development\" groups=\"developers\" />#<project name=\"LineageOS/android_development\" path=\"development\" groups=\"developers\" clone-depth=\"1\">\n    <linkfile src=\"dev.txt\" dest=\"DEV\" />\n  </project>#' snippets/lineage.xml" >/dev/null
 out=$(check 2>&1); rc=$?

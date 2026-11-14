@@ -1,0 +1,59 @@
+From 2d14db686b9664938026fa1a00e99605998e72af Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 14 Nov 2026 13:19:36 -0500
+Subject: [PATCH] yogi: ship SukiSU when the kit gives a SukiSU init_boot
+
+ExpressiveOS is rooted out of the box with SukiSU (Daryl, 2026-11-14).
+The kit builds once, patches that build's init_boot with SukiSU's
+release module for Google's android16-6.12 GKI, and builds again with
+EOS_KSU_INIT_BOOT set: the build then takes that init_boot (signed with
+the tree's init_boot key) and installs eos-sukisu, the manager APK and
+the first-boot service that installs it to /data. Without the variable
+nothing changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ BoardConfig.mk |  8 ++++++++
+ device.mk      | 10 ++++++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/BoardConfig.mk b/BoardConfig.mk
+index bfa2d22..34f46a8 100644
+--- a/BoardConfig.mk
++++ b/BoardConfig.mk
+@@ -110,6 +110,14 @@ AB_OTA_PARTITIONS += \
+ BOARD_FLASH_BLOCK_SIZE := 4096
+ BOARD_BOOTIMAGE_PARTITION_SIZE := 0x04000000
+ BOARD_INIT_BOOT_IMAGE_PARTITION_SIZE := 0x00800000
++
++# SukiSU (ExpressiveOS only): expressiveos-cheetah/tools/eos-make.sh builds once, patches that
++# build's init_boot with SukiSU (ksu/tools/cheetah-ksu.sh), then builds again with
++# EOS_KSU_INIT_BOOT set, so the images and the OTA ship the patched init_boot (signed with the
++# init_boot AVB key below like a built one)
++ifneq ($(EOS_KSU_INIT_BOOT),)
++BOARD_PREBUILT_INIT_BOOT_IMAGE := $(EOS_KSU_INIT_BOOT)
++endif
+ BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 0x04000000
+ BOARD_DTBOIMG_PARTITION_SIZE := 0x01000000
+ BOARD_PVMFWIMAGE_PARTITION_SIZE := 0x00100000
+diff --git a/device.mk b/device.mk
+index bc9eff5..e0fa68d 100644
+--- a/device.mk
++++ b/device.mk
+@@ -151,3 +151,13 @@ $(call inherit-product, vendor/google/yogi/yogi-vendor.mk)
+ # Face unlock enrollment app's user types, from stock preinstalled-packages-tuscany.xml
+ PRODUCT_COPY_FILES += \
+     device/google/yogi/configs/sysconfig/preinstalled-packages-faceenroll.xml:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/sysconfig/preinstalled-packages-faceenroll.xml
++
++# SukiSU (ExpressiveOS: root out of the box): its manager APK and the first-boot setup that
++# installs it to /data (vendor/extra/ksu, which ExpressiveOS's expressiveos-cheetah/ksu/apply-ksu.sh
++# stages). No app gets root until the user grants it in the manager. Only with a SukiSU init_boot
++# (EOS_KSU_INIT_BOOT, set by the kit when devices/yogi.conf has EOS_KSU=lkm), so a build without
++# root installs none of it.
++ifneq ($(EOS_KSU_INIT_BOOT),)
++PRODUCT_PACKAGES += \
++    eos-sukisu
++endif
+-- 
+2.56.0
+

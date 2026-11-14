@@ -1,0 +1,37 @@
+From 9a5f1bed8d875b53c25c40da3f3c43d6fc7dfb37 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 14 Nov 2026 19:20:57 +0100
+Subject: [PATCH 101/102] husky: install SukiSU's manager with a SukiSU
+ init_boot
+
+ExpressiveOS is rooted out of the box with SukiSU (Daryl, 2026-11-14).
+eos-sukisu carries the manager APK and a first-boot service that
+installs it to /data, where SukiSU's kernel crowns it. Only with a SukiSU
+init_boot (EOS_KSU_INIT_BOOT, which the kit sets for its second make pass).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ device-husky.mk | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/device-husky.mk b/device-husky.mk
+index a5629f1..812e003 100644
+--- a/device-husky.mk
++++ b/device-husky.mk
+@@ -103,3 +103,13 @@ PRODUCT_PACKAGES += \
+     SettingsOverlayStockHusky \
+     SystemUIOverlayStockHusky \
+     WifiOverlayStockHusky
++
++# SukiSU (ExpressiveOS: root out of the box): its manager APK and the first-boot setup that
++# installs it to /data (vendor/extra/ksu, which ExpressiveOS's expressiveos-cheetah/ksu/apply-ksu.sh
++# stages). No app gets root until the user grants it in the manager. Only with a SukiSU init_boot
++# (EOS_KSU_INIT_BOOT, set by the kit when devices/husky.conf has EOS_KSU=lkm), so a build without
++# root installs none of it.
++ifneq ($(EOS_KSU_INIT_BOOT),)
++PRODUCT_PACKAGES += \
++    eos-sukisu
++endif
+-- 
+2.43.0
+

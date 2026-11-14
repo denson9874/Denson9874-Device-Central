@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Pack an ExpressiveOS build of a phone (EOS_DEVICE, cheetah unless set; eos-images.sh) as a
-# `fastboot update` zip, the only way to install it (a clean flash). It ships no root: the
-# zip's init_boot is the build's stock one.
+# `fastboot update` zip, the only way to install it (a clean flash), with the stock init_boot
+# for users who want no root (EOS_KSU=lkm; with EOS_KSU=none the zip's own init_boot is the
+# stock one, and no separate image is published).
 #
 #   eos-pack.sh             # verify, then pack the candidate into ~/<EOS_RELEASES>/check
 #                           # (replaced each time). Right after eos-images.sh it takes that
@@ -17,7 +18,7 @@
 #
 # After a quick build (EOS_QUICK=1 eos-images.sh: the images only, m droid, no OTA package or
 # target-files; lib.sh), eos-pack.sh packs a quick candidate into check/ instead:
-# <name>-quick-fastboot.zip, to flash
+# <name>-quick-fastboot.zip (and with EOS_KSU=lkm <name>-quick-init_boot-stock.img), to flash
 # and test a change on a phone. It needs EOS_STATE's quick.ok (only a complete quick
 # eos-images.sh run writes it: the sha256 of every file the zip takes from out/, which must all
 # still match; with EOS_SUPER_EMPTY=factory its super_empty.img is the newest factory zip's, as
@@ -47,8 +48,8 @@
 # pinned (keys OK or UNPINNED), whether its images are its target-files' (incremental-base
 # OK or NO), the build (full or quick), the kit and the date. --testers works from check/
 # alone (out/ may be gone since): it needs the candidate's zip to match its .sha256 and
-# .pack-ok, a full build, and keys OK and incremental-base OK there, but no .device-ok; it uploads the zip and its .sha256
-# to <EOS_SF_DIR>/testers, copied to ~/<EOS_RELEASES>/testers, never over
+# .pack-ok, a full build, and keys OK and incremental-base OK there, but no .device-ok; it uploads the zip, its .sha256 and (EOS_KSU=lkm)
+# the stock init_boot to <EOS_SF_DIR>/testers, copied to ~/<EOS_RELEASES>/testers, never over
 # another file of the same name (-r2, -r3...), and never touches the release folder's own
 # files, the target-files or a feed. Only ever on that explicit flag.
 # The zip holds what out/fastboot-info.txt flashes (ROM partitions, super_empty: out/'s, or
@@ -246,6 +247,7 @@ if [[ "$mode" = --testers ]]; then
     NAME=${zips[0]##*/}
     [[ $NAME = ExpressiveOS-*-"$EOS_DEVICE"-*-fastboot.zip ]] || fail "$CHECK/$NAME isn't an ExpressiveOS $EOS_DEVICE fastboot zip"
     base=${NAME%-fastboot.zip}
+    STOCK=$base-init_boot-stock.img
     zsha=$(sha256sum -- "$CHECK/$NAME" | cut -d' ' -f1)
     [[ "$(cat -- "$CHECK/$NAME.sha256" 2>/dev/null)" = "$zsha  $NAME" ]] \
         || fail "$CHECK/$NAME isn't the zip $NAME.sha256 names (changed since it was packed?): run eos-pack.sh again"
@@ -261,10 +263,9 @@ if [[ "$mode" = --testers ]]; then
         || fail "the candidate was packed with ExpressiveOS's keys '$(po keys)', not pinned in eos.conf (KEYS_CHECK=OK) as testers' builds need (README.md, \"Keys\"): put back the pins eos.conf was committed with (never pins for other keys), then run eos-pack.sh again"
     [[ "$(po incremental-base)" = OK ]] \
         || fail "the fastboot zip's images aren't its target-files' ($PO: incremental-base '$(po incremental-base)'): no incremental OTA could update phones installed from it"
-    # Never a rooted candidate: a .pack-ok from a kit that still built KernelSU Next says how
-    # that candidate was built ("ksu lkm" for a rooted one); ExpressiveOS ships no root
-    [[ "$(po ksu)" = "" || "$(po ksu)" = none ]] \
-        || fail "the candidate was packed with KernelSU Next (ksu '$(po ksu)' in $PO), and ExpressiveOS ships no root: build and pack one with today's kit first"
+    # Rooted or not as the phone's .conf says now: the checks below and the stock image go by it
+    [[ "$(po ksu)" = "$EOS_KSU" ]] \
+        || fail "the candidate was packed with EOS_KSU='$(po ksu)', but devices/$EOS_DEVICE.conf has EOS_KSU=$EOS_KSU: build and pack one with today's setting first"
     # ...and its signer is the AVB key eos.conf pins today (keys restored or rotated since the pack)
     unzip -p -- "$CHECK/$NAME" vbmeta.img > "$T/vbmeta.img" 2> /dev/null || fail "can't read $NAME's vbmeta.img"
     "$kit/tools/eos-keys-check.sh" vbmeta "$T/vbmeta.img" "$top" > "$T/keys.log" 2>&1 || true
@@ -274,6 +275,10 @@ if [[ "$mode" = --testers ]]; then
     unzip -p -- "$CHECK/$NAME" android-info.txt > "$T/android-info.txt" 2> /dev/null || fail "can't read $NAME's android-info.txt"
     { [[ "$(grep -cE '^(require )?board=' "$T/android-info.txt")" = 1 ]] && grep -qx "require board=$EOS_BOARD" "$T/android-info.txt"; } \
         || fail "$NAME's android-info.txt doesn't say 'require board=$EOS_BOARD' only"
+    if [[ $EOS_KSU = lkm ]]; then
+        [[ -f $CHECK/$STOCK && "$(cat -- "$CHECK/$STOCK.sha256" 2>/dev/null)" = "$(sha256sum -- "$CHECK/$STOCK" | cut -d' ' -f1)  $STOCK" ]] \
+            || fail "$CHECK/$STOCK is missing or isn't the image its .sha256 names: run eos-pack.sh again"
+    fi
     echo "OK: $NAME (sha256 $zsha), packed $(po date) by kit $(po kit): keys pinned, its images its target-files'"
 
     TD=$DEST/testers
@@ -282,11 +287,11 @@ if [[ "$mode" = --testers ]]; then
     printf -- '-mkdir %s\n-mkdir %s\n-mkdir %s/testers\ncd %s/testers\nbye\n' "${EOS_SF_DIR%/*}" "$EOS_SF_DIR" "$EOS_SF_DIR" "$EOS_SF_DIR" \
         | sf > "$T/sftp.log" 2>&1 || { tail -5 "$T/sftp.log" >&2; fail "can't reach $EOS_SF_DIR/testers on SourceForge"; }
     # Never another file under a name testers may already have, here or on SourceForge: a
-    # different zip under an existing name gets -r2, -r3...
-    TREL=$NAME; r=2
-    while taken "testers/$TREL" "$CHECK/$NAME"; do
+    # different zip or stock image under an existing name gets -r2, -r3...
+    TREL=$NAME; TSTOCK=$STOCK; r=2
+    while taken "testers/$TREL" "$CHECK/$NAME" || { [[ $EOS_KSU = lkm ]] && taken "testers/$TSTOCK" "$CHECK/$STOCK"; }; do
         (( r <= 20 )) || fail "$base-r2 to -r20 are all taken (here or on SourceForge); look at $TD and $EOS_SF_DIR/testers"
-        TREL=$base-r$r-fastboot.zip; r=$((r + 1))
+        TREL=$base-r$r-fastboot.zip; TSTOCK=$base-r$r-init_boot-stock.img; r=$((r + 1))
     done
     mkdir -p -- "$TD"
     # A hard link to check/'s zip (no second copy on the disk; a candidate run removes its
@@ -302,6 +307,12 @@ if [[ "$mode" = --testers ]]; then
     # Each .sha256 before its file: a cut-short upload leaves a matching .sha256 beside a partial
     # file, so taken() keeps the name and the rerun's put replaces it (not a new -rN beside it)
     up=("$TREL.sha256" "$TREL")
+    if [[ $EOS_KSU = lkm ]]; then
+        [[ -e $TD/$TSTOCK ]] || cp -- "$CHECK/$STOCK" "$TD/$TSTOCK"
+        (cd "$TD" && sha256sum -- "$TSTOCK" > "$TSTOCK.sha256")
+        cmp -s -- "$CHECK/$STOCK" "$TD/$TSTOCK" || fail "$TD/$TSTOCK isn't $CHECK/$STOCK"
+        up+=("$TSTOCK.sha256" "$TSTOCK")
+    fi
     # -b: any failed put fails the upload
     {
         for f in "${up[@]}"; do printf 'put %s %s/testers/%s\n' "$TD/$f" "$EOS_SF_DIR" "$f"; done
@@ -324,9 +335,10 @@ if [[ $quick = 1 ]]; then
     ver=$(sed -n 's/^VERIFIED_QUICK //p' "$EOS_STATE/verify.log" | tail -1)
     [[ -n $ver ]] || fail "eos-verify.sh didn't check a quick build ($EOS_STATE/verify.log)"
     # Every file the zip takes is the one eos-images.sh built and verified: quick.ok names
-    # exactly those (fastboot_files) and they match
+    # exactly those (fastboot_files, and with EOS_KSU=lkm the stock init_boot) and they match
     mapfile -t qfiles < <(fastboot_files)
     qfiles=("${qfiles[@]/#/$EOS_PRODUCT_OUT/}")
+    [[ $EOS_KSU != lkm ]] || qfiles+=("$EOS_KSU_OUT/init_boot-stock.img")
     [[ "$(printf '%s\n' "${qfiles[@]}" | sort)" = "$(sed -E 's/^[0-9a-f]{64}  //' "$EOS_STATE/quick.ok" | sort)" ]] \
         || fail "$EOS_STATE/quick.ok doesn't name exactly the files the fastboot zip takes now (fastboot-info.txt or devices/$EOS_DEVICE.conf changed since the build?): run eos-images.sh again"
     sha256sum --quiet --strict -c -- "$EOS_STATE/quick.ok" >&2 \
@@ -361,6 +373,7 @@ else
     base=${name%.zip}
 fi
 NAME=$base-fastboot.zip
+STOCK=$base-init_boot-stock.img
 TFN=$base-target_files.zip
 
 echo "== pack"
@@ -438,16 +451,22 @@ if [[ $EOS_FLASH_VKB = 1 ]]; then
     { [[ -f $T/x/vendor_kernel_boot.img ]] && awk '$1 == "flash" { i = $NF; sub(/\.img$/, "", i); if (i == "vendor_kernel_boot") f = 1 }
           END { exit !f }' "$T/x/fastboot-info.txt"; } || fail "the zip doesn't flash vendor_kernel_boot (EOS_FLASH_VKB=1)"
 fi
-# No root: the zip's init_boot is the build's stock one (eos-verify.sh checked it verifies and
-# is signed with the tree's key), with no kernelsu.ko in it
-out/host/linux-x86/bin/unpack_bootimg --boot_img "$T/x/init_boot.img" --out "$T/ib" > /dev/null || fail "can't unpack the zip's init_boot.img"
-mkdir -- "$T/r"
-# Only the files checked here: the ramdisk's device nodes (dev/console...) need root to make
-(cd "$T/r" && { lz4 -dc "$T/ib/ramdisk" 2>/dev/null || gzip -dc "$T/ib/ramdisk"; } \
-    | cpio -id --quiet --no-absolute-filenames init kernelsu.ko) || fail "can't unpack the zip's init_boot ramdisk"
-[[ -e $T/r/init && ! -e $T/r/kernelsu.ko ]] || fail "the zip's init_boot.img isn't a stock one (no init, or kernelsu.ko in it): ExpressiveOS ships no root"
-se=; [[ -z $fz ]] || se=" (super_empty.img to ${fz##*/}'s)"
-echo "OK: $(find "$T/x" -type f | wc -l) files, identical to out/$se, stock init_boot (no root), board=$EOS_BOARD only"
+if [[ $EOS_KSU = lkm ]]; then
+    "$kit/ksu/tools/ksu-check.sh" images "$T/x" "$top" > "$T/ksu.log" 2>&1 || true
+    tail -1 "$T/ksu.log" | grep -qx KSU_CHECK=OK || { grep -E '^FAIL' "$T/ksu.log" >&2 || tail -3 "$T/ksu.log" >&2; fail "the zip's images fail ksu-check.sh images"; }
+    echo "OK: $(find "$T/x" -type f | wc -l) files, identical to out/, SukiSU init_boot, the AVB chain verifies, board=$EOS_BOARD only"
+else
+    # No KernelSU (EOS_KSU=none): the zip's init_boot is the build's stock one (eos-verify.sh
+    # checked it verifies and is signed with the tree's key), with no kernelsu.ko in it
+    out/host/linux-x86/bin/unpack_bootimg --boot_img "$T/x/init_boot.img" --out "$T/ib" > /dev/null || fail "can't unpack the zip's init_boot.img"
+    mkdir -- "$T/r"
+    # Only the files checked here: the ramdisk's device nodes (dev/console...) need root to make
+    (cd "$T/r" && { lz4 -dc "$T/ib/ramdisk" 2>/dev/null || gzip -dc "$T/ib/ramdisk"; } \
+        | cpio -id --quiet --no-absolute-filenames init kernelsu.ko) || fail "can't unpack the zip's init_boot ramdisk"
+    [[ -e $T/r/init && ! -e $T/r/kernelsu.ko ]] || fail "the zip's init_boot.img isn't a stock one (no init, or kernelsu.ko in it), and devices/$EOS_DEVICE.conf says EOS_KSU=none"
+    se=; [[ -z $fz ]] || se=" (super_empty.img to ${fz##*/}'s)"
+    echo "OK: $(find "$T/x" -type f | wc -l) files, identical to out/$se, stock init_boot (no KernelSU), board=$EOS_BOARD only"
+fi
 
 if [[ -z "$mode" ]]; then
     # What --testers needs to know of this candidate once out/ may be gone: the release
@@ -467,7 +486,13 @@ if [[ -z "$mode" ]]; then
             -o -name '*-incremental-from-*' \) -delete
         cp -- "$T/$NAME" "$CHECK/$NAME"
     fi
-    (cd "$CHECK" && sha256sum -- "$NAME" > "$NAME.sha256")
+    if [[ $EOS_KSU = lkm ]]; then
+        cp -- "$EOS_KSU_OUT/init_boot-stock.img" "$CHECK/$STOCK"
+        (cd "$CHECK" && sha256sum -- "$NAME" > "$NAME.sha256" && sha256sum -- "$STOCK" > "$STOCK.sha256")
+    else
+        # No separate stock init_boot (EOS_KSU=none): the zip's own is the stock one
+        (cd "$CHECK" && sha256sum -- "$NAME" > "$NAME.sha256")
+    fi
     for r in manifest.xml kernel-manifest.xml sources.txt; do cp -- "$EOS_STATE/$r" "$CHECK/$base-$r"; done
     if [[ $quick = 1 ]]; then
         # Release notes are for a build that can be released: a quick one never is
@@ -496,7 +521,7 @@ if [[ -z "$mode" ]]; then
     kv=$(git -C "$kit" rev-parse HEAD 2>/dev/null || sed -n '1s/^/installed from /p' "$kit/INSTALLED_FROM" 2>/dev/null || echo "not a git checkout")
     [[ -z "$(git -C "$kit" status --porcelain -- . 2>/dev/null)" ]] || kv+=" (with local changes)"
     find "$CHECK" -maxdepth 1 -type f -name '*.pack-ok' ! -name "$NAME.pack-ok" -delete
-    printf 'sha256 %s\nkeys %s\nincremental-base %s\nbuild %s\nkit %s\ndate %s\n' "$zsha" "$keys" "$ib" "$build" "$kv" "$(date -u '+%F %T UTC')" \
+    printf 'sha256 %s\nkeys %s\nincremental-base %s\nksu %s\nbuild %s\nkit %s\ndate %s\n' "$zsha" "$keys" "$ib" "$EOS_KSU" "$build" "$kv" "$(date -u '+%F %T UTC')" \
         > "$CHECK/.$NAME.pack-ok.part" && mv -f -- "$CHECK/.$NAME.pack-ok.part" "$CHECK/$NAME.pack-ok" \
         || fail "can't write $CHECK/$NAME.pack-ok"
     echo "== candidate: $CHECK/$NAME"
@@ -536,12 +561,7 @@ echo "OK: signed with the pinned ExpressiveOS keys"
 grep -q '^OK: incremental base:' "$EOS_STATE/verify.log" \
     || fail "the fastboot zip's images aren't its target-files' ($EOS_STATE/verify.log, \"incremental base\"): no incremental OTA from this release could update phones installed from it"
 cmp -s -- "$T/$NAME" "$CHECK/$NAME" || fail "out/ doesn't pack into the tested $CHECK/$NAME (run eos-pack.sh, flash and test that)"
-# The on-device gate: <zip>.device-ok names the zip's sha256 (someone flashed and tested it)
-# (zsha is the packed zip's, which the cmp above found the same as check/'s)
-M=$CHECK/$NAME.device-ok
-{ [[ -f "$M" ]] && grep -qF -- "$zsha" "$M"; } \
-    || fail "the on-device gate: not verified on a phone yet: flash and test $CHECK/$NAME, then write $M with the line \"sha256 $zsha\""
-echo "OK: on-device check: $(head -c 300 "$M")"
+"$kit/ksu/tools/ksu-check.sh" device-ok "$CHECK/$NAME" | grep -v '^KSU_CHECK=' || fail "the on-device gate"
 
 if [[ "$mode" = --upload ]]; then
     # Releases go to R2 only (no SourceForge since 2026-11-03)
@@ -550,12 +570,14 @@ if [[ "$mode" = --upload ]]; then
     rc2 lsf "$EOS_R2_REMOTE" > /dev/null 2> "$T/rclone.log" \
         || { tail -3 "$T/rclone.log" >&2; fail "can't reach $EOS_R2_REMOTE (rclone's ${EOS_R2_REMOTE%%:*}: remote, tools/ota_mirror/README.md)"; }
 fi
-# Never overwrite a released name, here or in R2's target-files: a different zip or
-# target-files under an existing name gets -r2, -r3...
-REL=$NAME; RTF=$TFN; r=2
-while taken "$REL" "$T/$NAME" || taken "target-files/$RTF" "$tf"; do
+# Never overwrite a released name, here or in R2's target-files: a different zip, stock
+# init_boot or target-files under an existing name gets -r2, -r3...
+# (The stock init_boot only with EOS_KSU=lkm: with none, the zip's own is the stock one)
+SRCSTOCK=$EOS_KSU_OUT/init_boot-stock.img
+REL=$NAME; RSTOCK=$STOCK; RTF=$TFN; r=2
+while taken "$REL" "$T/$NAME" || { [[ $EOS_KSU = lkm ]] && taken "$RSTOCK" "$SRCSTOCK"; } || taken "target-files/$RTF" "$tf"; do
     (( r <= 20 )) || fail "$base-r2 to -r20 are all taken (here or in R2); look at $DEST and $R2TF"
-    REL=$base-r$r-fastboot.zip; RTF=$base-r$r-target_files.zip; r=$((r + 1))
+    REL=$base-r$r-fastboot.zip; RSTOCK=$base-r$r-init_boot-stock.img; RTF=$base-r$r-target_files.zip; r=$((r + 1))
 done
 # Through a .part file, like the target-files and OTA copies: a cut-short copy must not sit
 # under the release name (the rerun would take it as a different zip and go to -r2)
@@ -565,8 +587,14 @@ if [[ ! -e $DEST/$REL ]]; then
         || fail "can't copy the zip to $DEST/$REL"
 fi
 # Names only, so users can run sha256sum -c
-(cd "$DEST" && sha256sum -- "$REL" > "$REL.sha256")
-pub=("$REL.sha256" "$REL")
+if [[ $EOS_KSU = lkm ]]; then
+    [[ -e $DEST/$RSTOCK ]] || cp -- "$SRCSTOCK" "$DEST/$RSTOCK"
+    (cd "$DEST" && sha256sum -- "$REL" > "$REL.sha256" && sha256sum -- "$RSTOCK" > "$RSTOCK.sha256")
+    pub=("$REL.sha256" "$REL" "$RSTOCK.sha256" "$RSTOCK")
+else
+    (cd "$DEST" && sha256sum -- "$REL" > "$REL.sha256")
+    pub=("$REL.sha256" "$REL")
+fi
 for f in manifest.xml kernel-manifest.xml sources.txt; do cp -- "$EOS_STATE/$f" "$DEST/${REL%-fastboot.zip}-$f"; done
 mkdir -p -- "$DEST/changelogs"
 generate_changelog "$DEST/changelogs/$EOS_DEVICE.txt" "$DEST/${REL%-fastboot.zip}-announcement.md" "$base" "$DEST/$REL"

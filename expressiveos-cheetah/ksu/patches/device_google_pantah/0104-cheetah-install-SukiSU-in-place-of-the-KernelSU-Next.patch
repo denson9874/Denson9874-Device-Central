@@ -1,0 +1,83 @@
+From 2b9e61179cb10711ef2f2f166379be8ccfaf67fd Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sat, 14 Nov 2026 13:19:24 -0500
+Subject: [PATCH] cheetah: install SukiSU in place of the KernelSU Next manager
+
+ExpressiveOS is rooted out of the box again, with SukiSU (Daryl,
+2026-11-14). Its kernel crowns only a manager installed under /data/app,
+so the ROM no longer preinstalls one as a system app: eos-sukisu carries
+the manager APK and a first-boot service that installs it to /data
+(expressiveos-cheetah/ksu/tree). Still only with a SukiSU init_boot
+(CHEETAH_KSU_INIT_BOOT). libksud.so's fs_config entry goes with the
+system-app manager.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ cheetah/BoardConfig.mk |  9 +++------
+ device-cheetah.mk      | 13 ++++++-------
+ ksu/config.fs          |  9 ---------
+ 3 files changed, 9 insertions(+), 22 deletions(-)
+ delete mode 100644 ksu/config.fs
+
+diff --git a/cheetah/BoardConfig.mk b/cheetah/BoardConfig.mk
+index e7661be..4a6a055 100644
+--- a/cheetah/BoardConfig.mk
++++ b/cheetah/BoardConfig.mk
+@@ -30,12 +30,9 @@ include $(VENDOR_PATH)/BoardConfigVendor.mk
+ # dexopt catches up (~180 MB, well inside super).
+ BOARD_USES_SYSTEM_OTHER_ODEX :=
+ 
+-# KernelSU Next manager (ExpressiveOS only): libksud.so is a program
+-TARGET_FS_CONFIG_GEN += device/google/pantah/ksu/config.fs
+-
+-# KernelSU Next (ExpressiveOS only): expressiveos-cheetah/ksu/tools/ksu-images.sh
+-# builds once, patches that build's init_boot with KernelSU Next
+-# (cheetah-ksu.sh), then builds again with CHEETAH_KSU_INIT_BOOT set, so the
++# SukiSU (ExpressiveOS only): expressiveos-cheetah/tools/eos-make.sh
++# builds once, patches that build's init_boot with SukiSU
++# (ksu/tools/cheetah-ksu.sh), then builds again with CHEETAH_KSU_INIT_BOOT set, so the
+ # images and the OTA ship the patched init_boot (re-signed with the tree's
+ # init_boot AVB key like a built one).
+ ifneq ($(CHEETAH_KSU_INIT_BOOT),)
+diff --git a/device-cheetah.mk b/device-cheetah.mk
+index 4d61d19..4727c21 100644
+--- a/device-cheetah.mk
++++ b/device-cheetah.mk
+@@ -98,13 +98,12 @@ PRODUCT_PACKAGES += \
+     SystemUIOverlayStockCheetah \
+     WifiOverlayStockCheetah
+ 
+-# KernelSU Next manager, byte for byte as upstream signed it, with its arm64 libs
+-# (vendor/extra/ksu, which ExpressiveOS's expressiveos-cheetah/ksu/apply-ksu.sh
+-# stages). A normal, unprivileged app: no app gets root until the user grants it
+-# there. Only with a KernelSU Next init_boot (CHEETAH_KSU_INIT_BOOT, set by the
+-# kit when devices/cheetah.conf has EOS_KSU=lkm): ExpressiveOS ships unrooted, and
+-# root is the user's choice.
++# SukiSU (ExpressiveOS: root out of the box): its manager APK and the first-boot setup that
++# installs it to /data (vendor/extra/ksu, which ExpressiveOS's expressiveos-cheetah/ksu/apply-ksu.sh
++# stages). No app gets root until the user grants it in the manager. Only with a SukiSU init_boot
++# (CHEETAH_KSU_INIT_BOOT, set by the kit when devices/cheetah.conf has EOS_KSU=lkm), so a build
++# without root installs none of it.
+ ifneq ($(CHEETAH_KSU_INIT_BOOT),)
+ PRODUCT_PACKAGES += \
+-    KernelSUNext
++    eos-sukisu
+ endif
+diff --git a/ksu/config.fs b/ksu/config.fs
+deleted file mode 100644
+index b0d8183..0000000
+--- a/ksu/config.fs
++++ /dev/null
+@@ -1,9 +0,0 @@
+-# KernelSU Next manager (ExpressiveOS). Android never unpacks native libs for a
+-# system app it hasn't updated, so the build installs the manager's libs in its
+-# nativeLibraryDir, and the manager runs libksud.so from there as a program.
+-# Files on /product are 0644 unless listed here.
+-[product/app/KernelSUNext/lib/arm64/libksud.so]
+-mode: 0755
+-user: AID_ROOT
+-group: AID_ROOT
+-caps: 0
+-- 
+2.56.0
+

@@ -23,11 +23,13 @@
 #      update_engine checks payload signatures again (and refuses older builds, and checks
 #      in recovery too, with patches/system_update_engine 0002 and 0003);
 #   4. the payload: every partition the build lists plus the firmware (EOS_FIRMWARE); its
-#      init_boot carries the same ramdisk as out/ (the build's own); its vbmeta (and every
-#      partition it chains), boot, init_boot and
+#      init_boot carries the same ramdisk as out/ (SukiSU's, or with EOS_KSU=none
+#      the build's own); its vbmeta (and every partition it chains), boot, init_boot and
 #      vbmeta_system are ExpressiveOS's; its patch levels are the build's; the
 #      target-files zip kept with it, for incremental OTAs, is its own (eos-target-files.sh);
-#   5. no root: out/'s init_boot is the stock one (no kernelsu.ko, signed with the tree's key);
+#   5. EOS_KSU=lkm: SukiSU (ksu-check.sh manager and images), and the stock init_boot kept
+#      for users who want no root (no kernelsu.ko, signed with the tree's key);
+#      EOS_KSU=none: out/'s init_boot is that stock one;
 #   6. ViPER4Android (v4a-check.sh out, for the HIDL or AIDL driver, or the AIDL driver laid over the stock vendor; with EOS_V4A=0, none of its files shipped), the
 #      boot animation (bootanim.conf's zips, the everyday one and the holiday one with its
 #      /metadata hint rc, a BootAnimation that reads the hint and its SELinux label, and no
@@ -127,12 +129,16 @@ done
 grep -qE '^(require )?board=' "$O/android-info.txt" || fail "no 'require board=' or 'board=' in $O/android-info.txt"
 echo "OK: $EOS_DEVICE, $EOS_MODEL, user build"
 n=0
-# The shared patches/ and viper4android/ ones, then the phone's own devices/<device>/
+# The shared patches/, ksu/ and viper4android/ ones, then the phone's own devices/<device>/
 mapfile -t dirs < <(kit_patch_dirs)
 for d in "${dirs[@]}"; do
     [[ -d $d ]] || continue
-    # Only those this phone's build applies: ViPER4Android's with EOS_V4A=1, aidl or aidl-overlay only (eos-images.sh)
+    # Only those this phone's build applies: SukiSU's as apply-ksu.sh picks them (cheetah's
+    # ksu/patches/, another phone's devices/<device>/ksu-patches/, none with EOS_KSU=none),
+    # ViPER4Android's with EOS_V4A=1, aidl or aidl-overlay only (eos-images.sh)
     case $d in
+        "$kit"/ksu/patches/*) [[ $EOS_KSU = lkm && $EOS_DEVICE = cheetah ]] || continue ;;
+        "$kit/devices/$EOS_DEVICE"/ksu-patches/*) [[ $EOS_KSU = lkm && $EOS_DEVICE != cheetah ]] || continue ;;
         "$kit"/viper4android/patches/*) [[ $EOS_V4A != 0 ]] || continue ;;
     esac
     p=$(patch_project "$d")
@@ -288,15 +294,18 @@ else
     "$H/ota_extractor" -payload "$ota" -payload_offset "$off" -output_dir "$T/x" -partitions "${AVB// /,}" > "$T/x.log" 2>&1 \
         || { tail -3 "$T/x.log" >&2; fail "couldn't extract $AVB from the payload"; }
     ramdisk "$T/x/init_boot.img" "$T/ib-ota"; ramdisk "$O/init_boot.img" "$T/ib-out"
-    # out/'s init_boot is the build's own, which the init_boot section below checks is stock
-    if cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk"; then
-        echo "OK: the payload's init_boot carries out/'s ramdisk"
+    # With EOS_KSU=none out/'s init_boot is the build's own, which the KernelSU section checks is stock
+    if [[ $EOS_KSU = lkm ]]; then
+        cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk" || fail "the payload's init_boot ramdisk isn't out/'s (SukiSU) one"
+        echo "OK: the payload's init_boot carries out/'s SukiSU ramdisk"
+    elif cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk"; then
+        echo "OK: the payload's init_boot carries out/'s ramdisk (no KernelSU: EOS_KSU=none)"
     else
         # target-files packs the build's own ramdisk again (mkbootfs with its fs_config), so the
         # bytes may differ while every file, mode, owner and device node is the same: compare those
         cpio_same "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk" \
             || fail "the payload's init_boot ramdisk has other files than out/'s (above)"
-        echo "OK: the payload's init_boot ramdisk holds out/'s files, packed again"
+        echo "OK: the payload's init_boot ramdisk holds out/'s files, packed again (no KernelSU: EOS_KSU=none)"
     fi
     checked "the payload's vbmeta isn't ExpressiveOS's" 'KEYS_CHECK=(OK|UNPINNED)' \
         "$kit/tools/eos-keys-check.sh" vbmeta "$T/x/vbmeta.img" "$top"
@@ -327,10 +336,24 @@ stock_ib() {   # stock_ib <init_boot.img>: a stock init_boot (init, no kernelsu.
     "$H/avbtool" verify_image --image "$T/sv/init_boot.img" > "$T/stock.log" 2>&1 || { tail -3 "$T/stock.log" >&2; fail "$stock doesn't verify"; }
     checked "$stock isn't signed with ExpressiveOS's key" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vbmeta "$stock" "$top"
 }
-# No root: the build's own init_boot is the stock one, and no separate stock image is kept
-echo "== init_boot (no root)"
-stock_ib "$O/init_boot.img"
-echo "OK: $O/init_boot.img has no KernelSU, verifies and is signed with the tree's key"
+if [[ $EOS_KSU = lkm ]]; then
+    echo "== SukiSU"
+    checked "SukiSU manager" 'KSU_CHECK=OK' "$kit/ksu/tools/ksu-check.sh" manager "$top"
+    checked "SukiSU images" 'KSU_CHECK=OK' "$kit/ksu/tools/ksu-check.sh" images "$top/$O" "$top"
+    stock=$EOS_KSU_OUT/init_boot-stock.img
+    [[ -f $stock ]] || fail "no $stock (cheetah-ksu.sh keeps the stock init_boot for users who want no root)"
+    stock_ib "$stock"
+    echo "OK: $stock has no SukiSU, verifies and is signed with the tree's key"
+else
+    # No KernelSU (EOS_KSU=none): the build's own init_boot is the stock one, and no
+    # separate stock image is kept or published
+    echo "== init_boot (no KernelSU: EOS_KSU=none)"
+    stock_ib "$O/init_boot.img"
+    echo "OK: $O/init_boot.img has no KernelSU, verifies and is signed with the tree's key"
+    [[ ! -e $O/product/etc/eos/sukisu-manager.apk && ! -e $O/product/etc/init/eos-ksu-firstboot.rc ]] \
+        || fail "SukiSU's manager or first-boot setup shipped, but devices/$EOS_DEVICE.conf says EOS_KSU=none"
+    echo "OK: no SukiSU manager or first-boot setup in product"
+fi
 
 echo "== ViPER4Android, boot animation and wallpaper"
 if [[ $EOS_V4A != 0 ]]; then

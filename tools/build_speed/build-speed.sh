@@ -47,7 +47,7 @@ for c in ~/.ccache/ccache.conf ~/.config/ccache/ccache.conf; do [[ -f $c ]] && {
 ls -ld ~/.ccache ~/.cache/ccache 2>/dev/null || true
 
 echo "== ccache, jobs and clean lines in the build scripts here"
-scripts=(~/*.sh ~/expressiveos-cheetah/*.sh ~/expressiveos-cheetah/tools/*.sh)
+scripts=(~/*.sh ~/expressiveos-cheetah/*.sh ~/expressiveos-cheetah/tools/*.sh ~/expressiveos-cheetah/ksu/tools/*.sh)
 ls -l --time-style=+%F "${scripts[@]}" 2>/dev/null | awk '{ print $6, $7 }'
 grep -HnE 'CCACHE|nproc|-j ?[0-9"$]|installclean|m clean|make clean|rm -rf[^#]*(\bout\b|/out)|SKIP_ABI_CHECKS|DISABLE_STUB_VALIDATION|WITH_DEXPREOPT|SOONG_|NINJA_|BUILD_DATETIME|build_kernel|SKIP_KERNEL_SYNC|KLEAF|bazel' "${scripts[@]}" 2>/dev/null \
     | sed "s|^$HOME/|~/|" | cut -c1-220 | head -220 || true
