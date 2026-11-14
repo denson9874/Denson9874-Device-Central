@@ -35,9 +35,8 @@ set -o pipefail
 done=0
 # Quiet while run_locked's marker is there: the run waiting for the locks prints it then
 trap '[[ $done = 1 || -e "${EOS_STARTED:-}" ]] || echo "MAKE_EXIT=1"' EXIT
-here="$(cd "$(dirname -- "$(readlink -f -- "$0")")/.." && pwd)"
-# shellcheck source=../../lib.sh
-source "$here/../lib.sh"
+# shellcheck source=../lib.sh
+source "$(dirname -- "$(readlink -f -- "$0")")/../lib.sh"
 [[ $# -le 1 ]] || fail "usage: eos-make.sh [top]"
 eos_top "${1:-}"
 # Run alone, this runs again under eos_lock (the locks eos-images.sh holds) and exits with it
