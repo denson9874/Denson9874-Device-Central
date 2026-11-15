@@ -37,7 +37,7 @@ the release notes). `EOS_KSU=none` ships the stock boot and no root.
 
 ## The manager (for the release notes)
 
-No manager ships. Paste this into the release notes of the first release with root:
+No manager ships. `release-notes/1.3.md`, the first release with root, carries this text:
 
 > **Root, out of the box.** ExpressiveOS now ships with root built into its kernel (Wild Kernels'
 > GKI with BakaSU and susfs). Nothing has root until you allow it. To manage it, install the BakaSU
