@@ -23,11 +23,13 @@
 #      update_engine checks payload signatures again (and refuses older builds, and checks
 #      in recovery too, with patches/system_update_engine 0002 and 0003);
 #   4. the payload: every partition the build lists plus the firmware (EOS_FIRMWARE); its
-#      init_boot carries the same ramdisk as out/ (the build's own); its vbmeta (and every
-#      partition it chains), boot, init_boot and
+#      init_boot carries the same ramdisk as out/ (the build's own), and with EOS_KSU=wild
+#      its boot Wild's kernel; its vbmeta (and every partition it chains), boot, init_boot and
 #      vbmeta_system are ExpressiveOS's; its patch levels are the build's; the
 #      target-files zip kept with it, for incremental OTAs, is its own (eos-target-files.sh);
-#   5. no root: out/'s init_boot is the stock one (no kernelsu.ko, signed with the tree's key);
+#   5. EOS_KSU=wild: Wild Kernels (ksu-check.sh manager and images), and the stock boot kept
+#      for users who want no root (not Wild's kernel, signed with the tree's key);
+#      EOS_KSU=none: out/'s init_boot is the stock one;
 #   6. ViPER4Android (v4a-check.sh out, for the HIDL or AIDL driver, or the AIDL driver laid over the stock vendor; with EOS_V4A=0, none of its files shipped), the
 #      boot animation (bootanim.conf's zips, the everyday one and the holiday one with its
 #      /metadata hint rc, a BootAnimation that reads the hint and its SELinux label, and no
@@ -56,6 +58,14 @@ eos_top "${1:-}"
 cd "$top"
 O=$EOS_PRODUCT_OUT
 H=out/host/linux-x86/bin
+wild_uname() {   # wild_uname <boot.img>: its kernel's Linux version (6.1.162-android14-Wild)
+    local d; d=$(mktemp -d "${TMPDIR:-/tmp}/wild-uname.XXXXXX")
+    "$H/unpack_bootimg" --boot_img "$1" --out "$d" > /dev/null || { rm -rf -- "$d"; return 1; }
+    local k=$d/kernel
+    [[ "$(head -c4 "$k" | od -An -tx1 | tr -d ' ')" != 02214c18 ]] || { lz4 -dc "$k" > "$d/Image"; k=$d/Image; }
+    strings "$k" | awk '/^Linux version / && !f { print $3; f = 1 }'
+    rm -rf -- "$d"
+}
 # check_ota_package_signature runs delta_generator from its own folder. A quick build reads no
 # package, so it needs only the tools for out/'s images
 tools="avbtool ota_extractor check_ota_package_signature delta_generator unpack_bootimg"
@@ -127,12 +137,16 @@ done
 grep -qE '^(require )?board=' "$O/android-info.txt" || fail "no 'require board=' or 'board=' in $O/android-info.txt"
 echo "OK: $EOS_DEVICE, $EOS_MODEL, user build"
 n=0
-# The shared patches/ and viper4android/ ones, then the phone's own devices/<device>/
+# The shared patches/, ksu/ and viper4android/ ones, then the phone's own devices/<device>/
 mapfile -t dirs < <(kit_patch_dirs)
 for d in "${dirs[@]}"; do
     [[ -d $d ]] || continue
-    # Only those this phone's build applies: ViPER4Android's with EOS_V4A=1, aidl or aidl-overlay only (eos-images.sh)
+    # Only those this phone's build applies: Wild's as apply-ksu.sh picks them (cheetah's
+    # ksu/patches/, another phone's devices/<device>/ksu-patches/, none with EOS_KSU=none),
+    # ViPER4Android's with EOS_V4A=1, aidl or aidl-overlay only (eos-images.sh)
     case $d in
+        "$kit"/ksu/patches/*) [[ $EOS_KSU = wild && $EOS_DEVICE = cheetah ]] || continue ;;
+        "$kit/devices/$EOS_DEVICE"/ksu-patches/*) [[ $EOS_KSU = wild && $EOS_DEVICE != cheetah ]] || continue ;;
         "$kit"/viper4android/patches/*) [[ $EOS_V4A != 0 ]] || continue ;;
     esac
     p=$(patch_project "$d")
@@ -288,7 +302,7 @@ else
     "$H/ota_extractor" -payload "$ota" -payload_offset "$off" -output_dir "$T/x" -partitions "${AVB// /,}" > "$T/x.log" 2>&1 \
         || { tail -3 "$T/x.log" >&2; fail "couldn't extract $AVB from the payload"; }
     ramdisk "$T/x/init_boot.img" "$T/ib-ota"; ramdisk "$O/init_boot.img" "$T/ib-out"
-    # out/'s init_boot is the build's own, which the init_boot section below checks is stock
+    # out/'s init_boot is the build's own, which the root section checks is stock
     if cmp -s -- "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk"; then
         echo "OK: the payload's init_boot carries out/'s ramdisk"
     else
@@ -297,6 +311,13 @@ else
         cpio_same "$T/ib-ota/ramdisk" "$T/ib-out/ramdisk" \
             || fail "the payload's init_boot ramdisk has other files than out/'s (above)"
         echo "OK: the payload's init_boot ramdisk holds out/'s files, packed again"
+    fi
+    if [[ $EOS_KSU = wild ]]; then
+        # The payload's boot carries Wild's kernel, as out/'s does (ksu-check.sh images)
+        w=$(sed -n "s/^uname_$EOS_KMI=//p" "$kit/ksu/ksu.conf")
+        u=$(wild_uname "$T/x/boot.img") || fail "can't unpack the payload's boot.img"
+        [[ -n $w && $u = "$w" ]] || fail "the payload's boot.img's kernel is Linux $u, not Wild's $w"
+        echo "OK: the payload's boot carries Wild's kernel (Linux $u)"
     fi
     checked "the payload's vbmeta isn't ExpressiveOS's" 'KEYS_CHECK=(OK|UNPINNED)' \
         "$kit/tools/eos-keys-check.sh" vbmeta "$T/x/vbmeta.img" "$top"
@@ -314,23 +335,38 @@ else
         "$kit/tools/eos-target-files.sh" "$top/$ota" "$top"
 fi
 
-stock_ib() {   # stock_ib <init_boot.img>: a stock init_boot (init, no kernelsu.ko) that verifies and is signed with the tree's key
-    local stock=$1
-    ramdisk "$stock" "$T/ib-stock"
+if [[ $EOS_KSU = wild ]]; then
+    echo "== Wild Kernels"
+    checked "no root manager" 'KSU_CHECK=OK' "$kit/ksu/tools/ksu-check.sh" manager "$top"
+    checked "Wild images" 'KSU_CHECK=OK' "$kit/ksu/tools/ksu-check.sh" images "$top/$O" "$top"
+    # The stock boot users flash for no root: Google's (or our gs-6.1) kernel, signed as boot.img
+    stock=$EOS_KSU_OUT/boot-stock.img
+    [[ -f $stock ]] || fail "no $stock (wild-boot.sh stock keeps the stock boot for users who want no root)"
+    "$H/unpack_bootimg" --boot_img "$stock" --out "$T/bs" >/dev/null || fail "can't unpack $stock"
+    k=$T/bs/kernel
+    [[ "$(head -c4 "$k" | od -An -tx1 | tr -d ' ')" != 02214c18 ]] || { lz4 -dc "$k" > "$T/bs/Image"; k=$T/bs/Image; }
+    u=$(strings "$k" | awk '/^Linux version / && !f { print $3; f = 1 }')
+    [[ -n $u && $u != *-Wild ]] || fail "$stock isn't a stock kernel (Linux ${u:-?})"
+    # verify_image looks for the partition's image by its name, next to the one it checks
+    mkdir -- "$T/sv"; cp -- "$stock" "$T/sv/boot.img"
+    "$H/avbtool" verify_image --image "$T/sv/boot.img" > "$T/stock.log" 2>&1 || { tail -3 "$T/stock.log" >&2; fail "$stock doesn't verify"; }
+    checked "$stock isn't signed with ExpressiveOS's key" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vbmeta "$stock" "$top"
+    echo "OK: $stock is the stock kernel (Linux $u), verifies and is signed with the tree's key"
+else
+    # No root (EOS_KSU=none): the build's own boot and init_boot are the stock ones, and no
+    # separate stock image is kept or published
+    echo "== init_boot (no root: EOS_KSU=none)"
+    ramdisk "$O/init_boot.img" "$T/ib-stock"
     mkdir -- "$T/r"
     # Only the files checked here: the ramdisk's device nodes (dev/console...) need root to make
     (cd "$T/r" && { lz4 -dc "$T/ib-stock/ramdisk" 2>/dev/null || gzip -dc "$T/ib-stock/ramdisk"; } \
-        | cpio -id --quiet --no-absolute-filenames init kernelsu.ko) || fail "can't unpack $stock's ramdisk"
-    [[ -e $T/r/init && ! -e $T/r/kernelsu.ko ]] || fail "$stock isn't a stock init_boot (no init, or kernelsu.ko in it)"
-    # verify_image looks for the partition's image by its name, next to the one it checks
-    mkdir -- "$T/sv"; cp -- "$stock" "$T/sv/init_boot.img"
-    "$H/avbtool" verify_image --image "$T/sv/init_boot.img" > "$T/stock.log" 2>&1 || { tail -3 "$T/stock.log" >&2; fail "$stock doesn't verify"; }
-    checked "$stock isn't signed with ExpressiveOS's key" 'KEYS_CHECK=(OK|UNPINNED)' "$kit/tools/eos-keys-check.sh" vbmeta "$stock" "$top"
-}
-# No root: the build's own init_boot is the stock one, and no separate stock image is kept
-echo "== init_boot (no root)"
-stock_ib "$O/init_boot.img"
-echo "OK: $O/init_boot.img has no KernelSU, verifies and is signed with the tree's key"
+        | cpio -id --quiet --no-absolute-filenames init kernelsu.ko) || fail "can't unpack $O/init_boot.img's ramdisk"
+    [[ -e $T/r/init && ! -e $T/r/kernelsu.ko ]] || fail "$O/init_boot.img isn't a stock init_boot (no init, or kernelsu.ko in it)"
+    echo "OK: $O/init_boot.img has no KernelSU"
+    [[ ! -e $O/product/etc/eos/sukisu-manager.apk && ! -e $O/product/etc/init/eos-ksu-firstboot.rc ]] \
+        || fail "SukiSU's manager or first-boot setup shipped, but devices/$EOS_DEVICE.conf says EOS_KSU=none"
+    echo "OK: no root manager or first-boot setup in product"
+fi
 
 echo "== ViPER4Android, boot animation and wallpaper"
 if [[ $EOS_V4A != 0 ]]; then

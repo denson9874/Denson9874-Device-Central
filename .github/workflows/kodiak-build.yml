@@ -38,7 +38,7 @@
 #
 # The expressiveos-* actions run the ExpressiveOS builds in their own tree,
 # ~/expressiveos (expressiveos-cheetah/README.md), with tree_ref's kit installed as
-# ~/expressiveos-cheetah. setup (repo sync), build and
+# ~/expressiveos-cheetah. setup (repo sync, then SukiSU's files), build and
 # pack run for hours, past this job's limit, so each runs in a tmux session of its own
 # (eos-setup, eos-build, eos-pack) with a clean environment, outside the job: the job
 # starts it and returns, and expressiveos-status (read-only) shows how it's going.
@@ -131,7 +131,7 @@
 # update (expressiveos-cheetah/sources/update-check.sh): what LineageOS has added since the
 # commits ExpressiveOS's manifest pins, LineageOS's commits merged into each of ExpressiveOS's
 # forks in memory (clean, or which files conflict), the security patch level before and after,
-# and the kernel's pins. Its fetches and merges stay in its own work
+# the kernel's pins and SukiSU's release. Its fetches and merges stay in its own work
 # folder (~/expressiveos-update), borrowing the tree's git objects; nothing is committed or
 # pushed. Paths, commit counts and dates only, never file contents.
 #
@@ -195,7 +195,7 @@ on:
           Google factory bootloader and radio into ~/android-dt/firmware/<device> (query
           check [device=husky]: read-only).
           expressiveos-setup: install tree_ref's
-          expressiveos-cheetah, then setup.sh in tmux.
+          expressiveos-cheetah, then setup.sh and ksu/fetch-ksu.sh in tmux.
           expressiveos-keys-move: the key folder vendor/evolution-priv to
           vendor/expressiveos-priv (query: check, read-only, the default; move; revert).
           expressiveos-pins: read-only: the upstream commit of every project in the
@@ -250,7 +250,7 @@ on:
           expressiveos-cheetah/devices: cheetah husky kodiak grizzly cubs yogi;
           default cheetah) or devices=<phone>,<phone>,... (each in turn in one tmux
           session, eos-images.sh then eos-pack.sh, stopping at the first failure),
-          kernel-only (build_kernel, no pack), kernel-sync (sync the
+          kernel-only (build_kernel and kernelsu.ko, no pack), kernel-sync (sync the
           kernel source to its pins again), installclean (m installclean before the
           build, which a build after modules= does anyway), clean (once a phone's pack ends PACK=OK,
           remove its out/target/product/<phone> and print what that freed; never
@@ -413,9 +413,10 @@ jobs:
           done
           echo "groups: $(id -nG) (installing packages needs an admin, or sudo in these)"
           echo "== ExpressiveOS folders"
-          for p in ~/expressiveos ~/expressiveos/.repo ~/expressiveos-cheetah ~/releases/expressiveos-cheetah ~/android-dt/firmware/cheetah; do
+          for p in ~/expressiveos ~/expressiveos/.repo ~/expressiveos-cheetah ~/releases/expressiveos-cheetah ~/android-dt/ksu ~/android-dt/firmware/cheetah; do
             if [[ -e "$p" ]]; then echo "exists   $p"; else echo "absent   $p"; fi
           done
+          echo "SukiSU fetched: $(cat ~/android-dt/ksu/CURRENT 2>/dev/null || echo none)"
           echo "cheetah firmware cached: $(cat ~/android-dt/firmware/cheetah/CURRENT 2>/dev/null || echo none)"
           # The tree lock's name since 1.1, and its old name, which the kit holds too through 1.1
           for l in ~/.expressiveos-tree.lock ~/.evolution-tree.lock; do
@@ -747,7 +748,7 @@ jobs:
             fi
             # ninja's progress lines (libthiserror:...) and the compilers' and aidl's own warnings
             # (WARNING: <file>:<line>) would bury the kit's lines
-            grep -aE '^(== |OK: |FAIL|WARNING|SETUP|KEYS_CHECK|KEYS_MOVE|BUILD_EXIT|MAKE_EXIT|MODULES_EXIT|PACK=|VERIFY|SESSION_EXIT|DEVICE |CLEAN |CANDIDATE |UPLOADED_TESTERS )|FAILED:|error:' "$log" \
+            grep -aE '^(== |OK: |FAIL|WARNING|SETUP|FETCH_KSU|KEYS_CHECK|KEYS_MOVE|BUILD_EXIT|MAKE_EXIT|MODULES_EXIT|PACK=|VERIFY|SESSION_EXIT|DEVICE |CLEAN |CANDIDATE |UPLOADED_TESTERS )|FAILED:|error:' "$log" \
               | grep -avE '^(\[ *[0-9]+% |WARNING: [^ ]+:[0-9])' | tail -n 25 | cut -c1-300 || true
             # The kit's warnings from the whole log (apply.sh's come long before the end), each once
             w=$(grep -aE '^WARNING' "$log" | grep -avE '^WARNING: [^ ]+:[0-9]' | sort | uniq -c | sort -rn | head -n 10 | cut -c1-300 || true)
@@ -1389,7 +1390,7 @@ jobs:
             echo "phone: $dev" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
           case $ACTION in
-            expressiveos-setup) phones=; launch setup "$kit/setup.sh" ;;
+            expressiveos-setup) phones=; launch setup "$kit/setup.sh && $kit/ksu/fetch-ksu.sh" ;;
             expressiveos-build)
               if [[ -n $mods ]]; then
                 # Written here, run in the eos-build session (nothing of ExpressiveOS's runs now)

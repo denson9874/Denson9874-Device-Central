@@ -1,0 +1,55 @@
+From 08eab27aa70b83e54af261f520ef52d717c5b1d6 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Sun, 15 Nov 2026 00:29:29 +0100
+Subject: [PATCH] husky: ship Wild Kernels' boot image when the kit gives one
+
+ExpressiveOS is rooted out of the box with Wild Kernels' GKI, BakaSU and
+susfs built in (Daryl, 2026-11-14). The kit builds this tree's boot image
+again around Wild's kernel and sets EOS_WILD_BOOT to it: the build then
+takes it as BOARD_PREBUILT_BOOTIMAGE and signs it with the boot AVB key,
+with the kernel VINTF check off (Wild's release string isn't a GKI one).
+Without the variable nothing changes. No manager ships: users install
+the BakaSU APK they want.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ BoardConfigCommon.mk | 9 +++++++++
+ device-husky.mk      | 8 ++++++++
+ 2 files changed, 17 insertions(+)
+
+diff --git a/BoardConfigCommon.mk b/BoardConfigCommon.mk
+index 61f7daa..7cdefac 100644
+--- a/BoardConfigCommon.mk
++++ b/BoardConfigCommon.mk
+@@ -24,3 +24,12 @@ BOARD_VENDOR_SEPOLICY_DIRS += \
+ 
+ # WiFi
+ include $(DEVICE_PATH)/wifi/BoardConfig-wifi.mk
++
++# Wild Kernels (ExpressiveOS: root out of the box, Daryl 2026-11-14): expressiveos-cheetah/
++# tools/eos-make.sh builds boot-wild.img (ksu/tools/wild-boot.sh: this boot image with Wild
++# Kernels' BakaSU kernel for the phone's KMI) and sets EOS_WILD_BOOT to it, so the images
++# and the OTA ship it, signed with the boot AVB key like any prebuilt boot. Without the
++# variable nothing changes. Last in the file, after everything that sets the boot image.
++ifneq ($(EOS_WILD_BOOT),)
++BOARD_PREBUILT_BOOTIMAGE := $(EOS_WILD_BOOT)
++endif
+diff --git a/device-husky.mk b/device-husky.mk
+index 5ad85e1..7078adf 100644
+--- a/device-husky.mk
++++ b/device-husky.mk
+@@ -75,3 +75,11 @@ PRODUCT_SOONG_NAMESPACES += \
+ 
+ # Window extensions
+ $(call inherit-product, $(SRC_TARGET_DIR)/product/window_extensions.mk)
++
++# Wild Kernels' boot (EOS_WILD_BOOT, BoardConfig): its release, 6.x.y-androidNN-Wild, isn't a
++# GKI release string, so the build's kernel VINTF check can't tell its kernel FCM level and
++# fails. Off for that boot only: the kernel is Google's GKI of the same KMI with BakaSU and
++# susfs added, booted on a phone first. A product variable, so here and not in BoardConfig.
++ifneq ($(EOS_WILD_BOOT),)
++PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false
++endif
+-- 
+2.43.0
+

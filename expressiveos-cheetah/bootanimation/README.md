@@ -149,7 +149,7 @@ zip itself, unzip it into a folder and run `tools/preview.sh <folder> out.mp4 --
 
 ### On the phone
 
-A phone you rooted yourself is needed for `su` (ExpressiveOS ships no root): these properties and `/metadata` aren't readable from a
+The KernelSU build is needed for `su`: these properties and `/metadata` aren't readable from a
 plain `adb shell`. A command of several parts is quoted twice, `adb shell "su -c '...'"`, so that
 `su` runs all of it. Read BootAnimation's log with `adb logcat -d -s BootAnimation` soon after a
 step or a boot, before the buffers wrap.
