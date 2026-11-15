@@ -66,8 +66,6 @@ import { PETALS, type Petal } from "./petals.ts";
 
 export type BloomSceneMode = "idle" | "download" | "verify" | "install" | "waiting" | "complete" | "error";
 
-const SVG_CENTER = 54;
-const SVG_SCALE = 1 / 20;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
 /** Outward unit direction in Three.js XY space (SVG +Y flipped to +Y up). */
@@ -101,45 +99,49 @@ const smooth = (a: number, b: number, x: number): number => {
 
 // The growth story's ground: the soil's top, below the flower
 const SOIL_Y = -1.72;
+// The canvas is this much larger than its box (styles.css .bloom-webgl), centred on it, and the
+// camera zooms out to match: the ring, pollen and bursts can leave the box without being cut off
+const OVERSCAN = 1.45;
 const STEM_SEGS = 96;
 const STEM_RADIAL = 10;
 
 /** Small helper clamp avoiding extra imports. */
 const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-/** Parse ExpressiveOS's SVG M/C/Z petal path into a centered Three.js Shape. */
-function petalPathToShape(d: string): Shape {
+/**
+ * A real petal's outline, pointing out from the flower's centre along its brand position: a narrow
+ * claw at the base, widening to a broad blade and a rounded tip with a shallow notch, a little
+ * asymmetric (no two petals of a flower are the same).
+ */
+function botanicalPetalShape(petal: Petal): Shape {
+	const [dx, dy] = PETAL_DIRS[petal.name];
+	const seed = PETALS.indexOf(petal);
+	const L = 1.42 + seed * 0.02;
+	const W = 0.6;
+	const skew = (seed % 2 === 0 ? 1 : -1) * 0.05;
+	const n = 64;
+	const width = (t: number) => {
+		const claw = 0.16 + 0.84 * smooth(0, 0.5, t);
+		const tip = t < 0.58 ? 1 : Math.sqrt(Math.max(0, 1 - ((t - 0.58) / 0.42) ** 2));
+		return W * claw * tip;
+	};
+	const local: Array<[number, number]> = [];
+	const point = (t: number, side: number): [number, number] => {
+		const x = side * width(t) + skew * Math.sin(t * Math.PI);
+		const notch = 0.07 * Math.exp(-((x / (0.22 * W)) ** 2)) * smooth(0.85, 1, t);
+		return [x, t * L - notch];
+	};
+	for (let i = 0; i <= n; i++) local.push(point(i / n, 1));
+	for (let i = n; i >= 0; i--) local.push(point(i / n, -1));
+	// Local +y out along the petal's direction, +x to its right, from just off the centre
+	const toWorld = ([x, y]: [number, number]): [number, number] => [dx * (0.05 + y) + dy * x, dy * (0.05 + y) - dx * x];
 	const shape = new Shape();
-	const tokens = d.match(/[MCZ]|-?\d*\.?\d+/g) ?? [];
-	const toX = (sx: number) => (sx - SVG_CENTER) * SVG_SCALE;
-	const toY = (sy: number) => (SVG_CENTER - sy) * SVG_SCALE;
-	let i = 0;
-	let cmd = "";
-	while (i < tokens.length) {
-		const t = tokens[i];
-		if (t === "M" || t === "C" || t === "Z") {
-			cmd = t;
-			i++;
-			if (cmd === "Z") shape.closePath();
-			continue;
-		}
-		if (cmd === "M") {
-			shape.moveTo(toX(Number(tokens[i])), toY(Number(tokens[i + 1])));
-			i += 2;
-		} else if (cmd === "C") {
-			shape.bezierCurveTo(
-				toX(Number(tokens[i])),
-				toY(Number(tokens[i + 1])),
-				toX(Number(tokens[i + 2])),
-				toY(Number(tokens[i + 3])),
-				toX(Number(tokens[i + 4])),
-				toY(Number(tokens[i + 5])),
-			);
-			i += 6;
-		} else {
-			i++;
-		}
-	}
+	local.forEach((p, i) => {
+		const [wx, wy] = toWorld(p);
+		if (i === 0) shape.moveTo(wx, wy);
+		else shape.lineTo(wx, wy);
+	});
+	shape.closePath();
 	return shape;
 }
 
@@ -234,7 +236,7 @@ function createDensePetalSolid(shape: Shape, thickness = 0.13, rings = 22, rimSt
 
 /** Build a deeply sculpted, cupped 3D ExpressiveOS brand petal with thickness, camber, vertex gradient, and radial fill attribute. */
 function createBrandPetalGeometry(petal: Petal): BufferGeometry {
-	const geom = createDensePetalSolid(petalPathToShape(petal.d));
+	const geom = createDensePetalSolid(botanicalPetalShape(petal));
 
 	const pos = geom.attributes.position;
 	const count = pos.count;
@@ -586,6 +588,7 @@ export class BloomScene {
 		this.scene = new Scene();
 		// Elevated 3/4 view (~11 deg above, subtle off-axis angle) so petal cup, bevel thickness, and overlap clearly read in 3D
 		this.camera = new PerspectiveCamera(37, 1, 0.1, 40);
+		this.camera.zoom = 1 / OVERSCAN;
 		this.camera.position.set(0.46, 0.96, 5.15);
 		this.camera.lookAt(0, -0.04, 0);
 
@@ -736,7 +739,8 @@ export class BloomScene {
 		this.colorSchemeQuery?.addEventListener?.("change", this.onThemeMedia);
 
 		// Pointer parallax & drag interaction on canvas
-		const dom = this.renderer.domElement;
+		// The canvas lets clicks through (it overhangs the page around the stage): the stage takes them
+		const dom = this.container;
 		dom.addEventListener("pointermove", this.onPointerMove);
 		dom.addEventListener("pointerdown", this.onPointerDown);
 		window.addEventListener("pointerup", this.onPointerUp);
@@ -926,8 +930,8 @@ uniform vec3 uPetalLight;`,
 // with fine veins running out from the centre (diffuseColor holds the occlusion so far)
 vec3 pal = mix(uDeep, uMid, smoothstep(0.04, 0.42, vFillPos));
 pal = mix(pal, uLight, smoothstep(0.7, 1.0, vFillPos) * 0.22);
-float vein = pow(abs(cos(vCross * 46.0)), 16.0) * smoothstep(0.1, 0.85, vFillPos);
-pal *= 1.0 - vein * 0.17;
+float vein = pow(abs(cos(vCross / max(vFillPos * 1.45 + 0.12, 0.12) * 26.0)), 10.0) * smoothstep(0.12, 0.8, vFillPos);
+pal *= 1.0 - vein * 0.1;
 pal = mix(pal, uLight, smoothstep(0.92, 1.0, vRing) * 0.18);
 // Petal pigment: deeper and more saturated than the flat swatch, so light tones don't wash out
 pal = pow(pal, vec3(1.45));
@@ -1236,14 +1240,15 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		const defs: Array<[geom: BufferGeometry, at: number, from: number, to: number, side: number, size: number]> = [
 			[seedLeafGeom, 0.1, 0.07, 0.22, -1, 1],
 			[seedLeafGeom, 0.1, 0.09, 0.24, 1, 1],
-			[trueLeafGeom, 0.46, 0.4, 0.62, 1, 1],
-			[trueLeafGeom, 0.62, 0.5, 0.72, -1, 0.9],
+			[trueLeafGeom, 0.3, 0.32, 0.56, 1, 1],
+			[trueLeafGeom, 0.42, 0.42, 0.66, -1, 0.9],
 		];
 		for (const [geom, at, from, to, side, size] of defs) {
 			const pivot = new Group();
 			const leaf = new Mesh(geom, leafMat);
 			pivot.add(leaf);
-			pivot.position.copy(this.stemCurve.getPointAt(at));
+			// Set back behind the stem, so the open flower covers them as on a real plant seen from the front
+			pivot.position.copy(this.stemCurve.getPointAt(at)).add(new Vector3(0, 0, -0.34));
 			pivot.scale.setScalar(0);
 			g.add(pivot);
 			this.leaves.push({ pivot, at, from, to, side, size });
@@ -1436,7 +1441,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 	}
 
 	private onPointerMove = (ev: PointerEvent) => {
-		const rect = this.renderer.domElement.getBoundingClientRect();
+		const rect = this.container.getBoundingClientRect();
 		if (rect.width <= 0 || rect.height <= 0) return;
 		const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
 		const ny = ((ev.clientY - rect.top) / rect.height) * 2 - 1;
@@ -1484,7 +1489,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		const h = Math.round(ch);
 		if (w <= 0 || h <= 0) return false;
 
-		const dpr = Math.min(window.devicePixelRatio || 1, 2);
+		const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
 		const targetW = Math.floor(w * dpr);
 		const targetH = Math.floor(h * dpr);
 		if (canvas.width !== targetW || canvas.height !== targetH || this.lastW !== w || this.lastH !== h || this.lastDpr !== dpr) {
@@ -1993,7 +1998,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		document.removeEventListener("visibilitychange", this.onVisibility);
 		document.removeEventListener(PLANT_EVENT, this.onPlant);
 
-		const dom = this.renderer.domElement;
+		const dom = this.container;
 		dom.removeEventListener("pointermove", this.onPointerMove);
 		dom.removeEventListener("pointerdown", this.onPointerDown);
 		window.removeEventListener("pointerup", this.onPointerUp);
