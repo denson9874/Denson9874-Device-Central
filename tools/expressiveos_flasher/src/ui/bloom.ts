@@ -4,6 +4,7 @@
 // inside a 3D ring of petal colours that fills, and each finished partition throws off petals;
 // when the install is done it bursts into full bloom.
 
+import { BRAND_PALETTE, type Palette, paletteFor } from "./palettes.ts";
 import type { BloomScene } from "./bloom-scene.ts";
 import { PETALS, type Petal } from "./petals.ts";
 
@@ -80,15 +81,24 @@ export const BLOOM_EVENT = "eos-bloom";
 export interface BloomEventDetail {
 	mode: BloomMode;
 	progress: number;
+	/** The chosen phone's colours (palettes.ts), ExpressiveOS's before one is chosen. */
+	palette: Palette;
 }
-function announceBloom(mode: BloomMode, progress: number) {
+let lastBloom: BloomEventDetail = { mode: "idle", progress: 0, palette: BRAND_PALETTE };
+/** The latest BLOOM_EVENT's detail, for a listener that starts late (the aura loads after first paint). */
+export function currentBloom(): BloomEventDetail {
+	return lastBloom;
+}
+function announceBloom(mode: BloomMode, progress: number, palette: Palette | undefined) {
+	lastBloom = { mode, progress, palette: palette ?? BRAND_PALETTE };
 	if (typeof document === "undefined" || typeof CustomEvent === "undefined" || !document.dispatchEvent) return;
-	document.dispatchEvent(new CustomEvent<BloomEventDetail>(BLOOM_EVENT, { detail: { mode, progress } }));
+	document.dispatchEvent(new CustomEvent<BloomEventDetail>(BLOOM_EVENT, { detail: lastBloom }));
 }
 
 export class BloomStage {
 	readonly root: HTMLDivElement;
 	private scene3d: BloomScene | null = null;
+	private palette: Palette = BRAND_PALETTE;
 	private canvas: HTMLCanvasElement | null = null;
 	private ctx: CanvasRenderingContext2D | null = null;
 	private markWrap: HTMLDivElement | null = null;
@@ -152,6 +162,7 @@ export class BloomStage {
 			const scene = new BloomScene(this.root);
 			scene.setMode(this.mode);
 			scene.setProgress(this.progress);
+			scene.setPalette(this.palette);
 			if (this.mode === "download" && this.speedBps > 0) scene.setSpeed(this.speedBps);
 			this.scene3d = scene;
 			this.root.classList.add("is-3d");
@@ -283,6 +294,15 @@ export class BloomStage {
 		this.canvas.height = Math.max(1, Math.round(r.height * this.dpr));
 	}
 
+	/** The phone the install is for: the flower and the aura take on its colours. */
+	setDevice(codename: string | null) {
+		const next = paletteFor(codename);
+		if (next === this.palette) return;
+		this.palette = next;
+		this.scene3d?.setPalette(next);
+		announceBloom(this.mode, this.progress, next);
+	}
+
 	setMode(mode: BloomMode) {
 		if (mode === this.mode) return;
 		this.mode = mode;
@@ -295,13 +315,13 @@ export class BloomStage {
 		this.scene3d?.setMode(mode);
 		if (mode === "complete") this.setProgress(1);
 		this.kick();
-		announceBloom(mode, this.progress);
+		announceBloom(mode, this.progress, this.palette);
 	}
 
 	/** 0..1: petals fill in turn (download), the ring fills (install). */
 	setProgress(p: number) {
 		this.progress = Math.max(0, Math.min(1, p));
-		announceBloom(this.mode, this.progress);
+		announceBloom(this.mode, this.progress, this.palette);
 		if (this.scene3d) {
 			this.scene3d.setProgress(this.progress);
 			return;

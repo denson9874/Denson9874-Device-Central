@@ -4,19 +4,20 @@
 // shimmering while it's checked, turning while it installs, breathing while it waits for the
 // phone, a burst of light when it's done, and a cooler, drained field on an error.
 //
-// Plain WebGL (no three.js, so it costs nothing on first load): one full-screen triangle and a
-// fragment shader, drawn at a fraction of the page's resolution (it's all soft light anyway), at
-// most 30 frames a second, never while the tab is hidden. With reduced motion it draws one still
-// frame per change. Without WebGL it does nothing and the CSS gradient under it (body::before)
-// stays the background.
+// three.js, loaded after first paint with the 3D flower's chunk (main.ts), which shares three
+// with it: a full-screen plane and a fragment shader, drawn at a fraction of the page's
+// resolution (it's all soft light anyway), at most 30 frames a second, never while the tab is
+// hidden. With reduced motion it draws one still frame per change. Until it loads, and without
+// WebGL, the CSS gradient under it (body::before) is the background. It takes on the chosen
+// phone's colours (palettes.ts) with the flower.
 
-import { BLOOM_EVENT, type BloomEventDetail, type BloomMode } from "./bloom.ts";
-import { PETALS } from "./petals.ts";
+import { Color, LinearSRGBColorSpace, Mesh, OrthographicCamera, PlaneGeometry, Scene, ShaderMaterial, Vector2, WebGLRenderer } from "three";
+import { BLOOM_EVENT, type BloomEventDetail, type BloomMode, currentBloom } from "./bloom.ts";
+import type { Palette } from "./palettes.ts";
 
-const VERT = `attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
+const VERT = `void main(){ gl_Position = vec4(position.xy, 0.0, 1.0); }`;
 
-const FRAG = `precision mediump float;
-uniform vec2 uRes;
+const FRAG = `uniform vec2 uRes;
 uniform float uTime;
 uniform vec2 uPointer;
 uniform float uDark;
@@ -130,9 +131,12 @@ function targetsFor(mode: BloomMode, progress: number): Targets {
 	}
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-	const n = Number.parseInt(hex.slice(1), 16);
-	return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+/**
+ * The shader works in the page's own (sRGB) values and writes them straight out, as the CSS
+ * colours it sits under do: keep the hex values as they are rather than converting to linear.
+ */
+function shaderColor(hex: string, into = new Color()): Color {
+	return into.setStyle(hex, LinearSRGBColorSpace);
 }
 
 function isDark(): boolean {
@@ -143,15 +147,19 @@ function isDark(): boolean {
 }
 
 export class Aura {
-	private readonly canvas: HTMLCanvasElement;
-	private readonly gl: WebGLRenderingContext;
-	private readonly u: Record<string, WebGLUniformLocation | null> = {};
+	private readonly renderer: WebGLRenderer;
+	private readonly scene = new Scene();
+	private readonly camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
+	private readonly material: ShaderMaterial;
+	private readonly u: Record<string, { value: number | Vector2 | Color }>;
+	private readonly colors: Color[];
+	private readonly colorTargets: Color[];
 	private readonly reduced: boolean;
 	private raf = 0;
 	private last = 0;
 	private start = performance.now();
-	private target: Targets = targetsFor("idle", 0);
-	private cur: Targets = { ...this.target };
+	private target: Targets;
+	private cur: Targets;
 	private spin = 0;
 	private burst = 0;
 	private dark = isDark() ? 1 : 0;
@@ -161,45 +169,62 @@ export class Aura {
 	/** Null when the page can't draw it (no WebGL): the CSS gradient stays. */
 	static mount(): Aura | null {
 		try {
-			const canvas = document.createElement("canvas");
-			const gl = canvas.getContext("webgl", { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: "low-power" });
-			if (!gl) return null;
-			return new Aura(canvas, gl);
+			return new Aura();
 		} catch {
 			return null;
 		}
 	}
 
-	private constructor(canvas: HTMLCanvasElement, gl: WebGLRenderingContext) {
-		this.canvas = canvas;
-		this.gl = gl;
+	private constructor() {
 		this.reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+		this.renderer = new WebGLRenderer({ antialias: false, alpha: false, powerPreference: "low-power" });
+		this.renderer.setPixelRatio(1);
+		const canvas = this.renderer.domElement;
 		canvas.className = "aura";
 		canvas.setAttribute("aria-hidden", "true");
-		const prog = this.program(VERT, FRAG);
-		gl.useProgram(prog);
-		const buf = gl.createBuffer();
-		gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-		const loc = gl.getAttribLocation(prog, "p");
-		gl.enableVertexAttribArray(loc);
-		gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-		for (const n of ["uRes", "uTime", "uPointer", "uDark", "uEnergy", "uRise", "uSpin", "uBurst", "uDrain", "uShimmer", "uC0", "uC1", "uC2", "uC3"]) {
-			this.u[n] = gl.getUniformLocation(prog, n);
-		}
-		PETALS.forEach((p, i) => gl.uniform3fv(this.u[`uC${i}`], hexToRgb(p.mid)));
 
+		const state = currentBloom();
+		this.target = targetsFor(state.mode, state.progress);
+		this.cur = { ...this.target };
+		this.colors = state.palette.petals.map((t) => shaderColor(t.mid));
+		this.colorTargets = this.colors.map((c) => c.clone());
+		this.u = {
+			uRes: { value: new Vector2(1, 1) },
+			uTime: { value: 0 },
+			uPointer: { value: new Vector2(0.5, 0.5) },
+			uDark: { value: this.dark },
+			uEnergy: { value: this.cur.energy },
+			uRise: { value: this.cur.rise },
+			uSpin: { value: 0 },
+			uBurst: { value: 0 },
+			uDrain: { value: this.cur.drain },
+			uShimmer: { value: this.cur.shimmer },
+			uC0: { value: this.colors[0] },
+			uC1: { value: this.colors[1] },
+			uC2: { value: this.colors[2] },
+			uC3: { value: this.colors[3] },
+		};
+		this.material = new ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, uniforms: this.u, depthTest: false, depthWrite: false });
+		this.scene.add(new Mesh(new PlaneGeometry(2, 2), this.material));
+
+		canvas.style.opacity = "0";
 		document.body.prepend(canvas);
 		document.documentElement.classList.add("has-aura");
 		this.resize();
+		// Fade in over the CSS gradient it replaces
+		requestAnimationFrame(() => {
+			canvas.style.transition = "opacity 1.2s ease";
+			canvas.style.opacity = "1";
+		});
 		window.addEventListener("resize", () => {
 			this.resize();
 			this.kick();
 		});
 		document.addEventListener(BLOOM_EVENT, (e) => {
-			const { mode, progress } = (e as CustomEvent<BloomEventDetail>).detail;
+			const { mode, progress, palette } = (e as CustomEvent<BloomEventDetail>).detail;
 			if (mode === "complete" && this.target.energy !== 1) this.burst = 1;
 			this.target = targetsFor(mode, progress);
+			this.setPalette(palette);
 			this.kick();
 		});
 		window.addEventListener(
@@ -222,31 +247,15 @@ export class Aura {
 		this.kick();
 	}
 
-	private program(vs: string, fs: string): WebGLProgram {
-		const gl = this.gl;
-		const make = (type: number, src: string) => {
-			const s = gl.createShader(type)!;
-			gl.shaderSource(s, src);
-			gl.compileShader(s);
-			if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) ?? "shader");
-			return s;
-		};
-		const p = gl.createProgram()!;
-		gl.attachShader(p, make(gl.VERTEX_SHADER, vs));
-		gl.attachShader(p, make(gl.FRAGMENT_SHADER, fs));
-		gl.linkProgram(p);
-		if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p) ?? "program");
-		return p;
+	private setPalette(palette: Palette) {
+		palette.petals.forEach((t, i) => shaderColor(t.mid, this.colorTargets[i]));
 	}
 
 	private resize() {
 		const w = Math.max(1, Math.round(window.innerWidth * SCALE));
 		const h = Math.max(1, Math.round(window.innerHeight * SCALE));
-		if (this.canvas.width !== w || this.canvas.height !== h) {
-			this.canvas.width = w;
-			this.canvas.height = h;
-			this.gl.viewport(0, 0, w, h);
-		}
+		this.renderer.setSize(w, h, false);
+		(this.u.uRes.value as Vector2).set(w, h);
 	}
 
 	private kick() {
@@ -271,27 +280,27 @@ export class Aura {
 		c.spinRate += (t.spinRate - c.spinRate) * ease;
 		c.shimmer += (t.shimmer - c.shimmer) * ease;
 		c.drain += (t.drain - c.drain) * ease;
+		this.colors.forEach((col, i) => col.lerp(this.colorTargets[i], this.reduced ? 1 : Math.min(1, dt * 1.6)));
 		this.dark += ((isDark() ? 1 : 0) - this.dark) * (this.reduced ? 1 : 1 - Math.exp(-dt * 4));
 		this.spin += c.spinRate * dt * Math.PI * 2;
 		this.burst = this.reduced ? 0 : Math.max(0, this.burst - dt * 0.45);
 		this.pointer[0] += (this.pointerTarget[0] - this.pointer[0]) * Math.min(1, dt * 2);
 		this.pointer[1] += (this.pointerTarget[1] - this.pointer[1]) * Math.min(1, dt * 2);
 
-		const gl = this.gl;
 		const u = this.u;
-		gl.uniform2f(u.uRes, this.canvas.width, this.canvas.height);
-		gl.uniform1f(u.uTime, this.reduced ? 12 : (now - this.start) / 1000);
-		gl.uniform2f(u.uPointer, this.pointer[0], this.pointer[1]);
-		gl.uniform1f(u.uDark, this.dark);
-		gl.uniform1f(u.uEnergy, c.energy);
-		gl.uniform1f(u.uRise, c.rise);
-		gl.uniform1f(u.uSpin, this.spin);
-		gl.uniform1f(u.uBurst, this.burst);
-		gl.uniform1f(u.uDrain, c.drain);
-		gl.uniform1f(u.uShimmer, c.shimmer);
-		gl.drawArrays(gl.TRIANGLES, 0, 3);
+		u.uTime.value = this.reduced ? 12 : (now - this.start) / 1000;
+		(u.uPointer.value as Vector2).set(this.pointer[0], this.pointer[1]);
+		u.uDark.value = this.dark;
+		u.uEnergy.value = c.energy;
+		u.uRise.value = c.rise;
+		u.uSpin.value = this.spin;
+		u.uBurst.value = this.burst;
+		u.uDrain.value = c.drain;
+		u.uShimmer.value = c.shimmer;
+		this.renderer.render(this.scene, this.camera);
 
 		// Reduced motion: one still frame per change, nothing in between
-		if (!this.reduced) this.kick();
+		const settling = this.colors.some((col, i) => !col.equals(this.colorTargets[i]));
+		if (!this.reduced || settling) this.kick();
 	}
 }

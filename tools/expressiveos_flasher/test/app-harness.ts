@@ -471,6 +471,11 @@ export class FakeBloom {
 	setProgress() {}
 	setSpeed() {}
 	pulse() {}
+	/** The phone whose colours the flower takes. */
+	device: string | null = null;
+	setDevice(codename: string | null) {
+		this.device = codename;
+	}
 
 	celebrate() {
 		this.setMode("complete");

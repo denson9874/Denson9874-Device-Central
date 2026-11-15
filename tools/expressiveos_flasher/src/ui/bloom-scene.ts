@@ -26,6 +26,7 @@ import {
 	CatmullRomCurve3,
 	CanvasTexture,
 	Color,
+	CylinderGeometry,
 	DirectionalLight,
 	DoubleSide,
 	DynamicDrawUsage,
@@ -33,8 +34,6 @@ import {
 	Group,
 	InstancedMesh,
 	LatheGeometry,
-	LineBasicMaterial,
-	LineSegments,
 	MathUtils,
 	Mesh,
 	MeshBasicMaterial,
@@ -62,6 +61,7 @@ import {
 	WebGLRenderer,
 } from "three";
 import { PLANT_EVENT } from "./bloom.ts";
+import { BRAND_PALETTE, type Palette } from "./palettes.ts";
 import { PETALS, type Petal } from "./petals.ts";
 
 export type BloomSceneMode = "idle" | "download" | "verify" | "install" | "waiting" | "complete" | "error";
@@ -194,8 +194,18 @@ function createDensePetalSolid(shape: Shape, thickness = 0.13, rings = 22, rimSt
 	for (let r = rings; r >= 0; r--) rows.push(ring(r / rings, -half));
 
 	const positions = new Float32Array(rows.length * k * 3);
+	// How far out from the centroid (0) to the edge (1), and where round the outline (0..1)
+	const ringAttr = new Float32Array(rows.length * k);
+	const aroundAttr = new Float32Array(rows.length * k);
+	const frontRows = rings + 1;
+	const rimRows = rimSteps - 1;
 	rows.forEach((row, ri) => {
-		for (let i = 0; i < k; i++) positions.set(row(i), (ri * k + i) * 3);
+		const ring = ri < frontRows ? ri / rings : ri < frontRows + rimRows ? 1 : (rows.length - 1 - ri) / rings;
+		for (let i = 0; i < k; i++) {
+			positions.set(row(i), (ri * k + i) * 3);
+			ringAttr[ri * k + i] = ring;
+			aroundAttr[ri * k + i] = i / k;
+		}
 	});
 	const index: number[] = [];
 	for (let ri = 0; ri < rows.length - 1; ri++) {
@@ -209,6 +219,8 @@ function createDensePetalSolid(shape: Shape, thickness = 0.13, rings = 22, rimSt
 	}
 	const geom = new BufferGeometry();
 	geom.setAttribute("position", new BufferAttribute(positions, 3));
+	geom.setAttribute("aRing", new BufferAttribute(ringAttr, 1));
+	geom.setAttribute("aAround", new BufferAttribute(aroundAttr, 1));
 	geom.setIndex(index);
 	geom.computeVertexNormals();
 	// The winding follows the outline's direction: the front face's normals must point at the camera
@@ -228,20 +240,12 @@ function createBrandPetalGeometry(petal: Petal): BufferGeometry {
 	const count = pos.count;
 	const colors = new Float32Array(count * 3);
 	const fillAttr = new Float32Array(count);
-
-	const gx1 = (petal.x1 - SVG_CENTER) * SVG_SCALE;
-	const gy1 = (SVG_CENTER - petal.y1) * SVG_SCALE;
-	const gx2 = (petal.x2 - SVG_CENTER) * SVG_SCALE;
-	const gy2 = (SVG_CENTER - petal.y2) * SVG_SCALE;
-	const gdx = gx2 - gx1;
-	const gdy = gy2 - gy1;
-	const gLenSq = Math.max(1e-5, gdx * gdx + gdy * gdy);
+	const crossAttr = new Float32Array(count);
+	const ringAttr = geom.attributes.aRing;
+	const aroundAttr = geom.attributes.aAround;
+	const rufflePhase = PETALS.indexOf(petal) * 1.7;
 
 	const [dx, dy] = PETAL_DIRS[petal.name];
-	const cLight = new Color(petal.light);
-	const cMid = new Color(petal.mid);
-	const cDeep = new Color(petal.deep);
-	const cTmp = new Color();
 
 	for (let i = 0; i < count; i++) {
 		const x = pos.getX(i);
@@ -259,22 +263,22 @@ function createBrandPetalGeometry(petal: Petal): BufferGeometry {
 		const spoonCup = Math.sin(rNorm * Math.PI * 0.84) * 0.34 - Math.pow(rNorm, 2.05) * 0.17;
 		const transverseCup = cross * cross * 0.38 * (1 - rNorm * 0.35);
 		const centerVeinRib = Math.exp(-cross * cross * 14) * Math.sin(rNorm * Math.PI) * 0.045;
-		pos.setZ(i, z + spoonCup + transverseCup + centerVeinRib);
+		// A soft ruffle along the outer edge, as real petals have
+		const ruffle = Math.sin(aroundAttr.getX(i) * Math.PI * 2 * 7 + rufflePhase) * 0.04 * smooth(0.7, 1, ringAttr.getX(i));
+		pos.setZ(i, z + spoonCup + transverseCup + centerVeinRib + ruffle);
+		crossAttr[i] = cross;
 
-		const t = MathUtils.clamp(((x - gx1) * gdx + (y - gy1) * gdy) / gLenSq, 0, 1);
-		if (t < 0.5) cTmp.lerpColors(cLight, cMid, t * 2);
-		else cTmp.lerpColors(cMid, cDeep, (t - 0.5) * 2);
-
-		// Soft botanical center crevice occlusion darkening at root
+		// Occlusion only: the colour comes from the palette in the shader, so a phone's palette can change it
 		const ao = 0.64 + 0.36 * clamp01(rNorm / 0.38);
-		colors[i * 3] = cTmp.r * ao;
-		colors[i * 3 + 1] = cTmp.g * ao;
-		colors[i * 3 + 2] = cTmp.b * ao;
+		colors[i * 3] = ao;
+		colors[i * 3 + 1] = ao;
+		colors[i * 3 + 2] = ao;
 	}
 
 	pos.needsUpdate = true;
 	geom.setAttribute("color", new BufferAttribute(colors, 3));
 	geom.setAttribute("aFill", new Float32BufferAttribute(fillAttr, 1));
+	geom.setAttribute("aCross", new Float32BufferAttribute(crossAttr, 1));
 	geom.computeVertexNormals();
 	return geom;
 }
@@ -384,6 +388,9 @@ interface PetalUniforms {
 	uPhase: { value: number };
 	uGhostColor: { value: Color };
 	uPetalLight: { value: Color };
+	uLight: { value: Color };
+	uMid: { value: Color };
+	uDeep: { value: Color };
 }
 
 interface HeroPetalItem {
@@ -473,7 +480,16 @@ export class BloomScene {
 		uOpacity: { value: number };
 		uPulse: { value: number };
 		uTime: { value: number };
+		uC0: { value: Color };
+		uC1: { value: Color };
+		uC2: { value: Color };
+		uC3: { value: Color };
 	};
+	// The chosen phone's colours (palettes.ts): the flower eases into them
+	private palette: Palette = BRAND_PALETTE;
+	private readonly paletteTarget = BRAND_PALETTE.petals.map((t) => ({ light: new Color(t.light), mid: new Color(t.mid), deep: new Color(t.deep) }));
+	private readonly coreTint = new Color(0xc084fc);
+	private readonly tmpColor = new Color();
 	private readonly ringTrackMat: MeshBasicMaterial;
 	private readonly ringMesh: Mesh;
 	private readonly ringTrackMesh: Mesh;
@@ -560,7 +576,7 @@ export class BloomScene {
 		});
 		this.renderer.setClearColor(0x000000, 0);
 		this.renderer.toneMapping = ACESFilmicToneMapping;
-		this.renderer.toneMappingExposure = 1.15;
+		this.renderer.toneMappingExposure = 0.95;
 		this.renderer.shadowMap.enabled = true;
 		this.renderer.shadowMap.type = PCFSoftShadowMap;
 		this.renderer.domElement.className = "bloom-webgl";
@@ -589,10 +605,11 @@ export class BloomScene {
 		this.keyLight.shadow.normalBias = 0.025;
 		this.keyLight.shadow.radius = 4;
 
-		this.rimLight = new DirectionalLight(0xc28cff, 2.1);
+		// Neutral light, so each phone's petals show their own colours rather than a violet cast
+		this.rimLight = new DirectionalLight(0xfff2f6, 1.25);
 		this.rimLight.position.set(-3.8, 3.4, -2.4);
 
-		this.fillLight = new DirectionalLight(0x76bcfb, 1.15);
+		this.fillLight = new DirectionalLight(0xe6edff, 0.6);
 		this.fillLight.position.set(2.8, -2.8, 2.4);
 
 		this.scene.add(this.ambientLight, this.keyLight, this.rimLight, this.fillLight);
@@ -782,18 +799,18 @@ export class BloomScene {
 		this.disposables.push(geom);
 
 		for (let i = 0; i < 4; i++) {
+			// The second whorl behind the four: the same velvet, in the palette's in-between colours
 			const mat = new MeshPhysicalMaterial({
 				color: backingColors[i],
 				emissive: backingColors[i],
-				emissiveIntensity: 0.14,
-				roughness: 0.22,
-				metalness: 0.05,
-				clearcoat: 1.0,
-				clearcoatRoughness: 0.1,
-				iridescence: 0.7,
-				iridescenceIOR: 1.36,
+				emissiveIntensity: 0.05,
+				roughness: 0.6,
+				metalness: 0,
+				sheen: 0.9,
+				sheenRoughness: 0.5,
+				sheenColor: new Color(0xffffff),
 				transparent: true,
-				opacity: 0.36,
+				opacity: 0.94,
 				side: DoubleSide,
 				depthWrite: false,
 			});
@@ -835,25 +852,27 @@ export class BloomScene {
 				uPhase: { value: i * 1.45 },
 				uGhostColor: { value: new Color(0x2d2958) },
 				uPetalLight: { value: new Color(petal.light) },
+				uLight: { value: new Color(petal.light) },
+				uMid: { value: new Color(petal.mid) },
+				uDeep: { value: new Color(petal.deep) },
 			};
 
+			// Velvet, not glass: a soft sheen, a faint waxy coat and a little backlight through the petal
 			const mat = new MeshPhysicalMaterial({
 				vertexColors: true,
-				roughness: 0.2,
-				metalness: 0.06,
-				clearcoat: 1.0,
-				clearcoatRoughness: 0.08,
-				sheen: 0.92,
-				sheenRoughness: 0.28,
-				sheenColor: new Color(petal.light),
-				iridescence: 0.42,
-				iridescenceIOR: 1.34,
-				emissive: new Color(petal.mid),
-				emissiveIntensity: 0.14,
+				roughness: 0.62,
+				metalness: 0,
+				clearcoat: 0.1,
+				clearcoatRoughness: 0.6,
+				sheen: 0.18,
+				sheenRoughness: 0.7,
+				sheenColor: uniforms.uLight.value,
+				emissive: uniforms.uMid.value,
+				emissiveIntensity: 0.04,
 				transparent: true,
-				envMapIntensity: 1.45,
+				envMapIntensity: 0.32,
 			});
-			mat.customProgramCacheKey = () => "eos-petal-v2";
+			mat.customProgramCacheKey = () => "eos-petal-v3";
 			mat.onBeforeCompile = (shader) => {
 				Object.assign(shader.uniforms, uniforms);
 				shader.vertexShader = shader.vertexShader
@@ -861,7 +880,11 @@ export class BloomScene {
 						"#include <common>",
 						`#include <common>
 attribute float aFill;
+attribute float aCross;
+attribute float aRing;
 varying float vFillPos;
+varying float vCross;
+varying float vRing;
 uniform float uTime;
 uniform float uRipple;
 uniform float uPhase;`,
@@ -870,6 +893,8 @@ uniform float uPhase;`,
 						"#include <begin_vertex>",
 						`#include <begin_vertex>
 vFillPos = aFill;
+vCross = aCross;
+vRing = aRing;
 float tipW = smoothstep(0.18, 1.0, aFill);
 float w1 = sin(position.y * 4.2 - uTime * 2.1 + uPhase + position.x * 3.1) * 0.036;
 float w2 = cos(position.x * 5.6 - uTime * 2.8 + uPhase) * 0.018;
@@ -881,6 +906,11 @@ transformed.z += (w1 + w2) * tipW * uRipple;`,
 						"#include <common>",
 						`#include <common>
 varying float vFillPos;
+varying float vCross;
+varying float vRing;
+uniform vec3 uLight;
+uniform vec3 uMid;
+uniform vec3 uDeep;
 uniform float uFill;
 uniform float uTime;
 uniform float uShimmer;
@@ -892,6 +922,16 @@ uniform vec3 uPetalLight;`,
 					.replace(
 						"#include <color_fragment>",
 						`#include <color_fragment>
+// The palette's colour: deep in the throat, the body colour, paling toward the tip and the rim,
+// with fine veins running out from the centre (diffuseColor holds the occlusion so far)
+vec3 pal = mix(uDeep, uMid, smoothstep(0.04, 0.42, vFillPos));
+pal = mix(pal, uLight, smoothstep(0.7, 1.0, vFillPos) * 0.22);
+float vein = pow(abs(cos(vCross * 46.0)), 16.0) * smoothstep(0.1, 0.85, vFillPos);
+pal *= 1.0 - vein * 0.17;
+pal = mix(pal, uLight, smoothstep(0.92, 1.0, vRing) * 0.18);
+// Petal pigment: deeper and more saturated than the flat swatch, so light tones don't wash out
+pal = pow(pal, vec3(1.45));
+diffuseColor.rgb *= pal;
 float fillMask = 1.0 - smoothstep(uFill - 0.08, uFill + 0.02, vFillPos);
 vec3 baseCol = mix(uGhostColor, diffuseColor.rgb, fillMask);
 float lum = dot(baseCol, vec3(0.299, 0.587, 0.114));
@@ -909,7 +949,7 @@ float sweep = pow(max(0.0, sin(vFillPos * 5.2 - uTime * 3.6 + uPhase)), 6.0) * u
 vec3 viewDirF = normalize(vViewPosition);
 float fresnelF = pow(1.0 - abs(dot(normal, viewDirF)), 2.4);
 totalEmissiveRadiance *= fillMask * mix(0.3, 1.0, centerAO) * (1.0 - uWilt * 0.85);
-totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF * mix(0.18, 0.42, fillMask) * centerAO * (1.0 - uWilt * 0.72));`,
+totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF * mix(0.06, 0.16, fillMask) * centerAO * (1.0 - uWilt * 0.72));`,
 					);
 			};
 
@@ -963,18 +1003,20 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		aoMesh.position.z = -0.08;
 		coreGroup.add(aoMesh);
 
-		// Pearlescent inner hub sphere
-		const sphereGeom = new SphereGeometry(0.135, 24, 24);
+		// The stigma: a small, matte, yellow-green crown in the middle of the stamens
+		const sphereGeom = new SphereGeometry(0.075, 24, 18);
 		const sphereMat = new MeshPhysicalMaterial({
-			color: 0xffffff,
-			emissive: 0xd8b4fe,
-			emissiveIntensity: 0.75,
-			roughness: 0.12,
-			metalness: 0.1,
-			clearcoat: 1.0,
+			color: 0xc8d46a,
+			emissive: 0x6d7a1e,
+			emissiveIntensity: 0.18,
+			roughness: 0.7,
+			sheen: 0.8,
+			sheenColor: new Color(0xf3f7c4),
 		});
 		this.disposables.push(sphereGeom, sphereMat);
 		const hubMesh = new Mesh(sphereGeom, sphereMat);
+		hubMesh.scale.set(1, 1, 0.7);
+		hubMesh.position.z = 0.06;
 		hubMesh.castShadow = true;
 		hubMesh.receiveShadow = true;
 		coreGroup.add(hubMesh);
@@ -985,7 +1027,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			map: coronaTex,
 			color: 0xd8b4fe,
 			transparent: true,
-			opacity: 0.68,
+			opacity: 0.25,
 			blending: AdditiveBlending,
 			depthWrite: false,
 		});
@@ -994,45 +1036,50 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		coronaSprite.scale.set(0.96, 0.96, 1);
 		coreGroup.add(coronaSprite);
 
-		// Fibonacci stamen filaments (1 merged LineSegments + 1 InstancedMesh = 2 draw calls)
-		const stamenCount = 22;
-		const linePts: number[] = [];
-		const antherGeom = new SphereGeometry(0.024, 10, 10);
+		// Stamens: tapered filaments curving out from the centre, each tipped with a pollen-gold
+		// anther (two instanced meshes, two draw calls)
+		const stamenCount = 54;
+		const filamentGeom = new CylinderGeometry(0.0045, 0.0075, 1, 6, 1);
+		filamentGeom.translate(0, 0.5, 0);
+		const filamentMat = new MeshPhysicalMaterial({ color: 0xf2ead2, roughness: 0.55, sheen: 0.6, sheenColor: new Color(0xffffff) });
+		const antherGeom = new SphereGeometry(0.019, 10, 8);
 		const antherMat = new MeshPhysicalMaterial({
-			color: 0xffe4a0,
-			emissive: 0xfdcf8e,
-			emissiveIntensity: 0.6,
-			roughness: 0.3,
-			clearcoat: 0.6,
+			color: 0xf0bd45,
+			emissive: 0x8a5a0c,
+			emissiveIntensity: 0.2,
+			roughness: 0.75,
+			sheen: 1,
+			sheenColor: new Color(0xffe7a3),
 		});
-		this.disposables.push(antherGeom, antherMat);
+		this.disposables.push(filamentGeom, filamentMat, antherGeom, antherMat);
+		const filaments = new InstancedMesh(filamentGeom, filamentMat, stamenCount);
 		const anthers = new InstancedMesh(antherGeom, antherMat, stamenCount);
 		const dummy = new Object3D();
+		const up = new Vector3(0, 1, 0);
+		const dir = new Vector3();
 
 		for (let i = 0; i < stamenCount; i++) {
 			const theta = i * GOLDEN_ANGLE;
 			const f = (i + 1) / stamenCount;
-			const r = 0.08 + 0.16 * Math.sqrt(f);
-			const bx = Math.cos(theta) * 0.04;
-			const by = Math.sin(theta) * 0.04;
-			const tx = Math.cos(theta) * r;
-			const ty = Math.sin(theta) * r;
-			const tz = 0.14 + (1 - f * 0.5) * 0.11;
-			linePts.push(bx, by, 0, tx, ty, tz);
+			const r = 0.07 + 0.17 * Math.sqrt(f);
+			const base = new Vector3(Math.cos(theta) * 0.05, Math.sin(theta) * 0.05, 0.02);
+			const tip = new Vector3(Math.cos(theta) * r, Math.sin(theta) * r, 0.1 + (1 - f) * 0.13 + Math.sin(i * 2.3) * 0.015);
+			dir.subVectors(tip, base);
+			const len = dir.length();
+			dummy.position.copy(base);
+			dummy.quaternion.setFromUnitVectors(up, dir.normalize());
+			dummy.scale.set(1, len, 1);
+			dummy.updateMatrix();
+			filaments.setMatrixAt(i, dummy.matrix);
 
-			dummy.position.set(tx, ty, tz);
-			dummy.scale.set(1, 1, 1.38);
-			dummy.lookAt(tx * 2, ty * 2, tz + 0.24);
+			dummy.position.copy(tip);
+			dummy.scale.set(1, 1.6, 1);
 			dummy.updateMatrix();
 			anthers.setMatrixAt(i, dummy.matrix);
 		}
+		filaments.instanceMatrix.needsUpdate = true;
 		anthers.instanceMatrix.needsUpdate = true;
-
-		const lineGeom = new BufferGeometry();
-		lineGeom.setAttribute("position", new Float32BufferAttribute(linePts, 3));
-		const lineMat = new LineBasicMaterial({ color: 0xf5e9ff, transparent: true, opacity: 0.6 });
-		this.disposables.push(lineGeom, lineMat);
-		coreGroup.add(new LineSegments(lineGeom, lineMat), anthers);
+		coreGroup.add(filaments, anthers);
 
 		const coreLight = new PointLight(0xc084fc, 2.3, 5.5);
 		coreLight.position.set(0, 0, 0.42);
@@ -1308,7 +1355,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 	private initAmbientPollen() {
 		const c = new Color();
 		for (let i = 0; i < MAX_AMBIENT_POLLEN; i++) {
-			const p = PETALS[i % 4];
+			const p = this.palette.petals[i % 4];
 			c.set(i % 2 === 0 ? p.light : p.mid);
 			const orbitR = 1.35 + Math.random() * 1.45;
 			const orbitAngle = Math.random() * Math.PI * 2;
@@ -1506,6 +1553,51 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		this.kick();
 	}
 
+	/** Ease the flower, its pollen and the ring into a phone's colours. */
+	setPalette(palette: Palette) {
+		if (palette === this.palette) return;
+		this.palette = palette;
+		palette.petals.forEach((t, i) => {
+			this.paletteTarget[i].light.set(t.light);
+			this.paletteTarget[i].mid.set(t.mid);
+			this.paletteTarget[i].deep.set(t.deep);
+		});
+		const c = new Color();
+		this.pollenParticles.forEach((_, i) => {
+			const t = palette.petals[i % 4];
+			c.set(i % 2 === 0 ? t.light : t.mid);
+			this.pollenCol[i * 3] = c.r;
+			this.pollenCol[i * 3 + 1] = c.g;
+			this.pollenCol[i * 3 + 2] = c.b;
+		});
+		this.pollenGeom.attributes.color.needsUpdate = true;
+		this.kick();
+	}
+
+	/** One frame of easing toward the palette's colours. */
+	private easePalette(dt: number) {
+		const k = Math.min(1, dt * 2.4);
+		const tg = this.paletteTarget;
+		this.heroPetals.forEach((item, i) => {
+			const u = item.uniforms;
+			u.uLight.value.lerp(tg[i].light, k);
+			u.uMid.value.lerp(tg[i].mid, k);
+			u.uDeep.value.lerp(tg[i].deep, k);
+			u.uPetalLight.value.copy(u.uLight.value);
+		});
+		this.backingPetals.forEach((bp, i) => {
+			this.tmpColor.copy(tg[i].mid).lerp(tg[(i + 1) % 4].mid, 0.5);
+			bp.material.color.lerp(this.tmpColor, k);
+			bp.material.emissive.copy(bp.material.color);
+		});
+		this.ringUniforms.uC0.value.lerp(tg[0].mid, k);
+		this.ringUniforms.uC1.value.lerp(tg[1].mid, k);
+		this.ringUniforms.uC2.value.lerp(tg[2].mid, k);
+		this.ringUniforms.uC3.value.lerp(tg[3].mid, k);
+		this.tmpColor.copy(tg[0].light).lerp(tg[1].light, 0.5);
+		this.coreTint.lerp(this.tmpColor, k);
+	}
+
 	setSpeed(bytesPerSecond: number) {
 		if (this.mode !== "download") return;
 		const mb = bytesPerSecond / (1024 * 1024);
@@ -1570,7 +1662,8 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			bp.life = 0;
 			bp.max = 1.2 + Math.random() * 1.1;
 			bp.scale = 0.55 + Math.random() * 0.65;
-			bp.color.set([p.light, p.mid, p.deep][spawned % 3]);
+			const tone = this.palette.petals[pIdx];
+			bp.color.set([tone.light, tone.mid, tone.deep][spawned % 3]);
 			this.burstMesh.setColorAt(i, bp.color);
 			spawned++;
 		}
@@ -1596,7 +1689,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			sp.vz = (Math.random() - 0.4) * 2.0 * power;
 			sp.life = 0;
 			sp.max = 1.0 + Math.random() * 1.2;
-			c.set(spawned % 4 === 0 ? "#ffffff" : p.light);
+			c.set(spawned % 4 === 0 ? "#ffffff" : this.palette.petals[pIdx].light);
 			this.sparkCol[i * 3] = c.r;
 			this.sparkCol[i * 3 + 1] = c.g;
 			this.sparkCol[i * 3 + 2] = c.b;
@@ -1651,6 +1744,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			this.celebrateTimer = Math.max(0, this.celebrateTimer - dt);
 		}
 		const plant = this.updatePlant(dt, t);
+		this.easePalette(dt);
 		// The celebration's later waves of petal confetti and sparks
 		if (this.celebrateWaves.length) {
 			this.celebrateClock += dt;
@@ -1747,7 +1841,8 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		for (const bp of this.backingPetals) {
 			const openLift = this.mode === "error" ? -0.25 : this.celebrateTimer > 0 ? 0.24 : 0;
 			bp.mesh.rotation.x = bp.baseRotX + openLift + Math.sin(t * 1.1 + bp.phase) * 0.06;
-			bp.material.opacity = (this.isLight ? 0.28 : 0.36) * (1 - this.wiltBlend * 0.65) * plant.open;
+			bp.material.opacity = 0.94 * (1 - this.wiltBlend * 0.4) * plant.open;
+			bp.pivot.visible = plant.open > 0.01;
 		}
 
 		// Update luminous core & corona
@@ -1756,12 +1851,12 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		const coronaSize = 0.94 + Math.sin(t * 2.4) * 0.09 + (this.celebrateTimer > 0 ? 0.34 : 0);
 		this.coronaSprite.scale.set(coronaSize, coronaSize, 1);
 		this.coreLight.intensity = (this.mode === "complete" ? 3.2 : this.mode === "install" ? 2.6 : 2.1) * (1 - this.wiltBlend * 0.75);
-		this.coronaMat.opacity = (this.mode === "complete" ? 0.9 : 0.64) * (1 - this.wiltBlend * 0.75);
+		this.coronaMat.opacity = (this.mode === "complete" ? 0.4 : 0.22) * (1 - this.wiltBlend * 0.75);
 
 		if (this.mode === "error") this.coreLight.color.setHex(0xd33952);
 		else if (this.mode === "verify") this.coreLight.color.setHex(0x76bcfb);
 		else if (this.mode === "waiting") this.coreLight.color.setHex(0xfdcf8e);
-		else this.coreLight.color.setHex(0xc084fc);
+		else this.coreLight.color.copy(this.coreTint);
 		this.coronaMat.color.copy(this.coreLight.color);
 
 		// Update 3D Orbital Progress Ring
