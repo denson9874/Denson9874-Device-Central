@@ -72,6 +72,17 @@ function webGlAvailable(): boolean {
 	}
 }
 
+/** The page event the background aura follows (aura.ts): the stage's mode and progress. */
+export const BLOOM_EVENT = "eos-bloom";
+export interface BloomEventDetail {
+	mode: BloomMode;
+	progress: number;
+}
+function announceBloom(mode: BloomMode, progress: number) {
+	if (typeof document === "undefined" || typeof CustomEvent === "undefined" || !document.dispatchEvent) return;
+	document.dispatchEvent(new CustomEvent<BloomEventDetail>(BLOOM_EVENT, { detail: { mode, progress } }));
+}
+
 export class BloomStage {
 	readonly root: HTMLDivElement;
 	private scene3d: BloomScene | null = null;
@@ -281,11 +292,13 @@ export class BloomStage {
 		this.scene3d?.setMode(mode);
 		if (mode === "complete") this.setProgress(1);
 		this.kick();
+		announceBloom(mode, this.progress);
 	}
 
 	/** 0..1: petals fill in turn (download), the ring fills (install). */
 	setProgress(p: number) {
 		this.progress = Math.max(0, Math.min(1, p));
+		announceBloom(this.mode, this.progress);
 		if (this.scene3d) {
 			this.scene3d.setProgress(this.progress);
 			return;

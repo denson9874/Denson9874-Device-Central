@@ -28,7 +28,6 @@ import {
 	DirectionalLight,
 	DoubleSide,
 	DynamicDrawUsage,
-	ExtrudeGeometry,
 	Float32BufferAttribute,
 	Group,
 	InstancedMesh,
@@ -132,18 +131,86 @@ function petalPathToShape(d: string): Shape {
 	return shape;
 }
 
-/** Build a deeply sculpted, cupped 3D ExpressiveOS brand petal with bevel thickness, camber, vertex gradient, and radial fill attribute. */
-function createBrandPetalGeometry(petal: Petal): BufferGeometry {
-	const shape = petalPathToShape(petal.d);
-	const geom = new ExtrudeGeometry(shape, {
-		depth: 0.14,
-		bevelEnabled: true,
-		bevelThickness: 0.072,
-		bevelSize: 0.044,
-		bevelSegments: 8,
-		curveSegments: 32,
+/**
+ * A thick petal solid meshed densely enough to bend smoothly: rings from the outline's centroid
+ * out to the outline on the front and back faces, joined by a rounded rim. ExtrudeGeometry
+ * meshes its caps from the outline alone (a few long triangles), so cupping them showed facets.
+ */
+function createDensePetalSolid(shape: Shape, thickness = 0.13, rings = 22, rimSteps = 7): BufferGeometry {
+	const outline = shape.getSpacedPoints(176).slice(0, -1);
+	const k = outline.length;
+	let cx = 0;
+	let cy = 0;
+	for (const p of outline) {
+		cx += p.x;
+		cy += p.y;
+	}
+	cx /= k;
+	cy /= k;
+	// Outward 2D normal at each outline point (away from the centroid)
+	const nx = new Float32Array(k);
+	const ny = new Float32Array(k);
+	for (let i = 0; i < k; i++) {
+		const a = outline[(i + k - 1) % k];
+		const b = outline[(i + 1) % k];
+		let x = b.y - a.y;
+		let y = -(b.x - a.x);
+		const len = Math.hypot(x, y) || 1;
+		x /= len;
+		y /= len;
+		if (x * (outline[i].x - cx) + y * (outline[i].y - cy) < 0) {
+			x = -x;
+			y = -y;
+		}
+		nx[i] = x;
+		ny[i] = y;
+	}
+	const half = thickness / 2;
+	const rows: Array<(i: number) => [number, number, number]> = [];
+	const ring = (t: number, z: number) => (i: number): [number, number, number] => [
+		cx + (outline[i].x - cx) * t,
+		cy + (outline[i].y - cy) * t,
+		z,
+	];
+	for (let r = 0; r <= rings; r++) rows.push(ring(r / rings, half));
+	for (let j = 1; j < rimSteps; j++) {
+		const a = Math.PI / 2 - (Math.PI * j) / rimSteps;
+		const out = Math.cos(a) * half * 0.9;
+		const z = Math.sin(a) * half;
+		rows.push((i) => [outline[i].x + nx[i] * out, outline[i].y + ny[i] * out, z]);
+	}
+	for (let r = rings; r >= 0; r--) rows.push(ring(r / rings, -half));
+
+	const positions = new Float32Array(rows.length * k * 3);
+	rows.forEach((row, ri) => {
+		for (let i = 0; i < k; i++) positions.set(row(i), (ri * k + i) * 3);
 	});
-	geom.translate(0, 0, -0.07);
+	const index: number[] = [];
+	for (let ri = 0; ri < rows.length - 1; ri++) {
+		for (let i = 0; i < k; i++) {
+			const a = ri * k + i;
+			const b = ri * k + ((i + 1) % k);
+			const c = (ri + 1) * k + i;
+			const d = (ri + 1) * k + ((i + 1) % k);
+			index.push(a, c, b, b, c, d);
+		}
+	}
+	const geom = new BufferGeometry();
+	geom.setAttribute("position", new BufferAttribute(positions, 3));
+	geom.setIndex(index);
+	geom.computeVertexNormals();
+	// The winding follows the outline's direction: the front face's normals must point at the camera
+	const frontNormalZ = geom.attributes.normal.getZ(Math.floor(rings / 2) * k);
+	if (frontNormalZ < 0) {
+		for (let t = 0; t < index.length; t += 3) [index[t + 1], index[t + 2]] = [index[t + 2], index[t + 1]];
+		geom.setIndex(index);
+	}
+	return geom;
+}
+
+/** Build a deeply sculpted, cupped 3D ExpressiveOS brand petal with thickness, camber, vertex gradient, and radial fill attribute. */
+function createBrandPetalGeometry(petal: Petal): BufferGeometry {
+	const geom = createDensePetalSolid(petalPathToShape(petal.d));
 
 	const pos = geom.attributes.position;
 	const count = pos.count;
