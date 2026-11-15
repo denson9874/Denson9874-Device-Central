@@ -32,6 +32,7 @@ import {
 	Float32BufferAttribute,
 	Group,
 	InstancedMesh,
+	LatheGeometry,
 	LineBasicMaterial,
 	LineSegments,
 	MathUtils,
@@ -39,6 +40,7 @@ import {
 	MeshBasicMaterial,
 	MeshPhysicalMaterial,
 	Object3D,
+	PCFSoftShadowMap,
 	PerspectiveCamera,
 	PlaneGeometry,
 	PMREMGenerator,
@@ -74,6 +76,14 @@ const PETAL_DIRS: Record<Petal["name"], [number, number]> = {
 	coral: [-0.74, -0.67],
 };
 
+/** Slight Z and pitch stagger per brand petal so petals visibly layer in 3D space. */
+const PETAL_LAYERS: Record<Petal["name"], { z: number; pitch: number }> = {
+	violet: { z: 0.08, pitch: 0.28 },
+	blue: { z: -0.02, pitch: 0.19 },
+	green: { z: 0.06, pitch: 0.26 },
+	coral: { z: -0.04, pitch: 0.17 },
+};
+
 const easeOutBack = (t: number): number => {
 	const c1 = 1.70158;
 	const c3 = c1 + 1;
@@ -82,6 +92,9 @@ const easeOutBack = (t: number): number => {
 };
 
 const easeOutCubic = (t: number): number => 1 - Math.pow(1 - MathUtils.clamp(t, 0, 1), 3);
+
+/** Small helper clamp avoiding extra imports. */
+const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 /** Parse ExpressiveOS's SVG M/C/Z petal path into a centered Three.js Shape. */
 function petalPathToShape(d: string): Shape {
@@ -119,18 +132,18 @@ function petalPathToShape(d: string): Shape {
 	return shape;
 }
 
-/** Build a sculpted, cupped 3D ExpressiveOS brand petal with gradient vertex colors and radial fill attribute. */
+/** Build a deeply sculpted, cupped 3D ExpressiveOS brand petal with bevel thickness, camber, vertex gradient, and radial fill attribute. */
 function createBrandPetalGeometry(petal: Petal): BufferGeometry {
 	const shape = petalPathToShape(petal.d);
 	const geom = new ExtrudeGeometry(shape, {
-		depth: 0.075,
+		depth: 0.14,
 		bevelEnabled: true,
-		bevelThickness: 0.042,
-		bevelSize: 0.032,
-		bevelSegments: 5,
-		curveSegments: 28,
+		bevelThickness: 0.072,
+		bevelSize: 0.044,
+		bevelSegments: 8,
+		curveSegments: 32,
 	});
-	geom.translate(0, 0, -0.0375);
+	geom.translate(0, 0, -0.07);
 
 	const pos = geom.attributes.position;
 	const count = pos.count;
@@ -145,6 +158,7 @@ function createBrandPetalGeometry(petal: Petal): BufferGeometry {
 	const gdy = gy2 - gy1;
 	const gLenSq = Math.max(1e-5, gdx * gdx + gdy * gdy);
 
+	const [dx, dy] = PETAL_DIRS[petal.name];
 	const cLight = new Color(petal.light);
 	const cMid = new Color(petal.mid);
 	const cDeep = new Color(petal.deep);
@@ -156,19 +170,27 @@ function createBrandPetalGeometry(petal: Petal): BufferGeometry {
 		const z = pos.getZ(i);
 
 		const r = Math.hypot(x, y);
-		const rNorm = MathUtils.clamp((r - 0.16) / 1.42, 0, 1);
+		const rNorm = MathUtils.clamp((r - 0.14) / 1.45, 0, 1);
 		fillAttr[i] = rNorm;
 
-		// Cupping dome toward viewer with gentle outer tip curl (adapted from flowers-ref/js/utils.js)
-		const cupOffset = Math.sin(rNorm * Math.PI * 0.88) * 0.145 - Math.pow(rNorm, 1.9) * 0.065;
-		pos.setZ(i, z + cupOffset);
+		// Transverse coordinate across petal spine (0 on centerline, +/- away from centerline)
+		const cross = x * dy - y * dx;
+
+		// Botanical spoon cupping + curved forward arch + outer rim flare + gentle cross camber (adapted from flowers-ref/js/utils.js)
+		const spoonCup = Math.sin(rNorm * Math.PI * 0.84) * 0.34 - Math.pow(rNorm, 2.05) * 0.17;
+		const transverseCup = cross * cross * 0.38 * (1 - rNorm * 0.35);
+		const centerVeinRib = Math.exp(-cross * cross * 14) * Math.sin(rNorm * Math.PI) * 0.045;
+		pos.setZ(i, z + spoonCup + transverseCup + centerVeinRib);
 
 		const t = MathUtils.clamp(((x - gx1) * gdx + (y - gy1) * gdy) / gLenSq, 0, 1);
 		if (t < 0.5) cTmp.lerpColors(cLight, cMid, t * 2);
 		else cTmp.lerpColors(cMid, cDeep, (t - 0.5) * 2);
-		colors[i * 3] = cTmp.r;
-		colors[i * 3 + 1] = cTmp.g;
-		colors[i * 3 + 2] = cTmp.b;
+
+		// Soft botanical center crevice occlusion darkening at root
+		const ao = 0.64 + 0.36 * clamp01(rNorm / 0.38);
+		colors[i * 3] = cTmp.r * ao;
+		colors[i * 3 + 1] = cTmp.g * ao;
+		colors[i * 3 + 2] = cTmp.b * ao;
 	}
 
 	pos.needsUpdate = true;
@@ -179,15 +201,15 @@ function createBrandPetalGeometry(petal: Petal): BufferGeometry {
 }
 
 /** Dual-axis curved translucent backing petal geometry (adapted from flowers-ref/js/utils.js). */
-function createCalixPetalGeometry(width = 0.52, length = 1.25): BufferGeometry {
-	const uSegs = 14;
-	const vSegs = 22;
+function createCalixPetalGeometry(width = 0.58, length = 1.38): BufferGeometry {
+	const uSegs = 16;
+	const vSegs = 24;
 	const geom = new PlaneGeometry(width, length, uSegs, vSegs);
 	const pos = geom.attributes.position;
-	const cup = 0.16;
-	const curl = 0.24;
-	const flare = 0.1;
-	const ruffle = 0.02;
+	const cup = 0.24;
+	const curl = 0.3;
+	const flare = 0.12;
+	const ruffle = 0.025;
 
 	for (let i = 0; i < pos.count; i++) {
 		const x = pos.getX(i);
@@ -213,17 +235,17 @@ function createCalixPetalGeometry(width = 0.52, length = 1.25): BufferGeometry {
 	return geom;
 }
 
-/** Procedural soft-glow radial sprite texture for bokeh pollen and core corona. */
-function createGlowTexture(innerStop = "rgba(255,255,255,1)", midStop = "rgba(255,255,255,0.4)"): CanvasTexture {
+/** Procedural soft-glow or soft-occlusion radial sprite texture. */
+function createRadialTexture(innerStop: string, midStop: string, edgeMidStop = "rgba(255,255,255,0.06)"): CanvasTexture {
 	const canvas = document.createElement("canvas");
 	canvas.width = 128;
 	canvas.height = 128;
 	const ctx = canvas.getContext("2d")!;
 	const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
 	g.addColorStop(0, innerStop);
-	g.addColorStop(0.28, midStop);
-	g.addColorStop(0.65, "rgba(255,255,255,0.08)");
-	g.addColorStop(1, "rgba(255,255,255,0)");
+	g.addColorStop(0.32, midStop);
+	g.addColorStop(0.68, edgeMidStop);
+	g.addColorStop(1, "rgba(0,0,0,0)");
 	ctx.fillStyle = g;
 	ctx.fillRect(0, 0, 128, 128);
 	const tex = new CanvasTexture(canvas);
@@ -241,12 +263,12 @@ function createStudioEnvTexture(renderer: WebGLRenderer, lightTheme: boolean) {
 	const bg = ctx.createLinearGradient(0, 0, 0, 256);
 	if (lightTheme) {
 		bg.addColorStop(0, "#ffffff");
-		bg.addColorStop(0.55, "#ebe4ff");
-		bg.addColorStop(1, "#d8cff7");
+		bg.addColorStop(0.5, "#ebe4ff");
+		bg.addColorStop(1, "#cec1f4");
 	} else {
-		bg.addColorStop(0, "#1d1a3d");
-		bg.addColorStop(0.5, "#111028");
-		bg.addColorStop(1, "#070714");
+		bg.addColorStop(0, "#24204e");
+		bg.addColorStop(0.45, "#12102a");
+		bg.addColorStop(1, "#060612");
 	}
 	ctx.fillStyle = bg;
 	ctx.fillRect(0, 0, 512, 256);
@@ -254,16 +276,16 @@ function createStudioEnvTexture(renderer: WebGLRenderer, lightTheme: boolean) {
 	const drawLight = (x: number, y: number, r: number, inner: string, mid: string) => {
 		const g = ctx.createRadialGradient(x, y, 4, x, y, r);
 		g.addColorStop(0, inner);
-		g.addColorStop(0.45, mid);
+		g.addColorStop(0.42, mid);
 		g.addColorStop(1, "transparent");
 		ctx.fillStyle = g;
 		ctx.fillRect(x - r, y - r, r * 2, r * 2);
 	};
 
-	// Key studio softbox + violet/blue/coral rim accents matching ExpressiveOS palette
-	drawLight(140, 72, 130, "#ffffff", lightTheme ? "rgba(243, 177, 252, 0.5)" : "rgba(243, 177, 252, 0.65)");
-	drawLight(385, 92, 120, "#f5f8ff", lightTheme ? "rgba(118, 188, 251, 0.45)" : "rgba(118, 188, 251, 0.55)");
-	drawLight(256, 200, 140, "rgba(253, 207, 142, 0.45)", "rgba(172, 239, 179, 0.2)");
+	// High-contrast studio strip softboxes for crisp curved specular highlights on petal bevels
+	drawLight(150, 58, 125, "#ffffff", lightTheme ? "rgba(243, 177, 252, 0.58)" : "rgba(243, 177, 252, 0.72)");
+	drawLight(385, 86, 115, "#f5f8ff", lightTheme ? "rgba(118, 188, 251, 0.52)" : "rgba(118, 188, 251, 0.65)");
+	drawLight(256, 206, 130, "rgba(253, 207, 142, 0.52)", "rgba(172, 239, 179, 0.25)");
 
 	const equirect = new CanvasTexture(canvas);
 	equirect.colorSpace = SRGBColorSpace;
@@ -292,6 +314,8 @@ interface HeroPetalItem {
 	material: MeshPhysicalMaterial;
 	uniforms: PetalUniforms;
 	perpAxis: Vector3;
+	baseZ: number;
+	basePitch: number;
 	fill: number;
 	targetFill: number;
 	wasFull: boolean;
@@ -357,6 +381,7 @@ export class BloomScene {
 	private readonly coreLight: PointLight;
 	private readonly coronaSprite: Sprite;
 	private readonly coronaMat: SpriteMaterial;
+	private readonly centerShadowMat: MeshBasicMaterial;
 	private readonly keyLight: DirectionalLight;
 	private readonly rimLight: DirectionalLight;
 	private readonly fillLight: DirectionalLight;
@@ -399,19 +424,22 @@ export class BloomScene {
 	private mode: BloomSceneMode = "idle";
 	private progress = 1;
 	private downloadRate = 0;
-	private spawnDebt = 0;
 
 	private elapsed = 0;
 	private lastFrameTime = 0;
 	private raf = 0;
 	private destroyed = false;
 
+	private lastW = 0;
+	private lastH = 0;
+	private lastDpr = 0;
+
 	private celebrateTimer = 0;
 	private wiltBlend = 0;
 	private spinAngle = 0;
 	private ringRot = 0;
 
-	// Pointer parallax & gentle drag-orbit
+	// Pointer parallax & spring-back drag orbit
 	private pointerTarget = new Vector2(0, 0);
 	private pointerCurrent = new Vector2(0, 0);
 	private dragOffset = new Vector2(0, 0);
@@ -431,46 +459,66 @@ export class BloomScene {
 			powerPreference: "high-performance",
 		});
 		this.renderer.setClearColor(0x000000, 0);
-		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 		this.renderer.toneMapping = ACESFilmicToneMapping;
-		this.renderer.toneMappingExposure = 1.12;
+		this.renderer.toneMappingExposure = 1.15;
+		this.renderer.shadowMap.enabled = true;
+		this.renderer.shadowMap.type = PCFSoftShadowMap;
 		this.renderer.domElement.className = "bloom-webgl";
 		this.renderer.domElement.setAttribute("aria-hidden", "true");
 		container.append(this.renderer.domElement);
 
 		this.scene = new Scene();
-		this.camera = new PerspectiveCamera(38, 1, 0.1, 40);
-		this.camera.position.set(0, -0.15, 6.2);
-		this.camera.lookAt(0, 0, 0);
+		// Elevated 3/4 view (~11 deg above, subtle off-axis angle) so petal cup, bevel thickness, and overlap clearly read in 3D
+		this.camera = new PerspectiveCamera(37, 1, 0.1, 40);
+		this.camera.position.set(0.46, 0.96, 5.15);
+		this.camera.lookAt(0, -0.04, 0);
 
-		// Studio lighting
-		this.ambientLight = new AmbientLight(0xeae6ff, 0.55);
-		this.keyLight = new DirectionalLight(0xfff6f0, 2.0);
-		this.keyLight.position.set(3.2, 4.2, 4.5);
-		this.rimLight = new DirectionalLight(0xae69fc, 1.5);
-		this.rimLight.position.set(-3.5, 2.5, -2.5);
-		this.fillLight = new DirectionalLight(0x76bcfb, 0.95);
-		this.fillLight.position.set(2.5, -3.0, 2.0);
+		// Sculpted studio lighting + soft self-shadowing across overlapping petals
+		this.ambientLight = new AmbientLight(0xe4deff, 0.45);
+		this.keyLight = new DirectionalLight(0xfff7f2, 2.35);
+		this.keyLight.position.set(3.2, 4.4, 4.6);
+		this.keyLight.castShadow = true;
+		this.keyLight.shadow.mapSize.set(512, 512);
+		this.keyLight.shadow.camera.near = 1;
+		this.keyLight.shadow.camera.far = 14;
+		this.keyLight.shadow.camera.left = -2.2;
+		this.keyLight.shadow.camera.right = 2.2;
+		this.keyLight.shadow.camera.top = 2.2;
+		this.keyLight.shadow.camera.bottom = -2.2;
+		this.keyLight.shadow.bias = -0.0018;
+		this.keyLight.shadow.normalBias = 0.025;
+		this.keyLight.shadow.radius = 4;
+
+		this.rimLight = new DirectionalLight(0xc28cff, 2.1);
+		this.rimLight.position.set(-3.8, 3.4, -2.4);
+
+		this.fillLight = new DirectionalLight(0x76bcfb, 1.15);
+		this.fillLight.position.set(2.8, -2.8, 2.4);
+
 		this.scene.add(this.ambientLight, this.keyLight, this.rimLight, this.fillLight);
 
 		this.flowerGroup = new Group();
 		this.scene.add(this.flowerGroup);
 
-		// Build backing translucent calyx petals (from flowers-ref createCurvedPetalGeometry)
+		// Sculpted calyx receptacle cup tucked behind center
+		this.buildReceptacle();
+
+		// Backing translucent calyx petals (from flowers-ref createCurvedPetalGeometry)
 		this.buildBackingPetals();
 
-		// Build the 4 sculpted ExpressiveOS brand petals
+		// 4 sculpted ExpressiveOS brand petals
 		this.buildHeroPetals();
 
-		// Build luminous center core, corona glow sprite & Fibonacci stamen anthers
-		const { coreGroup, coreLight, coronaSprite, coronaMat } = this.buildCore();
+		// Luminous center hub, soft AO crevice disc, corona sprite & Fibonacci stamen anthers
+		const { coreGroup, coreLight, coronaSprite, coronaMat, centerShadowMat } = this.buildCore();
 		this.coreGroup = coreGroup;
 		this.coreLight = coreLight;
 		this.coronaSprite = coronaSprite;
 		this.coronaMat = coronaMat;
+		this.centerShadowMat = centerShadowMat;
 		this.flowerGroup.add(this.coreGroup);
 
-		// Build 3D orbital progress ring
+		// 3D orbital progress ring
 		const ring = this.buildProgressRing();
 		this.ringUniforms = ring.uniforms;
 		this.ringTrackMat = ring.trackMat;
@@ -478,8 +526,8 @@ export class BloomScene {
 		this.ringTrackMesh = ring.trackMesh;
 		this.scene.add(this.ringTrackMesh, this.ringMesh);
 
-		// Build pollen & celebration particles
-		const glowTex = createGlowTexture("rgba(255,255,255,1)", "rgba(255,255,255,0.45)");
+		// Pollen & celebration sparks
+		const glowTex = createRadialTexture("rgba(255,255,255,1)", "rgba(255,255,255,0.45)");
 		this.disposables.push(glowTex);
 
 		this.pollenPos = new Float32Array(MAX_AMBIENT_POLLEN * 3);
@@ -523,9 +571,9 @@ export class BloomScene {
 		const miniGeom = createCalixPetalGeometry(0.16, 0.28);
 		const miniMat = new MeshPhysicalMaterial({
 			color: 0xffffff,
-			roughness: 0.25,
+			roughness: 0.22,
 			metalness: 0.05,
-			clearcoat: 0.8,
+			clearcoat: 0.85,
 			side: DoubleSide,
 			transparent: true,
 			opacity: 0.92,
@@ -562,7 +610,7 @@ export class BloomScene {
 		}
 		this.scene.add(this.burstMesh);
 
-		// Sync light/dark theme
+		// Sync theme
 		this.syncTheme();
 		this.themeObs = new MutationObserver(() => this.syncTheme());
 		this.themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
@@ -576,22 +624,55 @@ export class BloomScene {
 		window.addEventListener("pointerup", this.onPointerUp);
 		dom.addEventListener("pointerleave", this.onPointerLeave);
 
-		this.resizeObs = new ResizeObserver(() => this.resize());
+		this.resizeObs = new ResizeObserver(() => this.syncSize());
 		this.resizeObs.observe(container);
-		this.resize();
+		this.resizeObs.observe(dom);
+
+		// Measure laid-out canvas dimensions and paint initial frame synchronously so SVG -> 3D swap has zero blank flash
+		if (this.syncSize()) {
+			this.updateScene(0);
+			this.renderer.render(this.scene, this.camera);
+		}
 
 		document.addEventListener("visibilitychange", this.onVisibility);
 		this.kick();
 	}
 
+	private buildReceptacle() {
+		// Turned calyx cup behind the center of the blossom visible when orbited/angled
+		const pts = [
+			new Vector2(0.01, -0.34),
+			new Vector2(0.16, -0.26),
+			new Vector2(0.28, -0.14),
+			new Vector2(0.32, 0.0),
+			new Vector2(0.18, 0.04),
+		];
+		const geom = new LatheGeometry(pts, 28);
+		geom.rotateX(Math.PI * 0.5);
+		const mat = new MeshPhysicalMaterial({
+			color: 0x38285c,
+			emissive: 0x1e1638,
+			emissiveIntensity: 0.25,
+			roughness: 0.45,
+			metalness: 0.1,
+			clearcoat: 0.5,
+		});
+		this.disposables.push(geom, mat);
+		const mesh = new Mesh(geom, mat);
+		mesh.position.z = -0.12;
+		mesh.castShadow = true;
+		mesh.receiveShadow = true;
+		this.flowerGroup.add(mesh);
+	}
+
 	private buildBackingPetals() {
 		const backingColors = [
-			new Color(PETALS[0].light).lerp(new Color(PETALS[1].light), 0.5),
-			new Color(PETALS[1].light).lerp(new Color(PETALS[2].light), 0.5),
-			new Color(PETALS[2].light).lerp(new Color(PETALS[3].light), 0.5),
-			new Color(PETALS[3].light).lerp(new Color(PETALS[0].light), 0.5),
+			new Color(PETALS[0].mid).lerp(new Color(PETALS[1].mid), 0.5),
+			new Color(PETALS[1].mid).lerp(new Color(PETALS[2].mid), 0.5),
+			new Color(PETALS[2].mid).lerp(new Color(PETALS[3].mid), 0.5),
+			new Color(PETALS[3].mid).lerp(new Color(PETALS[0].mid), 0.5),
 		];
-		const geom = createCalixPetalGeometry(0.62, 1.32);
+		const geom = createCalixPetalGeometry(0.64, 1.38);
 		this.disposables.push(geom);
 
 		for (let i = 0; i < 4; i++) {
@@ -602,24 +683,25 @@ export class BloomScene {
 				roughness: 0.22,
 				metalness: 0.05,
 				clearcoat: 1.0,
-				clearcoatRoughness: 0.12,
-				iridescence: 0.65,
-				iridescenceIOR: 1.35,
+				clearcoatRoughness: 0.1,
+				iridescence: 0.7,
+				iridescenceIOR: 1.36,
 				transparent: true,
-				opacity: 0.34,
+				opacity: 0.36,
 				side: DoubleSide,
 				depthWrite: false,
 			});
 			this.disposables.push(mat);
 
 			const pivot = new Group();
-			pivot.rotation.z = (Math.PI / 4) + i * (Math.PI / 2);
-			pivot.position.z = -0.14;
+			pivot.rotation.z = Math.PI / 4 + i * (Math.PI / 2);
+			pivot.position.z = -0.18;
 
 			const mesh = new Mesh(geom, mat);
-			const baseRotX = -0.42;
+			const baseRotX = -0.52;
 			mesh.rotation.x = baseRotX;
-			mesh.position.y = 0.08;
+			mesh.position.y = 0.06;
+			mesh.receiveShadow = true;
 			pivot.add(mesh);
 			this.flowerGroup.add(pivot);
 
@@ -641,7 +723,7 @@ export class BloomScene {
 			const uniforms: PetalUniforms = {
 				uFill: { value: 1 },
 				uTime: { value: 0 },
-				uRipple: { value: 0.7 },
+				uRipple: { value: 0.72 },
 				uShimmer: { value: 0 },
 				uWilt: { value: 0 },
 				uPhase: { value: i * 1.45 },
@@ -651,21 +733,21 @@ export class BloomScene {
 
 			const mat = new MeshPhysicalMaterial({
 				vertexColors: true,
-				roughness: 0.22,
-				metalness: 0.05,
-				clearcoat: 0.92,
-				clearcoatRoughness: 0.12,
-				sheen: 0.85,
-				sheenRoughness: 0.32,
+				roughness: 0.2,
+				metalness: 0.06,
+				clearcoat: 1.0,
+				clearcoatRoughness: 0.08,
+				sheen: 0.92,
+				sheenRoughness: 0.28,
 				sheenColor: new Color(petal.light),
-				iridescence: 0.36,
-				iridescenceIOR: 1.32,
+				iridescence: 0.42,
+				iridescenceIOR: 1.34,
 				emissive: new Color(petal.mid),
-				emissiveIntensity: 0.16,
+				emissiveIntensity: 0.14,
 				transparent: true,
-				envMapIntensity: 1.25,
+				envMapIntensity: 1.45,
 			});
-			mat.customProgramCacheKey = () => "eos-petal-v1";
+			mat.customProgramCacheKey = () => "eos-petal-v2";
 			mat.onBeforeCompile = (shader) => {
 				Object.assign(shader.uniforms, uniforms);
 				shader.vertexShader = shader.vertexShader
@@ -683,8 +765,8 @@ uniform float uPhase;`,
 						`#include <begin_vertex>
 vFillPos = aFill;
 float tipW = smoothstep(0.18, 1.0, aFill);
-float w1 = sin(position.y * 4.2 - uTime * 2.1 + uPhase + position.x * 3.1) * 0.032;
-float w2 = cos(position.x * 5.6 - uTime * 2.8 + uPhase) * 0.016;
+float w1 = sin(position.y * 4.2 - uTime * 2.1 + uPhase + position.x * 3.1) * 0.036;
+float w2 = cos(position.x * 5.6 - uTime * 2.8 + uPhase) * 0.018;
 transformed.z += (w1 + w2) * tipW * uRipple;`,
 					);
 
@@ -714,20 +796,25 @@ diffuseColor.a *= mix(0.28, 1.0, fillMask) * mix(1.0, 0.78, uWilt);`,
 					.replace(
 						"#include <emissivemap_fragment>",
 						`#include <emissivemap_fragment>
+float centerAO = smoothstep(0.0, 0.42, vFillPos);
 float edgeDist = abs(vFillPos - uFill);
 float fillWave = (uFill > 0.01 && uFill < 0.99) ? exp(-edgeDist * edgeDist * 170.0) : 0.0;
 float sweep = pow(max(0.0, sin(vFillPos * 5.2 - uTime * 3.6 + uPhase)), 6.0) * uShimmer;
 vec3 viewDirF = normalize(vViewPosition);
-float fresnelF = pow(1.0 - abs(dot(normal, viewDirF)), 2.5);
-totalEmissiveRadiance *= fillMask * (1.0 - uWilt * 0.85);
-totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF * mix(0.18, 0.34, fillMask) * (1.0 - uWilt * 0.72));`,
+float fresnelF = pow(1.0 - abs(dot(normal, viewDirF)), 2.4);
+totalEmissiveRadiance *= fillMask * mix(0.3, 1.0, centerAO) * (1.0 - uWilt * 0.85);
+totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF * mix(0.18, 0.42, fillMask) * centerAO * (1.0 - uWilt * 0.72));`,
 					);
 			};
 
 			this.disposables.push(mat);
 
+			const layer = PETAL_LAYERS[petal.name];
 			const pivot = new Group();
+			pivot.position.z = layer.z;
 			const mesh = new Mesh(geom, mat);
+			mesh.castShadow = true;
+			mesh.receiveShadow = true;
 			pivot.add(mesh);
 			this.flowerGroup.add(pivot);
 
@@ -742,6 +829,8 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 				material: mat,
 				uniforms,
 				perpAxis,
+				baseZ: layer.z,
+				basePitch: layer.pitch,
 				fill: 1,
 				targetFill: 1,
 				wasFull: true,
@@ -753,45 +842,62 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 
 	private buildCore() {
 		const coreGroup = new Group();
-		coreGroup.position.set(0, 0, 0.12);
+		coreGroup.position.set(0, 0, 0.16);
+
+		// Soft dark occlusion halo at the heart between petals and stamen crown
+		const aoTex = createRadialTexture("rgba(12,8,30,0.72)", "rgba(18,12,44,0.34)", "rgba(18,12,44,0.06)");
+		const aoGeom = new PlaneGeometry(0.95, 0.95);
+		const centerShadowMat = new MeshBasicMaterial({
+			map: aoTex,
+			transparent: true,
+			depthWrite: false,
+		});
+		this.disposables.push(aoTex, aoGeom, centerShadowMat);
+		const aoMesh = new Mesh(aoGeom, centerShadowMat);
+		aoMesh.position.z = -0.08;
+		coreGroup.add(aoMesh);
 
 		// Pearlescent inner hub sphere
-		const sphereGeom = new SphereGeometry(0.13, 24, 24);
+		const sphereGeom = new SphereGeometry(0.135, 24, 24);
 		const sphereMat = new MeshPhysicalMaterial({
 			color: 0xffffff,
 			emissive: 0xd8b4fe,
-			emissiveIntensity: 0.9,
+			emissiveIntensity: 0.75,
 			roughness: 0.12,
 			metalness: 0.1,
 			clearcoat: 1.0,
 		});
 		this.disposables.push(sphereGeom, sphereMat);
-		coreGroup.add(new Mesh(sphereGeom, sphereMat));
+		const hubMesh = new Mesh(sphereGeom, sphereMat);
+		hubMesh.castShadow = true;
+		hubMesh.receiveShadow = true;
+		coreGroup.add(hubMesh);
 
 		// Soft volumetric additive corona sprite
-		const coronaTex = createGlowTexture("rgba(255,255,255,0.95)", "rgba(210,175,255,0.45)");
+		const coronaTex = createRadialTexture("rgba(255,255,255,0.95)", "rgba(210,175,255,0.42)");
 		const coronaMat = new SpriteMaterial({
 			map: coronaTex,
 			color: 0xd8b4fe,
 			transparent: true,
-			opacity: 0.72,
+			opacity: 0.68,
 			blending: AdditiveBlending,
 			depthWrite: false,
 		});
 		this.disposables.push(coronaTex, coronaMat);
 		const coronaSprite = new Sprite(coronaMat);
-		coronaSprite.scale.set(0.95, 0.95, 1);
+		coronaSprite.scale.set(0.96, 0.96, 1);
 		coreGroup.add(coronaSprite);
 
 		// Fibonacci stamen filaments (1 merged LineSegments + 1 InstancedMesh = 2 draw calls)
-		const stamenCount = 16;
+		const stamenCount = 22;
 		const linePts: number[] = [];
-		const antherGeom = new SphereGeometry(0.022, 10, 10);
+		const antherGeom = new SphereGeometry(0.024, 10, 10);
 		const antherMat = new MeshPhysicalMaterial({
 			color: 0xffe4a0,
 			emissive: 0xfdcf8e,
-			emissiveIntensity: 0.65,
-			roughness: 0.35,
+			emissiveIntensity: 0.6,
+			roughness: 0.3,
+			clearcoat: 0.6,
 		});
 		this.disposables.push(antherGeom, antherMat);
 		const anthers = new InstancedMesh(antherGeom, antherMat, stamenCount);
@@ -799,17 +905,18 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 
 		for (let i = 0; i < stamenCount; i++) {
 			const theta = i * GOLDEN_ANGLE;
-			const r = 0.08 + 0.11 * Math.sqrt((i + 1) / stamenCount);
+			const f = (i + 1) / stamenCount;
+			const r = 0.08 + 0.16 * Math.sqrt(f);
 			const bx = Math.cos(theta) * 0.04;
 			const by = Math.sin(theta) * 0.04;
 			const tx = Math.cos(theta) * r;
 			const ty = Math.sin(theta) * r;
-			const tz = 0.11 + (i % 3) * 0.025;
+			const tz = 0.14 + (1 - f * 0.5) * 0.11;
 			linePts.push(bx, by, 0, tx, ty, tz);
 
 			dummy.position.set(tx, ty, tz);
-			dummy.scale.set(1, 1, 1.35);
-			dummy.lookAt(tx * 2, ty * 2, tz + 0.2);
+			dummy.scale.set(1, 1, 1.38);
+			dummy.lookAt(tx * 2, ty * 2, tz + 0.24);
 			dummy.updateMatrix();
 			anthers.setMatrixAt(i, dummy.matrix);
 		}
@@ -817,20 +924,20 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 
 		const lineGeom = new BufferGeometry();
 		lineGeom.setAttribute("position", new Float32BufferAttribute(linePts, 3));
-		const lineMat = new LineBasicMaterial({ color: 0xf5e9ff, transparent: true, opacity: 0.55 });
+		const lineMat = new LineBasicMaterial({ color: 0xf5e9ff, transparent: true, opacity: 0.6 });
 		this.disposables.push(lineGeom, lineMat);
 		coreGroup.add(new LineSegments(lineGeom, lineMat), anthers);
 
-		const coreLight = new PointLight(0xc084fc, 2.2, 5.5);
-		coreLight.position.set(0, 0, 0.35);
+		const coreLight = new PointLight(0xc084fc, 2.3, 5.5);
+		coreLight.position.set(0, 0, 0.42);
 		coreGroup.add(coreLight);
 
-		return { coreGroup, coreLight, coronaSprite, coronaMat };
+		return { coreGroup, coreLight, coronaSprite, coronaMat, centerShadowMat };
 	}
 
 	private buildProgressRing() {
 		const radius = 1.88;
-		const trackGeom = new TorusGeometry(radius, 0.014, 10, 112);
+		const trackGeom = new TorusGeometry(radius, 0.015, 10, 112);
 		const trackMat = new MeshBasicMaterial({
 			color: 0xffffff,
 			transparent: true,
@@ -839,7 +946,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		});
 		const trackMesh = new Mesh(trackGeom, trackMat);
 
-		const arcGeom = new TorusGeometry(radius, 0.028, 12, 128);
+		const arcGeom = new TorusGeometry(radius, 0.03, 12, 128);
 		const uniforms = {
 			uProgress: { value: 0 },
 			uOpacity: { value: 0 },
@@ -967,15 +1074,17 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		if (this.isLight) {
 			if (!this.envTargetLight) this.envTargetLight = createStudioEnvTexture(this.renderer, true);
 			this.scene.environment = this.envTargetLight.texture;
-			this.ambientLight.intensity = 0.85;
-			this.keyLight.intensity = 1.75;
+			this.ambientLight.intensity = 0.72;
+			this.keyLight.intensity = 2.05;
 			this.ringTrackMat.color.setHex(0x141329);
+			this.centerShadowMat.opacity = 0.48;
 		} else {
 			if (!this.envTargetDark) this.envTargetDark = createStudioEnvTexture(this.renderer, false);
 			this.scene.environment = this.envTargetDark.texture;
-			this.ambientLight.intensity = 0.55;
-			this.keyLight.intensity = 2.05;
+			this.ambientLight.intensity = 0.45;
+			this.keyLight.intensity = 2.35;
 			this.ringTrackMat.color.setHex(0xffffff);
+			this.centerShadowMat.opacity = 0.88;
 		}
 
 		const ghostHex = this.isLight ? 0xd9cef7 : 0x2a2754;
@@ -995,8 +1104,8 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			const dx = ev.clientX - this.lastDrag.x;
 			const dy = ev.clientY - this.lastDrag.y;
 			this.lastDrag.set(ev.clientX, ev.clientY);
-			this.dragOffset.x = MathUtils.clamp(this.dragOffset.x + dx * 0.008, -0.65, 0.65);
-			this.dragOffset.y = MathUtils.clamp(this.dragOffset.y + dy * 0.008, -0.45, 0.45);
+			this.dragOffset.x = MathUtils.clamp(this.dragOffset.x + dx * 0.009, -0.85, 0.85);
+			this.dragOffset.y = MathUtils.clamp(this.dragOffset.y + dy * 0.009, -0.55, 0.55);
 		}
 	};
 
@@ -1023,13 +1132,33 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		}
 	};
 
+	/** Measure the CSS box the canvas actually fills and align drawing buffer + DPR + aspect ratio. */
+	private syncSize(): boolean {
+		const canvas = this.renderer.domElement;
+		const rect = canvas.getBoundingClientRect();
+		const cw = rect.width > 0 ? rect.width : this.container.getBoundingClientRect().width;
+		const ch = rect.height > 0 ? rect.height : this.container.getBoundingClientRect().height;
+		const w = Math.round(cw);
+		const h = Math.round(ch);
+		if (w <= 0 || h <= 0) return false;
+
+		const dpr = Math.min(window.devicePixelRatio || 1, 2);
+		const targetW = Math.floor(w * dpr);
+		const targetH = Math.floor(h * dpr);
+		if (canvas.width !== targetW || canvas.height !== targetH || this.lastW !== w || this.lastH !== h || this.lastDpr !== dpr) {
+			this.lastW = w;
+			this.lastH = h;
+			this.lastDpr = dpr;
+			this.renderer.setPixelRatio(dpr);
+			this.renderer.setSize(w, h, false);
+			this.camera.aspect = w / h;
+			this.camera.updateProjectionMatrix();
+		}
+		return true;
+	}
+
 	resize() {
-		const r = this.container.getBoundingClientRect();
-		const w = Math.max(1, r.width);
-		const h = Math.max(1, r.height);
-		this.camera.aspect = w / h;
-		this.camera.updateProjectionMatrix();
-		this.renderer.setSize(w, h, false);
+		this.syncSize();
 	}
 
 	setMode(mode: BloomSceneMode) {
@@ -1092,7 +1221,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			bp.active = true;
 			bp.x = dx * 0.45;
 			bp.y = dy * 0.45;
-			bp.z = 0.18 + Math.random() * 0.15;
+			bp.z = 0.22 + Math.random() * 0.15;
 			bp.vx = Math.cos(angle) * speed;
 			bp.vy = Math.sin(angle) * speed + 0.55 * power;
 			bp.vz = (Math.random() - 0.3) * 1.8 * power;
@@ -1125,7 +1254,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			const speed = (1.5 + Math.random() * 2.5) * power;
 			sp.x = dx * 0.35;
 			sp.y = dy * 0.35;
-			sp.z = 0.2;
+			sp.z = 0.24;
 			sp.vx = Math.cos(a) * speed;
 			sp.vy = Math.sin(a) * speed + 0.4 * power;
 			sp.vz = (Math.random() - 0.4) * 2.0 * power;
@@ -1161,8 +1290,10 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		const dt = Math.min(0.05, rawMs / 1000);
 		this.elapsed += dt;
 
-		this.updateScene(dt);
-		this.renderer.render(this.scene, this.camera);
+		if (this.syncSize()) {
+			this.updateScene(dt);
+			this.renderer.render(this.scene, this.camera);
+		}
 
 		this.raf = requestAnimationFrame(this.frame);
 	};
@@ -1173,7 +1304,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		// Smooth pointer parallax & spring-back orbit
 		this.pointerCurrent.lerp(this.pointerTarget, Math.min(1, dt * 5));
 		if (!this.dragging) {
-			this.dragOffset.multiplyScalar(Math.max(0, 1 - dt * 3.2));
+			this.dragOffset.multiplyScalar(Math.max(0, 1 - dt * 3.0));
 		}
 
 		// Mode-driven wilt / celebrate / spin transitions
@@ -1185,36 +1316,36 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		}
 
 		if (this.mode === "install") {
-			this.spinAngle += dt * 0.34;
+			this.spinAngle += dt * 0.36;
 		} else {
-			// Ease back cleanly toward upright orientation so brand mark reads clearly
+			const sway = Math.sin(t * 0.32) * 0.08 * (1 - this.wiltBlend);
 			const wrap = Math.atan2(Math.sin(this.spinAngle), Math.cos(this.spinAngle));
-			this.spinAngle = wrap * Math.max(0, 1 - dt * 3.5);
+			this.spinAngle = wrap * Math.max(0, 1 - dt * 3.5) + sway * Math.min(1, dt * 3.5);
 		}
 
-		// Hero camera subtle orbital breathing + pointer parallax
-		const camDriftX = Math.sin(t * 0.45) * 0.14 + this.pointerCurrent.x * 0.28 + this.dragOffset.x * 1.1;
-		const camDriftY = -0.14 + Math.cos(t * 0.38) * 0.09 - this.pointerCurrent.y * 0.22 - this.dragOffset.y * 0.9;
-		this.camera.position.set(camDriftX, camDriftY, 6.15);
-		this.camera.lookAt(0, 0, 0);
+		// Angled 3/4 sculptural hero camera with gentle orbital drift & pointer parallax
+		const camX = 0.44 + Math.sin(t * 0.42) * 0.36 + this.pointerCurrent.x * 0.42 + this.dragOffset.x * 1.45;
+		const camY = 0.94 + Math.cos(t * 0.36) * 0.22 - this.pointerCurrent.y * 0.34 - this.dragOffset.y * 1.15;
+		this.camera.position.set(camX, camY, 5.15);
+		this.camera.lookAt(0, -0.04, 0);
 
-		// Whole flower float, tilt & mode expression
-		const floatY = this.mode === "error" ? -0.12 : Math.sin(t * 1.15) * 0.045;
-		const tiltX = this.mode === "error" ? 0.36 : -0.14 + Math.sin(t * 0.65) * 0.04 + this.pointerCurrent.y * 0.12;
-		const tiltY = Math.cos(t * 0.55) * 0.07 + this.pointerCurrent.x * 0.16;
+		// Whole flower float, spatial sway, & mode expression
+		const floatY = this.mode === "error" ? -0.14 : Math.sin(t * 1.15) * 0.05;
+		const tiltX = this.mode === "error" ? 0.44 : 0.06 + Math.cos(t * 0.48) * 0.07 + this.pointerCurrent.y * 0.14;
+		const tiltY = Math.sin(t * 0.44) * 0.22 * (1 - this.wiltBlend) + this.pointerCurrent.x * 0.22;
 		this.flowerGroup.position.y += (floatY - this.flowerGroup.position.y) * Math.min(1, dt * 5);
 		this.flowerGroup.rotation.x += (tiltX - this.flowerGroup.rotation.x) * Math.min(1, dt * 5);
 		this.flowerGroup.rotation.y += (tiltY - this.flowerGroup.rotation.y) * Math.min(1, dt * 5);
 		this.flowerGroup.rotation.z = this.spinAngle;
 
 		const bloomFlare = this.celebrateTimer > 0 ? Math.sin((this.celebrateTimer / 1.8) * Math.PI) * 0.12 : 0;
-		const idleBreathe = this.mode === "idle" ? Math.sin(t * 1.4) * 0.025 : 0;
-		const baseScale = (this.mode === "error" ? 0.9 : 1.0) + bloomFlare + idleBreathe;
+		const idleBreathe = this.mode === "idle" ? Math.sin(t * 1.35) * 0.024 : 0;
+		const baseScale = (this.mode === "error" ? 0.92 : 1.06) + bloomFlare + idleBreathe;
 		this.flowerGroup.scale.setScalar(baseScale);
 
-		// Update 4 ExpressiveOS Hero Petals
+		// Update 4 sculpted ExpressiveOS Hero Petals
 		const shimmerTarget = this.mode === "verify" ? 1 : 0;
-		const rippleAmt = this.mode === "error" ? 0.15 : this.mode === "install" ? 1.15 : 0.72;
+		const rippleAmt = this.mode === "error" ? 0.15 : this.mode === "install" ? 1.15 : 0.78;
 
 		this.heroPetals.forEach((item, i) => {
 			item.fill += (item.targetFill - item.fill) * Math.min(1, dt * 6);
@@ -1228,20 +1359,20 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			if (item.popTimer > 0) item.popTimer = Math.max(0, item.popTimer - dt * 1.35);
 			if (item.pulseFlash > 0) item.pulseFlash = Math.max(0, item.pulseFlash - dt * 2.2);
 
-			// Curl inward as translucent bud when unfilled, flare open on bloom/waiting, droop on error
-			const budCurl = (1 - item.fill) * -0.48;
-			const waitPart = this.mode === "waiting" ? Math.sin(t * 2.6 + i * 0.45) * 0.12 + 0.08 : 0;
-			const popSpring = item.popTimer > 0 ? Math.sin(item.popTimer * Math.PI) * 0.22 : 0;
-			const errorDroop = this.wiltBlend * -0.34;
-			const breatheTilt = Math.sin(t * 1.35 + i * 1.2) * 0.035 * (1 - this.wiltBlend);
+			// True 3D cupped corolla pitch: unfilled petals curl inward as closed buds; open petals hold sculptural cup & gentle wave
+			const budCurl = (1 - item.fill) * -0.58;
+			const waitPart = this.mode === "waiting" ? Math.sin(t * 2.6 + i * 0.45) * 0.14 + 0.08 : 0;
+			const popSpring = item.popTimer > 0 ? Math.sin(item.popTimer * Math.PI) * 0.24 : 0;
+			const errorDroop = this.wiltBlend * -0.42;
+			const breatheTilt = Math.sin(t * 1.25 + i * 1.35) * 0.055 * (1 - this.wiltBlend);
 
-			const tiltAngle = budCurl + waitPart + popSpring + errorDroop + breatheTilt;
+			const tiltAngle = item.basePitch * item.fill + budCurl + waitPart + popSpring + errorDroop + breatheTilt;
 			this.tmpQuat.setFromAxisAngle(item.perpAxis, tiltAngle);
 			item.pivot.quaternion.copy(this.tmpQuat);
 
 			const [dx, dy] = PETAL_DIRS[item.petal.name];
-			const spread = (this.mode === "waiting" ? Math.sin(t * 2.6 + i * 0.4) * 0.045 : 0) + popSpring * 0.22;
-			item.pivot.position.set(dx * spread, dy * spread, 0);
+			const spread = (this.mode === "waiting" ? Math.sin(t * 2.6 + i * 0.4) * 0.05 : 0) + popSpring * 0.22;
+			item.pivot.position.set(dx * spread, dy * spread, item.baseZ);
 
 			const s = 0.84 + 0.16 * easeOutCubic(item.fill) + popSpring * 0.18;
 			item.mesh.scale.setScalar(s);
@@ -1254,24 +1385,24 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			const shimmerVal = Math.max(shimmerTarget, item.pulseFlash);
 			item.uniforms.uShimmer.value += (shimmerVal - item.uniforms.uShimmer.value) * Math.min(1, dt * 8);
 
-			const baseEmissive = this.mode === "complete" ? 0.34 : this.mode === "install" ? 0.24 : 0.15;
+			const baseEmissive = this.mode === "complete" ? 0.3 : this.mode === "install" ? 0.22 : 0.12;
 			item.material.emissiveIntensity = (baseEmissive + item.pulseFlash * 0.75) * (1 - this.wiltBlend * 0.8);
 		});
 
 		// Update backing translucent calyx petals
 		for (const bp of this.backingPetals) {
 			const openLift = this.mode === "error" ? -0.25 : this.celebrateTimer > 0 ? 0.24 : 0;
-			bp.mesh.rotation.x = bp.baseRotX + openLift + Math.sin(t * 1.1 + bp.phase) * 0.05;
-			bp.material.opacity = (this.isLight ? 0.28 : 0.34) * (1 - this.wiltBlend * 0.65);
+			bp.mesh.rotation.x = bp.baseRotX + openLift + Math.sin(t * 1.1 + bp.phase) * 0.06;
+			bp.material.opacity = (this.isLight ? 0.28 : 0.36) * (1 - this.wiltBlend * 0.65);
 		}
 
 		// Update luminous core & corona
-		const corePulse = 1 + Math.sin(t * (this.mode === "waiting" ? 2.6 : 3.2)) * 0.12 + (this.celebrateTimer > 0 ? 0.32 : 0);
+		const corePulse = 1 + Math.sin(t * (this.mode === "waiting" ? 2.6 : 3.2)) * 0.1 + (this.celebrateTimer > 0 ? 0.3 : 0);
 		this.coreGroup.scale.setScalar(corePulse * (1 - this.wiltBlend * 0.35));
-		const coronaSize = 0.95 + Math.sin(t * 2.4) * 0.1 + (this.celebrateTimer > 0 ? 0.35 : 0);
+		const coronaSize = 0.94 + Math.sin(t * 2.4) * 0.09 + (this.celebrateTimer > 0 ? 0.34 : 0);
 		this.coronaSprite.scale.set(coronaSize, coronaSize, 1);
-		this.coreLight.intensity = (this.mode === "complete" ? 3.2 : this.mode === "install" ? 2.6 : 1.9) * (1 - this.wiltBlend * 0.75);
-		this.coronaMat.opacity = (this.mode === "complete" ? 0.92 : 0.68) * (1 - this.wiltBlend * 0.75);
+		this.coreLight.intensity = (this.mode === "complete" ? 3.2 : this.mode === "install" ? 2.6 : 2.1) * (1 - this.wiltBlend * 0.75);
+		this.coronaMat.opacity = (this.mode === "complete" ? 0.9 : 0.64) * (1 - this.wiltBlend * 0.75);
 
 		if (this.mode === "error") this.coreLight.color.setHex(0xd33952);
 		else if (this.mode === "verify") this.coreLight.color.setHex(0x76bcfb);
@@ -1288,10 +1419,10 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		this.ringUniforms.uTime.value = t;
 		this.ringUniforms.uPulse.value = this.mode === "waiting" ? 0.55 + 0.45 * Math.sin(t * 2.8) : 1;
 		if (this.mode === "install") this.ringRot += dt * 0.12;
-		this.ringMesh.rotation.set(this.flowerGroup.rotation.x * 0.45, this.flowerGroup.rotation.y * 0.45, this.ringRot);
+		this.ringMesh.rotation.set(this.flowerGroup.rotation.x * 0.55, this.flowerGroup.rotation.y * 0.55, this.ringRot);
 		this.ringTrackMesh.rotation.copy(this.ringMesh.rotation);
 
-		// Update ambient pollen motes
+		// Update ambient pollen motes & bursts
 		this.updatePollen(dt, t);
 		this.updateBursts(dt);
 	}
@@ -1300,10 +1431,6 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		const fillingIdx = Math.min(3, Math.floor(this.progress * 4));
 		const activeDir = PETAL_DIRS[PETALS[fillingIdx].name];
 		const speedMult = this.mode === "download" ? 1 + this.downloadRate * 0.045 : this.mode === "error" ? 0.25 : 1;
-
-		if (this.mode === "download") {
-			this.spawnDebt += this.downloadRate * dt * 0.5;
-		}
 
 		for (let i = 0; i < MAX_AMBIENT_POLLEN; i++) {
 			const p = this.pollenParticles[i];
@@ -1323,7 +1450,6 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 					p.life = 0;
 				} else {
 					const pull = (1.6 + speedMult * 0.75) * dt;
-					// Tangential swirl + inward pull
 					p.x += (dx / d) * pull - (dy / d) * pull * 0.55;
 					p.y += (dy / d) * pull + (dx / d) * pull * 0.55;
 					p.z += Math.sin(t * 2 + i) * 0.15 * dt;
@@ -1362,7 +1488,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 				continue;
 			}
 			const t = bp.life / bp.max;
-			bp.vy -= 1.35 * dt; // soft gravity
+			bp.vy -= 1.35 * dt;
 			bp.vx *= 1 - 0.95 * dt;
 			bp.vz *= 1 - 0.95 * dt;
 			bp.x += bp.vx * dt;

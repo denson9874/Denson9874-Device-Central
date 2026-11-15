@@ -4,7 +4,7 @@
 // inside a 3D ring of petal colours that fills, and each finished partition throws off petals;
 // when the install is done it bursts into full bloom.
 
-import { BloomScene } from "./bloom-scene.ts";
+import type { BloomScene } from "./bloom-scene.ts";
 import { PETALS, type Petal } from "./petals.ts";
 
 export type BloomMode = "idle" | "download" | "verify" | "install" | "waiting" | "complete" | "error";
@@ -90,9 +90,12 @@ export class BloomStage {
 	private mode: BloomMode = "idle";
 	private progress = 0;
 	private rate = 0; // pollen per second
+	private speedBps = 0;
 	private spawnDebt = 0;
 	private readonly reduced: boolean;
 	private resizeObs: ResizeObserver | null = null;
+	private upgradeRaf = 0;
+	private destroyed = false;
 	private w = 0;
 	private h = 0;
 	private dpr = 1;
@@ -108,21 +111,44 @@ export class BloomStage {
 		this.root.append(glow);
 		host.append(this.root);
 
+		// Paint the lightweight SVG Bloom immediately so first load stays fast and never flashes empty
+		this.initFallback();
+
 		if (!this.reduced && webGlAvailable()) {
-			try {
-				this.scene3d = new BloomScene(this.root);
-				this.root.classList.add("is-3d");
-				const webglCanvas = this.root.querySelector("canvas.bloom-webgl");
-				webglCanvas?.addEventListener("webglcontextlost", this.onContextLost, { once: true });
-				this.setProgress(0);
-				return;
-			} catch {
-				this.scene3d?.destroy();
-				this.scene3d = null;
+			// Load Three.js + 3D scene lazily after first paint
+			const schedule = () => {
+				if (this.destroyed) return;
+				void this.mount3D();
+			};
+			if (typeof requestAnimationFrame === "function") {
+				this.upgradeRaf = requestAnimationFrame(() => {
+					this.upgradeRaf = requestAnimationFrame(schedule);
+				});
+			} else {
+				setTimeout(schedule, 0);
 			}
 		}
+	}
 
-		this.initFallback();
+	private async mount3D() {
+		if (this.destroyed || this.reduced || this.scene3d || !this.root.isConnected) return;
+		try {
+			const { BloomScene } = await import("./bloom-scene.ts");
+			if (this.destroyed || this.reduced || this.scene3d || !this.root.isConnected) return;
+			const scene = new BloomScene(this.root);
+			scene.setMode(this.mode);
+			scene.setProgress(this.progress);
+			if (this.mode === "download" && this.speedBps > 0) scene.setSpeed(this.speedBps);
+			this.scene3d = scene;
+			this.root.classList.add("is-3d");
+			const webglCanvas = this.root.querySelector("canvas.bloom-webgl");
+			webglCanvas?.addEventListener("webglcontextlost", this.onContextLost, { once: true });
+			this.teardownFallback();
+		} catch {
+			this.root.querySelector("canvas.bloom-webgl")?.remove();
+			this.scene3d = null;
+			this.root.classList.remove("is-3d");
+		}
 	}
 
 	private onContextLost = (ev: Event) => {
@@ -134,6 +160,27 @@ export class BloomStage {
 		this.initFallback();
 		this.setProgress(this.progress);
 	};
+
+	private teardownFallback() {
+		cancelAnimationFrame(this.raf);
+		this.raf = 0;
+		this.resizeObs?.disconnect();
+		this.resizeObs = null;
+		document.removeEventListener("visibilitychange", this.onVisibility);
+		this.canvas?.remove();
+		this.ring?.remove();
+		this.markWrap?.remove();
+		this.canvas = null;
+		this.ctx = null;
+		this.ring = null;
+		this.markWrap = null;
+		this.mark = null;
+		this.particles = [];
+		this.petalGroups = [];
+		this.clips = [];
+		this.ringArcs = [];
+		this.petalPaths = [];
+	}
 
 	private initFallback() {
 		if (this.markWrap) return;
@@ -158,7 +205,7 @@ export class BloomStage {
 		this.resizeObs.observe(this.root);
 		this.resize();
 		document.addEventListener("visibilitychange", this.onVisibility);
-		this.setProgress(0);
+		this.setProgress(this.progress);
 		this.kick();
 	}
 
@@ -260,6 +307,7 @@ export class BloomStage {
 
 	/** Pollen per second while downloading, from the download speed (bytes/s). */
 	setSpeed(bytesPerSecond: number) {
+		this.speedBps = bytesPerSecond;
 		if (this.mode !== "download") return;
 		const mb = bytesPerSecond / (1024 * 1024);
 		this.rate = Math.max(6, Math.min(60, 6 + mb * 2));
@@ -448,11 +496,12 @@ export class BloomStage {
 	};
 
 	destroy() {
+		this.destroyed = true;
+		cancelAnimationFrame(this.upgradeRaf);
+		this.upgradeRaf = 0;
 		this.scene3d?.destroy();
 		this.scene3d = null;
-		cancelAnimationFrame(this.raf);
-		this.resizeObs?.disconnect();
-		document.removeEventListener("visibilitychange", this.onVisibility);
+		this.teardownFallback();
 		this.root.remove();
 	}
 }
