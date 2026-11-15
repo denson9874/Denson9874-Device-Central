@@ -429,6 +429,15 @@ fi
 sed -E "s/^(require )?board=.*/require board=$EOS_BOARD/" "$O/android-info.txt" > "$T/z/android-info.txt"
 { [[ "$(grep -cE '^(require )?board=' "$T/z/android-info.txt")" = 1 ]] && grep -qx "require board=$EOS_BOARD" "$T/z/android-info.txt"; } \
     || fail "can't make android-info.txt say 'require board=$EOS_BOARD' only"
+# The Pixel 11 packages carry no bootloader, yet their vendor, kernel and firmware images need
+# the one of the factory image they come from: on an older bootloader the new slot doesn't start
+# and the phone falls back to the other slot (a user's "it went back to October", 1.2). The
+# factory image's own requirement, so fastboot and the web installer refuse such a phone
+if [[ -n $fz ]]; then
+    blreq=$(unzip -p -- "$fz" android-info.txt 2>/dev/null | tr -d '\r' | grep -E '^require version-bootloader=') \
+        || fail "${fz##*/}'s android-info.txt has no 'require version-bootloader='"
+    echo "$blreq" >> "$T/z/android-info.txt"
+fi
 # Same out/, same bytes: the written files keep out/'s times, and zip -X stores no owners
 touch -r "$O/fastboot-info.txt" -- "$T/z/fastboot-info.txt"
 touch -r "$O/android-info.txt" -- "$T/z/android-info.txt"
@@ -445,6 +454,7 @@ for f in "$T"/x/*.img; do
     cmp -s -- "$f" "$O/${f##*/}" || fail "${f##*/} differs from out/"
 done
 grep -qx "require board=$EOS_BOARD" "$T/x/android-info.txt" || fail "the zip's android-info.txt doesn't require board=$EOS_BOARD"
+[[ -z $fz ]] || grep -qx -- "$blreq" "$T/x/android-info.txt" || fail "the zip's android-info.txt doesn't say '$blreq'"
 [[ -f $T/x/init_boot.img && -f $T/x/vbmeta.img ]] || fail "the zip has no init_boot.img or vbmeta.img"
 grep -q 'init_boot' "$T/x/fastboot-info.txt" || fail "the zip's fastboot-info.txt doesn't flash init_boot"
 if [[ $EOS_FLASH_VKB = 1 ]]; then
