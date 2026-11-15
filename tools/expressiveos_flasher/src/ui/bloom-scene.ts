@@ -547,7 +547,6 @@ export class BloomScene {
 		this.disposables.push(this.pollenGeom, pollenMat);
 		this.pollenPoints = new Points(this.pollenGeom, pollenMat);
 		this.scene.add(this.pollenPoints);
-		this.initAmbientPollen();
 
 		this.sparkPos = new Float32Array(MAX_BURST_SPARKS * 3);
 		this.sparkCol = new Float32Array(MAX_BURST_SPARKS * 3);
@@ -566,6 +565,8 @@ export class BloomScene {
 		this.disposables.push(this.sparkGeom, sparkMat);
 		this.sparkPoints = new Points(this.sparkGeom, sparkMat);
 		this.scene.add(this.sparkPoints);
+		// After the spark buffers exist: it seeds both the ambient pollen and the burst sparks
+		this.initAmbientPollen();
 
 		// Instanced 3D mini-petals for partition pulse & full-bloom burst
 		const miniGeom = createCalixPetalGeometry(0.16, 0.28);
