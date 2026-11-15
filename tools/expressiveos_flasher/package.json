@@ -12,11 +12,13 @@
 		"typecheck": "cf workers types && tsc -p tsconfig.json && tsc -p tsconfig.worker.json && tsc -p tsconfig.test.json"
 	},
 	"dependencies": {
-		"hash-wasm": "^4.12.0"
+		"hash-wasm": "^4.12.0",
+		"three": "^0.187.0"
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "beta",
 		"@types/node": "^22.20.5",
+		"@types/three": "^0.187.0",
 		"@types/w3c-web-usb": "^1.0.14",
 		"cf": "^1.0.0-beta.19",
 		"typescript": "^7.0.2",
