@@ -102,14 +102,20 @@ const SOIL_Y = -1.72;
 // The canvas is this much larger than its box (styles.css .bloom-webgl), centred on it, and the
 // camera zooms out to match: the ring, pollen and bursts can leave the box without being cut off
 const OVERSCAN = 1.45;
+// While the plant is small, the camera looks this far above the soil's top: the pot then sits a
+// little below the stage's middle, with the sprout's room above it
+const PLANTED_LOOK = 0.04;
 // Where a spark waits while it isn't flying: behind the camera, so it's clipped. (In front of it,
 // at the far plane's side, a dark unlit speck showed above the seed on a transparent canvas.)
 const SPARK_PARKED_Z = 1000;
-// The soil's colour per theme: a dark violet earth, and a pale lilac one that sits on the light page
-const SOIL_DARK = 0x2b2032;
-const SOIL_LIGHT = 0xc9b8e4;
-const PEBBLE_DARK = 0x4a3d58;
-const PEBBLE_LIGHT = 0xa493c2;
+// The growth story's planter, per theme: a glazed pot (deep plum in dark, pale lilac in light)
+// holding dark earth, so the seed reads as planted rather than resting on a floating disc
+const SOIL_DARK = 0x33231f;
+const SOIL_LIGHT = 0x4a3530;
+const PEBBLE_DARK = 0x5a4a4a;
+const PEBBLE_LIGHT = 0x8c7a72;
+const POT_DARK = 0x4a3478;
+const POT_LIGHT = 0xe2d6f6;
 const STEM_SEGS = 96;
 const STEM_RADIAL = 10;
 
@@ -556,6 +562,7 @@ export class BloomScene {
 	private plantGroup!: Group;
 	private soilMat!: MeshPhysicalMaterial;
 	private pebbleMat?: MeshPhysicalMaterial;
+	private potMat?: MeshPhysicalMaterial;
 	private seed!: Mesh;
 	private stemGeom!: TubeGeometry;
 	private stemCurve!: CatmullRomCurve3;
@@ -1183,12 +1190,42 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		this.plantGroup = g;
 		this.scene.add(g);
 
-		// A soft mound of dark, slightly violet earth with a few pebbles
+		// A glazed pot, its rim just under the soil's top: a lathed profile with a rolled lip
+		const potGeom = new LatheGeometry(
+			[
+				[0, -0.8],
+				[0.46, -0.8],
+				[0.5, -0.76],
+				[0.66, -0.16],
+				[0.73, -0.15],
+				[0.76, -0.12],
+				[0.77, -0.01],
+				[0.74, 0.02],
+				[0.68, 0.0],
+				[0.66, -0.1],
+			].map(([x, y]) => new Vector2(x, y)),
+			72,
+		);
+		this.potMat = new MeshPhysicalMaterial({
+			color: this.isLight ? POT_LIGHT : POT_DARK,
+			roughness: 0.38,
+			clearcoat: 0.7,
+			clearcoatRoughness: 0.25,
+			sheen: 0.3,
+			sheenColor: new Color(0xae69fc),
+			side: DoubleSide,
+			transparent: true,
+		});
+		const pot = new Mesh(potGeom, this.potMat);
+		pot.position.set(0, SOIL_Y - 0.02, 0);
+		g.add(pot);
+
+		// A soft mound of dark earth filling the pot, with a few pebbles
 		const soilGeom = new SphereGeometry(1, 48, 24);
-		this.soilMat = new MeshPhysicalMaterial({ color: this.isLight ? SOIL_LIGHT : SOIL_DARK, roughness: 0.96, metalness: 0, sheen: 0.4, sheenColor: new Color(0x6b2bbb), transparent: true });
+		this.soilMat = new MeshPhysicalMaterial({ color: this.isLight ? SOIL_LIGHT : SOIL_DARK, roughness: 0.96, metalness: 0, sheen: 0.25, sheenColor: new Color(0x6b4a3e), transparent: true });
 		const soil = new Mesh(soilGeom, this.soilMat);
-		soil.scale.set(1.15, 0.24, 0.66);
-		soil.position.set(0, SOIL_Y - 0.17, 0);
+		soil.scale.set(0.69, 0.11, 0.69);
+		soil.position.set(0, SOIL_Y - 0.04, 0);
 		g.add(soil);
 		const pebbleGeom = new SphereGeometry(0.06, 16, 10);
 		const pebbleMat = new MeshPhysicalMaterial({ color: this.isLight ? PEBBLE_LIGHT : PEBBLE_DARK, roughness: 0.7, clearcoat: 0.3, transparent: true });
@@ -1201,11 +1238,12 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			[0.22, 0.03, 0.48, 0.8],
 		].forEach(([x, y, z, sc]) => {
 			const p = new Mesh(pebbleGeom, pebbleMat);
-			p.position.set(x, SOIL_Y + y - 0.03, z);
+			// Pulled in to sit on the earth inside the pot's rim
+			p.position.set(x * 0.78, SOIL_Y + y - 0.02, z * 0.78);
 			p.scale.set(sc * 1.3, sc * 0.7, sc);
 			g.add(p);
 		});
-		this.disposables.push(soilGeom, this.soilMat, pebbleGeom, pebbleMat);
+		this.disposables.push(potGeom, this.potMat, soilGeom, this.soilMat, pebbleGeom, pebbleMat);
 
 		// The seed: warm, glossy, with a violet sheen of the bloom to come
 		const seedGeom = new SphereGeometry(0.14, 32, 20);
@@ -1357,6 +1395,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		}
 
 		this.soilMat.opacity = 1 - smooth(0.93, 1, g);
+		if (this.potMat) this.potMat.opacity = this.soilMat.opacity;
 		this.plantGroup.visible = this.soilMat.opacity > 0.01 || segs > 0;
 		this.plantGroup.rotation.z = this.wiltBlend * 0.14;
 
@@ -1447,6 +1486,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 
 		this.soilMat?.color.setHex(this.isLight ? SOIL_LIGHT : SOIL_DARK);
 		this.pebbleMat?.color.setHex(this.isLight ? PEBBLE_LIGHT : PEBBLE_DARK);
+		this.potMat?.color.setHex(this.isLight ? POT_LIGHT : POT_DARK);
 
 		const ghostHex = this.isLight ? 0xd9cef7 : 0x2a2754;
 		for (const item of this.heroPetals) {
@@ -1774,7 +1814,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			}
 		}
 		// While the plant is small the camera looks down at the soil, closer in
-		const lift = (1 - plant.follow) * (SOIL_Y + 0.78);
+		const lift = (1 - plant.follow) * (SOIL_Y + PLANTED_LOOK);
 
 		if (this.mode === "install") {
 			this.spinAngle += dt * 0.36;
