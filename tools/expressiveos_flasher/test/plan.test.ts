@@ -20,11 +20,11 @@ const FILES = new Set(["android-info.txt", "fastboot-info.txt", "boot.img", "ini
 const has = (n: string) => FILES.has(n);
 const LOGICAL = ["product_a", "product_b", "system_a", "system_b", "vendor_a", "vendor_b"];
 
-const kinds = (s: ReturnType<typeof buildPlan>) => s.map((x) => (x.kind === "flash" ? `flash ${x.partition}${x.slot === "other" ? " other" : ""}${x.image.kind === "stock-init-boot" ? " stock" : ""}${x.logical ? " logical" : ""}` : x.kind === "erase" ? `erase ${x.partition}` : x.kind === "reboot" ? `reboot ${x.target}` : x.kind));
+const kinds = (s: ReturnType<typeof buildPlan>) => s.map((x) => (x.kind === "flash" ? `flash ${x.partition}${x.slot === "other" ? " other" : ""}${x.image.kind === "stock-boot" ? " stock" : ""}${x.logical ? " logical" : ""}` : x.kind === "erase" ? `erase ${x.partition}` : x.kind === "reboot" ? `reboot ${x.target}` : x.kind));
 
 describe("install plan", () => {
 	it("follows fastboot-info.txt, root, clean install", () => {
-		expect(kinds(buildPlan(INFO, has, LOGICAL, { wipe: true, root: true, hasStockInitBoot: true }))).toEqual([
+		expect(kinds(buildPlan(INFO, has, LOGICAL, { wipe: true, root: true, hasStockBoot: true }))).toEqual([
 			"set-active",
 			"cancel-snapshot",
 			"flash boot",
@@ -45,18 +45,19 @@ describe("install plan", () => {
 		]);
 	});
 
-	it("writes the stock init_boot to both slots without root", () => {
-		const steps = buildPlan(INFO, has, LOGICAL, { wipe: false, root: false, hasStockInitBoot: true });
+	it("writes the stock boot to both slots without root", () => {
+		const steps = buildPlan(INFO, has, LOGICAL, { wipe: false, root: false, hasStockBoot: true });
 		const k = kinds(steps);
-		expect(k).toContain("flash init_boot stock");
-		expect(k).toContain("flash init_boot other stock");
+		expect(k).toContain("flash boot stock");
+		expect(k).toContain("flash boot other stock");
+		expect(k).toContain("flash init_boot");
 		expect(k.some((x) => x.startsWith("erase"))).toBe(false);
 		expect(steps.find((s) => s.kind === "update-super")).toEqual({ kind: "update-super", wipe: false });
 		expect(k[k.length - 1]).toBe("start-android");
 	});
 
 	it("makes every erase of a clean install one that must work, as fastboot -w does", () => {
-		const erases = (info: string | null) => buildPlan(info, has, LOGICAL, { wipe: true, root: true, hasStockInitBoot: false }).filter((s) => s.kind === "erase");
+		const erases = (info: string | null) => buildPlan(info, has, LOGICAL, { wipe: true, root: true, hasStockBoot: false }).filter((s) => s.kind === "erase");
 		const both = [
 			{ kind: "erase", partition: "userdata" },
 			{ kind: "erase", partition: "metadata" },
@@ -67,12 +68,12 @@ describe("install plan", () => {
 	});
 
 	it("only shrinks the current slot's logical partitions", () => {
-		const r = buildPlan(INFO, has, LOGICAL, { wipe: true, root: true, hasStockInitBoot: false }).find((s) => s.kind === "resize-to-zero");
+		const r = buildPlan(INFO, has, LOGICAL, { wipe: true, root: true, hasStockBoot: false }).find((s) => s.kind === "resize-to-zero");
 		expect(r).toEqual({ kind: "resize-to-zero", partitions: ["product", "system", "vendor"] });
 	});
 
 	it("uses AOSP's order without fastboot-info.txt", () => {
-		const k = kinds(buildPlan(null, has, LOGICAL, { wipe: true, root: true, hasStockInitBoot: false }));
+		const k = kinds(buildPlan(null, has, LOGICAL, { wipe: true, root: true, hasStockBoot: false }));
 		expect(k.slice(0, 4)).toEqual(["set-active", "cancel-snapshot", "flash boot", "flash init_boot"]);
 		expect(k).toContain("reboot fastbootd");
 		expect(k).toContain("flash system logical");
@@ -80,15 +81,15 @@ describe("install plan", () => {
 	});
 
 	it("refuses what it can't do", () => {
-		expect(() => buildPlan(INFO, (n) => n !== "android-info.txt" && has(n), LOGICAL, { wipe: true, root: true, hasStockInitBoot: true })).toThrow(PlanError);
-		expect(() => buildPlan(INFO, (n) => n !== "vendor.img" && has(n), LOGICAL, { wipe: true, root: true, hasStockInitBoot: true })).toThrow(/vendor\.img/);
-		expect(() => buildPlan(INFO, has, LOGICAL, { wipe: true, root: false, hasStockInitBoot: false })).toThrow(/stock init_boot/);
-		expect(() => buildPlan("version 1\nflash boot\nreboot\nflash system\n", has, LOGICAL, { wipe: true, root: true, hasStockInitBoot: false })).toThrow(/Android/);
-		expect(() => buildPlan("version 1\nerase userdata\n", has, LOGICAL, { wipe: true, root: true, hasStockInitBoot: false })).toThrow(/even without a wipe/);
-		expect(() => buildPlan("version 1\nflash boot\n", has, LOGICAL, { wipe: true, root: false, hasStockInitBoot: true })).toThrow(/init_boot/);
+		expect(() => buildPlan(INFO, (n) => n !== "android-info.txt" && has(n), LOGICAL, { wipe: true, root: true, hasStockBoot: true })).toThrow(PlanError);
+		expect(() => buildPlan(INFO, (n) => n !== "vendor.img" && has(n), LOGICAL, { wipe: true, root: true, hasStockBoot: true })).toThrow(/vendor\.img/);
+		expect(() => buildPlan(INFO, has, LOGICAL, { wipe: true, root: false, hasStockBoot: false })).toThrow(/stock boot/);
+		expect(() => buildPlan("version 1\nflash boot\nreboot\nflash system\n", has, LOGICAL, { wipe: true, root: true, hasStockBoot: false })).toThrow(/Android/);
+		expect(() => buildPlan("version 1\nerase userdata\n", has, LOGICAL, { wipe: true, root: true, hasStockBoot: false })).toThrow(/even without a wipe/);
+		expect(() => buildPlan("version 1\nflash init_boot\n", has, LOGICAL, { wipe: true, root: false, hasStockBoot: true })).toThrow(/doesn't write boot/);
 	});
 
 	it("describes each step", () => {
-		for (const s of buildPlan(INFO, has, LOGICAL, { wipe: true, root: false, hasStockInitBoot: true })) expect(describeStep(s)).toMatch(/\S/);
+		for (const s of buildPlan(INFO, has, LOGICAL, { wipe: true, root: false, hasStockBoot: true })) expect(describeStep(s)).toMatch(/\S/);
 	});
 });

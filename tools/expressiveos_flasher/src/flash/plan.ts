@@ -4,8 +4,8 @@
 import { type InfoTask, parseFastbootInfo } from "../fastboot/fastboot-info.ts";
 import { isLogical } from "../fastboot/lp.ts";
 
-/** The image of a flash step: an entry of the zip, or the release's stock (no-root) init_boot. */
-export type ImageRef = { kind: "zip"; name: string } | { kind: "stock-init-boot" };
+/** The image of a flash step: an entry of the zip, or the release's stock (no-root) boot. */
+export type ImageRef = { kind: "zip"; name: string } | { kind: "stock-boot" };
 
 export type Step =
 	| { kind: "set-active" }
@@ -23,10 +23,10 @@ export type FlashSuperStep = Extract<Step, { kind: "flash-super" }>;
 export interface PlanOptions {
 	/** Erase userdata and metadata (fastboot -w): a clean install. */
 	wipe: boolean;
-	/** Keep the zip's KernelSU Next init_boot; false writes the stock one to both slots. */
+	/** Keep the zip's boot (Wild Kernels' kernel with BakaSU); false writes the stock one to both slots. */
 	root: boolean;
-	/** Whether the release has a stock init_boot (it has root only when it does). */
-	hasStockInitBoot: boolean;
+	/** Whether the release has a stock boot (it has root only when it does). */
+	hasStockBoot: boolean;
 	/**
 	 * Write the dynamic partitions into super whole from the bootloader, as AOSP fastboot does
 	 * when it can (OptimizedFlashSuperTask), instead of restarting into fastbootd for them.
@@ -62,13 +62,13 @@ function defaultTasks(has: (name: string) => boolean, wipe: boolean): InfoTask[]
  */
 export function buildPlan(fastbootInfo: string | null, has: (name: string) => boolean, logical: string[] | null, opts: PlanOptions): Step[] {
 	if (!has("android-info.txt")) throw new PlanError("The zip has no android-info.txt, so there's no way to check it's for this phone");
-	if (!opts.root && !opts.hasStockInitBoot) throw new PlanError("This build has no stock init_boot, so it can't be installed without root");
+	if (!opts.root && !opts.hasStockBoot) throw new PlanError("This build has no stock boot, so it can't be installed without root");
 	const tasks = fastbootInfo !== null ? parseFastbootInfo(fastbootInfo, opts.wipe) : defaultTasks(has, opts.wipe);
 	const isDynamic = (p: string) => (logical ? isLogical(logical, p) : OS_IMAGES.includes(p));
 
 	const steps: Step[] = [{ kind: "set-active" }, { kind: "cancel-snapshot" }];
 	const erased = new Set<string>();
-	let sawInitBoot = false;
+	let sawBoot = false;
 	for (const t of tasks) {
 		switch (t.kind) {
 			case "flash": {
@@ -76,9 +76,9 @@ export function buildPlan(fastbootInfo: string | null, has: (name: string) => bo
 					throw new PlanError(`fastboot-info.txt writes ${t.partition} from ${t.image}, which isn't in the zip`);
 				}
 				let image: ImageRef = { kind: "zip", name: t.image };
-				if (t.partition === "init_boot" && !t.otherSlot) {
-					sawInitBoot = true;
-					if (!opts.root) image = { kind: "stock-init-boot" };
+				if (t.partition === "boot" && !t.otherSlot) {
+					sawBoot = true;
+					if (!opts.root) image = { kind: "stock-boot" };
 				}
 				steps.push({ kind: "flash", partition: t.partition, image, slot: t.otherSlot ? "other" : "current", logical: isDynamic(t.partition) });
 				break;
@@ -99,8 +99,8 @@ export function buildPlan(fastbootInfo: string | null, has: (name: string) => bo
 				break;
 		}
 	}
-	if (!sawInitBoot && !opts.root) {
-		throw new PlanError("fastboot-info.txt doesn't write init_boot, so the no-root choice can't be applied");
+	if (!sawBoot && !opts.root) {
+		throw new PlanError("fastboot-info.txt doesn't write boot, so the no-root choice can't be applied");
 	}
 
 	// OptimizedFlashSuperTask::Initialize: when the steps restart into fastbootd, lay out super and
@@ -130,8 +130,8 @@ export function buildPlan(fastbootInfo: string | null, has: (name: string) => bo
 	if (opts.wipe) {
 		for (const p of ["userdata", "metadata"]) if (!erased.has(p)) steps.push({ kind: "erase", partition: p });
 	}
-	// No root: the stock init_boot on the other slot too, as the release notes say for both slots
-	if (!opts.root) steps.push({ kind: "flash", partition: "init_boot", image: { kind: "stock-init-boot" }, slot: "other", logical: false });
+	// No root: the stock boot on the other slot too, so neither slot starts the rooted kernel
+	if (!opts.root) steps.push({ kind: "flash", partition: "boot", image: { kind: "stock-boot" }, slot: "other", logical: false });
 	steps.push({ kind: "start-android" });
 	return steps;
 }
@@ -144,7 +144,7 @@ export function describe(s: Step): string {
 		case "cancel-snapshot":
 			return "Cancel any unfinished system update";
 		case "flash": {
-			const what = s.image.kind === "stock-init-boot" ? `${s.partition} (no root)` : s.partition === "init_boot" ? "init_boot (KernelSU Next)" : s.partition;
+			const what = s.image.kind === "stock-boot" ? `${s.partition} (no root)` : s.partition === "boot" ? "boot (BakaSU)" : s.partition;
 			return s.slot === "other" ? `Write ${what} to the other slot` : `Write ${what}`;
 		}
 		case "reboot":

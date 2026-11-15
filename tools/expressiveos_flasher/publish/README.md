@@ -1,7 +1,7 @@
 # Publishing a release for the web flasher
 
 `flasher_publish.py` runs on the build server after `eos-pack.sh`. It uploads one release's fastboot zip, plus the stock
-`init_boot` for a KernelSU Next build, to the R2 bucket that the flasher's Worker reads from. It then lists the release in
+`boot` for a BakaSU build (its zip's `boot` has Wild Kernels' kernel), to the R2 bucket that the flasher's Worker reads from. It then lists the release in
 that device's `flasher.json`. It uses only the Python standard library and `~/bin/rclone` (rclone's `r2:` remote, set up as
 in `tools/ota_mirror/README.md`).
 
@@ -26,12 +26,12 @@ stderr and exits with status 1.
 - `<device>` is one of cheetah, husky, kodiak, grizzly, cubs or yogi. The zip is named
   `ExpressiveOS-<android>-<yyyymmdd>-<device>-<version>-<type>[-rN]-fastboot.zip`, for that device.
 - The zip matches the `.sha256` beside it, which must be the one line sha256sum writes.
-- If `<name>-init_boot-stock.img` is beside the zip, it must match its own `.sha256` and be a boot image (`ANDROID!`).
-  The flasher then offers KernelSU Next or no root (`"root": "kernelsu-next"`). With no stock image the release is
-  listed as one without KernelSU Next (`"root": null`). A stock image's `.sha256` without the image itself is a failure,
+- If `<name>-boot-stock.img` is beside the zip (eos-pack.sh puts it there for every `EOS_KSU=wild` phone), it must
+  match its own `.sha256` and be a boot image (`ANDROID!`, at most 64 MiB). The flasher then offers BakaSU or stock
+  (`"root": "bakasu"`). With no stock image the release is listed as one without root (`"root": null`). A stock image's `.sha256` without the image itself is a failure,
   and so is a release that R2 already holds with a stock image in the same channel (it would be relisted without root).
 - The zip is stored, as `eos-pack.sh` makes it with `zip -0`. It holds `fastboot-info.txt`, `android-info.txt`,
-  `init_boot.img`, `vbmeta.img` and `super_empty.img`. Its `android-info.txt` says `require board=<device>` and has no
+  `boot.img`, `init_boot.img`, `vbmeta.img` and `super_empty.img`. Its `android-info.txt` says `require board=<device>` and has no
   other board or product line, and every other line that isn't blank is a requirement fastboot can read (fastboot
   skips a line it can't, and the flasher only warns about one).
 
@@ -41,7 +41,7 @@ It writes these paths and nothing else:
 
 | Key | What |
 |---|---|
-| `expressiveos/<device>/flasher/<file>` and `<file>.sha256` | a release's zip, and its stock init_boot if there is one |
+| `expressiveos/<device>/flasher/<file>` and `<file>.sha256` | a release's zip, and its stock boot if there is one |
 | `expressiveos/<device>/flasher/testers/<file>` and `<file>.sha256` | the same for a testers build (`--testers`) |
 | `expressiveos/<device>/flasher.json` | the manifest the flasher reads, which lists both channels |
 
@@ -81,8 +81,8 @@ unique only within its own folders, and both are published and listed.
       "android": "17.0", "version": "1.0", "type": "OFFICIAL", "date": "2026-10-30",
       "published": "2026-10-31T09:00:00Z",
       "zip": {"file": "ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL-fastboot.zip", "size": 6123456789, "sha256": "..."},
-      "initBootStock": {"file": "ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL-init_boot-stock.img", "size": 8388608, "sha256": "..."},
-      "root": "kernelsu-next",
+      "bootStock": {"file": "ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL-boot-stock.img", "size": 67108864, "sha256": "..."},
+      "root": "bakasu",
       "requirements": ["require board=cheetah", "require version-bootloader=..."]
     }
   ]
@@ -90,7 +90,8 @@ unique only within its own folders, and both are published and listed.
 ```
 
 `channel` is `release` or, with `--testers`, `testers`. A name is listed at most once in each channel, so it can be in
-both. `initBootStock` and `root` are both `null` for a build without KernelSU Next. `requirements` holds the non-empty
+both. `bootStock` and `root` are both `null` for a build without root; entries written before BakaSU have no `bootStock`
+and read as `null`. `requirements` holds the non-empty
 lines of the zip's `android-info.txt`.
 
 ## Tests

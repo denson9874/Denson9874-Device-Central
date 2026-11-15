@@ -14,7 +14,7 @@ import { FASTBOOT_FILTER, USB_DRIVER_URL, UsbError, UsbTransport, hostOs, isFast
 import { type FlashSuperStep, PlanError, type Step, buildPlan, describe } from "../flash/plan.ts";
 import { type PhoneReport, type Problem, canUnlock, checkBeforeInstall, inspectPhone, plausibleProduct, reportProblems, unlockBootloader } from "../flash/preflight.ts";
 import { type ImageSource, InstallError, runPlan, stepWeights, superImageFor } from "../flash/runner.ts";
-import { type Release, ReleasesError, fetchReleases, fileUrl, formatBytes } from "../releases.ts";
+import { BAKASU_NIGHTLY_URL, BAKASU_RELEASE_URL, type Release, ReleasesError, fetchReleases, fileUrl, formatBytes } from "../releases.ts";
 import { type LetGo, StoreError, downloadRelease, fetchVerified, hashFile, listStored, openStored, partialSize, removeStored, storageSupported, storeName, storedFile } from "../store/store.ts";
 import { ZipError, ZipReader } from "../zip/zip.ts";
 import { BloomStage, bloomMark } from "./bloom.ts";
@@ -957,7 +957,7 @@ export class App {
 							`ExpressiveOS ${r.version}`,
 							r === newest ? h("span", { class: "badge" }, "Latest") : null,
 							r.channel === "testers" ? h("span", { class: "badge badge-testers" }, "Testers") : null,
-							r.root ? h("span", { class: "badge badge-root" }, "KernelSU Next") : null,
+							r.root ? h("span", { class: "badge badge-root" }, "BakaSU") : null,
 						),
 						h("span", { class: "choice-aside" }, formatBytes(r.zip.size)),
 						h("span", { class: "choice-meta" }, `Android ${androidVersion(r.android)} · built ${longDate(r.date)} · ${r.type}`),
@@ -965,7 +965,7 @@ export class App {
 				),
 			),
 		);
-		if (rel.initBootStock) {
+		if (rel.bootStock) {
 			out.push(
 				h(
 					"fieldset",
@@ -974,17 +974,17 @@ export class App {
 					h(
 						"div",
 						{ class: "choices" },
-						this.choice("root", "ksun", this.root, () => (this.root = true), [
-							h("span", { class: "choice-title" }, "KernelSU Next"),
+						this.choice("root", "bakasu", this.root, () => (this.root = true), [
+							h("span", { class: "choice-title" }, "BakaSU"),
 							h(
 								"span",
 								{ class: "choice-meta" },
-								"Root with KernelSU Next, plus susfs (root hiding) and Zygisk. A clean install sets them up during the first start, and they work after one restart.",
+								"Root built into the kernel (Wild Kernels' kernel with BakaSU and susfs root hiding). No app gets root until you allow it in the BakaSU app, which you install yourself.",
 							),
 						]),
 						this.choice("root", "none", !this.root, () => (this.root = false), [
-							h("span", { class: "choice-title" }, "No root"),
-							h("span", { class: "choice-meta" }, "The stock init_boot on both slots, for apps that refuse rooted phones. You can install again with root later."),
+							h("span", { class: "choice-title" }, "Stock"),
+							h("span", { class: "choice-meta" }, "No root: the stock boot image on both slots, for apps that refuse rooted phones. You can install again with root later."),
 						]),
 					),
 				),
@@ -1026,7 +1026,7 @@ export class App {
 		if (!changed) return;
 		void this.setZip(null);
 		// Root by default when the build has it
-		this.root = !!r.initBootStock;
+		this.root = !!r.bootStock;
 	}
 
 	private choice(group: string, value: string, checked: boolean, onPick: () => void, content: Child[]): HTMLLabelElement {
@@ -1055,7 +1055,7 @@ export class App {
 			const r = await fetchReleases(dev.codename);
 			if (this.device !== dev) return;
 			this.releases = r;
-			if (r.length && !r.some((x) => x.initBootStock)) this.root = false;
+			if (r.length && !r.some((x) => x.bootStock)) this.root = false;
 		} catch (e) {
 			if (this.device !== dev) return;
 			this.releasesError = e instanceof ReleasesError ? e : new ReleasesError(errorText(e), "network");
@@ -2069,7 +2069,7 @@ export class App {
 				h("dt", null, "Build"),
 				h("dd", null, `ExpressiveOS ${rel.version} · Android ${androidVersion(rel.android)} · ${longDate(rel.date)}`),
 				h("dt", null, "Root"),
-				h("dd", null, rel.initBootStock ? (this.root ? "KernelSU Next" : "No root (stock init_boot)") : "No root"),
+				h("dd", null, rel.bootStock ? (this.root ? "BakaSU" : "Stock (no root)") : "No root"),
 				h("dt", null, "Install"),
 				h("dd", null, this.wipe ? "Clean: erases everything on the phone" : "Keep data (update)"),
 				h("dt", null, "Phone"),
@@ -2246,11 +2246,11 @@ export class App {
 			images = {
 				image: async (ref) => (ref.kind === "zip" ? zip.blob(ref.name) : stock!),
 				superEmpty: () => zip.blob("super_empty.img"),
-				size: (ref) => (ref.kind === "zip" ? (zip.entry(ref.name)?.size ?? 0) : (rel.initBootStock?.size ?? 0)),
+				size: (ref) => (ref.kind === "zip" ? (zip.entry(ref.name)?.size ?? 0) : (rel.bootStock?.size ?? 0)),
 			};
-			// A build without a stock init_boot has no root: its zip's own init_boot is the stock one
+			// A build without a stock boot has no root: its zip's own boot is the stock one
 			const plan = (superFlash: boolean) =>
-				buildPlan(fbInfo, has, logical, { wipe: this.wipe, root: this.root || !rel.initBootStock, hasStockInitBoot: !!rel.initBootStock, superFlash });
+				buildPlan(fbInfo, has, logical, { wipe: this.wipe, root: this.root || !rel.bootStock, hasStockBoot: !!rel.bootStock, superFlash });
 			steps = plan(true);
 			// As fastboot does, the system images go into super from the bootloader when they can,
 			// so the phone never restarts into fastbootd; when they can't, fastbootd writes them
@@ -2265,9 +2265,9 @@ export class App {
 					steps = plan(false);
 				}
 			}
-			if (steps.some((s) => s.kind === "flash" && s.image.kind === "stock-init-boot")) {
-				this.setStatus(null, "Downloading the stock init_boot");
-				const sib = rel.initBootStock!;
+			if (steps.some((s) => s.kind === "flash" && s.image.kind === "stock-boot")) {
+				this.setStatus(null, "Downloading the stock boot image");
+				const sib = rel.bootStock!;
 				stock = await fetchVerified(fileUrl(dev.codename, rel, sib.file), sib.size, sib.sha256);
 			}
 		} catch (e) {
@@ -2411,16 +2411,17 @@ export class App {
 	// ---------- 6. Done ----------
 
 	/**
-	 * What a rooted install still needs, as the ROM sets it up (expressiveos-cheetah/ksu/README.md,
-	 * ksu-firstboot.sh): on a new /data, KernelSU Next's first-boot services install ksud, turn on
-	 * susfs auto-load and install NeoZygisk, and both work from the second boot. A /data that has
-	 * booted before gets ksud and nothing else.
+	 * What a rooted install still needs (expressiveos-cheetah/ksu/README.md): root and susfs are in
+	 * the kernel and no manager ships, so the user installs the BakaSU app.
 	 */
-	private rootSetup(): string {
-		if (this.wipe) {
-			return "KernelSU Next sets itself up during the first start. Restart the phone once after setup, before signing in to banking or payment apps, so susfs (root hiding) and Zygisk are on. No app gets root until you allow it in the KernelSU Next app.";
-		}
-		return "If this phone already had root with ExpressiveOS, it carries on as before. If it didn't, KernelSU Next works, but susfs (root hiding) and Zygisk aren't set up yet: turn them on in the KernelSU Next app, then restart the phone.";
+	private rootSetup(): Child[] {
+		return [
+			"Root is built in. To manage it, install the BakaSU app: the ",
+			link(BAKASU_RELEASE_URL, "release"),
+			" or the ",
+			link(BAKASU_NIGHTLY_URL, "nightly"),
+			" (open the latest successful run and download its APK; needs a GitHub account). No app gets root until you allow it there.",
+		];
 	}
 
 	private doneStep(): Child[] {
@@ -2428,7 +2429,7 @@ export class App {
 		const rel = this.release!;
 		this.bloom.celebrate();
 		this.setStatus("ExpressiveOS is installed", `Enjoy your ${dev.model}`);
-		const rooted = !!rel.initBootStock && this.root;
+		const rooted = !!rel.bootStock && this.root;
 		const name = storeName(rel.zip.sha256, "zip");
 		const out: Child[] = [
 			h("h2", null, "ExpressiveOS is installed"),
@@ -2436,7 +2437,7 @@ export class App {
 			h(
 				"ul",
 				{ class: "done-list" },
-				rooted ? h("li", null, h("strong", null, "Root: "), this.rootSetup()) : null,
+				rooted ? h("li", null, h("strong", null, "Root: "), ...this.rootSetup()) : null,
 				h("li", null, h("strong", null, "Keep the bootloader unlocked. "), "Locking it with ExpressiveOS installed stops the phone from starting."),
 				h("li", null, h("strong", null, "Stuck on the boot animation for more than 15 minutes? "), "Hold Power and Volume down to get back to Fastboot Mode and install again with a clean install."),
 			),

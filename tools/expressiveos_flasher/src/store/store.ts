@@ -226,7 +226,7 @@ export async function listStored(): Promise<StoredEntry[]> {
 	return out;
 }
 
-/** Fetches a small file (the stock init_boot) into memory and checks its SHA-256. */
+/** Fetches a small file (the stock boot) into memory and checks its SHA-256. */
 export async function fetchVerified(url: string, size: number, sha256: string, signal?: AbortSignal): Promise<Blob> {
 	const res = await fetch(url, { cache: "no-store", signal });
 	if (!res.ok) throw new StoreError("http", `Couldn't download ${url.split("/").pop()} (${res.status})`);

@@ -1,7 +1,7 @@
 # ExpressiveOS Flasher
 
 A web page that installs ExpressiveOS on a Pixel from the browser over USB, as Google's Android Flash Tool does for stock
-Android. It adds a choice of root (KernelSU Next, or none with the build's stock `init_boot`), the ExpressiveOS look, and
+Android. It adds a choice of root (BakaSU, or stock with the build's stock `boot`), the ExpressiveOS look, and
 the Bloom mark, which fills petal by petal while a build downloads, turns inside a ring of petal colours while it installs,
 and bursts into full bloom when the phone is done.
 
@@ -43,7 +43,7 @@ The six steps:
    "Before you start" says it too, and when the list is closed with no phone chosen, an info notice gives the same
    steps in their place. When an adb server on the computer holds the phone, the page says to close Android Studio and
    scrcpy and run `adb kill-server`.
-2. **Build.** The release, root (KernelSU Next or no root, when the build has a stock `init_boot`), and a clean install
+2. **Build.** The release, root (BakaSU or stock, when the build has a stock `boot`: the zip's `boot` has Wild Kernels' kernel; the BakaSU app's release and nightly links are on the Done step), and a clean install
    or keeping data. Test builds show up with `?testers` on the address.
 3. **Download.** The zip goes into the browser's private storage (OPFS) and is checked against its SHA-256 as it
    arrives. A closed tab or a dropped connection resumes from where it stopped, with a Range request. A zip the user

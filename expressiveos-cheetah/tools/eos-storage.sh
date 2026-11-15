@@ -146,7 +146,7 @@ import json, re, sys
 dirs = {"release": "flasher", "testers": "flasher/testers"}
 for e in json.load(open(sys.argv[1])).get("releases") or []:
     d = dirs[e["channel"]]
-    for f in (e.get("zip"), e.get("initBootStock")):
+    for f in (e.get("zip"), e.get("bootStock"), e.get("initBootStock")):
         if f:
             if not re.fullmatch(r"[A-Za-z0-9._-]+", f["file"]):
                 sys.exit("flasher.json lists %r" % f["file"])

@@ -72,8 +72,8 @@ function build(device: string, opts: { stock: boolean; seed: number }) {
 		date: "2026-10-30",
 		published: "2026-10-30T12:00:00Z",
 		zip: { file: `${name}-fastboot.zip`, size: zip.byteLength, sha256: sha(zip) },
-		initBootStock: stock ? { file: `${name}-init_boot-stock.img`, size: stock.byteLength, sha256: sha(stock) } : null,
-		root: stock ? "kernelsu-next" : null,
+		bootStock: stock ? { file: `${name}-boot-stock.img`, size: stock.byteLength, sha256: sha(stock) } : null,
+		root: stock ? "bakasu" : null,
 		requirements: [],
 	};
 	return { release, zip, stock };
@@ -85,7 +85,7 @@ const zipFile = (b: Build) => new File([b.zip.slice()], b.release.zip.file);
 function publish(b: Build, opts: { stored?: boolean } = {}) {
 	world.releases = [b.release];
 	if (opts.stored !== false) world.stored.set(storeName(b.release.zip.sha256, "zip"), zipFile(b));
-	if (b.stock) world.files.set(b.release.initBootStock!.file, b.stock);
+	if (b.stock) world.files.set(b.release.bootStock!.file, b.stock);
 }
 
 // ---------- The page, with a keyboard ----------
@@ -480,34 +480,35 @@ describe("a way back on every step (ux-9)", () => {
 });
 
 describe("the root instructions (ux-10)", () => {
-	it("say to restart once after a clean install, not to open the app", async () => {
+	it("offer BakaSU or stock, and link both BakaSU downloads after a rooted install", async () => {
 		const b = build("cheetah", { stock: true, seed: 80 });
 		publish(b);
 		phone();
 		await start("Pixel 7 Pro", "cheetah");
-		expect(text()).not.toContain("open it once");
-		expect(text()).toContain("A clean install sets them up during the first start, and they work after one restart.");
+		expect(text()).toContain("Root built into the kernel");
+		expect(text()).toContain("No root: the stock boot image on both slots");
 		await toConnected();
 		await press("Continue");
 		await install();
 		expect(text()).toContain("ExpressiveOS is installed");
-		expect(text()).toContain("Restart the phone once after setup, before signing in to banking or payment apps, so susfs (root hiding) and Zygisk are on.");
-		expect(text()).not.toContain("to finish setting it up");
+		expect(text()).toContain("Root is built in. To manage it, install the BakaSU app");
+		const hrefs = [...page.panel.querySelectorAll("a")].map((a) => a.getAttribute("href"));
+		expect(hrefs).toContain("https://github.com/Baka-SU/BakaSU/releases");
+		expect(hrefs).toContain("https://github.com/Baka-SU/BakaSU/actions");
 	});
 
-	it("don't promise susfs and Zygisk after one restart when the data is kept", async () => {
+	it("aren't shown after a stock install", async () => {
 		const b = build("husky", { stock: true, seed: 90 });
 		publish(b);
 		phone({ product: "husky" });
 		await start("Pixel 8 Pro", "husky");
+		choose("root", "none");
 		choose("wipe", "keep");
 		await toConnected();
 		await press("Continue");
 		await install();
 		expect(text()).toContain("ExpressiveOS is installed");
-		expect(text()).toContain("If this phone already had root with ExpressiveOS, it carries on as before.");
-		expect(text()).toContain("turn them on in the KernelSU Next app, then restart the phone.");
-		expect(text()).not.toContain("Restart the phone once after setup");
+		expect(text()).not.toContain("Root is built in");
 	});
 });
 
