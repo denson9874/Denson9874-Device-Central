@@ -1614,6 +1614,11 @@ export class App {
 				return "The build has no android-info.txt, so there's no way to check it's for this phone.";
 			case "requirement": {
 				const f = p.result;
+				// The Pixel 11 packages require their factory image's bootloader (eos-pack.sh): on
+				// another one the installed slot doesn't start
+				if (f.requirement.name === "version-bootloader" && !f.requirement.invert) {
+					return `This build needs the bootloader of Google's factory image it was made from (${f.requirement.options.join(" or ")}), and the phone has ${f.value ?? "another one"}. Flash that factory image with Google's Android Flash Tool first, then install again.`;
+				}
 				return `${f.requirement.name} must ${f.requirement.invert ? "not " : ""}be ${f.requirement.options.join(" or ")}; the phone says ${f.value ?? "nothing"}.`;
 			}
 			case "locked":

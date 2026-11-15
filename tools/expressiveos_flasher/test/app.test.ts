@@ -471,7 +471,7 @@ describe("android-info.txt", () => {
 		await until(() => text().includes("Downloaded and checked"), "the other download");
 		await press("Continue");
 		await until(() => text().includes("doesn't accept this phone"), "the check against the new zip");
-		expect(text()).toContain("version-bootloader must be cloudripper-17.0*");
+		expect(text()).toContain("This build needs the bootloader of Google's factory image it was made from (cloudripper-17.0*)");
 		expect(text()).not.toContain("Ready to install");
 		expect(step("Install").disabled).toBe(true);
 		// And Install, however it's reached, checks the zip it writes
@@ -494,7 +494,7 @@ describe("android-info.txt", () => {
 		state.reportZip = state.zipFile;
 		await privateInstall(app);
 		await settle();
-		expect(text()).toContain("version-bootloader must be cloudripper-17.0*");
+		expect(text()).toContain("This build needs the bootloader of Google's factory image it was made from (cloudripper-17.0*)");
 		expect(wrote(fake)).toEqual([]);
 	});
 });
@@ -1147,7 +1147,7 @@ describe("a line of android-info.txt that can't be read (images-2)", () => {
 		const fake = phone();
 		await start("Pixel 7 Pro", "cheetah");
 		await toConnected();
-		expect(text()).toContain("version-bootloader must be cloudripper-17.0*");
+		expect(text()).toContain("This build needs the bootloader of Google's factory image it was made from (cloudripper-17.0*)");
 		expect(page.panel.querySelector(".notice-danger")?.textContent).not.toContain("require foo");
 		expect(buttonIn(page.panel, "Continue")).toBeNull();
 		expect(wrote(fake)).toEqual([]);
