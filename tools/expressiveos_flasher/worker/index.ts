@@ -2,7 +2,7 @@
 // the two paths the page reads from the R2 bucket, and nothing else of the bucket is reachable:
 //   GET /api/releases/<device>    expressiveos/<device>/flasher.json, the device's manifest
 //   GET /dl/<device>/<file>       expressiveos/<device>/flasher/<file>: a release's fastboot zip
-//                                 or stock init_boot (or its .sha256), with single byte ranges
+//                                 or stock boot (or its .sha256), with single byte ranges
 //   GET /dl/<device>/testers/<file>   the same from expressiveos/<device>/flasher/testers/, the
 //                                 testers channel's own folder (its names can repeat a release's)
 // Release files are named by flasher_publish.py and never rewritten, so they're cached for good.

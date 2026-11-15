@@ -4,7 +4,7 @@ export const DEVICES = ["cheetah", "husky", "kodiak", "grizzly", "cubs", "yogi"]
 
 /** A file of one of the device's releases, as flasher_publish.py names them. */
 export function releaseFileRe(device: string): RegExp {
-	return new RegExp(`^ExpressiveOS-\\d+\\.\\d+-\\d{8}-${device}-[0-9][0-9.]*-[A-Za-z]+(?:-r\\d+)?(?:-fastboot\\.zip|-init_boot-stock\\.img)(?:\\.sha256)?$`);
+	return new RegExp(`^ExpressiveOS-\\d+\\.\\d+-\\d{8}-${device}-[0-9][0-9.]*-[A-Za-z]+(?:-r\\d+)?(?:-fastboot\\.zip|-boot-stock\\.img)(?:\\.sha256)?$`);
 }
 
 /** A single byte range ("bytes=a-b", "bytes=a-" or "bytes=-n"), or null for the whole file. */

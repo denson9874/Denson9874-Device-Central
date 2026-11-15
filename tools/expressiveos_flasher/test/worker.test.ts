@@ -111,7 +111,7 @@ const body = async (res: Response) => new Uint8Array(await res.arrayBuffer());
 
 const BASE = "ExpressiveOS-16.0-20261029-cheetah-1.0-Unofficial";
 const ZIP = `${BASE}-fastboot.zip`;
-const STOCK = `${BASE}-init_boot-stock.img`;
+const STOCK = `${BASE}-boot-stock.img`;
 const DIR = "expressiveos/cheetah/flasher";
 
 describe("Worker: /api/releases/<device>", () => {
@@ -212,7 +212,7 @@ describe("Worker: /dl/<device>/<file>", () => {
 		]);
 	});
 
-	it("serves the stock init_boot and checksums with their own types", async () => {
+	it("serves the stock boot and checksums with their own types", async () => {
 		const files: Array<[string, string]> = [
 			[STOCK, "application/octet-stream"],
 			[`${STOCK}.sha256`, "text/plain; charset=utf-8"],
@@ -353,7 +353,7 @@ describe("Worker: /dl/<device>/<file>", () => {
 			`/dl/cheetah/..%5C${ZIP}`,
 			`/dl/cheetah/${encodeURIComponent(`../${ZIP}`)}`,
 			`/dl/cheetah/%45${ZIP.slice(1)}`, // an encoded name, even of a real file: names aren't decoded
-			// Not a fastboot zip, stock init_boot or their checksums
+			// Not a fastboot zip, stock boot or their checksums
 			"/dl/cheetah/flasher.json",
 			"/dl/cheetah/testers/flasher.json",
 			`/dl/cheetah/${BASE}-target_files.zip`,
@@ -433,8 +433,8 @@ describe("Worker and page together", () => {
 			date: "2026-10-29",
 			published,
 			zip: { file: ZIP, size: 1000, sha256: sha("a") },
-			initBootStock: { file: STOCK, size: 16, sha256: sha("b") },
-			root: "kernelsu-next",
+			bootStock: { file: STOCK, size: 16, sha256: sha("b") },
+			root: "bakasu",
 			requirements: ["require board=cheetah"],
 		});
 		const manifest = { schema: 1, device: "cheetah", releases: [entry("testers", "2026-10-29T09:00:00Z"), entry("release", "2026-10-30T09:00:00Z")] };
@@ -451,7 +451,7 @@ describe("Worker and page together", () => {
 		expect(releases.map((r) => r.channel)).toEqual(["release", "testers"]);
 		for (const r of releases) {
 			const folder = r.channel === "testers" ? `${DIR}/testers` : DIR;
-			for (const f of [r.zip, r.initBootStock!]) {
+			for (const f of [r.zip, r.bootStock!]) {
 				const res = await call(fileUrl("cheetah", r, f.file));
 				expect(res.status).toBe(200);
 				expect(await body(res)).toEqual(content[`${folder}/${f.file}`]);

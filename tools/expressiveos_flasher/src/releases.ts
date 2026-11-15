@@ -17,9 +17,9 @@ export interface Release {
 	date: string;
 	published: string;
 	zip: ReleaseFile;
-	/** The stock init_boot of a KernelSU Next build, for installing it without root. */
-	initBootStock: ReleaseFile | null;
-	root: "kernelsu-next" | null;
+	/** The stock boot of a BakaSU build (its zip's boot has Wild Kernels' kernel), for installing it without root. */
+	bootStock: ReleaseFile | null;
+	root: "bakasu" | null;
 	/** android-info.txt's lines. */
 	requirements: string[];
 	/**
@@ -28,6 +28,10 @@ export interface Release {
 	 */
 	firmware?: { bootloader?: string; baseband?: string };
 }
+
+/** Where users get the BakaSU app (expressiveos-cheetah/ksu/ksu.conf's manager_release_url and manager_nightly_url). */
+export const BAKASU_RELEASE_URL = "https://github.com/Baka-SU/BakaSU/releases";
+export const BAKASU_NIGHTLY_URL = "https://github.com/Baka-SU/BakaSU/actions";
 
 export class ReleasesError extends Error {
 	constructor(
@@ -61,8 +65,10 @@ export function releaseError(e: unknown, device: string): string | null {
 	if (typeof r.date !== "string" || !DATE_RE.test(r.date)) return `${r.name}: date`;
 	if (typeof r.published !== "string" || !TIME_RE.test(r.published)) return `${r.name}: published`;
 	if (!fileOk(r.zip, `${r.name}-fastboot.zip`)) return `${r.name}: zip`;
-	if (r.initBootStock !== null && !fileOk(r.initBootStock, `${r.name}-init_boot-stock.img`)) return `${r.name}: initBootStock`;
-	if (r.root !== (r.initBootStock === null ? null : "kernelsu-next")) return `${r.name}: root`;
+	// Entries written before BakaSU have no bootStock: they're builds without root
+	if (r.bootStock === undefined) r.bootStock = null;
+	if (r.bootStock !== null && !fileOk(r.bootStock, `${r.name}-boot-stock.img`)) return `${r.name}: bootStock`;
+	if (r.root !== (r.bootStock === null ? null : "bakasu")) return `${r.name}: root`;
 	if (!Array.isArray(r.requirements) || !r.requirements.every((x) => typeof x === "string")) return `${r.name}: requirements`;
 	if (r.firmware !== undefined) {
 		const f = r.firmware as Record<string, unknown> | null;

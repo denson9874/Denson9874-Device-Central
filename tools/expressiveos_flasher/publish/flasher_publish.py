@@ -1,13 +1,14 @@
 #!/usr/bin/env -S python3 -I
 """Publish an ExpressiveOS release for the web flasher (tools/expressiveos_flasher/): its
-fastboot zip (eos-pack.sh) and, for a KernelSU Next build, its stock init_boot, uploaded to
+fastboot zip (eos-pack.sh) and, for a BakaSU build, its stock boot, uploaded to
 the R2 bucket the flasher's Worker reads, then listed in the device's flasher.json.
 
   flasher_publish.py <device> <path to ...-fastboot.zip> [--testers] [--remote r2:denson9874-ota]
                      [--rclone ~/bin/rclone] [--keep N] [--dry-run]
 
-The zip must match the .sha256 beside it, as must <base>-init_boot-stock.img when it's there
-(then the flasher offers KernelSU Next or no root; without it the build has no KernelSU Next).
+The zip must match the .sha256 beside it, as must <base>-boot-stock.img when it's there (then
+the flasher offers BakaSU, the zip's boot with Wild Kernels' kernel, or stock with no root;
+without it the build has no root).
 The zip must hold what a clean flash needs, for this phone only (android-info.txt: 'require
 board=<device>' and no other board/product line, as eos-pack.sh writes it).
 
@@ -18,7 +19,7 @@ R2 (tools/ota_mirror/README.md for the rclone remote), nothing else ever written
 Each channel has its own folder, so a testers build and a release may have the same name. A
 published name is never overwritten with another file: a name the run's channel folder already
 holds with the same sha256 is left as it is (a re-run), with another one the run fails. What goes
-to R2 is what was hashed: the stock init_boot and each .sha256 from this run's private copies,
+to R2 is what was hashed: the stock boot and each .sha256 from this run's private copies,
 the zip from the file itself, which must not change from its hashing to the end of its upload.
 The manifest lists each channel's newest --keep releases (2 unless set); the files of
 releases it no longer lists are printed as "no longer listed: <remote path>" and left in R2.
@@ -52,14 +53,14 @@ CHANNELS = ("release", "testers")
 # Each channel's folder in expressiveos/<device>/, as the Worker serves them: /dl/<device>/<file>
 # from flasher/, /dl/<device>/testers/<file> from flasher/testers/
 CHANNEL_DIRS = {"release": "flasher", "testers": "flasher/testers"}
-ROOT_KSUN = "kernelsu-next"
+ROOT_BAKASU = "bakasu"
 # What `fastboot update` and the flasher need from the zip
-REQUIRED_ENTRIES = ("fastboot-info.txt", "android-info.txt", "init_boot.img", "vbmeta.img", "super_empty.img")
+REQUIRED_ENTRIES = ("fastboot-info.txt", "android-info.txt", "boot.img", "init_boot.img", "vbmeta.img", "super_empty.img")
 ZIP_SUFFIX = "-fastboot.zip"
-STOCK_SUFFIX = "-init_boot-stock.img"
+STOCK_SUFFIX = "-boot-stock.img"
 CHUNK = 8 << 20                 # the zips are 5-7 GB: hashed in 8 MiB reads
-STOCK_MAX = 64 << 20            # an init_boot image is 8 MiB: anything past this isn't one
-BOOT_MAGIC = b"ANDROID!"        # the first bytes of a boot image, init_boot's too
+STOCK_MAX = 64 << 20            # a boot image is the 64 MiB boot partition: anything past this isn't one
+BOOT_MAGIC = b"ANDROID!"        # the first bytes of a boot image
 RCLONE_DIR_NOT_FOUND = 3        # rclone's exit status for a directory that doesn't exist (yet)
 RCLONE_FILE_NOT_FOUND = 4       # and for a file that doesn't
 READ_TIMEOUT = 900              # seconds, for every rclone call but an upload
@@ -97,7 +98,7 @@ def release_re(device: str, suffix: str) -> re.Pattern[str]:
 
 
 def is_release_file(device: str, name: str) -> bool:
-    """name is one of <device>'s release files (a zip, a stock init_boot, or the .sha256 of one)."""
+    """name is one of <device>'s release files (a zip, a stock boot, or the .sha256 of one)."""
     return any(release_re(device, suffix + side).fullmatch(name)
                for suffix in (ZIP_SUFFIX, STOCK_SUFFIX) for side in ("", ".sha256"))
 
@@ -210,7 +211,7 @@ def private_sidecar(tmp: str, name: str, sha: str) -> str:
 
 
 def check_stock(path: str, name: str, tmp: str) -> LocalFile:
-    """The stock init_boot, as its .sha256 says, read once (it's 8 MiB) into this run's private
+    """The stock boot, as its .sha256 says, read once (it's 64 MiB) into this run's private
     copy: what goes to R2 is what was hashed, whatever happens to path meanwhile."""
     want = read_sidecar(path, name)
     f, _ = open_regular(path)
@@ -222,17 +223,17 @@ def check_stock(path: str, name: str, tmp: str) -> LocalFile:
                 break
             size += len(b)
             if size > STOCK_MAX:
-                fail(f"{path} is over {STOCK_MAX} bytes: not an init_boot image")
+                fail(f"{path} is over {STOCK_MAX} bytes: not a boot image")
             chunks.append(b)
     data = b"".join(chunks)
     got = hashlib.sha256(data).hexdigest()
     if got != want:
         wrong_hash(path, got, want)
-    # The flasher lists no release with an empty file, and flashes this one to init_boot
+    # The flasher lists no release with an empty file, and flashes this one to boot
     if not data:
-        fail(f"{path} is empty: not an init_boot image")
+        fail(f"{path} is empty: not a boot image")
     if not data.startswith(BOOT_MAGIC):
-        fail(f"{path} doesn't start with {BOOT_MAGIC.decode()}: not an init_boot image")
+        fail(f"{path} doesn't start with {BOOT_MAGIC.decode()}: not a boot image")
     copy = os.path.join(tmp, name)
     write_private(copy, data)
     return LocalFile(path=path, name=name, size=size, sha256=got, upload=copy, ident=None,
@@ -329,14 +330,15 @@ def entry_error(e: object, device: str) -> str | None:
     why = file_error(e.get("zip"), name + ZIP_SUFFIX)
     if why:
         return f"{name}'s zip {why}"
-    stock = e.get("initBootStock", "missing")
+    # Entries written before BakaSU have no bootStock: builds without root
+    stock = e.get("bootStock")
     if stock is not None:
         why = file_error(stock, name + STOCK_SUFFIX)
         if why:
-            return f"{name}'s initBootStock {why}"
-    want_root = None if stock is None else ROOT_KSUN
+            return f"{name}'s bootStock {why}"
+    want_root = None if stock is None else ROOT_BAKASU
     if e.get("root", "missing") != want_root:
-        return f"{name}'s root isn't {json.dumps(want_root)}, as its initBootStock says"
+        return f"{name}'s root isn't {json.dumps(want_root)}, as its bootStock says"
     reqs = e.get("requirements")
     if not isinstance(reqs, list) or not all(isinstance(r, str) for r in reqs):
         return f"{name}'s requirements aren't a list of lines"
@@ -389,8 +391,8 @@ def plan_releases(existing: list[dict], entry: dict, keep: int) -> tuple[list[di
 
     def files(e: dict) -> list[tuple[str, str]]:
         out = [(e["channel"], e["zip"]["file"])]
-        if e.get("initBootStock"):
-            out.append((e["channel"], e["initBootStock"]["file"]))
+        if e.get("bootStock"):
+            out.append((e["channel"], e["bootStock"]["file"]))
         return out
     listed = {f for e in kept for f in files(e)}
     gone: list[tuple[str, str]] = []
@@ -674,12 +676,12 @@ def publish(a: argparse.Namespace, device: str, zip_path: str, name: str, base: 
             if not os.path.isfile(stock_path):
                 fail(f"{stock_path} isn't a file")
             stock = check_stock(stock_path, stock_name, tmp)
-            print(f"OK: {stock_name}: {stock.size} bytes, sha256 {stock.sha256}: KernelSU Next, or no root with the stock init_boot")
+            print(f"OK: {stock_name}: {stock.size} bytes, sha256 {stock.sha256}: BakaSU, or no root with the stock boot")
         elif os.path.lexists(stock_path + ".sha256"):
-            # A KernelSU Next build whose stock init_boot is gone: never listed as one without root
-            fail(f"{stock_name}.sha256 is beside the zip but {stock_name} isn't (cleaned up?): the zip's init_boot would be listed as stock")
+            # A BakaSU build whose stock boot is gone: never listed as one without root
+            fail(f"{stock_name}.sha256 is beside the zip but {stock_name} isn't (cleaned up?): the zip's rooted boot would be listed as stock")
         else:
-            print(f"note: no {stock_name}: a build without KernelSU Next (root null)")
+            print(f"note: no {stock_name}: a build without root (root null)")
         requirements = check_zip(zfile, zip_path, name, device)
         if file_ident(os.fstat(zfile.fileno())) != ident:
             fail(f"{zip_path} changed while it was read: publish from a folder nothing writes into")
@@ -690,8 +692,8 @@ def publish(a: argparse.Namespace, device: str, zip_path: str, name: str, base: 
 
     r2 = R2(rclone, a.remote, device, channel, a.dry_run)
     files = [z] + ([stock] if stock else [])
-    no_stock = (f"{base} was published as a KernelSU Next build, with {stock_name}, which isn't beside {zip_path}: "
-                "it would be listed without root. Publish it from the folder that holds its stock init_boot")
+    no_stock = (f"{base} was published as a BakaSU build, with {stock_name}, which isn't beside {zip_path}: "
+                "it would be listed without root. Publish it from the folder that holds its stock boot")
 
     def entry(now: str) -> dict:
         return {
@@ -703,8 +705,8 @@ def publish(a: argparse.Namespace, device: str, zip_path: str, name: str, base: 
             "date": date,
             "published": now,
             "zip": z.manifest(),
-            "initBootStock": stock.manifest() if stock else None,
-            "root": ROOT_KSUN if stock else None,
+            "bootStock": stock.manifest() if stock else None,
+            "root": ROOT_BAKASU if stock else None,
             "requirements": requirements,
         }
 
@@ -716,7 +718,7 @@ def publish(a: argparse.Namespace, device: str, zip_path: str, name: str, base: 
             fail(f"internal error: {why}")
         # This channel's entry of the name: the other channel's is another build's
         old = next((e for e in existing or [] if key(e) == (base, channel)), None)
-        if old is not None and stock is None and old["initBootStock"] is not None:
+        if old is not None and stock is None and old.get("bootStock") is not None:
             fail(no_stock)
         if old is not None and all(old.get(k) == v for k, v in new.items() if k != "published"):
             # The same release again (a re-run): it keeps its place among the others

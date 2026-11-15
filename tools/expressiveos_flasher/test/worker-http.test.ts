@@ -26,11 +26,11 @@ describe("Worker range requests", () => {
 
 describe("Worker file names", () => {
 	const re = releaseFileRe("cheetah");
-	it("serves a release's zip, stock init_boot and their checksums", () => {
+	it("serves a release's zip, stock boot and their checksums", () => {
 		for (const n of [
 			"ExpressiveOS-16.0-20261029-cheetah-1.0-Unofficial-fastboot.zip",
 			"ExpressiveOS-16.0-20261029-cheetah-1.0-Unofficial-r2-fastboot.zip",
-			"ExpressiveOS-16.0-20261029-cheetah-1.0-Unofficial-init_boot-stock.img",
+			"ExpressiveOS-16.0-20261029-cheetah-1.0-Unofficial-boot-stock.img",
 			"ExpressiveOS-16.0-20261029-cheetah-1.0-Unofficial-fastboot.zip.sha256",
 		])
 			expect(re.test(n)).toBe(true);

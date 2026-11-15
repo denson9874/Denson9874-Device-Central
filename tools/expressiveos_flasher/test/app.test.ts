@@ -48,17 +48,17 @@ const sha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
 interface Build {
 	release: Release;
 	zip: Uint8Array;
-	initBoot: Uint8Array;
+	boot: Uint8Array;
 	stock: Uint8Array | null;
 }
 
 function build(device: string, version: string, date: string, androidInfo: string, opts: { stock: boolean; seed: number; superEmpty?: Uint8Array }): Build {
-	const initBoot = bytes(8192, opts.seed + 1);
+	const boot = bytes(8192, opts.seed);
 	const zip = makeZip([
 		{ name: "android-info.txt", data: enc.encode(androidInfo) },
 		{ name: "fastboot-info.txt", data: enc.encode(INFO) },
-		{ name: "boot.img", data: bytes(8192, opts.seed) },
-		{ name: "init_boot.img", data: initBoot },
+		{ name: "boot.img", data: boot },
+		{ name: "init_boot.img", data: bytes(8192, opts.seed + 1) },
 		{ name: "vendor_boot.img", data: bytes(8192, opts.seed + 2) },
 		{ name: "vbmeta.img", data: bytes(4096, opts.seed + 3) },
 		{ name: "super_empty.img", data: opts.superEmpty ?? makeSuperEmpty(["system_a", "system_b"]) },
@@ -75,11 +75,11 @@ function build(device: string, version: string, date: string, androidInfo: strin
 		date,
 		published: `${date}T12:00:00Z`,
 		zip: { file: `${name}-fastboot.zip`, size: zip.byteLength, sha256: sha(zip) },
-		initBootStock: stock ? { file: `${name}-init_boot-stock.img`, size: stock.byteLength, sha256: sha(stock) } : null,
-		root: stock ? "kernelsu-next" : null,
+		bootStock: stock ? { file: `${name}-boot-stock.img`, size: stock.byteLength, sha256: sha(stock) } : null,
+		root: stock ? "bakasu" : null,
 		requirements: [],
 	};
-	return { release, zip, initBoot, stock };
+	return { release, zip, boot, stock };
 }
 
 /** Lists the builds for their phone, with each zip already downloaded unless said otherwise. */
@@ -87,7 +87,7 @@ function publish(builds: Build[], opts: { stored?: boolean } = {}) {
 	world.releases = builds.map((b) => b.release);
 	for (const b of builds) {
 		if (opts.stored !== false) world.stored.set(storeName(b.release.zip.sha256, "zip"), zipFile(b));
-		if (b.stock) world.files.set(b.release.initBootStock!.file, b.stock);
+		if (b.stock) world.files.set(b.release.bootStock!.file, b.stock);
 	}
 }
 
@@ -275,8 +275,8 @@ async function toConnect() {
 
 // ---------- The tests ----------
 
-describe("a build without a stock init_boot (every Pixel 11 build)", () => {
-	it("installs, with the zip's own init_boot", async () => {
+describe("a build without a stock boot (a build without root)", () => {
+	it("installs, with the zip's own boot", async () => {
 		const b = build("cubs", "1.0", "2026-10-30", "require board=cubs\n", { stock: false, seed: 10 });
 		publish([b]);
 		const fake = phone({ product: "cubs" });
@@ -288,10 +288,10 @@ describe("a build without a stock init_boot (every Pixel 11 build)", () => {
 		expect(text()).toContain("No root");
 		await install();
 		expect(text()).toContain("ExpressiveOS is installed");
-		expect(same(fake.physical.get("init_boot_a")!.subarray(0, b.initBoot.byteLength), b.initBoot)).toBe(true);
+		expect(same(fake.physical.get("boot_a")!.subarray(0, b.boot.byteLength), b.boot)).toBe(true);
 		// Nothing on the other slot: there's no stock image to put there
-		expect(fake.physical.get("init_boot_b")!.every((x) => x === 0xee)).toBe(true);
-		expect(text()).not.toContain("KernelSU Next app");
+		expect(fake.physical.get("boot_b")!.every((x) => x === 0xee)).toBe(true);
+		expect(text()).not.toContain("BakaSU app");
 	});
 
 	it("writes the system images into super from the bootloader, as fastboot does, without fastbootd", async () => {

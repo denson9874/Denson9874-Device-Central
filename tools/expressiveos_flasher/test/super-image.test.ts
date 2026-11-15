@@ -132,7 +132,7 @@ const LOGICAL = logicalPartitions(EMPTY);
 
 describe("install plan with super written from the bootloader", () => {
 	it("writes super after everything else, with no restart into fastbootd", () => {
-		const steps = buildPlan(INFO, has, LOGICAL, { wipe: true, root: true, hasStockInitBoot: false, superFlash: true });
+		const steps = buildPlan(INFO, has, LOGICAL, { wipe: true, root: true, hasStockBoot: false, superFlash: true });
 		expect(steps.map((s) => (s.kind === "flash" ? `flash ${s.partition}` : s.kind === "erase" ? `erase ${s.partition}` : s.kind))).toEqual([
 			"set-active",
 			"cancel-snapshot",
@@ -152,11 +152,11 @@ describe("install plan with super written from the bootloader", () => {
 	});
 
 	it("goes through fastbootd when told not to, or when fastboot-info.txt doesn't restart into it first", () => {
-		const off = buildPlan(INFO, has, LOGICAL, { wipe: true, root: true, hasStockInitBoot: false });
+		const off = buildPlan(INFO, has, LOGICAL, { wipe: true, root: true, hasStockBoot: false });
 		expect(off.some((s) => s.kind === "reboot" && s.target === "fastbootd")).toBe(true);
 		expect(off.some((s) => s.kind === "flash-super")).toBe(false);
 		const noRestart = INFO.replace("reboot fastboot\nupdate-super\n", "");
-		const steps = buildPlan(noRestart, has, LOGICAL, { wipe: true, root: true, hasStockInitBoot: false, superFlash: true });
+		const steps = buildPlan(noRestart, has, LOGICAL, { wipe: true, root: true, hasStockBoot: false, superFlash: true });
 		expect(steps.some((s) => s.kind === "flash-super")).toBe(false);
 		expect(steps.some((s) => s.kind === "resize-to-zero")).toBe(true);
 	});
@@ -181,7 +181,7 @@ describe("install on a simulated phone, super from the bootloader", () => {
 			superEmpty: () => zip.blob("super_empty.img"),
 			size: (ref) => (ref.kind === "zip" ? zip.entry(ref.name)!.size : 0),
 		};
-		const steps = buildPlan(await zip.text("fastboot-info.txt"), (n) => !!zip.entry(n), LOGICAL, { wipe: true, root: true, hasStockInitBoot: false, superFlash: true });
+		const steps = buildPlan(await zip.text("fastboot-info.txt"), (n) => !!zip.entry(n), LOGICAL, { wipe: true, root: true, hasStockBoot: false, superFlash: true });
 		return { fake, connector, phone, source, steps };
 	}
 

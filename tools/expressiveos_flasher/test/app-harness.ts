@@ -325,7 +325,7 @@ export const world = {
 	download: (_name: string, _signal?: AbortSignal): Promise<File> => Promise.reject(new Error("no download")),
 	/** What checking a zip the user picked gives (its SHA-256). */
 	hash: (_f: File, _onProgress: (p: Progress) => void, _signal?: AbortSignal): Promise<string> => Promise.reject(new Error("no hash")),
-	/** The stock init_boot of each release, by file name. */
+	/** The stock boot of each release, by file name. */
 	files: new Map<string, Uint8Array>(),
 	releases: [] as Release[],
 };

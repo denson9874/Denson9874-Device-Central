@@ -40,8 +40,8 @@ const BS = 4096;
 const NAME = "ExpressiveOS-16.0-20261029-cheetah-1.0-Unofficial";
 const INFO = "version 1\nflash boot\nflash init_boot\nflash vendor_boot\nflash dtbo\nflash --apply-vbmeta vbmeta\nflash vbmeta_system\nreboot fastboot\nupdate-super\nflash product\nflash system\nflash vendor\nif-wipe erase userdata\nif-wipe erase metadata\n";
 const images = {
-	"boot.img": withAvbFooter(bytes(100_000, 11)),
-	"init_boot.img": bytes(90_000, 12),
+	"boot.img": bytes(90_000, 12), // Wild Kernels' kernel with BakaSU
+	"init_boot.img": withAvbFooter(bytes(100_000, 11)),
 	"vendor_boot.img": bytes(200_000, 13),
 	"dtbo.img": bytes(20_000, 14),
 	"vbmeta.img": bytes(8192, 15),
@@ -54,13 +54,13 @@ const images = {
 const stock = bytes(70_000, 99);
 const sha = (b) => createHash("sha256").update(b).digest("hex");
 
-/** A fixture release: its fastboot zip (images, with initBoot as init_boot.img) and, with a stock image, that too. */
-function release(device, name, { channel = "release", initBoot = images["init_boot.img"], stockImage = stock, published = "2026-10-30T12:00:00Z" } = {}) {
+/** A fixture release: its fastboot zip (images, with boot as boot.img) and, with a stock image, that too. */
+function release(device, name, { channel = "release", boot = images["boot.img"], stockImage = stock, published = "2026-10-30T12:00:00Z" } = {}) {
 	const z = makeZip(
 		[
 			{ name: "android-info.txt", data: new TextEncoder().encode(`require board=${device}\n`) },
 			{ name: "fastboot-info.txt", data: new TextEncoder().encode(INFO) },
-			...Object.entries({ ...images, "init_boot.img": initBoot }).map(([n, data]) => ({ name: n, data })),
+			...Object.entries({ ...images, "boot.img": boot }).map(([n, data]) => ({ name: n, data })),
 		],
 		{ zip64: true },
 	);
@@ -68,7 +68,7 @@ function release(device, name, { channel = "release", initBoot = images["init_bo
 	const dir = join(fixtures, device, "flasher", channel === "testers" ? "testers" : "");
 	mkdirSync(dir, { recursive: true });
 	writeFileSync(join(dir, `${name}-fastboot.zip`), z);
-	if (stockImage) writeFileSync(join(dir, `${name}-init_boot-stock.img`), stockImage);
+	if (stockImage) writeFileSync(join(dir, `${name}-boot-stock.img`), stockImage);
 	return {
 		name,
 		channel,
@@ -78,8 +78,8 @@ function release(device, name, { channel = "release", initBoot = images["init_bo
 		date: "2026-10-29",
 		published,
 		zip: { file: `${name}-fastboot.zip`, size: z.byteLength, sha256: sha(z) },
-		initBootStock: stockImage ? { file: `${name}-init_boot-stock.img`, size: stockImage.byteLength, sha256: sha(stockImage) } : null,
-		root: stockImage ? "kernelsu-next" : null,
+		bootStock: stockImage ? { file: `${name}-boot-stock.img`, size: stockImage.byteLength, sha256: sha(stockImage) } : null,
+		root: stockImage ? "bakasu" : null,
 		requirements: [`require board=${device}`],
 	};
 }
@@ -89,22 +89,22 @@ function manifest(device, releases) {
 
 rmSync(fixtures, { recursive: true, force: true });
 // The Pixel 7 Pro: a release, and a testers build of the same name with other bytes
-const testersInitBoot = bytes(90_000, 42);
+const testersBoot = bytes(90_000, 42);
 const testersStock = bytes(70_000, 43);
 manifest("cheetah", [
 	release("cheetah", NAME),
-	release("cheetah", NAME, { channel: "testers", initBoot: testersInitBoot, stockImage: testersStock, published: "2026-10-31T09:00:00Z" }),
+	release("cheetah", NAME, { channel: "testers", boot: testersBoot, stockImage: testersStock, published: "2026-10-31T09:00:00Z" }),
 ]);
-// The Pixel 11: a build without root, so no stock init_boot (its zip's init_boot is the stock one)
+// A build without root: no stock boot (its zip's boot is the stock one)
 const CUBS = "ExpressiveOS-16.0-20261029-cubs-1.0-Unofficial";
-const cubsInitBoot = bytes(90_000, 52);
-manifest("cubs", [release("cubs", CUBS, { initBoot: cubsInitBoot, stockImage: null })]);
+const cubsBoot = bytes(90_000, 52);
+manifest("cubs", [release("cubs", CUBS, { boot: cubsBoot, stockImage: null })]);
 
 const want = {
-	initBootKsu: sha(images["init_boot.img"]),
+	bootRooted: sha(images["boot.img"]),
 	stock: sha(stock),
-	testersInitBoot: sha(testersInitBoot),
-	cubsInitBoot: sha(cubsInitBoot),
+	testersBoot: sha(testersBoot),
+	cubsBoot: sha(cubsBoot),
 	system: sha(expandSparse(images["system.img"])),
 	product: sha(expandSparse(images["product.img"])),
 	vendor: sha(images["vendor.img"]),
@@ -204,10 +204,10 @@ async function phoneState(page) {
 		return {
 			mode: p.mode,
 			erased: [...p.erased].sort(),
-			initBootA: await hex(p.physical.get("init_boot_a").slice(0, 90_000)),
-			initBootAStock: await hex(p.physical.get("init_boot_a").slice(0, 70_000)),
-			initBootBStock: await hex(p.physical.get("init_boot_b").slice(0, 70_000)),
-			initBootB: await hex(p.physical.get("init_boot_b").slice(0, 90_000)),
+			bootA: await hex(p.physical.get("boot_a").slice(0, 90_000)),
+			bootAStock: await hex(p.physical.get("boot_a").slice(0, 70_000)),
+			bootBStock: await hex(p.physical.get("boot_b").slice(0, 70_000)),
+			bootB: await hex(p.physical.get("boot_b").slice(0, 90_000)),
 			system: await hex(p.logical.get(`system_${p.slot}`)),
 			product: await hex(p.logical.get(`product_${p.slot}`)),
 			vendor: await hex(p.logical.get(`vendor_${p.slot}`).slice(0, 400 * 4096 + 1000)),
@@ -231,7 +231,7 @@ try {
 		await page.getByRole("button", { name: /Pixel 7 Pro/ }).first().click();
 		await page.getByRole("button", { name: "Continue with Pixel 7 Pro" }).click();
 		await page.getByText("ExpressiveOS 1.0").first().waitFor();
-		check(await page.getByLabel(/KernelSU Next/).first().isChecked(), "KernelSU Next is the default for a build that has it");
+		check(await page.getByLabel(/BakaSU/).first().isChecked(), "BakaSU is the default for a build that has it");
 		check(await page.getByLabel(/Clean install/).isChecked(), "a clean install is the default");
 		await page.screenshot({ path: join(shots, "2-build.png"), fullPage: true });
 		await page.getByRole("button", { name: "Continue", exact: true }).click();
@@ -280,7 +280,7 @@ try {
 		await page.screenshot({ path: join(shots, "6b-done.png") });
 		const s = await phoneState(page);
 		check(s.mode === "android", `the phone started Android (${s.mode})`);
-		check(s.initBootA === want.initBootKsu, "init_boot is KernelSU Next's");
+		check(s.bootA === want.bootRooted, "boot is BakaSU's");
 		check(s.system === want.system && s.product === want.product && s.vendor === want.vendor, "system, product and vendor are their images byte for byte");
 		check(JSON.stringify(s.erased) === '["metadata","userdata"]', `userdata and metadata erased (${s.erased})`);
 		check(JSON.stringify(s.restarts) === '["restart -> fastbootd","restart -> android"]', `restarts: ${s.restarts.join(", ")}`);
@@ -327,7 +327,7 @@ try {
 		await page.screenshot({ path: join(shots, "m4-done.png") });
 		const s = await phoneState(page);
 		check(s.mode === "android", "the phone started Android");
-		check(s.initBootAStock === want.stock && s.initBootBStock === want.stock, "no root: the stock init_boot is on both slots");
+		check(s.bootAStock === want.stock && s.bootBStock === want.stock, "no root: the stock boot is on both slots");
 		check(s.erased.length === 0, "keeping data: nothing erased");
 		check(s.system === want.system, "system written to slot b");
 		check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
@@ -395,12 +395,12 @@ try {
 		await page.getByRole("button", { name: "Install", exact: true }).click();
 		await page.getByRole("heading", { name: "ExpressiveOS is installed" }).waitFor({ timeout: 120_000 });
 		const s = await phoneState(page);
-		check(s.initBootA === want.testersInitBoot, "the testers build's init_boot is on the phone, not the release's");
+		check(s.bootA === want.testersBoot, "the testers build's boot is on the phone, not the release's");
 		check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
 		await ctx.close();
 	});
 
-	// ---------- 6. A Pixel 11 build without root: no stock init_boot, the zip's own is kept ----------
+	// ---------- 6. A build without root: no stock boot, the zip's own is kept ----------
 	await scenario("no-root-build", async (track) => {
 		const { ctx, page, errors } = await newPage(browser, { fake: { product: "cubs" } });
 		track(page);
@@ -408,7 +408,7 @@ try {
 		await page.getByRole("button", { name: /cubs/ }).click();
 		await page.getByRole("button", { name: "Continue with Pixel 11" }).click();
 		await page.getByText("ExpressiveOS 1.0").first().waitFor();
-		check((await page.getByLabel(/KernelSU Next/).count()) === 0, "a build without root offers no KernelSU Next choice");
+		check((await page.getByLabel(/BakaSU/).count()) === 0, "a build without root offers no BakaSU choice");
 		await page.getByRole("button", { name: "Continue", exact: true }).click();
 		await page.getByRole("button", { name: "Download", exact: true }).click();
 		await page.getByText("Downloaded and checked").first().waitFor({ timeout: 60_000 });
@@ -422,8 +422,8 @@ try {
 		await page.screenshot({ path: join(shots, "n1-no-root-done.png") });
 		const s = await phoneState(page);
 		check(s.mode === "android", "the Pixel 11 started Android");
-		check(s.initBootA === want.cubsInitBoot, "the zip's own init_boot is on the current slot");
-		check(s.initBootB === sha(new Uint8Array(90_000).fill(0xee)), "nothing is written to the other slot's init_boot");
+		check(s.bootA === want.cubsBoot, "the zip's own boot is on the current slot");
+		check(s.bootB === sha(new Uint8Array(90_000).fill(0xee)), "nothing is written to the other slot's boot");
 		check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
 		await ctx.close();
 	});

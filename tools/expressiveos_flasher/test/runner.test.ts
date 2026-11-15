@@ -30,8 +30,8 @@ if-wipe erase metadata
 `;
 
 const images = {
-	"boot.img": withAvbFooter(bytes(100_000, 11)),
-	"init_boot.img": bytes(90_000, 12), // KernelSU Next's
+	"boot.img": withAvbFooter(bytes(100_000, 11)), // Wild Kernels' kernel with BakaSU
+	"init_boot.img": bytes(90_000, 12),
 	"vendor_boot.img": bytes(256 * 1024, 13), // fills its partition
 	"dtbo.img": bytes(20_000, 14),
 	"vbmeta.img": bytes(8192, 15),
@@ -60,7 +60,7 @@ async function setup(opts: { wipe: boolean; root: boolean }, phoneOpts: Construc
 	const zip = await ZipReader.open(new Blob([zipBytes]));
 	const has = (n: string) => !!zip.entry(n);
 	const logical = logicalPartitions(await zip.bytes("super_empty.img"));
-	const steps = buildPlan(await zip.text("fastboot-info.txt"), has, logical, { ...opts, hasStockInitBoot: true });
+	const steps = buildPlan(await zip.text("fastboot-info.txt"), has, logical, { ...opts, hasStockBoot: true });
 	const source: ImageSource = {
 		image: async (ref) => (ref.kind === "zip" ? zip.blob(ref.name) : new Blob([STOCK])),
 		superEmpty: () => zip.blob("super_empty.img"),
@@ -128,8 +128,9 @@ describe("install on a simulated phone", () => {
 	it("installs without root, keeping data, on slot b", async () => {
 		const { fake, phone, steps, source } = await setup({ wipe: false, root: false }, { slot: "b" });
 		await runPlan(phone, steps, source, { step: () => {}, progress: () => {}, note: () => {} });
-		expect(same(fake.physical.get("init_boot_b")!.subarray(0, STOCK.byteLength), STOCK)).toBe(true);
-		expect(same(fake.physical.get("init_boot_a")!.subarray(0, STOCK.byteLength), STOCK)).toBe(true);
+		expect(same(fake.physical.get("boot_b")!.subarray(0, STOCK.byteLength), STOCK)).toBe(true);
+		expect(same(fake.physical.get("boot_a")!.subarray(0, STOCK.byteLength), STOCK)).toBe(true);
+		expect(same(fake.physical.get("init_boot_b")!.subarray(0, 90_000), images["init_boot.img"])).toBe(true);
 		expect(fake.erased.size).toBe(0);
 		expect(fake.lastSuperWipe).toBe(false);
 		expect(same(fake.logical.get("system_b")!, expandSparse(images["system.img"]))).toBe(true);

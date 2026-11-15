@@ -170,14 +170,15 @@ class FlasherPublishTest(unittest.TestCase):
     def make_release(self, *, device="cheetah", date="20261030", version="1.0", rtype="OFFICIAL", r="",
                      android="17.0", stock=True, info=None, omit=(), deflate=(), seed=b"", folder=""):
         """A fake release in self.rel (or its folder, such as testers/): its stored Zip64 fastboot
-        zip and (stock) stock init_boot, each with its .sha256. Returns the zip's path."""
+        zip and (stock) stock boot, each with its .sha256. Returns the zip's path."""
         base = f"ExpressiveOS-{android}-{date}-{device}-{version}-{rtype}{r}"
         if info is None:
             info = f"require board={device}\nrequire version-bootloader={device}-1.0\n\n"
         entries = {
-            "fastboot-info.txt": b"version 1\nflash init_boot\nflash vbmeta\nupdate-super\nflash system\n",
+            "fastboot-info.txt": b"version 1\nflash boot\nflash init_boot\nflash vbmeta\nupdate-super\nflash system\n",
             "android-info.txt": info.encode(),
-            "init_boot.img": b"ANDROID! KernelSU Next init_boot " + seed,
+            "boot.img": b"ANDROID! Wild BakaSU boot " + seed,
+            "init_boot.img": b"ANDROID! init_boot " + seed,
             "vbmeta.img": b"AVB0" + seed,
             "super_empty.img": b"super_empty " + seed,
             "system.img": b"system " * 4096 + seed,
@@ -194,9 +195,9 @@ class FlasherPublishTest(unittest.TestCase):
                     f.write(data)
         write_sidecar(zpath)
         if stock:
-            spath = os.path.join(self.rel, folder, base + "-init_boot-stock.img")
+            spath = os.path.join(self.rel, folder, base + "-boot-stock.img")
             with open(spath, "wb") as f:
-                f.write(b"ANDROID! stock init_boot " + seed)
+                f.write(b"ANDROID! stock boot " + seed)
             write_sidecar(spath)
         return zpath
 
@@ -271,10 +272,10 @@ class FlasherPublishTest(unittest.TestCase):
         m = fp.release_re("cheetah", "").fullmatch(base)
         android, ymd, version, rtype, _ = m.groups()
         z = {"file": base + "-fastboot.zip", "size": 100, "sha256": "a" * 64}
-        s = {"file": base + "-init_boot-stock.img", "size": 10, "sha256": "b" * 64} if stock else None
+        s = {"file": base + "-boot-stock.img", "size": 10, "sha256": "b" * 64} if stock else None
         return {"name": base, "channel": channel, "android": android, "version": version, "type": rtype,
                 "date": f"{ymd[:4]}-{ymd[4:6]}-{ymd[6:]}", "published": published, "zip": z,
-                "initBootStock": s, "root": "kernelsu-next" if stock else None,
+                "bootStock": s, "root": "bakasu" if stock else None,
                 "requirements": ["require board=cheetah"]}
 
     def put_manifest(self, releases):
@@ -287,7 +288,7 @@ class FlasherPublishTest(unittest.TestCase):
         z = self.make_release()
         name = os.path.basename(z)
         base = name[:-len("-fastboot.zip")]
-        stock = base + "-init_boot-stock.img"
+        stock = base + "-boot-stock.img"
         p = self.run_publish("cheetah", z)
         self.assertOK(p)
         self.assertEqual(self.flasher_files(), sorted([name, name + ".sha256", stock, stock + ".sha256"]))
@@ -312,9 +313,9 @@ class FlasherPublishTest(unittest.TestCase):
         self.assertEqual((e["android"], e["version"], e["type"], e["date"]), ("17.0", "1.0", "OFFICIAL", "2026-10-30"))
         self.assertEqual(e["published"], m["updated"])
         self.assertEqual(e["zip"], {"file": name, "size": len(zdata), "sha256": sha256(zdata)})
-        self.assertEqual(e["initBootStock"]["file"], stock)
-        self.assertEqual(e["initBootStock"]["size"], os.path.getsize(os.path.join(self.rel, stock)))
-        self.assertEqual(e["root"], "kernelsu-next")
+        self.assertEqual(e["bootStock"]["file"], stock)
+        self.assertEqual(e["bootStock"]["size"], os.path.getsize(os.path.join(self.rel, stock)))
+        self.assertEqual(e["root"], "bakasu")
         self.assertEqual(e["requirements"], ["require board=cheetah", "require version-bootloader=cheetah-1.0"])
         # Each .sha256 before its file, the manifest last, every copyto with --s3-no-check-bucket
         ups = self.uploads()
@@ -339,7 +340,7 @@ class FlasherPublishTest(unittest.TestCase):
         # Its files go to flasher/testers/, which the Worker serves as /dl/<device>/testers/<file>
         z = self.make_release(date="20261030", folder="testers")
         name = os.path.basename(z)
-        stock = name[:-len("-fastboot.zip")] + "-init_boot-stock.img"
+        stock = name[:-len("-fastboot.zip")] + "-boot-stock.img"
         p = self.run_publish("cheetah", z, "--testers")
         self.assertOK(p)
         testers = sorted([name, name + ".sha256", stock, stock + ".sha256"])
@@ -357,7 +358,7 @@ class FlasherPublishTest(unittest.TestCase):
         r = self.make_release(date="20261025", seed=b"2")
         self.assertOK(self.run_publish("cheetah", r))
         rname = os.path.basename(r)
-        rstock = rname[:-len("-fastboot.zip")] + "-init_boot-stock.img"
+        rstock = rname[:-len("-fastboot.zip")] + "-boot-stock.img"
         self.assertEqual(self.flasher_files(), sorted([rname, rname + ".sha256", rstock, rstock + ".sha256"]))
         self.assertEqual(self.flasher_files("testers"), testers)
         self.assertEqual([(e["date"], e["channel"]) for e in self.manifest()["releases"]],
@@ -492,7 +493,7 @@ class FlasherPublishTest(unittest.TestCase):
     def test_stock_name_held_by_another_build(self):
         # Checked before anything is uploaded: the zip doesn't go up either
         z = self.make_release()
-        stock = os.path.basename(z)[:-len("-fastboot.zip")] + "-init_boot-stock.img"
+        stock = os.path.basename(z)[:-len("-fastboot.zip")] + "-boot-stock.img"
         self.put(b"other", "cheetah", "flasher", stock)
         self.put(f"{sha256(b'other')}  {stock}\n".encode(), "cheetah", "flasher", stock + ".sha256")
         before = self.snapshot()
@@ -610,46 +611,46 @@ class FlasherPublishTest(unittest.TestCase):
         name = os.path.basename(z)
         p = self.run_publish("cheetah", z)
         self.assertOK(p)
-        self.assertIn("without KernelSU Next", p.stdout)
+        self.assertIn("without root", p.stdout)
         e = self.manifest()["releases"][0]
         self.assertIsNone(e["root"])
-        self.assertIsNone(e["initBootStock"])
+        self.assertIsNone(e["bootStock"])
         self.assertEqual(self.flasher_files(), [name, name + ".sha256"])
 
     def test_stock_image_bad_sidecar(self):
         z = self.make_release()
-        spath = z[:-len("-fastboot.zip")] + "-init_boot-stock.img"
+        spath = z[:-len("-fastboot.zip")] + "-boot-stock.img"
         with open(spath, "ab") as f:
             f.write(b"changed")
         self.assertFAIL(self.run_publish("cheetah", z), "isn't the file its .sha256 names")
         os.remove(spath + ".sha256")
-        self.assertFAIL(self.run_publish("cheetah", z), "no ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL-init_boot-stock.img.sha256")
+        self.assertFAIL(self.run_publish("cheetah", z), "no ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL-boot-stock.img.sha256")
         self.assertEqual(self.calls(), [])
 
     def test_stock_sidecar_without_image(self):
-        # A KernelSU Next build that lost its stock image is never listed as a rootless one
+        # A BakaSU build that lost its stock image is never listed as a rootless one
         z = self.make_release()
-        os.remove(z[:-len("-fastboot.zip")] + "-init_boot-stock.img")
+        os.remove(z[:-len("-fastboot.zip")] + "-boot-stock.img")
         self.assertFAIL(self.run_publish("cheetah", z), "would be listed as stock")
         self.assertEqual(self.calls(), [])
 
     def test_stock_image_not_an_init_boot(self):
         # The flasher lists no release with an empty file, and flashes this one to init_boot
         z = self.make_release()
-        spath = z[:-len("-fastboot.zip")] + "-init_boot-stock.img"
+        spath = z[:-len("-fastboot.zip")] + "-boot-stock.img"
         for case, data, why in (("empty", b"", "is empty"),
-                                ("not a boot image", b"stock init_boot", "doesn't start with ANDROID!")):
+                                ("not a boot image", b"stock boot", "doesn't start with ANDROID!")):
             with self.subTest(case):
                 with open(spath, "wb") as f:
                     f.write(data)
                 write_sidecar(spath)
-                self.assertFAIL(self.run_publish("cheetah", z), why, "not an init_boot image")
+                self.assertFAIL(self.run_publish("cheetah", z), why, "not a boot image")
         self.assertEqual(self.calls(), [])
 
     def test_stock_image_gone_on_a_rerun(self):
-        # A KernelSU Next build published again without its stock image is never relisted rootless
+        # A BakaSU build published again without its stock image is never relisted rootless
         z = self.make_release()
-        spath = z[:-len("-fastboot.zip")] + "-init_boot-stock.img"
+        spath = z[:-len("-fastboot.zip")] + "-boot-stock.img"
         stock = os.path.basename(spath)
         self.assertOK(self.run_publish("cheetah", z))
         os.remove(spath)
@@ -659,7 +660,7 @@ class FlasherPublishTest(unittest.TestCase):
             with self.subTest(args=args):
                 os.remove(self.log)
                 p = self.run_publish("cheetah", z, *args)
-                self.assertFAIL(p, "published as a KernelSU Next build", "listed without root")
+                self.assertFAIL(p, "published as a BakaSU build", "listed without root")
                 self.assertEqual(self.uploads(), [])
                 self.assertEqual(self.snapshot(), before)
         # Listed with its stock image, which R2 no longer holds: still never relisted rootless
@@ -668,7 +669,7 @@ class FlasherPublishTest(unittest.TestCase):
             os.remove(self.bucket("cheetah", "flasher", n))
         before = self.snapshot()
         p = self.run_publish("cheetah", z)
-        self.assertFAIL(p, "published as a KernelSU Next build", "listed without root")
+        self.assertFAIL(p, "published as a BakaSU build", "listed without root")
         self.assertEqual(self.snapshot(), before)
         self.assertEqual(self.manifest(), listed)
         # Its stock image in R2 but no longer listed (a run cut short, or pruned): the same
@@ -685,14 +686,14 @@ class FlasherPublishTest(unittest.TestCase):
     def test_stock_image_check_goes_by_channel(self):
         # The same refusal for a testers build, from the testers channel's own entry and folder
         z = self.make_release(folder="testers")
-        spath = z[:-len("-fastboot.zip")] + "-init_boot-stock.img"
+        spath = z[:-len("-fastboot.zip")] + "-boot-stock.img"
         stock = os.path.basename(spath)
         self.assertOK(self.run_publish("cheetah", z, "--testers"))
         os.remove(spath)
         os.remove(spath + ".sha256")
         before = self.snapshot()
         p = self.run_publish("cheetah", z, "--testers")
-        self.assertFAIL(p, "published as a KernelSU Next build", "listed without root")
+        self.assertFAIL(p, "published as a BakaSU build", "listed without root")
         self.assertEqual(self.snapshot(), before)
         # Its stock image in flasher/testers/ but no longer listed
         self.put_manifest([self.entry("ExpressiveOS-17.0-20261001-cheetah-1.0-OFFICIAL")])
@@ -700,13 +701,13 @@ class FlasherPublishTest(unittest.TestCase):
         p = self.run_publish("cheetah", z, "--testers")
         self.assertFAIL(p, f"{TESTERS}/ holds {stock}, {stock}.sha256", "listed without root")
         self.assertEqual(self.snapshot(), before)
-        # A release of that name is another build: one without KernelSU Next publishes beside it
+        # A release of that name is another build: one without BakaSU publishes beside it
         r = self.make_release(stock=False, seed=b"release")
         self.assertEqual(os.path.basename(r), os.path.basename(z))
         self.assertOK(self.run_publish("cheetah", r))
-        e = next(e for e in self.manifest()["releases"] if e["name"] == stock[:-len("-init_boot-stock.img")])
-        self.assertEqual((e["channel"], e["root"], e["initBootStock"]), ("release", None, None))
-        self.assertEqual(self.flasher_files("testers")[-2:], [stock, stock + ".sha256"])
+        e = next(e for e in self.manifest()["releases"] if e["name"] == stock[:-len("-boot-stock.img")])
+        self.assertEqual((e["channel"], e["root"], e["bootStock"]), ("release", None, None))
+        self.assertLessEqual({stock, stock + ".sha256"}, set(self.flasher_files("testers")))
 
     # -- names, devices, arguments
 
@@ -806,8 +807,8 @@ class FlasherPublishTest(unittest.TestCase):
             "zip file mismatch": m(releases=[dict(good, zip=dict(good["zip"], file="x-fastboot.zip"))]),
             "size a string": m(releases=[dict(good, zip=dict(good["zip"], size="100"))]),
             "size 0": m(releases=[dict(good, zip=dict(good["zip"], size=0))]),
-            "stock size 0": m(releases=[dict(good, initBootStock=dict(good["initBootStock"], size=0))]),
-            "root without stock": m(releases=[dict(good, initBootStock=None)]),
+            "stock size 0": m(releases=[dict(good, bootStock=dict(good["bootStock"], size=0))]),
+            "root without stock": m(releases=[dict(good, bootStock=None)]),
             "bad date": m(releases=[dict(good, date="20261001")]),
             "listed twice": m(releases=[good, good]),
             "listed twice in testers": m(releases=[dict(good, channel="testers")] * 2),
@@ -831,7 +832,7 @@ class FlasherPublishTest(unittest.TestCase):
         tst = "ExpressiveOS-17.0-20261020-cheetah-1.0-OFFICIAL"
         self.put_manifest([self.entry(old2), self.entry(tst, channel="testers"), self.entry(old1)])
         for b in (old1, old2):
-            for n in (b + "-fastboot.zip", b + "-init_boot-stock.img"):
+            for n in (b + "-fastboot.zip", b + "-boot-stock.img"):
                 self.put(b"old", "cheetah", "flasher", n)
                 self.put(b"old sha", "cheetah", "flasher", n + ".sha256")
         before = self.snapshot()
@@ -841,8 +842,8 @@ class FlasherPublishTest(unittest.TestCase):
         gone = [line for line in p.stdout.splitlines() if line.startswith("no longer listed: ")]
         self.assertEqual(gone, [f"no longer listed: {FLASHER}/{old1}-fastboot.zip",
                                 f"no longer listed: {FLASHER}/{old1}-fastboot.zip.sha256",
-                                f"no longer listed: {FLASHER}/{old1}-init_boot-stock.img",
-                                f"no longer listed: {FLASHER}/{old1}-init_boot-stock.img.sha256"])
+                                f"no longer listed: {FLASHER}/{old1}-boot-stock.img",
+                                f"no longer listed: {FLASHER}/{old1}-boot-stock.img.sha256"])
         self.assertEqual([(e["name"], e["channel"]) for e in self.manifest()["releases"]],
                          [("ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL", "release"), (tst, "testers"), (old2, "release")])
         # Nothing deleted: the old files are all still there
@@ -869,8 +870,8 @@ class FlasherPublishTest(unittest.TestCase):
         gone = [line for line in p.stdout.splitlines() if line.startswith("no longer listed: ")]
         self.assertEqual(gone, [f"no longer listed: {TESTERS}/{x}-fastboot.zip",
                                 f"no longer listed: {TESTERS}/{x}-fastboot.zip.sha256",
-                                f"no longer listed: {TESTERS}/{x}-init_boot-stock.img",
-                                f"no longer listed: {TESTERS}/{x}-init_boot-stock.img.sha256"])
+                                f"no longer listed: {TESTERS}/{x}-boot-stock.img",
+                                f"no longer listed: {TESTERS}/{x}-boot-stock.img.sha256"])
         self.assertEqual([(e["name"], e["channel"]) for e in self.manifest()["releases"]],
                          [("ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL", "testers"), (y, "testers"), (x, "release")])
 
@@ -1048,7 +1049,7 @@ class FlasherPublishTest(unittest.TestCase):
     def test_stock_image_changed_during_the_zip_upload(self):
         # A candidate run's cp over the stock image while the zip goes up: R2 gets the one hashed
         z = self.make_release()
-        spath = z[:-len("-fastboot.zip")] + "-init_boot-stock.img"
+        spath = z[:-len("-fastboot.zip")] + "-boot-stock.img"
         with open(spath, "rb") as f:
             original = f.read()
         env = self.hook(
@@ -1059,7 +1060,7 @@ class FlasherPublishTest(unittest.TestCase):
             self.assertNotEqual(f.read(), original)
         with open(self.bucket("cheetah", "flasher", os.path.basename(spath)), "rb") as f:
             self.assertEqual(f.read(), original)
-        self.assertEqual(self.manifest()["releases"][0]["initBootStock"]["sha256"], sha256(original))
+        self.assertEqual(self.manifest()["releases"][0]["bootStock"]["sha256"], sha256(original))
 
     def test_android_info_line_fastboot_cant_read(self):
         before = self.snapshot()
@@ -1173,14 +1174,14 @@ class UnitTest(unittest.TestCase):
         f = FlasherPublishTest.entry("ExpressiveOS-17.0-20261030-cheetah-1.1-OFFICIAL", published="2026-10-30T00:00:00Z")
         kept, gone = fp.plan_releases([e], f, 1)
         self.assertEqual(kept, [f])
-        self.assertEqual(gone, [("release", e["zip"]["file"]), ("release", e["initBootStock"]["file"])])
+        self.assertEqual(gone, [("release", e["zip"]["file"]), ("release", e["bootStock"]["file"])])
 
     def test_replaced_release_keeps_its_files(self):
         e = FlasherPublishTest.entry("ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL")
-        new = dict(e, published="2026-10-31T00:00:00Z", initBootStock=None, root=None)
+        new = dict(e, published="2026-10-31T00:00:00Z", bootStock=None, root=None)
         kept, gone = fp.plan_releases([e], new, 2)
         self.assertEqual(kept, [new])
-        self.assertEqual(gone, [("release", e["initBootStock"]["file"])])   # the zip is still listed
+        self.assertEqual(gone, [("release", e["bootStock"]["file"])])   # the zip is still listed
 
     def test_plan_goes_by_name_and_channel(self):
         entry = FlasherPublishTest.entry
@@ -1192,16 +1193,16 @@ class UnitTest(unittest.TestCase):
         self.assertEqual(kept, [tst_x, rel_x])
         self.assertEqual(gone, [])
         # Replaced in its own channel only: the release's files are the release's
-        new = dict(tst_x, published="2026-10-22T00:00:00Z", initBootStock=None, root=None)
+        new = dict(tst_x, published="2026-10-22T00:00:00Z", bootStock=None, root=None)
         kept, gone = fp.plan_releases([rel_x, tst_x], new, 2)
         self.assertEqual(kept, [new, rel_x])
-        self.assertEqual(gone, [("testers", x + "-init_boot-stock.img")])
+        self.assertEqual(gone, [("testers", x + "-boot-stock.img")])
         # Dropped from testers while the release of that name stays: its testers files are no longer listed
         tst_y = entry("ExpressiveOS-17.0-20261025-cheetah-1.0-OFFICIAL", channel="testers")
         tst_z = entry("ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL", channel="testers")
         kept, gone = fp.plan_releases([rel_x, tst_x, tst_y], tst_z, 2)
         self.assertEqual(kept, [tst_z, tst_y, rel_x])
-        self.assertEqual(gone, [("testers", x + "-fastboot.zip"), ("testers", x + "-init_boot-stock.img")])
+        self.assertEqual(gone, [("testers", x + "-fastboot.zip"), ("testers", x + "-boot-stock.img")])
 
     def test_manifest_names_unique_per_channel(self):
         entry = FlasherPublishTest.entry
@@ -1222,7 +1223,7 @@ class UnitTest(unittest.TestCase):
         dev = REMOTE + "/expressiveos/cheetah"
         base = "ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL"
         names = [base + "-fastboot.zip", base + "-fastboot.zip.sha256",
-                 base + "-init_boot-stock.img", base + "-init_boot-stock.img.sha256"]
+                 base + "-boot-stock.img", base + "-boot-stock.img.sha256"]
         for channel, own, other in (("release", f"{dev}/flasher", f"{dev}/flasher/testers"),
                                     ("testers", f"{dev}/flasher/testers", f"{dev}/flasher")):
             with self.subTest(channel):
