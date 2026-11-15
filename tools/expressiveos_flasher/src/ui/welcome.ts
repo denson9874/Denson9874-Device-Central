@@ -6,6 +6,7 @@
 // It's shown once per tab session (sessionStorage), so a reload in the middle of an install goes
 // straight back to the steps. The steps (app.ts) don't know it exists.
 
+import { PLANT_EVENT } from "./bloom.ts";
 import { h } from "./dom.ts";
 
 const SEEN = "eos-flasher-welcomed";
@@ -80,6 +81,8 @@ export function showWelcome(): void {
 		"click",
 		() => {
 			markSeen();
+			// The flower folds back into a seed and is planted: the install grows it again
+			document.dispatchEvent(new CustomEvent(PLANT_EVENT));
 			const from = host.getBoundingClientRect();
 			window.scrollTo({ top: 0 });
 			stageCol.prepend(host);

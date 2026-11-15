@@ -72,6 +72,9 @@ function webGlAvailable(): boolean {
 	}
 }
 
+/** Sent by the welcome page's "Get started" (welcome.ts): the 3D flower folds back into a seed and plants it. */
+export const PLANT_EVENT = "eos-plant";
+
 /** The page event the background aura follows (aura.ts): the stage's mode and progress. */
 export const BLOOM_EVENT = "eos-bloom";
 export interface BloomEventDetail {

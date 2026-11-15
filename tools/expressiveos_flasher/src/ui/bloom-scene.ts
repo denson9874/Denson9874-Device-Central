@@ -23,6 +23,7 @@ import {
 	AmbientLight,
 	BufferAttribute,
 	BufferGeometry,
+	CatmullRomCurve3,
 	CanvasTexture,
 	Color,
 	DirectionalLight,
@@ -55,10 +56,12 @@ import {
 	SpriteMaterial,
 	SRGBColorSpace,
 	TorusGeometry,
+	TubeGeometry,
 	Vector2,
 	Vector3,
 	WebGLRenderer,
 } from "three";
+import { PLANT_EVENT } from "./bloom.ts";
 import { PETALS, type Petal } from "./petals.ts";
 
 export type BloomSceneMode = "idle" | "download" | "verify" | "install" | "waiting" | "complete" | "error";
@@ -91,6 +94,15 @@ const easeOutBack = (t: number): number => {
 };
 
 const easeOutCubic = (t: number): number => 1 - Math.pow(1 - MathUtils.clamp(t, 0, 1), 3);
+const smooth = (a: number, b: number, x: number): number => {
+	const t = MathUtils.clamp((x - a) / (b - a), 0, 1);
+	return t * t * (3 - 2 * t);
+};
+
+// The growth story's ground: the soil's top, below the flower
+const SOIL_Y = -1.72;
+const STEM_SEGS = 96;
+const STEM_RADIAL = 10;
 
 /** Small helper clamp avoiding extra imports. */
 const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -502,6 +514,27 @@ export class BloomScene {
 	private lastDpr = 0;
 
 	private celebrateTimer = 0;
+	private pendingCelebrate = false;
+	private celebrateWaves: number[] = [];
+	private celebrateClock = 0;
+
+	// The growth story, 0..1: seed in the soil (0), sprout and seed leaves (download), stem
+	// (check), true leaves and a swelling bud (install), the open flower (done, 1)
+	private growth = 0;
+	private growthTarget = 0;
+	private pendingStage = 0;
+	private planting = false;
+	private seedDropPending = false;
+	private seedDrop = 0;
+	private sprouted = false;
+	private plantGroup!: Group;
+	private soilMat!: MeshPhysicalMaterial;
+	private seed!: Mesh;
+	private stemGeom!: TubeGeometry;
+	private stemCurve!: CatmullRomCurve3;
+	private stemMesh!: Mesh;
+	private stemTip!: Mesh;
+	private readonly leaves: Array<{ pivot: Group; at: number; from: number; to: number; side: number; size: number }> = [];
 	private wiltBlend = 0;
 	private spinAngle = 0;
 	private ringRot = 0;
@@ -691,6 +724,11 @@ export class BloomScene {
 		dom.addEventListener("pointerdown", this.onPointerDown);
 		window.addEventListener("pointerup", this.onPointerUp);
 		dom.addEventListener("pointerleave", this.onPointerLeave);
+
+		this.buildPlant();
+		// The welcome page shows the full flower; otherwise the story starts from the seed
+		this.growth = this.growthTarget = document.documentElement.classList.contains("welcome-open") ? 1 : 0;
+		document.addEventListener(PLANT_EVENT, this.onPlant);
 
 		this.resizeObs = new ResizeObserver(() => this.syncSize());
 		this.resizeObs.observe(container);
@@ -1078,6 +1116,195 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		return { uniforms, trackMat, trackMesh, arcMesh };
 	}
 
+	/** The growth story's set: soil, the seed, a stem revealed as it grows, its leaves. */
+	private buildPlant() {
+		const g = new Group();
+		this.plantGroup = g;
+		this.scene.add(g);
+
+		// A soft mound of dark, slightly violet earth with a few pebbles
+		const soilGeom = new SphereGeometry(1, 48, 24);
+		this.soilMat = new MeshPhysicalMaterial({ color: 0x2b2032, roughness: 0.96, metalness: 0, sheen: 0.4, sheenColor: new Color(0x6b2bbb), transparent: true });
+		const soil = new Mesh(soilGeom, this.soilMat);
+		soil.scale.set(1.15, 0.24, 0.66);
+		soil.position.set(0, SOIL_Y - 0.17, 0);
+		g.add(soil);
+		const pebbleGeom = new SphereGeometry(0.06, 16, 10);
+		const pebbleMat = new MeshPhysicalMaterial({ color: 0x4a3d58, roughness: 0.7, clearcoat: 0.3, transparent: true });
+		[
+			[-0.62, 0.02, 0.22, 1.2],
+			[0.48, 0.0, 0.3, 0.9],
+			[0.75, -0.04, -0.1, 1.4],
+			[-0.3, 0.04, 0.42, 0.7],
+			[0.22, 0.03, 0.48, 0.8],
+		].forEach(([x, y, z, sc]) => {
+			const p = new Mesh(pebbleGeom, pebbleMat);
+			p.position.set(x, SOIL_Y + y - 0.03, z);
+			p.scale.set(sc * 1.3, sc * 0.7, sc);
+			g.add(p);
+		});
+		this.disposables.push(soilGeom, this.soilMat, pebbleGeom, pebbleMat);
+
+		// The seed: warm, glossy, with a violet sheen of the bloom to come
+		const seedGeom = new SphereGeometry(0.14, 32, 20);
+		const seedMat = new MeshPhysicalMaterial({
+			color: 0x9a6a3e,
+			roughness: 0.35,
+			clearcoat: 0.8,
+			sheen: 1,
+			sheenColor: new Color(PETALS[0].light),
+			emissive: new Color(PETALS[0].deep),
+			emissiveIntensity: 0.12,
+		});
+		this.seed = new Mesh(seedGeom, seedMat);
+		this.seed.scale.set(1, 1.35, 1);
+		this.seed.position.set(0, SOIL_Y + 0.07, 0.04);
+		g.add(this.seed);
+		this.disposables.push(seedGeom, seedMat);
+
+		// The stem, drawn up to how far it has grown (drawRange over its tube's segments)
+		this.stemCurve = new CatmullRomCurve3([
+			new Vector3(0, SOIL_Y + 0.02, 0.02),
+			new Vector3(0.07, SOIL_Y + 0.42, -0.02),
+			new Vector3(-0.06, -0.86, -0.06),
+			new Vector3(0.04, -0.46, -0.1),
+			new Vector3(0, -0.12, -0.16),
+		]);
+		this.stemGeom = new TubeGeometry(this.stemCurve, STEM_SEGS, 0.042, STEM_RADIAL, false);
+		const green = PETALS[2];
+		const stemMat = new MeshPhysicalMaterial({ color: new Color(green.mid).lerp(new Color(green.deep), 0.45), roughness: 0.42, clearcoat: 0.55, sheen: 0.5, sheenColor: new Color(green.light), emissive: new Color(green.deep), emissiveIntensity: 0.1 });
+		this.stemMesh = new Mesh(this.stemGeom, stemMat);
+		g.add(this.stemMesh);
+		const tipGeom = new SphereGeometry(0.048, 20, 12);
+		const tipMat = new MeshPhysicalMaterial({ color: new Color(green.light), roughness: 0.3, clearcoat: 0.7, emissive: new Color(green.mid), emissiveIntensity: 0.35 });
+		this.stemTip = new Mesh(tipGeom, tipMat);
+		g.add(this.stemTip);
+		this.disposables.push(this.stemGeom, stemMat, tipGeom, tipMat);
+
+		// Two round seed leaves low on the stem, then two long true leaves higher up
+		const leafMat = new MeshPhysicalMaterial({ color: new Color(green.mid), roughness: 0.4, clearcoat: 0.6, sheen: 0.6, sheenColor: new Color(green.light), emissive: new Color(green.deep), emissiveIntensity: 0.12, side: DoubleSide });
+		const seedLeafGeom = createCalixPetalGeometry(0.34, 0.36);
+		const trueLeafGeom = createCalixPetalGeometry(0.38, 0.72);
+		this.disposables.push(leafMat, seedLeafGeom, trueLeafGeom);
+		const defs: Array<[geom: BufferGeometry, at: number, from: number, to: number, side: number, size: number]> = [
+			[seedLeafGeom, 0.1, 0.07, 0.22, -1, 1],
+			[seedLeafGeom, 0.1, 0.09, 0.24, 1, 1],
+			[trueLeafGeom, 0.46, 0.4, 0.62, 1, 1],
+			[trueLeafGeom, 0.62, 0.5, 0.72, -1, 0.9],
+		];
+		for (const [geom, at, from, to, side, size] of defs) {
+			const pivot = new Group();
+			const leaf = new Mesh(geom, leafMat);
+			pivot.add(leaf);
+			pivot.position.copy(this.stemCurve.getPointAt(at));
+			pivot.scale.setScalar(0);
+			g.add(pivot);
+			this.leaves.push({ pivot, at, from, to, side, size });
+		}
+	}
+
+	/** A puff of particles from a point: earth when the seed lands, green when it sprouts. */
+	private spawnPuff(x: number, y: number, z: number, count: number, colors: string[], power: number) {
+		const c = new Color();
+		let spawned = 0;
+		for (let i = 0; i < this.sparkParticles.length && spawned < count; i++) {
+			const sp = this.sparkParticles[i];
+			if (sp.life < sp.max) continue;
+			const a = Math.PI * (0.1 + Math.random() * 0.8);
+			const speed = (0.6 + Math.random() * 1.4) * power;
+			sp.x = x + (Math.random() - 0.5) * 0.1;
+			sp.y = y;
+			sp.z = z + (Math.random() - 0.5) * 0.1;
+			sp.vx = Math.cos(a) * speed;
+			sp.vy = Math.sin(a) * speed;
+			sp.vz = (Math.random() - 0.5) * speed;
+			sp.life = 0;
+			sp.max = 0.6 + Math.random() * 0.7;
+			c.set(colors[spawned % colors.length]);
+			this.sparkCol[i * 3] = c.r;
+			this.sparkCol[i * 3 + 1] = c.g;
+			this.sparkCol[i * 3 + 2] = c.b;
+			spawned++;
+		}
+		this.sparkGeom.attributes.color.needsUpdate = true;
+	}
+
+	/**
+	 * Steps the growth and poses the plant. Returns how far the camera has followed it up
+	 * (0 at the seed, 1 at the flower), the flower head's scale, how open it is, and where it
+	 * sits relative to its full-grown place.
+	 */
+	private updatePlant(dt: number, t: number): { follow: number; headScale: number; open: number; headY: number } {
+		const rate = this.planting ? 1.5 : this.mode === "complete" ? 0.6 : 0.22;
+		const d = this.growthTarget - this.growth;
+		this.growth += Math.sign(d) * Math.min(Math.abs(d), rate * dt);
+		const g = this.growth;
+
+		// Planting: once the flower has folded away, the seed falls into the soil
+		if (this.planting && this.seedDropPending && g <= 0.001) {
+			this.seedDropPending = false;
+			this.seedDrop = 1;
+		}
+		if (this.seedDrop > 0) {
+			this.seedDrop = Math.max(0, this.seedDrop - dt / 0.8);
+			if (this.seedDrop === 0) {
+				this.spawnPuff(0, SOIL_Y + 0.02, 0.05, 26, ["#6b5a4c", "#8a7360", "#4a3d58", "#c9a98a"], 0.9);
+				this.planting = false;
+				this.growthTarget = Math.max(this.growthTarget, this.pendingStage);
+			}
+		}
+		if (!this.sprouted && g > 0.045 && !this.planting) {
+			this.sprouted = true;
+			this.spawnPuff(0, SOIL_Y + 0.12, 0.05, 18, [PETALS[2].light, PETALS[2].mid, "#ffffff"], 0.7);
+		}
+		if (this.pendingCelebrate && g >= 0.97) {
+			this.pendingCelebrate = false;
+			this.burstOpen();
+		}
+
+		// The seed: resting (breathing), cracking open as the sprout starts, then gone into the soil
+		const seedVisible = !(this.planting && this.seedDropPending);
+		const seedSize = seedVisible ? 1 - smooth(0.1, 0.3, g) : 0;
+		const breathe = 1 + Math.sin(t * 2.2) * 0.04 * (1 - smooth(0, 0.05, g));
+		this.seed.visible = seedSize > 0.01;
+		this.seed.scale.set(seedSize * breathe, seedSize * 1.35 * breathe, seedSize * breathe);
+		const drop = this.seedDrop * this.seedDrop;
+		this.seed.position.y = SOIL_Y + 0.07 + drop * 2.4;
+		this.seed.rotation.z = g > 0.02 && g < 0.3 ? Math.sin(t * 14) * 0.06 : drop * 3;
+
+		// The stem, revealed up to its growing tip
+		const sg = MathUtils.clamp(g / 0.9, 0, 1);
+		const segs = Math.floor(sg * STEM_SEGS);
+		this.stemGeom.setDrawRange(0, segs * STEM_RADIAL * 6);
+		this.stemMesh.visible = segs > 0;
+		const tip = this.stemCurve.getPointAt(Math.max(0.001, sg));
+		this.stemTip.position.copy(tip);
+		this.stemTip.visible = sg > 0.01 && g < 0.66;
+
+		// Leaves unfurl as the stem passes them, and droop on an error
+		for (const leaf of this.leaves) {
+			const a = sg >= leaf.at ? easeOutCubic(smooth(leaf.from, leaf.to, g)) : 0;
+			leaf.pivot.visible = a > 0.01;
+			leaf.pivot.scale.setScalar(a * leaf.size);
+			leaf.pivot.rotation.set(
+				MathUtils.lerp(1.35, 0.32, a) + this.wiltBlend * 0.7 + Math.sin(t * 1.3 + leaf.at * 9) * 0.05,
+				leaf.side * 0.35,
+				leaf.side * (0.95 + Math.sin(t * 0.9 + leaf.at * 5) * 0.06),
+			);
+		}
+
+		this.soilMat.opacity = 1 - smooth(0.93, 1, g);
+		this.plantGroup.visible = this.soilMat.opacity > 0.01 || segs > 0;
+		this.plantGroup.rotation.z = this.wiltBlend * 0.14;
+
+		// A bud forms and swells to about half size during the install, and opens to full size when done
+		const open = smooth(0.89, 1, g);
+		const bud = g < 0.62 ? 0 : 0.1 + 0.36 * easeOutCubic(smooth(0.62, 0.88, g));
+		const headScale = bud <= 0 ? 0 : bud + (1 - bud) * easeOutCubic(open);
+		const end = this.stemCurve.getPointAt(1);
+		return { follow: smooth(0.08, 0.95, g), headScale, open, headY: tip.y - end.y };
+	}
+
 	private initAmbientPollen() {
 		const c = new Color();
 		for (let i = 0; i < MAX_AMBIENT_POLLEN; i++) {
@@ -1230,12 +1457,18 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 	}
 
 	setMode(mode: BloomSceneMode) {
+		const changed = mode !== this.mode;
 		this.mode = mode;
 		if (mode === "download") this.downloadRate = 18;
 		else if (mode === "idle") this.downloadRate = 3;
 		else this.downloadRate = 0;
-		if (mode !== "complete") this.celebrateTimer = 0;
-		this.setProgress(mode === "complete" ? 1 : this.progress);
+		if (mode !== "complete") {
+			this.celebrateTimer = 0;
+			this.pendingCelebrate = false;
+		}
+		// A step that just began has made no progress yet (the last one's would grow the plant ahead)
+		const fresh = changed && (mode === "download" || mode === "install");
+		this.setProgress(mode === "complete" ? 1 : fresh ? 0 : this.progress);
 	}
 
 	setProgress(p: number) {
@@ -1244,6 +1477,33 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		this.heroPetals.forEach((item, i) => {
 			item.targetFill = filling ? MathUtils.clamp(this.progress * 4 - i, 0, 1) : 1;
 		});
+		this.updateGrowthTarget();
+	}
+
+	/** Where the install's step puts the plant; it only grows, until a new install replants it. */
+	private updateGrowthTarget() {
+		let stage: number | null = null;
+		if (this.mode === "download") stage = 0.05 + 0.33 * this.progress;
+		else if (this.mode === "verify") stage = 0.42;
+		else if (this.mode === "install") stage = 0.46 + 0.42 * this.progress;
+		else if (this.mode === "complete") stage = 1;
+		if (stage === null) return;
+		// Another install after a full bloom starts again from a seed
+		if (stage < 1 && this.growthTarget >= 1 && !this.planting) this.plant();
+		this.pendingStage = Math.max(this.pendingStage, stage);
+		if (!this.planting) this.growthTarget = Math.max(this.growthTarget, stage);
+	}
+
+	private onPlant = () => this.plant();
+
+	/** Fold the flower back and drop a seed into the soil. */
+	plant() {
+		this.planting = true;
+		this.seedDropPending = true;
+		this.sprouted = false;
+		this.growthTarget = 0;
+		this.pendingStage = 0;
+		this.kick();
 	}
 
 	setSpeed(bytesPerSecond: number) {
@@ -1265,6 +1525,14 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 
 	celebrate() {
 		this.setMode("complete");
+		// The burst comes once the bud has opened (updatePlant)
+		this.pendingCelebrate = true;
+		this.kick();
+	}
+
+	private burstOpen() {
+		this.celebrateWaves = [0.55, 1.15];
+		this.celebrateClock = 0;
 		this.celebrateTimer = 1.8;
 		for (const item of this.heroPetals) {
 			item.popTimer = 1.15;
@@ -1382,6 +1650,18 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		if (this.celebrateTimer > 0) {
 			this.celebrateTimer = Math.max(0, this.celebrateTimer - dt);
 		}
+		const plant = this.updatePlant(dt, t);
+		// The celebration's later waves of petal confetti and sparks
+		if (this.celebrateWaves.length) {
+			this.celebrateClock += dt;
+			if (this.celebrateClock >= this.celebrateWaves[0]) {
+				this.celebrateWaves.shift();
+				this.spawnMiniPetals(64, undefined, 1.35);
+				this.spawnSparks(72, undefined, 1.5);
+			}
+		}
+		// While the plant is small the camera looks down at the soil, closer in
+		const lift = (1 - plant.follow) * (SOIL_Y + 0.78);
 
 		if (this.mode === "install") {
 			this.spinAngle += dt * 0.36;
@@ -1394,14 +1674,15 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		// Angled 3/4 sculptural hero camera with gentle orbital drift & pointer parallax
 		const camX = 0.44 + Math.sin(t * 0.42) * 0.36 + this.pointerCurrent.x * 0.42 + this.dragOffset.x * 1.45;
 		const camY = 0.94 + Math.cos(t * 0.36) * 0.22 - this.pointerCurrent.y * 0.34 - this.dragOffset.y * 1.15;
-		this.camera.position.set(camX, camY, 5.15);
-		this.camera.lookAt(0, -0.04, 0);
+		this.camera.position.set(camX, camY + lift, 5.15 - (1 - plant.follow) * 0.75);
+		this.camera.lookAt(0, -0.04 + lift, 0);
+		this.pollenPoints.position.y = lift;
 
 		// Whole flower float, spatial sway, & mode expression
 		const floatY = this.mode === "error" ? -0.14 : Math.sin(t * 1.15) * 0.05;
 		const tiltX = this.mode === "error" ? 0.44 : 0.06 + Math.cos(t * 0.48) * 0.07 + this.pointerCurrent.y * 0.14;
 		const tiltY = Math.sin(t * 0.44) * 0.22 * (1 - this.wiltBlend) + this.pointerCurrent.x * 0.22;
-		this.flowerGroup.position.y += (floatY - this.flowerGroup.position.y) * Math.min(1, dt * 5);
+		this.flowerGroup.position.y += (floatY + plant.headY - this.flowerGroup.position.y) * Math.min(1, dt * 5);
 		this.flowerGroup.rotation.x += (tiltX - this.flowerGroup.rotation.x) * Math.min(1, dt * 5);
 		this.flowerGroup.rotation.y += (tiltY - this.flowerGroup.rotation.y) * Math.min(1, dt * 5);
 		this.flowerGroup.rotation.z = this.spinAngle;
@@ -1409,13 +1690,16 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		const bloomFlare = this.celebrateTimer > 0 ? Math.sin((this.celebrateTimer / 1.8) * Math.PI) * 0.12 : 0;
 		const idleBreathe = this.mode === "idle" ? Math.sin(t * 1.35) * 0.024 : 0;
 		const baseScale = (this.mode === "error" ? 0.92 : 1.06) + bloomFlare + idleBreathe;
-		this.flowerGroup.scale.setScalar(baseScale);
+		this.flowerGroup.scale.setScalar(baseScale * plant.headScale);
+		this.flowerGroup.visible = plant.headScale > 0.001;
 
 		// Update 4 sculpted ExpressiveOS Hero Petals
 		const shimmerTarget = this.mode === "verify" ? 1 : 0;
 		const rippleAmt = this.mode === "error" ? 0.15 : this.mode === "install" ? 1.15 : 0.78;
 
 		this.heroPetals.forEach((item, i) => {
+			// Full colour throughout: the bud's closing is a curl (budClose below), not a fade
+			item.targetFill = 1;
 			item.fill += (item.targetFill - item.fill) * Math.min(1, dt * 6);
 			const isFull = item.fill >= 0.96;
 			if (isFull && !item.wasFull && this.mode === "download") {
@@ -1434,7 +1718,9 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			const errorDroop = this.wiltBlend * -0.42;
 			const breatheTilt = Math.sin(t * 1.25 + i * 1.35) * 0.055 * (1 - this.wiltBlend);
 
-			const tiltAngle = item.basePitch * item.fill + budCurl + waitPart + popSpring + errorDroop + breatheTilt;
+			// A closed bud until the install is done, opening into full bloom
+			const budClose = (1 - plant.open) * -1.15;
+			const tiltAngle = item.basePitch * item.fill + budCurl + budClose + waitPart + popSpring + errorDroop + breatheTilt;
 			this.tmpQuat.setFromAxisAngle(item.perpAxis, tiltAngle);
 			item.pivot.quaternion.copy(this.tmpQuat);
 
@@ -1461,7 +1747,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		for (const bp of this.backingPetals) {
 			const openLift = this.mode === "error" ? -0.25 : this.celebrateTimer > 0 ? 0.24 : 0;
 			bp.mesh.rotation.x = bp.baseRotX + openLift + Math.sin(t * 1.1 + bp.phase) * 0.06;
-			bp.material.opacity = (this.isLight ? 0.28 : 0.36) * (1 - this.wiltBlend * 0.65);
+			bp.material.opacity = (this.isLight ? 0.28 : 0.36) * (1 - this.wiltBlend * 0.65) * plant.open;
 		}
 
 		// Update luminous core & corona
@@ -1489,6 +1775,10 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		if (this.mode === "install") this.ringRot += dt * 0.12;
 		this.ringMesh.rotation.set(this.flowerGroup.rotation.x * 0.55, this.flowerGroup.rotation.y * 0.55, this.ringRot);
 		this.ringTrackMesh.rotation.copy(this.ringMesh.rotation);
+		// The ring circles the growing head
+		this.ringMesh.position.y = this.ringTrackMesh.position.y = this.flowerGroup.position.y;
+		this.ringMesh.scale.setScalar(Math.max(0.5, plant.headScale));
+		this.ringTrackMesh.scale.copy(this.ringMesh.scale);
 
 		// Update ambient pollen motes & bursts
 		this.updatePollen(dt, t);
@@ -1606,6 +1896,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 		this.themeObs.disconnect();
 		this.colorSchemeQuery?.removeEventListener?.("change", this.onThemeMedia);
 		document.removeEventListener("visibilitychange", this.onVisibility);
+		document.removeEventListener(PLANT_EVENT, this.onPlant);
 
 		const dom = this.renderer.domElement;
 		dom.removeEventListener("pointermove", this.onPointerMove);
