@@ -357,7 +357,10 @@ export class App {
 			});
 		}
 		const last = deviceByCodename(store("eos-flasher-device"));
-		if (last) this.device = last;
+		if (last) {
+			this.device = last;
+			this.bloom.setDevice(last.codename);
+		}
 		this.render();
 	}
 
@@ -825,6 +828,7 @@ export class App {
 		}
 		this.device = d;
 		store("eos-flasher-device", d.codename);
+		this.bloom.setDevice(d.codename);
 	}
 
 	private async detect() {

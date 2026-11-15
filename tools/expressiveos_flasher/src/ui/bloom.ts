@@ -1,8 +1,11 @@
-// The Bloom stage: ExpressiveOS's four-petal mark, alive. While a build downloads its petals fill
-// one by one from the centre out as pollen drifts in; while it installs the flower turns slowly
-// inside a ring of petal colours that fills, and each finished partition throws off petals; when
-// the install is done it bursts into full bloom.
+// The Bloom stage: ExpressiveOS's four-petal mark, alive in Three.js 3D (with SVG/2D fallback
+// when WebGL is unavailable or prefers-reduced-motion is set). While a build downloads its petals
+// fill one by one from the centre out as pollen spirals in; while it installs the flower turns
+// inside a 3D ring of petal colours that fills, and each finished partition throws off petals;
+// when the install is done it bursts into full bloom.
 
+import { BRAND_PALETTE, type Palette, paletteFor } from "./palettes.ts";
+import type { BloomScene } from "./bloom-scene.ts";
 import { PETALS, type Petal } from "./petals.ts";
 
 export type BloomMode = "idle" | "download" | "verify" | "install" | "waiting" | "complete" | "error";
@@ -61,25 +64,62 @@ export function bloomMark(size: number, label = "ExpressiveOS"): SVGSVGElement {
 	return svg;
 }
 
+function webGlAvailable(): boolean {
+	try {
+		const c = document.createElement("canvas");
+		return !!(window.WebGLRenderingContext && (c.getContext("webgl2") || c.getContext("webgl")));
+	} catch {
+		return false;
+	}
+}
+
+/** Sent by the welcome page's "Get started" (welcome.ts): the 3D flower folds back into a seed and plants it. */
+export const PLANT_EVENT = "eos-plant";
+
+/** The page event the background aura follows (aura.ts): the stage's mode and progress. */
+export const BLOOM_EVENT = "eos-bloom";
+export interface BloomEventDetail {
+	mode: BloomMode;
+	progress: number;
+	/** The chosen phone's colours (palettes.ts), ExpressiveOS's before one is chosen. */
+	palette: Palette;
+}
+let lastBloom: BloomEventDetail = { mode: "idle", progress: 0, palette: BRAND_PALETTE };
+/** The latest BLOOM_EVENT's detail, for a listener that starts late (the aura loads after first paint). */
+export function currentBloom(): BloomEventDetail {
+	return lastBloom;
+}
+function announceBloom(mode: BloomMode, progress: number, palette: Palette | undefined) {
+	lastBloom = { mode, progress, palette: palette ?? BRAND_PALETTE };
+	if (typeof document === "undefined" || typeof CustomEvent === "undefined" || !document.dispatchEvent) return;
+	document.dispatchEvent(new CustomEvent<BloomEventDetail>(BLOOM_EVENT, { detail: lastBloom }));
+}
+
 export class BloomStage {
 	readonly root: HTMLDivElement;
-	private canvas: HTMLCanvasElement;
-	private ctx: CanvasRenderingContext2D;
-	private mark: SVGSVGElement;
+	private scene3d: BloomScene | null = null;
+	private palette: Palette = BRAND_PALETTE;
+	private canvas: HTMLCanvasElement | null = null;
+	private ctx: CanvasRenderingContext2D | null = null;
+	private markWrap: HTMLDivElement | null = null;
+	private mark: SVGSVGElement | null = null;
 	private petalGroups: SVGGElement[] = [];
 	private clips: SVGCircleElement[] = [];
 	private ringArcs: SVGCircleElement[] = [];
-	private ring: SVGSVGElement;
+	private ring: SVGSVGElement | null = null;
 	private particles: Particle[] = [];
-	private petalPaths: Path2D[];
+	private petalPaths: Path2D[] = [];
 	private raf = 0;
 	private last = 0;
 	private mode: BloomMode = "idle";
 	private progress = 0;
 	private rate = 0; // pollen per second
+	private speedBps = 0;
 	private spawnDebt = 0;
 	private readonly reduced: boolean;
-	private resizeObs: ResizeObserver;
+	private resizeObs: ResizeObserver | null = null;
+	private upgradeRaf = 0;
+	private destroyed = false;
 	private w = 0;
 	private h = 0;
 	private dpr = 1;
@@ -92,28 +132,105 @@ export class BloomStage {
 
 		const glow = document.createElement("div");
 		glow.className = "bloom-glow";
+		this.root.append(glow);
+		host.append(this.root);
 
+		// Paint the lightweight SVG Bloom immediately so first load stays fast and never flashes empty
+		this.initFallback();
+
+		if (!this.reduced && webGlAvailable()) {
+			// Load Three.js + 3D scene lazily after first paint
+			const schedule = () => {
+				if (this.destroyed) return;
+				void this.mount3D();
+			};
+			if (typeof requestAnimationFrame === "function") {
+				this.upgradeRaf = requestAnimationFrame(() => {
+					this.upgradeRaf = requestAnimationFrame(schedule);
+				});
+			} else {
+				setTimeout(schedule, 0);
+			}
+		}
+	}
+
+	private async mount3D() {
+		if (this.destroyed || this.reduced || this.scene3d || !this.root.isConnected) return;
+		try {
+			const { BloomScene } = await import("./bloom-scene.ts");
+			if (this.destroyed || this.reduced || this.scene3d || !this.root.isConnected) return;
+			const scene = new BloomScene(this.root);
+			scene.setMode(this.mode);
+			scene.setProgress(this.progress);
+			scene.setPalette(this.palette);
+			if (this.mode === "download" && this.speedBps > 0) scene.setSpeed(this.speedBps);
+			this.scene3d = scene;
+			this.root.classList.add("is-3d");
+			const webglCanvas = this.root.querySelector("canvas.bloom-webgl");
+			webglCanvas?.addEventListener("webglcontextlost", this.onContextLost, { once: true });
+			this.teardownFallback();
+		} catch {
+			this.root.querySelector("canvas.bloom-webgl")?.remove();
+			this.scene3d = null;
+			this.root.classList.remove("is-3d");
+		}
+	}
+
+	private onContextLost = (ev: Event) => {
+		ev.preventDefault();
+		if (!this.scene3d) return;
+		this.scene3d.destroy();
+		this.scene3d = null;
+		this.root.classList.remove("is-3d");
+		this.initFallback();
+		this.setProgress(this.progress);
+	};
+
+	private teardownFallback() {
+		cancelAnimationFrame(this.raf);
+		this.raf = 0;
+		this.resizeObs?.disconnect();
+		this.resizeObs = null;
+		document.removeEventListener("visibilitychange", this.onVisibility);
+		this.canvas?.remove();
+		this.ring?.remove();
+		this.markWrap?.remove();
+		this.canvas = null;
+		this.ctx = null;
+		this.ring = null;
+		this.markWrap = null;
+		this.mark = null;
+		this.particles = [];
+		this.petalGroups = [];
+		this.clips = [];
+		this.ringArcs = [];
+		this.petalPaths = [];
+	}
+
+	private initFallback() {
+		if (this.markWrap) return;
 		this.canvas = document.createElement("canvas");
 		this.canvas.className = "bloom-particles";
 		this.canvas.setAttribute("aria-hidden", "true");
-		this.ctx = this.canvas.getContext("2d")!;
+		this.ctx = this.canvas.getContext("2d");
 
 		this.ring = this.buildRing();
 		this.mark = this.buildMark();
 
-		const markWrap = document.createElement("div");
-		markWrap.className = "bloom-mark-wrap";
-		markWrap.append(this.mark);
+		this.markWrap = document.createElement("div");
+		this.markWrap.className = "bloom-mark-wrap";
+		this.markWrap.append(this.mark);
 
-		this.root.append(glow, this.canvas, this.ring, markWrap);
-		host.append(this.root);
-		this.petalPaths = PETALS.map((p) => new Path2D(p.d));
+		this.root.append(this.canvas, this.ring, this.markWrap);
+		if (typeof Path2D !== "undefined") {
+			this.petalPaths = PETALS.map((p) => new Path2D(p.d));
+		}
 
 		this.resizeObs = new ResizeObserver(() => this.resize());
 		this.resizeObs.observe(this.root);
 		this.resize();
 		document.addEventListener("visibilitychange", this.onVisibility);
-		this.setProgress(0);
+		this.setProgress(this.progress);
 		this.kick();
 	}
 
@@ -168,12 +285,22 @@ export class BloomStage {
 	};
 
 	private resize() {
+		if (!this.canvas) return;
 		const r = this.root.getBoundingClientRect();
 		this.dpr = Math.min(window.devicePixelRatio || 1, 2);
 		this.w = r.width;
 		this.h = r.height;
 		this.canvas.width = Math.max(1, Math.round(r.width * this.dpr));
 		this.canvas.height = Math.max(1, Math.round(r.height * this.dpr));
+	}
+
+	/** The phone the install is for: the flower and the aura take on its colours. */
+	setDevice(codename: string | null) {
+		const next = paletteFor(codename);
+		if (next === this.palette) return;
+		this.palette = next;
+		this.scene3d?.setPalette(next);
+		announceBloom(this.mode, this.progress, next);
 	}
 
 	setMode(mode: BloomMode) {
@@ -185,13 +312,20 @@ export class BloomStage {
 		if (mode === "download") this.rate = 18;
 		else if (mode === "idle") this.rate = 2.5;
 		else this.rate = 0;
+		this.scene3d?.setMode(mode);
 		if (mode === "complete") this.setProgress(1);
 		this.kick();
+		announceBloom(mode, this.progress, this.palette);
 	}
 
 	/** 0..1: petals fill in turn (download), the ring fills (install). */
 	setProgress(p: number) {
 		this.progress = Math.max(0, Math.min(1, p));
+		announceBloom(this.mode, this.progress, this.palette);
+		if (this.scene3d) {
+			this.scene3d.setProgress(this.progress);
+			return;
+		}
 		const filling = this.mode === "download" || this.mode === "idle";
 		this.clips.forEach((c, i) => {
 			const f = filling ? Math.max(0, Math.min(1, this.progress * 4 - i)) : 1;
@@ -209,9 +343,11 @@ export class BloomStage {
 
 	/** Pollen per second while downloading, from the download speed (bytes/s). */
 	setSpeed(bytesPerSecond: number) {
+		this.speedBps = bytesPerSecond;
 		if (this.mode !== "download") return;
 		const mb = bytesPerSecond / (1024 * 1024);
 		this.rate = Math.max(6, Math.min(60, 6 + mb * 2));
+		this.scene3d?.setSpeed(bytesPerSecond);
 	}
 
 	private stageScale() {
@@ -225,6 +361,10 @@ export class BloomStage {
 	/** A few petals thrown off the flower (a partition written). */
 	pulse(petal?: number) {
 		if (this.reduced) return;
+		if (this.scene3d) {
+			this.scene3d.pulse(petal);
+			return;
+		}
 		const [cx, cy] = this.center();
 		const s = this.stageScale();
 		for (let k = 0; k < 14; k++) {
@@ -258,6 +398,10 @@ export class BloomStage {
 		void this.root.offsetWidth;
 		this.root.classList.add("is-blooming");
 		if (this.reduced) return;
+		if (this.scene3d) {
+			this.scene3d.celebrate();
+			return;
+		}
 		const [cx, cy] = this.center();
 		const s = this.stageScale();
 		for (let k = 0; k < 170; k++) {
@@ -315,17 +459,18 @@ export class BloomStage {
 	}
 
 	private kick() {
-		if (this.raf || document.visibilityState === "hidden") return;
+		if (this.scene3d || !this.ctx || this.raf || document.visibilityState === "hidden") return;
 		this.last = performance.now();
 		this.raf = requestAnimationFrame(this.frame);
 	}
 
 	private frame = (now: number) => {
 		this.raf = 0;
+		const ctx = this.ctx;
+		if (!ctx) return;
 		const dt = Math.min(0.05, (now - this.last) / 1000);
 		this.last = now;
 		this.spawnPollen(dt);
-		const ctx = this.ctx;
 		ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
 		ctx.clearRect(0, 0, this.w, this.h);
 		const s = this.stageScale();
@@ -387,9 +532,12 @@ export class BloomStage {
 	};
 
 	destroy() {
-		cancelAnimationFrame(this.raf);
-		this.resizeObs.disconnect();
-		document.removeEventListener("visibilitychange", this.onVisibility);
+		this.destroyed = true;
+		cancelAnimationFrame(this.upgradeRaf);
+		this.upgradeRaf = 0;
+		this.scene3d?.destroy();
+		this.scene3d = null;
+		this.teardownFallback();
 		this.root.remove();
 	}
 }

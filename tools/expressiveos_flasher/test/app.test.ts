@@ -1085,6 +1085,12 @@ describe("a phone running Android, with USB debugging on", () => {
 });
 
 describe("the status under the flower", () => {
+	it("gives the flower the chosen phone's colours", async () => {
+		publish([build("cheetah", "1.0", "2026-10-30", "require board=cheetah\n", { stock: true, seed: 96 })]);
+		await start("Pixel 7 Pro", "cheetah");
+		expect(world.bloom!.device).toBe("cheetah");
+	});
+
 	it("says on Connect that the phone may be running Android with USB debugging, or in Fastboot Mode", async () => {
 		publish([build("cheetah", "1.0", "2026-10-30", "require board=cheetah\n", { stock: true, seed: 95 })]);
 		await start("Pixel 7 Pro", "cheetah");
