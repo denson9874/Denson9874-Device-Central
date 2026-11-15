@@ -23,9 +23,12 @@
 	--bg-raised: #17142e;
 	--surface: #221e42;
 	--surface-hover: #2c2756;
-	--outline: #6f68a3;
+	--outline: #7d76b4;
 	--outline-variant: color-mix(in srgb, #ffffff 12%, transparent);
-	--track: #4a4478;
+	--track: #655f99;
+	--bar-track: #3a3566;
+	--bar-fill: linear-gradient(90deg, #c9a2ff, #76bcfb 55%, #4ad29d);
+	--bar-error: #ff8a84;
 	--scrim: color-mix(in srgb, #0e0c1f 82%, transparent);
 
 	/* Text: three tiers that differ */
@@ -69,6 +72,12 @@
 	--hairline: color-mix(in srgb, #ffffff 8%, transparent);
 	--dot-grid: color-mix(in srgb, #ffffff 3%, transparent);
 	--log-bg: #0a0918;
+	--log-fg: #dcd8f6;
+	--log-dim: #a6a1c8;
+	--icon-moon: block;
+	--icon-sun: none;
+	/* The welcome's accent word: the bright petals in dark */
+	--accent-word: linear-gradient(100deg, var(--violet-light), var(--violet) 30%, var(--blue) 55%, var(--green) 78%, var(--coral));
 	--shadow-1: 0 1px 0 var(--hairline) inset, 0 30px 80px -20px rgb(2 1 12 / 0.7), 0 8px 24px rgb(2 1 12 / 0.3);
 	--shadow-2: 0 18px 48px -16px rgb(2 1 12 / 0.65);
 	--shadow-primary: 0 10px 28px -6px color-mix(in srgb, var(--violet) 55%, transparent);
@@ -95,6 +104,7 @@
 
 	/* Space and the one container */
 	--container: 1320px;
+	--top-h: 80px;
 	--gutter: clamp(16px, 4vw, 48px);
 	--pad: 32px;
 
@@ -110,9 +120,12 @@
 		--bg-raised: #ffffff;
 		--surface: #f1ebff;
 		--surface-hover: #e6dcff;
-		--outline: #857db0;
+		--outline: #766ea3;
 		--outline-variant: color-mix(in srgb, #15122b 12%, transparent);
-		--track: #c9c1e6;
+		--track: #958dc0;
+		--bar-track: #e2dbf5;
+		--bar-fill: linear-gradient(90deg, #6b2bbb, #1842d1 55%, #0e7a59);
+		--bar-error: #b3263e;
 		--scrim: color-mix(in srgb, #f6f2ff 84%, transparent);
 		--text: #15122b;
 		--muted: #4b4670;
@@ -146,6 +159,10 @@
 		--hairline: color-mix(in srgb, #ffffff 90%, transparent);
 		--dot-grid: color-mix(in srgb, #15122b 4%, transparent);
 		--log-bg: #15122b;
+		--icon-moon: none;
+		--icon-sun: block;
+		/* The accent word in deep tones: every stop at least 3:1 on the light page */
+		--accent-word: linear-gradient(100deg, #6b2bbb, #5a1fa3 30%, #1842d1 55%, #0e7a59 78%, #b3263e);
 		--shadow-1: 0 1px 0 var(--hairline) inset, 0 30px 80px -24px rgb(60 40 130 / 0.22), 0 6px 18px rgb(60 40 130 / 0.07);
 		--shadow-2: 0 18px 44px -18px rgb(60 40 130 / 0.3);
 		--shadow-primary: 0 10px 26px -8px color-mix(in srgb, var(--violet-deep) 60%, transparent);
@@ -158,9 +175,12 @@
 	--bg-raised: #ffffff;
 	--surface: #f1ebff;
 	--surface-hover: #e6dcff;
-	--outline: #857db0;
+	--outline: #766ea3;
 	--outline-variant: color-mix(in srgb, #15122b 12%, transparent);
-	--track: #c9c1e6;
+	--track: #958dc0;
+	--bar-track: #e2dbf5;
+	--bar-fill: linear-gradient(90deg, #6b2bbb, #1842d1 55%, #0e7a59);
+	--bar-error: #b3263e;
 	--scrim: color-mix(in srgb, #f6f2ff 84%, transparent);
 	--text: #15122b;
 	--muted: #4b4670;
@@ -194,6 +214,10 @@
 	--hairline: color-mix(in srgb, #ffffff 90%, transparent);
 	--dot-grid: color-mix(in srgb, #15122b 4%, transparent);
 	--log-bg: #15122b;
+	--icon-moon: none;
+	--icon-sun: block;
+	/* The accent word in deep tones: every stop at least 3:1 on the light page */
+	--accent-word: linear-gradient(100deg, #6b2bbb, #5a1fa3 30%, #1842d1 55%, #0e7a59 78%, #b3263e);
 	--shadow-1: 0 1px 0 var(--hairline) inset, 0 30px 80px -24px rgb(60 40 130 / 0.22), 0 6px 18px rgb(60 40 130 / 0.07);
 	--shadow-2: 0 18px 44px -18px rgb(60 40 130 / 0.3);
 	--shadow-primary: 0 10px 26px -8px color-mix(in srgb, var(--violet-deep) 60%, transparent);
@@ -329,7 +353,8 @@ kbd {
 	padding: 0.08em 0.4em;
 }
 
-.sr-only {
+.sr-only,
+.stepper .step-num {
 	position: absolute;
 	width: 1px;
 	height: 1px;
@@ -349,17 +374,24 @@ summary:focus-visible,
 .brand:focus-visible,
 .btn:focus-visible,
 .tile:focus-visible,
-.choice:has(input:focus-visible),
-.check:has(input:focus-visible),
 .stepper button:focus-visible,
 .theme-toggle:focus-visible {
 	outline: 3px solid var(--focus);
 	outline-offset: 3px;
 }
 
-.choice input:focus-visible,
-.check input:focus-visible {
-	outline: none;
+/* A choice's ring goes on its card (its own rule: a browser without :has keeps the one above) */
+.choice:has(input:focus-visible),
+.check:has(input:focus-visible) {
+	outline: 3px solid var(--focus);
+	outline-offset: 3px;
+}
+
+@supports selector(:has(*)) {
+	.choice input:focus-visible,
+	.check input:focus-visible {
+		outline: none;
+	}
 }
 
 /* The heading of a new step, or a message, takes the keyboard to be read out; it isn't a control */
@@ -379,8 +411,9 @@ summary:focus-visible,
 	gap: 12px;
 	width: 100%;
 	max-width: var(--container);
+	min-height: var(--top-h);
 	margin: 0 auto;
-	padding: 20px var(--gutter) 12px;
+	padding: 0 var(--gutter);
 }
 
 .brand {
@@ -467,25 +500,12 @@ summary:focus-visible,
 	transform: scale(0.92) rotate(-12deg);
 }
 
+.theme-toggle .icon-moon {
+	display: var(--icon-moon);
+}
+
 .theme-toggle .icon-sun {
-	display: none;
-}
-
-:root[data-theme="light"] .theme-toggle .icon-moon {
-	display: none;
-}
-
-:root[data-theme="light"] .theme-toggle .icon-sun {
-	display: block;
-}
-
-@media (prefers-color-scheme: light) {
-	:root:not([data-theme="dark"]) .theme-toggle .icon-moon {
-		display: none;
-	}
-	:root:not([data-theme="dark"]) .theme-toggle .icon-sun {
-		display: block;
-	}
+	display: var(--icon-sun);
 }
 
 /* ---------- Layout: one container for header, steps and footer ---------- */
@@ -493,7 +513,7 @@ summary:focus-visible,
 .layout {
 	flex: 1 0 auto;
 	display: grid;
-	grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+	grid-template-columns: minmax(0, 1fr) minmax(0, 640px);
 	gap: clamp(32px, 4vw, 64px);
 	align-items: start;
 	width: 100%;
@@ -581,6 +601,21 @@ summary:focus-visible,
 	background: var(--success);
 }
 
+/* Done: the step's heading says it already, so the stage's line steps back and the wish leads */
+.stage-col:has(.bloom-stage[data-mode="complete"]) .status-title {
+	font-size: var(--fs-label-s);
+	font-weight: 620;
+	color: var(--muted);
+}
+
+.stage-col:has(.bloom-stage[data-mode="complete"]) .status-detail {
+	font-size: var(--fs-status);
+	font-weight: 680;
+	font-variation-settings: "ROND" 100;
+	color: var(--text);
+	margin-top: 2px;
+}
+
 .status-title {
 	font-size: var(--fs-status);
 	font-weight: 680;
@@ -589,10 +624,6 @@ summary:focus-visible,
 	line-height: 1.2;
 	font-variant-numeric: tabular-nums;
 	text-wrap: balance;
-}
-
-.status-percent {
-	font-variant-numeric: tabular-nums;
 }
 
 .status-detail {
@@ -747,19 +778,9 @@ summary:focus-visible,
 	-webkit-mask: var(--i-check) center / contain no-repeat;
 }
 
-/* The numbers are in the order already: they stay for screen readers */
-.stepper .step-num {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	clip-path: inset(50%);
-	white-space: nowrap;
-}
-
 /* Too narrow for six labels: six segments, and "Step 4 of 6 · Connect" under them. The other
    steps' names stay for screen readers, and each segment stays big enough to tap */
-@container (max-width: 560px) {
+@container (max-width: 480px) {
 	.panel-col > nav {
 		padding: 12px 14px 0;
 	}
@@ -788,13 +809,6 @@ summary:focus-visible,
 		right: 4px;
 		bottom: 12px;
 		font-size: 14px;
-	}
-	.stepper .is-current .step-num {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		overflow: hidden;
-		clip-path: inset(50%);
 	}
 	.stepper .is-current .step-label::before {
 		content: "Step " counter(step) " of 6 ·";
@@ -930,7 +944,7 @@ summary:focus-visible,
 .btn-quiet {
 	background: transparent;
 	color: var(--muted);
-	border-color: var(--outline-variant);
+	border-color: var(--outline);
 	padding-inline: 20px;
 }
 
@@ -941,10 +955,8 @@ summary:focus-visible,
 }
 
 /* Disabled reads as disabled: flat, no gradient, no glow */
-.btn:disabled,
-.btn-primary:disabled,
-.btn-danger:disabled {
-	background: color-mix(in srgb, var(--text) 8%, transparent);
+.btn:disabled {
+	background: color-mix(in srgb, var(--outline) 18%, transparent);
 	color: var(--faint);
 	border-color: transparent;
 	box-shadow: none;
@@ -989,6 +1001,12 @@ summary:focus-visible,
 
 /* ---------- Phones ---------- */
 
+/* Under a notice that this browser can't do it (no WebUSB, no storage), the phones step back */
+.panel > .notice-danger + .tiles {
+	opacity: 0.55;
+	filter: saturate(0.4);
+}
+
 .tiles {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
@@ -998,19 +1016,20 @@ summary:focus-visible,
 
 .tile {
 	--tile-r: var(--r-md);
+	--glyph-disc: var(--outline);
 	position: relative;
 	appearance: none;
 	font: inherit;
 	text-align: left;
 	color: inherit;
 	background: var(--surface);
-	border: 1px solid var(--outline-variant);
+	border: 1px solid var(--outline);
 	border-radius: var(--tile-r);
 	padding: 16px 44px 16px 16px;
 	min-height: 80px;
 	cursor: pointer;
 	display: grid;
-	grid-template-columns: 44px minmax(0, 1fr);
+	grid-template-columns: 40px minmax(0, 1fr);
 	grid-template-rows: auto auto;
 	column-gap: 14px;
 	row-gap: 2px;
@@ -1022,16 +1041,23 @@ summary:focus-visible,
 		transform 0.2s var(--ease-spring);
 }
 
-/* The phone glyph, in a tonal circle */
+/* The phone glyph, knocked out of a disc: one element, the card's colour showing through */
 .tile::before {
 	content: "";
 	grid-row: 1 / 3;
 	align-self: center;
-	width: 44px;
-	height: 44px;
-	border-radius: 50%;
-	background: var(--surface-hover);
-	box-shadow: inset 0 0 0 1px var(--outline-variant);
+	width: 40px;
+	height: 40px;
+	background: var(--glyph-disc);
+	mask:
+		var(--i-phone) center / 22px 22px no-repeat,
+		radial-gradient(circle closest-side, #000 97%, transparent) center / 100% 100% no-repeat;
+	mask-composite: exclude;
+	-webkit-mask:
+		var(--i-phone) center / 22px 22px no-repeat,
+		radial-gradient(circle closest-side, #000 97%, transparent) center / 100% 100% no-repeat;
+	-webkit-mask-composite: xor;
+	transition: background-color 0.2s ease;
 }
 
 .tile-model,
@@ -1040,24 +1066,9 @@ summary:focus-visible,
 	min-width: 0;
 }
 
-/* The glyph itself, drawn over the circle */
-.tile-model::before {
-	content: "";
-	position: absolute;
-	left: 16px;
-	top: 50%;
-	width: 44px;
-	height: 22px;
-	translate: 0 -50%;
-	background: var(--muted);
-	mask: var(--i-phone) center / 22px 22px no-repeat;
-	-webkit-mask: var(--i-phone) center / 22px 22px no-repeat;
-	transition: background-color 0.2s ease;
-}
-
 .tile:hover {
 	background: var(--surface-hover);
-	border-color: var(--outline);
+	border-color: var(--muted);
 }
 
 .tile:active {
@@ -1066,19 +1077,11 @@ summary:focus-visible,
 
 .tile[aria-pressed="true"] {
 	--tile-r: var(--r-lg);
+	--glyph-disc: var(--primary);
 	background: var(--primary-container);
 	border-color: var(--primary);
 	box-shadow: inset 0 0 0 1px var(--primary);
 	color: var(--on-primary-container);
-}
-
-.tile[aria-pressed="true"]::before {
-	background: color-mix(in srgb, var(--primary) 22%, transparent);
-	box-shadow: none;
-}
-
-.tile[aria-pressed="true"] .tile-model::before {
-	background: var(--primary);
 }
 
 .tile[aria-pressed="true"] .tile-code {
@@ -1154,7 +1157,7 @@ legend {
 	gap: 4px 14px;
 	align-items: start;
 	background: var(--surface);
-	border: 1px solid var(--outline-variant);
+	border: 1px solid var(--outline);
 	border-radius: var(--choice-r);
 	padding: 16px 18px;
 	cursor: pointer;
@@ -1166,7 +1169,7 @@ legend {
 
 .choice:hover {
 	background: var(--surface-hover);
-	border-color: var(--outline);
+	border-color: var(--muted);
 }
 
 .choice:has(input:checked) {
@@ -1439,20 +1442,18 @@ legend {
 	margin-bottom: 0;
 }
 
-.fastboot-howto > p {
+.fastboot-howto > p:not(.howto-way) {
 	color: var(--muted);
 	margin-bottom: 0;
 	font-size: var(--fs-body-s);
 }
 
-.fastboot-howto > p.howto-way,
 .howto-way {
 	color: var(--text);
-	font-size: var(--fs-body);
 	margin: 18px 0 0;
 }
 
-.fastboot-howto > p.howto-way:first-child {
+.howto-way:first-child {
 	margin-top: 0;
 }
 
@@ -1492,7 +1493,7 @@ details[open] > summary::before {
 
 details.prep {
 	margin-top: 20px;
-	border: 1px solid var(--outline-variant);
+	border: 1px solid var(--outline);
 	border-radius: var(--r-md);
 	background: var(--surface);
 	transition: background-color 0.2s ease;
@@ -1576,7 +1577,7 @@ details.prep li strong {
 	padding: 16px 18px;
 	border-radius: var(--r-md);
 	background: var(--surface);
-	border: 1px solid var(--outline-variant);
+	border: 1px solid var(--outline);
 	cursor: pointer;
 	font-weight: 520;
 	transition:
@@ -1586,7 +1587,7 @@ details.prep li strong {
 
 .check:hover {
 	background: var(--surface-hover);
-	border-color: var(--outline);
+	border-color: var(--muted);
 }
 
 .check:has(input:checked) {
@@ -1639,7 +1640,7 @@ details.prep li strong {
 	position: relative;
 	height: 12px;
 	border-radius: var(--r-full);
-	background: var(--track);
+	background: var(--bar-track);
 	overflow: hidden;
 	margin: 24px 0 10px;
 }
@@ -1650,19 +1651,19 @@ details.prep li strong {
 	height: 100%;
 	width: 0;
 	border-radius: inherit;
-	background: linear-gradient(90deg, var(--violet), var(--blue) 55%, var(--green));
+	background: var(--bar-fill);
 	transition: width 0.3s ease;
 	overflow: hidden;
 }
 
-/* A slow, faint sheen along the fill */
+/* A slow, faint sheen along the fill as it starts: a few passes, not a loop */
 .bar > span::after {
 	content: "";
 	position: absolute;
 	inset: 0;
 	background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.32), transparent);
 	transform: translateX(-100%);
-	animation: bar-sheen 2.8s ease-in-out infinite;
+	animation: bar-sheen 2.8s ease-in-out 3;
 }
 
 @keyframes bar-sheen {
@@ -1673,7 +1674,7 @@ details.prep li strong {
 
 /* Stopped: the fill turns to the error colour and holds still */
 .panel:has(> .notice-danger) .bar > span {
-	background: var(--error-fill);
+	background: var(--bar-error);
 }
 
 .panel:has(> .notice-danger) .bar > span::after {
@@ -1825,7 +1826,7 @@ details.log pre {
 	font-size: 13px;
 	line-height: 1.55;
 	background: var(--log-bg);
-	color: #dcd8f6;
+	color: var(--log-fg);
 	border: 1px solid var(--outline-variant);
 	border-radius: var(--r-md);
 	padding: 14px 16px;
@@ -1846,7 +1847,7 @@ details.log pre {
 	color: var(--coral);
 }
 .log .k-info {
-	color: #a6a1c8;
+	color: var(--log-dim);
 }
 .log .k-note {
 	color: var(--violet-light);
@@ -1938,44 +1939,33 @@ details.log pre {
 	-webkit-mask: var(--i-ok) center / contain no-repeat;
 }
 
-/* ---------- Footer: on a surface strip, never raw on the aura ---------- */
+/* ---------- Footer: one surface strip, never raw on the aura ---------- */
 
 .foot {
-	width: 100%;
-	max-width: var(--container);
-	margin: 0 auto;
-	padding: 0 var(--gutter) 28px;
+	width: calc(min(100%, var(--container)) - 2 * var(--gutter));
+	margin: 0 auto 24px;
+	padding: 12px 20px;
+	border-radius: var(--r-md);
+	background: var(--scrim);
+	border: 1px solid var(--outline-variant);
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 6px 20px;
+	gap: 4px 20px;
 	color: var(--muted);
 	font-size: var(--fs-label-s);
-}
-
-/* The strip behind the footer's text */
-.foot > span,
-.foot > a {
-	padding: 8px 14px;
-	border-radius: var(--r-full);
-	background: var(--scrim);
-	border: 1px solid var(--outline-variant);
 }
 
 .foot a {
 	color: var(--text);
 }
 
-.unsupported {
-	max-width: 640px;
-	margin: 0 auto;
-}
-
 /* ---------- Mid widths: a narrower stage beside a wider panel ---------- */
 
+/* The panel column meets its 640 cap right at 1199, so nothing jumps at 1200 */
 @media (max-width: 1199px) {
 	.layout {
-		grid-template-columns: minmax(300px, 4fr) minmax(480px, 6fr);
+		grid-template-columns: minmax(260px, 4fr) minmax(0, 6fr);
 		gap: 32px;
 	}
 	.stage-host {
@@ -1988,9 +1978,12 @@ details.log pre {
 
 /* ---------- Narrow screens: one column, a compact stage, the step above the fold ---------- */
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
+	:root {
+		--top-h: 64px;
+	}
 	.top {
-		padding: 12px 16px 4px;
+		padding-inline: 16px;
 	}
 	.brand {
 		padding: 4px 6px 4px 4px;
@@ -2008,19 +2001,29 @@ details.log pre {
 		padding: 0 16px 32px;
 	}
 	.foot {
-		padding: 0 16px 24px;
+		width: calc(100% - 32px);
+		margin-bottom: 16px;
+		padding: 10px 16px;
 	}
+	/* A compact, wider-than-tall stage: the 3D framing fills it, and the status sits under it */
 	.stage-col {
 		position: static;
-		padding-top: 0;
+		padding-top: 12px;
 	}
 	.stage-host {
-		max-width: 240px;
+		max-width: 340px;
+	}
+	.stage-col .bloom-stage {
+		aspect-ratio: 4 / 3;
+	}
+	/* The ring reaches above the stage: room for it under the header */
+	.stage-col:has(.bloom-stage:is([data-mode="install"], [data-mode="waiting"], [data-mode="complete"])) {
+		padding-top: 36px;
 	}
 	.status {
 		width: 100%;
 		max-width: 520px;
-		margin-top: -24px;
+		margin-top: -8px;
 		padding: 14px 18px 16px;
 		border-radius: var(--r-md);
 	}
@@ -2049,28 +2052,23 @@ details.log pre {
 }
 
 @media (max-width: 520px) {
+	/* The glyph above the name, in the flow */
 	.tile {
 		grid-template-columns: minmax(0, 1fr);
 		grid-template-rows: auto;
-		padding: 60px 14px 14px;
+		align-content: start;
+		padding: 14px 14px 14px;
 		min-height: 0;
 	}
 	.tile::before {
 		grid-row: auto;
-		position: absolute;
-		left: 14px;
-		top: 14px;
 		width: 36px;
 		height: 36px;
+		margin-bottom: 8px;
 	}
 	.tile-model,
 	.tile-code {
 		grid-column: 1;
-	}
-	.tile-model::before {
-		left: 14px;
-		top: 32px;
-		width: 36px;
 	}
 	.tile-model {
 		font-size: 16px;
@@ -2104,7 +2102,7 @@ details.log pre {
 		display: none;
 	}
 	.stage-host {
-		max-width: 200px;
+		max-width: 300px;
 	}
 }
 
@@ -2227,6 +2225,11 @@ details.log pre {
 .petal-fill clipPath circle,
 .bloom-mark clipPath circle {
 	transition: r 0.3s ease;
+}
+
+/* Before the bloom, the glow sits low, on the planted seed, not in the empty air above it */
+.layout .bloom-stage.is-3d:is([data-mode="idle"], [data-mode="waiting"], [data-mode="download"], [data-mode="verify"]) .bloom-glow {
+	inset: 40% 14% 2%;
 }
 
 /* Idle */
@@ -2431,7 +2434,7 @@ details.log pre {
 	gap: clamp(24px, 4vw, 72px);
 	width: 100%;
 	max-width: var(--container);
-	min-height: calc(100dvh - 84px);
+	min-height: calc(100dvh - var(--top-h));
 	margin: 0 auto;
 	padding: 8px var(--gutter) 48px;
 }
@@ -2503,7 +2506,7 @@ details.log pre {
 
 .welcome.is-out {
 	position: absolute;
-	inset: 72px 0 auto;
+	inset: var(--top-h) 0 auto;
 	opacity: 0;
 	pointer-events: none;
 	transition: opacity 0.5s ease;
@@ -2540,23 +2543,12 @@ details.log pre {
 }
 
 .welcome-accent {
-	background: linear-gradient(100deg, var(--violet-light), var(--violet) 30%, var(--blue) 55%, var(--green) 78%, var(--coral));
+	background: var(--accent-word);
 	background-size: 200% 100%;
 	-webkit-background-clip: text;
 	background-clip: text;
 	color: transparent;
 	animation: welcome-sheen 3.2s 0.6s ease-in-out 1 both;
-}
-
-/* In light, the deep tones: every stop at least 3:1 on the page */
-:root[data-theme="light"] .welcome-accent {
-	background-image: linear-gradient(100deg, #6b2bbb, #5a1fa3 30%, #1842d1 55%, #0e7a59 78%, #b3263e);
-}
-
-@media (prefers-color-scheme: light) {
-	:root:not([data-theme="dark"]) .welcome-accent {
-		background-image: linear-gradient(100deg, #6b2bbb, #5a1fa3 30%, #1842d1 55%, #0e7a59 78%, #b3263e);
-	}
 }
 
 @keyframes welcome-sheen {
@@ -2653,7 +2645,7 @@ details.log pre {
 	}
 }
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
 	.welcome {
 		grid-template-columns: minmax(0, 1fr);
 		text-align: center;
