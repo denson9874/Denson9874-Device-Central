@@ -102,6 +102,14 @@ const SOIL_Y = -1.72;
 // The canvas is this much larger than its box (styles.css .bloom-webgl), centred on it, and the
 // camera zooms out to match: the ring, pollen and bursts can leave the box without being cut off
 const OVERSCAN = 1.45;
+// Where a spark waits while it isn't flying: behind the camera, so it's clipped. (In front of it,
+// at the far plane's side, a dark unlit speck showed above the seed on a transparent canvas.)
+const SPARK_PARKED_Z = 1000;
+// The soil's colour per theme: a dark violet earth, and a pale lilac one that sits on the light page
+const SOIL_DARK = 0x2b2032;
+const SOIL_LIGHT = 0xc9b8e4;
+const PEBBLE_DARK = 0x4a3d58;
+const PEBBLE_LIGHT = 0xa493c2;
 const STEM_SEGS = 96;
 const STEM_RADIAL = 10;
 
@@ -547,6 +555,7 @@ export class BloomScene {
 	private sprouted = false;
 	private plantGroup!: Group;
 	private soilMat!: MeshPhysicalMaterial;
+	private pebbleMat?: MeshPhysicalMaterial;
 	private seed!: Mesh;
 	private stemGeom!: TubeGeometry;
 	private stemCurve!: CatmullRomCurve3;
@@ -731,12 +740,13 @@ export class BloomScene {
 		}
 		this.scene.add(this.burstMesh);
 
-		// Sync theme
+		// Sync theme: the system's scheme is read first, so a page that's light by the system setting
+		// starts with the light studio rather than the dark one
+		this.colorSchemeQuery = window.matchMedia?.("(prefers-color-scheme: light)") ?? null;
+		this.colorSchemeQuery?.addEventListener?.("change", this.onThemeMedia);
 		this.syncTheme();
 		this.themeObs = new MutationObserver(() => this.syncTheme());
 		this.themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-		this.colorSchemeQuery = window.matchMedia?.("(prefers-color-scheme: light)") ?? null;
-		this.colorSchemeQuery?.addEventListener?.("change", this.onThemeMedia);
 
 		// Pointer parallax & drag interaction on canvas
 		// The canvas lets clicks through (it overhangs the page around the stage): the stage takes them
@@ -1175,13 +1185,14 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 
 		// A soft mound of dark, slightly violet earth with a few pebbles
 		const soilGeom = new SphereGeometry(1, 48, 24);
-		this.soilMat = new MeshPhysicalMaterial({ color: 0x2b2032, roughness: 0.96, metalness: 0, sheen: 0.4, sheenColor: new Color(0x6b2bbb), transparent: true });
+		this.soilMat = new MeshPhysicalMaterial({ color: this.isLight ? SOIL_LIGHT : SOIL_DARK, roughness: 0.96, metalness: 0, sheen: 0.4, sheenColor: new Color(0x6b2bbb), transparent: true });
 		const soil = new Mesh(soilGeom, this.soilMat);
 		soil.scale.set(1.15, 0.24, 0.66);
 		soil.position.set(0, SOIL_Y - 0.17, 0);
 		g.add(soil);
 		const pebbleGeom = new SphereGeometry(0.06, 16, 10);
-		const pebbleMat = new MeshPhysicalMaterial({ color: 0x4a3d58, roughness: 0.7, clearcoat: 0.3, transparent: true });
+		const pebbleMat = new MeshPhysicalMaterial({ color: this.isLight ? PEBBLE_LIGHT : PEBBLE_DARK, roughness: 0.7, clearcoat: 0.3, transparent: true });
+		this.pebbleMat = pebbleMat;
 		[
 			[-0.62, 0.02, 0.22, 1.2],
 			[0.48, 0.0, 0.3, 0.9],
@@ -1406,7 +1417,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 				orbitAngle: 0,
 				orbitSpeed: 0,
 			});
-			this.sparkPos[i * 3 + 2] = -20;
+			this.sparkPos[i * 3 + 2] = SPARK_PARKED_Z;
 		}
 		this.sparkGeom.attributes.position.needsUpdate = true;
 	}
@@ -1433,6 +1444,9 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			this.ringTrackMat.color.setHex(0xffffff);
 			this.centerShadowMat.opacity = 0.88;
 		}
+
+		this.soilMat?.color.setHex(this.isLight ? SOIL_LIGHT : SOIL_DARK);
+		this.pebbleMat?.color.setHex(this.isLight ? PEBBLE_LIGHT : PEBBLE_DARK);
 
 		const ghostHex = this.isLight ? 0xd9cef7 : 0x2a2754;
 		for (const item of this.heroPetals) {
@@ -1972,7 +1986,7 @@ totalEmissiveRadiance += uPetalLight * (fillWave * 1.35 + sweep * 0.9 + fresnelF
 			anySpark = true;
 			sp.life += dt;
 			if (sp.life >= sp.max) {
-				this.sparkPos[i * 3 + 2] = -20;
+				this.sparkPos[i * 3 + 2] = SPARK_PARKED_Z;
 				continue;
 			}
 			sp.vy -= 1.1 * dt;

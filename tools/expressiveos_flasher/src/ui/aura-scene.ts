@@ -91,6 +91,12 @@ void main(){
 	} else {
 		col = mix(base, base * (0.72 + 0.28 * aura) + aura * 0.18, clamp(length(aura) * strength, 0.0, 0.9));
 	}
+	// Capped under the content: even the celebration's burst stays a dim field in dark, so the
+	// panels' glass and the header keep their contrast over it
+	if (uDark > 0.5) {
+		float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
+		col *= min(1.0, 0.36 / max(luma, 0.0001));
+	}
 	// An error drains the colour toward a cool grey with a coral edge
 	float lum = dot(col, vec3(0.299, 0.587, 0.114));
 	col = mix(col, mix(vec3(lum), uC3 * lum * 1.6, 0.18), uDrain * 0.7);
