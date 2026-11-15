@@ -1,4 +1,4 @@
-From 08eab27aa70b83e54af261f520ef52d717c5b1d6 Mon Sep 17 00:00:00 2001
+From 18870eee07dfb7f4389c7846f1b520f4130acf50 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Sun, 15 Nov 2026 00:29:29 +0100
 Subject: [PATCH] husky: ship Wild Kernels' boot image when the kit gives one
@@ -35,13 +35,13 @@ index 61f7daa..7cdefac 100644
 +BOARD_PREBUILT_BOOTIMAGE := $(EOS_WILD_BOOT)
 +endif
 diff --git a/device-husky.mk b/device-husky.mk
-index 5ad85e1..7078adf 100644
+index a5629f1..af610fb 100644
 --- a/device-husky.mk
 +++ b/device-husky.mk
-@@ -75,3 +75,11 @@ PRODUCT_SOONG_NAMESPACES += \
- 
- # Window extensions
- $(call inherit-product, $(SRC_TARGET_DIR)/product/window_extensions.mk)
+@@ -103,3 +103,11 @@ PRODUCT_PACKAGES += \
+     SettingsOverlayStockHusky \
+     SystemUIOverlayStockHusky \
+     WifiOverlayStockHusky
 +
 +# Wild Kernels' boot (EOS_WILD_BOOT, BoardConfig): its release, 6.x.y-androidNN-Wild, isn't a
 +# GKI release string, so the build's kernel VINTF check can't tell its kernel FCM level and
