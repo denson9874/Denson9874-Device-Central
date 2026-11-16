@@ -1088,7 +1088,16 @@ export class App {
 		};
 		const { progress, line, actions, older } = view;
 		progress.hidden = true;
-		out.push(progress, line, actions, older);
+		// The same file from the Worker, saved by the browser where it saves downloads: nothing kept here
+		const direct = h(
+			"p",
+			{ class: "direct-download" },
+			"Rather keep the zip yourself? ",
+			h("a", { href: fileUrl(this.device!.codename, rel, rel.zip.file), download: rel.zip.file }, "Download it to your computer"),
+			` (${formatBytes(rel.zip.size)}), then choose it with "Use a zip I already have". SHA-256: `,
+			h("code", null, rel.zip.sha256),
+		);
+		out.push(progress, line, actions, older, direct);
 
 		if (this.busy) return out; // a download is running and updates the elements below
 		this.bloom.setMode("idle");

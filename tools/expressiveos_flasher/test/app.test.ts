@@ -538,6 +538,20 @@ describe("a zip the user picks", () => {
 	});
 });
 
+describe("a direct download", () => {
+	it("links the zip from the Worker with its SHA-256, for the browser to save", async () => {
+		const b = build("cheetah", "1.0", "2026-10-30", "require board=cheetah\n", { stock: true, seed: 55 });
+		publish([b], { stored: false });
+		await start("Pixel 7 Pro", "cheetah");
+		await press("Continue");
+		await until(() => !!buttonIn(page.panel, "Use a zip I already have"), "the download step");
+		const a = page.panel.querySelector(".direct-download a")!;
+		expect(a.getAttribute("href")).toBe(`/dl/cheetah/${b.release.zip.file}`);
+		expect(a.getAttribute("download")).toBe(b.release.zip.file);
+		expect(page.panel.querySelector(".direct-download code")!.textContent).toBe(b.release.zip.sha256);
+	});
+});
+
 describe("unplugging on the Install step", () => {
 	it("takes the Install button away", async () => {
 		const b = build("cheetah", "1.0", "2026-10-30", "require board=cheetah\n", { stock: true, seed: 60 });
