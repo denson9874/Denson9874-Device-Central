@@ -1535,7 +1535,7 @@ export class App {
 				notice(
 					"warn",
 					"Different firmware",
-					`This build was made on bootloader ${fw.bootloader}, and the phone has ${r.bootloader}. If it doesn't start, flash the latest factory image with Google's Android Flash Tool, then install again.`,
+					`This build was made on bootloader ${fw.bootloader}, and the phone has ${r.bootloader}. If it doesn't start, flash the latest factory image with Google's Android Flash Tool (leave Lock bootloader unticked), then install again.`,
 				),
 			);
 		}
@@ -1646,7 +1646,7 @@ export class App {
 				// The Pixel 11 packages require their factory image's bootloader (eos-pack.sh): on
 				// another one the installed slot doesn't start
 				if (f.requirement.name === "version-bootloader" && !f.requirement.invert) {
-					return `This build needs the bootloader of Google's factory image it was made from (${f.requirement.options.join(" or ")}), and the phone has ${f.value ?? "another one"}. Flash that factory image with Google's Android Flash Tool first, then install again.`;
+					return `This build needs the bootloader of Google's factory image it was made from (${f.requirement.options.join(" or ")}), and the phone has ${f.value ?? "another one"}. Flash that factory image with Google's Android Flash Tool first (leave Lock bootloader unticked), then install again.`;
 				}
 				return `${f.requirement.name} must ${f.requirement.invert ? "not " : ""}be ${f.requirement.options.join(" or ")}; the phone says ${f.value ?? "nothing"}.`;
 			}
