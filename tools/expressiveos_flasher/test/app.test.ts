@@ -549,6 +549,20 @@ describe("a direct download", () => {
 		expect(a.getAttribute("href")).toBe(`/dl/cheetah/${b.release.zip.file}`);
 		expect(a.getAttribute("download")).toBe(b.release.zip.file);
 		expect(page.panel.querySelector(".direct-download code")!.textContent).toBe(b.release.zip.sha256);
+		// A BakaSU build also links its stock boot, with the fastboot command and its SHA-256
+		const stock = page.panel.querySelectorAll(".direct-download")[1]!;
+		expect(stock.querySelector("a")!.getAttribute("href")).toBe(`/dl/cheetah/${b.release.bootStock!.file}`);
+		expect(stock.textContent).toContain(`fastboot flash boot ${b.release.bootStock!.file}`);
+		expect(stock.textContent).toContain(b.release.bootStock!.sha256);
+	});
+
+	it("has no stock boot link for a build without root", async () => {
+		const b = build("cubs", "1.0", "2026-10-30", "require board=cubs\n", { stock: false, seed: 56 });
+		publish([b], { stored: false });
+		await start("Pixel 11", "cubs");
+		await press("Continue");
+		await until(() => !!buttonIn(page.panel, "Use a zip I already have"), "the download step");
+		expect(page.panel.querySelectorAll(".direct-download").length).toBe(1);
 	});
 });
 
