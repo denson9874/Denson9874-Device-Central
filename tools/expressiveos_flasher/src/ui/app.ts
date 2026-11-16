@@ -1098,6 +1098,22 @@ export class App {
 			h("code", null, rel.zip.sha256),
 		);
 		out.push(progress, line, actions, older, direct);
+		// A BakaSU build's stock boot, for taking root off an installed phone with fastboot
+		const stock = rel.bootStock;
+		if (stock) {
+			out.push(
+				h(
+					"p",
+					{ class: "direct-download" },
+					"Want this build without root on a phone that already has it? ",
+					h("a", { href: fileUrl(this.device!.codename, rel, stock.file), download: stock.file }, "Download the stock boot image"),
+					` (${formatBytes(stock.size)}) and flash it: `,
+					h("code", null, `fastboot flash boot ${stock.file}`),
+					". SHA-256: ",
+					h("code", null, stock.sha256),
+				),
+			);
+		}
 
 		if (this.busy) return out; // a download is running and updates the elements below
 		this.bloom.setMode("idle");
