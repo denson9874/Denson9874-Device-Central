@@ -2686,3 +2686,10 @@ details.log pre {
 		animation: none;
 	}
 }
+
+/* The direct download link under the Download step's buttons: the SHA-256 wraps at phone width */
+.direct-download {
+	color: var(--muted);
+	margin-top: 20px;
+	overflow-wrap: anywhere;
+}
