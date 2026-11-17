@@ -57,10 +57,10 @@ index 0000000..fda9a28
 +    SPDX-License-Identifier: Apache-2.0
 +-->
 +<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-+    package="org.evolution.updater.overlay.husky">
++    package="org.expressiveos.updater.overlay.husky">
 +    <overlay
 +        android:isStatic="true"
-+        android:targetPackage="org.evolution.updater" />
++        android:targetPackage="org.expressiveos.updater" />
 +</manifest>
 diff --git a/husky/overlay/UpdaterOverlayHusky/res/values/strings.xml b/husky/overlay/UpdaterOverlayHusky/res/values/strings.xml
 new file mode 100644
