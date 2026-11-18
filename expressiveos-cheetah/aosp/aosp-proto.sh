@@ -83,7 +83,8 @@ build-run)
     ok=
     for t in aosp_cheetah-trunk_staging-userdebug aosp_cheetah-userdebug; do
         echo "== lunch $t"
-        if lunch "$t"; then ok=$t; break; fi
+        # lunch can return 0 after a product-config error: check that it set the product
+        if lunch "$t" && [[ -n ${TARGET_PRODUCT:-} ]] && get_build_var TARGET_DEVICE >/dev/null; then ok=$t; break; fi
     done
     [[ -n $ok ]] || { echo "BUILD=FAIL lunch (the errors above are the device side's first list)"; exit 1; }
     echo "== m -k droid ($ok): keeps going past errors to list as many as it can"

@@ -20,6 +20,10 @@
   <project path="device/google/pantah" name="device_google_pantah" remote="eos" />
   <project path="device/google/gs201" name="device_google_gs201" remote="eos" />
   <project path="vendor/google/cheetah" name="vendor_google_cheetah" remote="eos" clone-depth="1" />
+  <!-- Round 2 (first build attempt, 2026-11-18): gs201/common.mk needs Pixel parts that AOSP's
+       hardware/google/pixel lacks (rebalance_interrupts.mk): our fork carries them -->
+  <remove-project name="platform/hardware/google/pixel" />
+  <project path="hardware/google/pixel" name="hardware_google_pixel" remote="eos" />
   <!-- Not carried on purpose in step 1:
        device/google/pantah-kernels (LineageOS): the prototype boots Google's own stock kernel
          and modules from the factory image instead of building gs-6.1 from Lineage's manifest;
