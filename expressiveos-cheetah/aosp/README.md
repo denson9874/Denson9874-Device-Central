@@ -133,3 +133,11 @@ Lineage's `build/soong` allows Rust prebuilts on vendor; AOSP's doesn't. The sta
 it too (as a plain shared library). These three are Google's own vendor blobs, so a real AOSP
 port needs either that Soong change carried in our own `build/soong` or the blobs packaged
 another way.
+
+## Round 7 (2026-11-18 3:56 PM ET, measured)
+
+Past the Rust blobs, Soong stops on our own device tree:
+`device/google/gs201/parts/Android.bp:7:1: "GoogleParts" depends on undefined module "org.lineageos.settings.resources"`.
+Soong stops at the first such module, so from here `build-run` sets `ALLOW_MISSING_DEPENDENCIES=true`
+and lists every missing module in one round. `build` now runs analysis only (`m -k nothing`, no
+compiling); the new `full` query runs `m -k droid`, which takes hours and holds the server.

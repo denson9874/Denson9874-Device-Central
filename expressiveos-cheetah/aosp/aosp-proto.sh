@@ -5,7 +5,8 @@
 #
 #   aosp-proto.sh status   read-only: session, logs' last lines, the tree's size, free disk
 #   aosp-proto.sh sync     repo init AOSP android-17.0.0_r1 (depth 1) + eos-aosp-cheetah.xml, repo sync
-#   aosp-proto.sh build    lunch aosp_cheetah, then m -k droid: the log of what fails is the result
+#   aosp-proto.sh build    lunch aosp_cheetah, then m -k nothing (analysis only): what fails is the result
+#   aosp-proto.sh full     the same with m -k droid: the whole image, hours, holds the server
 #   aosp-proto.sh round    sync, then build if it ended SYNC=OK (one round, one dispatch)
 #   aosp-proto.sh clean    remove ~/eos-aosp and the copied scripts (nothing stays on the server)
 #
@@ -52,6 +53,7 @@ status)
     done ;;
 sync)  start sync ;;
 build) start build ;;
+full)  start full ;;
 round) start round ;;
 clean)
     if why=$(busy); then fail "not cleaning: $why"; fi
@@ -98,6 +100,10 @@ s = s.replace("rust_prebuilt_dylib {", "cc_prebuilt_library_shared {\n    check_
 s = re.sub(r"\n\s*rustlibs: \[[^\]]*\],", "", s)
 open(p, "w").write(s); print(f"== stand-in: {n} Rust prebuilt blobs declared as plain cc prebuilts")
 PY
+    # Round 7: Soong stops at the first module that depends on a Lineage-only module
+    # (gs201/parts' GoogleParts needs org.lineageos.settings.resources). Let it go on, so one
+    # round lists every such dependency; m -k then fails each of those modules on its own
+    export ALLOW_MISSING_DEPENDENCIES=true
     source build/envsetup.sh
     echo "== lunch choices the cheetah trees offer"
     grep -hs -A8 COMMON_LUNCH_CHOICES device/google/pantah/AndroidProducts.mk || echo "(no AndroidProducts.mk lunch choices)"
@@ -121,11 +127,19 @@ PY
         { grep -rlE 'PRODUCT_NAME\s*:?=' device/google/pantah 2>/dev/null | head || true; }; grep -rhE 'PRODUCT_MAKEFILES|COMMON_LUNCH' device/google/pantah/AndroidProducts.mk 2>/dev/null || true
         echo "BUILD=FAIL lunch (the errors above are the device side's first list)"; exit 1
     fi
-    echo "== m -k droid ($ok): keeps going past errors to list as many as it can"
-    if m -k droid; then echo "BUILD=OK $(TZ=America/New_York date)"
+    # build: analysis only (Soong and Kati, minutes, no compiling), so a missing-module list
+    # doesn't hold the server for hours. full: m -k droid, the whole image, hours
+    goal=nothing; if [[ ${2:-} == full ]]; then goal=droid; fi
+    echo "== m -k $goal ($ok): keeps going past errors to list as many as it can"
+    if m -k "$goal"; then echo "BUILD=OK ($goal) $(TZ=America/New_York date)"
     else echo "== errors"; grep -E '^(FAILED|error:)|error: ' out/error.log 2>/dev/null | head -100 || true
+         echo "== missing modules (count, what)"
+         grep -ohE 'missing dependencies: .*|depends on undefined module "[^"]+"' out/error.log out/soong/*.log 2>/dev/null |
+             sed -E 's/^missing dependencies: //' | tr ',' '\n' | sed 's/^ *//' | sort | uniq -c | sort -rn | head -80 || true
          echo "BUILD=FAIL m $(TZ=America/New_York date)"; exit 1; fi ;;
+full-run)
+    bash "$kitc/aosp-proto.sh" build-run full ;;
 round-run)
     bash "$kitc/aosp-proto.sh" sync-run && bash "$kitc/aosp-proto.sh" build-run ;;
-*) fail "usage: aosp-proto.sh status|sync|build|round|clean" ;;
+*) fail "usage: aosp-proto.sh status|sync|build|full|round|clean" ;;
 esac
