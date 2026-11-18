@@ -191,7 +191,20 @@ kernel-run)
     python3 "$top/system/tools/mkbootimg/unpack_bootimg.py" --boot_img img/vendor_kernel_boot.img --out vkb >/dev/null \
         || { echo "KERNEL=FAIL unpack vendor_kernel_boot"; exit 1; }
     rm -rf ex && mkdir -p ex/vkb ex/vendor_dlkm ex/system_dlkm
-    for r in vkb/vendor_ramdisk*; do "$lz4" -dc "$r" 2>/dev/null | (cd ex/vkb && cpio -idm --quiet) || true; done
+    # Each ramdisk by its own compression (measured 11-18: piping blind gave "cpio: premature end")
+    [[ -x $lz4 ]] || lz4=$(command -v lz4 || echo "$hb/lz4")
+    ls -la vkb
+    for r in vkb/vendor_ramdisk* vkb/ramdisk*; do
+        [[ -f $r ]] || continue
+        m=$(od -An -tx1 -N4 "$r" | tr -d ' \n')
+        case $m in
+        02214c18|04224d18) "$lz4" -dc "$r" > "$r.cpio" ;;
+        1f8b*)             gzip -dc "$r" > "$r.cpio" ;;
+        30373037)          cp "$r" "$r.cpio" ;;
+        *) echo "== $r: unknown compression ($m)"; continue ;;
+        esac
+        (cd ex/vkb && cpio -idm --quiet < "../../$r.cpio") || echo "== cpio on $r ended early"
+    done
     for p in vendor_dlkm system_dlkm; do
         f=$(ls img/${p}*.img | head -1)
         t=$(fstype "$f")
@@ -214,7 +227,7 @@ kernel-run)
     find ex/vendor_dlkm -name 'init.insmod.*.cfg' -exec cp -f {} "$kd/" \;
     echo "== $kd: $(ls "$kd"/*.ko | wc -l) modules; lists:"; wc -l "$kd"/*.modules.load
     # Every module a list names must be there, or the image build fails later
-    miss=$(cat "$kd"/*.modules.load | sort -u | while read -r k; do [[ -f $kd/$k ]] || echo "$k"; done)
+    miss=$(cat "$kd"/*.modules.load | xargs -n1 basename | sort -u | while read -r k; do [[ -f $kd/$k ]] || echo "$k"; done)
     if [[ -n $miss ]]; then echo "== listed but missing:"; echo "$miss" | head -40; echo "KERNEL=FAIL modules missing"; exit 1; fi
     echo "KERNEL=OK $(TZ=America/New_York date)" ;;
 round-run)
