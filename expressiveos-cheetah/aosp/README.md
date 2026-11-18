@@ -74,3 +74,20 @@ The runner's `aosp-proto` action, dispatched on `eos/aosp` (it runs that branch'
 `aosp-proto.sh`): query `status` (read-only), `sync`, `build` or `clean`. Sync and build run in
 the `eos-aosp` tmux session and refuse while an ExpressiveOS build, pack or setup runs; their
 logs stay in `~/expressiveos-jobs/aosp/`. `clean` removes `~/eos-aosp` when the step ends.
+
+## First build attempt (2026-11-18, measured)
+
+Sync: SYNC=OK 2:23 PM ET, 1,087 projects, 137 GB (`~/expressiveos-jobs/aosp/sync-20261118-1407.log`).
+Build: `lunch aosp_cheetah-trunk_staging-userdebug` stopped in product config after 1 second
+(`build-20261118-1440.log`). The trees do offer an `aosp_cheetah` product, and AOSP
+`android-17.0.0_r1` has a `cp2a` release config too. The first two things missing:
+
+1. `find: 'device/google/pantah-kernels/6.1': No such file or directory`: the kernel and its
+   modules come from Lineage's `pantah-kernels`, left out on purpose. Next: stand in Google's
+   stock kernel and modules from the cheetah factory image.
+2. `device/google/gs201/common.mk:125: error: hardware/google/pixel/rebalance_interrupts/rebalance_interrupts.mk: No such file or directory`:
+   AOSP's `hardware/google/pixel` lacks the Pixel parts that Lineage's copy (now our
+   `hardware_google_pixel` fork) carries. Next: use our fork there.
+
+The make stops at the first product-config error, so later errors only show once these two are
+fixed.
