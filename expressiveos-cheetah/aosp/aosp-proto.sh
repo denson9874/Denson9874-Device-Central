@@ -90,7 +90,14 @@ build-run)
         # lunch can return 0 after a product-config error: check that it set the product
         if lunch "$t" && [[ -n ${TARGET_PRODUCT:-} ]] && get_build_var TARGET_DEVICE >/dev/null; then ok=$t; break; fi
     done
-    [[ -n $ok ]] || { echo "BUILD=FAIL lunch (the errors above are the device side's first list)"; exit 1; }
+    if [[ -z $ok ]]; then
+        # Each make error's own lines, so the next round's fix can be read off this log
+        lunch aosp_cheetah-trunk_staging-userdebug 2>&1 | grep -oE '^[A-Za-z0-9_./-]+\.mk:[0-9]+: error' | sort -u |
+        while IFS=: read -r f n _; do
+            echo "== $f around line $n"; [[ -f $f ]] && sed -n "$(( n > 15 ? n - 15 : 1 )),$(( n + 5 ))p" "$f" | cat -n
+        done
+        echo "BUILD=FAIL lunch (the errors above are the device side's first list)"; exit 1
+    fi
     echo "== m -k droid ($ok): keeps going past errors to list as many as it can"
     if m -k droid; then echo "BUILD=OK $(TZ=America/New_York date)"
     else echo "== errors"; grep -E '^(FAILED|error:)|error: ' out/error.log 2>/dev/null | head -100 || true

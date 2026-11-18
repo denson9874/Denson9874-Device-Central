@@ -91,3 +91,10 @@ Build: `lunch aosp_cheetah-trunk_staging-userdebug` stopped in product config af
 
 The make stops at the first product-config error, so later errors only show once these two are
 fixed.
+
+## Round 2 (2026-11-18 3:10 PM ET, measured)
+
+With our `hardware_google_pixel` fork added (AOSP 17 has no `hardware/google/pixel` at all), the
+product config passes. The board config stops next:
+`device/google/pantah/cheetah/BoardConfig.mk:22: error: /BoardConfigCommon.mk: No such file or directory`
+(a path whose folder variable is empty without Lineage). The kernel folder is still missing too.
