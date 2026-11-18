@@ -67,3 +67,10 @@ Counts are measured from the 1.0 record manifest (`../sources/eos-1.0-base/manif
    and a clean flash: it is a different platform from his installed build).
 4. Add ExpressiveOS one layer at a time, each with what it breaks: `vendor_gms`, boot animation,
    Expressive Launcher, Updater, then our framework forks rebased onto AOSP.
+
+## Running it on the build server
+
+The runner's `aosp-proto` action, dispatched on `eos/aosp` (it runs that branch's
+`aosp-proto.sh`): query `status` (read-only), `sync`, `build` or `clean`. Sync and build run in
+the `eos-aosp` tmux session and refuse while an ExpressiveOS build, pack or setup runs; their
+logs stay in `~/expressiveos-jobs/aosp/`. `clean` removes `~/eos-aosp` when the step ends.

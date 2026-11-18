@@ -213,6 +213,9 @@ on:
           devices=<phone>,...: pack, OTA upload and web installer for each in one session).
           expressiveos-ota: install the kit, then eos-ota.sh in this job: the newest
           release's OTA packages, full and incremental (query: the phone; upload; candidate).
+          aosp-proto: the eos/aosp experiment only (ExpressiveOS on AOSP without LineageOS,
+          cheetah, its own tree ~/eos-aosp): query status (read-only, the default), sync,
+          build or clean (expressiveos-cheetah/aosp/aosp-proto.sh; it refuses while any build runs).
         type: choice
         default: expressiveos-status
         options:
@@ -238,6 +241,7 @@ on:
           - expressiveos-ota
           - expressiveos-flasher-release
           - expressiveos-storage
+          - aosp-proto
       tree_ref:
         description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
@@ -327,7 +331,7 @@ jobs:
           # or syncs, as server-cleanup does)
           if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
             pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-flasher-release|expressiveos-storage)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-flasher-release|expressiveos-storage|aosp-proto)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
             fi
@@ -340,7 +344,7 @@ jobs:
           # Its setup (a repo sync of its own tree) doesn't count
           for s in eos-build eos-pack; do
             tmux has-session -t "=$s" 2>/dev/null || continue
-            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release|expressiveos-storage)$ ]]; then
+            if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-flasher-release|expressiveos-storage|aosp-proto)$ ]]; then
               echo "::error::the ExpressiveOS tmux session $s is running (expressiveos-status shows its log)"
               exit 1
             fi
@@ -978,6 +982,20 @@ jobs:
             case $w in device=*) a+=("${w#device=}") ;; dry-run) a+=(--dry-run) ;; esac
           done
           bash expressiveos-cheetah/tools/eos-storage.sh "${a[@]}"
+
+      - name: Check out the AOSP experiment
+        if: inputs.action == 'aosp-proto'
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: expressiveos-cheetah/aosp
+          fetch-depth: 1
+
+      - name: AOSP experiment (eos/aosp, cheetah)
+        if: inputs.action == 'aosp-proto'
+        run: |
+          q=${QUERY:-status}
+          [[ $q =~ ^(status|sync|build|clean)$ ]] || { echo "::error::aosp-proto's query is status, sync, build or clean"; exit 1; }
+          bash expressiveos-cheetah/aosp/aosp-proto.sh "$q"
 
       - name: Check out expressiveos-cheetah
         if: contains(fromJSON('["expressiveos-setup","expressiveos-build","expressiveos-pack","expressiveos-ota"]'), inputs.action)
