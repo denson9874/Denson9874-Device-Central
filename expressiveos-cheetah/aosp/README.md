@@ -104,5 +104,14 @@ product config passes. The board config stops next:
 `DEVICE_CODENAME`, `DEVICE_PATH` and `VENDOR_PATH` are set only in
 `device/google/pantah/lineage_cheetah.mk:11-13` (and `lineage_panther.mk`); `aosp_cheetah.mk`
 doesn't set them. The cheetah BoardConfig carries LineageOS and Calyx copyright lines: our device
-tree itself is Lineage/Calyx-shaped, not Google's. Next try (inferred): `build-run` exports the
-three names before lunch.
+tree itself is Lineage/Calyx-shaped, not Google's. `build-run` now exports the three names
+before lunch.
+
+## Round 4 (2026-11-18 3:36 PM ET, measured)
+
+With the names set, the board config reads on to its kernel part and stops at
+`$(error vendor_kernel_boot.modules.load not found or empty)` (line 250 of the board config,
+`build-20261118-1536.log`): the kernel's module lists aren't there. As a stand-in only, to see
+what fails after product config, the local manifest now adds Lineage's
+`android_device_google_pantah-kernels` at the commit 1.0 used. Google's stock kernel replaces it
+before anything boots.
