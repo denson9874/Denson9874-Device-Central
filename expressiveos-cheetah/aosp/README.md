@@ -171,3 +171,13 @@ What stood between AOSP and a cheetah build plan, and what stands in for it now:
 | 6 | Google's thermal blob needs stats AIDL V3 frozen | Lineage's `frameworks/hardware/interfaces` | freeze V3 in our own fork |
 
 Next: `full` (`m -k droid`, hours) lists what fails to compile.
+
+## Full compile attempt (2026-11-18 4:43 PM ET, measured)
+
+`m -k droid` stopped after 2 minutes, before compiling anything: ninja can't schedule the image
+because the kernel modules themselves are missing
+(`"device/google/pantah-kernels/6.1/gzvm.ko", needed by ".../system_dlkm/lib/modules/gzvm.ko", missing and no known rule to make it`).
+Lineage's `pantah-kernels` holds only the module lists; the 1.0 kernel and modules are built by
+`build_kernel`. So the kernel is now the one thing in front of a full compile. Next (needs a
+tool of its own): fill `device/google/pantah-kernels/6.1` with Google's stock kernel, DTBs and
+modules unpacked from the cheetah factory image (`firmware/cheetah.conf`, CP4A.261105.040.A1).
