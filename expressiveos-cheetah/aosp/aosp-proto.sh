@@ -47,8 +47,8 @@ status)
     tmux ls 2>/dev/null | grep -E '^eos-' || echo "no ExpressiveOS session running"
     echo "free: $(free_gb) GB"
     if [[ -d $top ]]; then echo "$top: $(du -sh --apparent-size "$top" 2>/dev/null | cut -f1)"; else echo "$top: not there"; fi
-    for f in $(ls -t "$jobs"/*.log 2>/dev/null | head -2); do
-        echo "== $f (last 60 lines)"; tail -n 60 "$f"
+    for f in $(ls -t "$jobs"/*.log 2>/dev/null | head -1); do
+        echo "== $f (last 150 lines)"; tail -n 150 "$f"
     done ;;
 sync)  start sync ;;
 build) start build ;;
