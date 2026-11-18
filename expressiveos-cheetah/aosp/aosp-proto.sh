@@ -7,6 +7,8 @@
 #   aosp-proto.sh sync     repo init AOSP android-17.0.0_r1 (depth 1) + eos-aosp-cheetah.xml, repo sync
 #   aosp-proto.sh build    lunch aosp_cheetah, then m -k nothing (analysis only): what fails is the result
 #   aosp-proto.sh full     the same with m -k droid: the whole image, hours, holds the server
+#   aosp-proto.sh kernel   Google's stock cheetah kernel, DTB and modules from the factory image
+#                          into device/google/pantah-kernels/6.1 (stand-in for Lineage's build_kernel)
 #   aosp-proto.sh round    sync, then build if it ended SYNC=OK (one round, one dispatch)
 #   aosp-proto.sh clean    remove ~/eos-aosp and the copied scripts (nothing stays on the server)
 #
@@ -54,6 +56,7 @@ status)
 sync)  start sync ;;
 build) start build ;;
 full)  start full ;;
+kernel) start kernel ;;
 round) start round ;;
 clean)
     if why=$(busy); then fail "not cleaning: $why"; fi
@@ -70,6 +73,8 @@ sync-run)
     if [[ -d .repo ]]; then mkdir -p .repo/local_manifests && cp "$kitc/eos-aosp-cheetah.xml" .repo/local_manifests/; fi
     # build-run's stand-in edit of the blobs' Android.bp: put it back so repo sync updates cleanly
     if [[ -e vendor/google/cheetah/.git ]]; then git -C vendor/google/cheetah checkout -- Android.bp 2>/dev/null || true; fi
+    # and kernel-run's stock kernel files in Lineage's module-list project
+    if [[ -e device/google/pantah-kernels/.git ]]; then git -C device/google/pantah-kernels checkout -- . 2>/dev/null || true; git -C device/google/pantah-kernels clean -fdq 2>/dev/null || true; fi
     repo init -u https://android.googlesource.com/platform/manifest -b "$AOSP_TAG" --depth=1 </dev/null \
         || { echo "SYNC=FAIL repo init"; exit 1; }
     mkdir -p .repo/local_manifests
@@ -140,7 +145,59 @@ PY
          echo "BUILD=FAIL m $(TZ=America/New_York date)"; exit 1; fi ;;
 full-run)
     bash "$kitc/aosp-proto.sh" build-run full ;;
+kernel-run)
+    # Daryl's go 11-18 4:48 PM ET ("Build it"). Google's own kernel for the prototype: boot.img as
+    # BOARD_PREBUILT_BOOTIMAGE, the DTB from vendor_kernel_boot, and every module with its load list
+    # from vendor_kernel_boot, vendor_dlkm and system_dlkm (gs201/BoardConfig-common.mk:55,206,235-272)
+    echo "KERNEL start $(TZ=America/New_York date)"
+    url=https://dl.google.com/dl/android/aosp/cheetah-cp4a.261105.040.a1-factory-b255f8dd.zip   # firmware/cheetah.conf
+    sha=b255f8dd30041fad74cb4985f26770b37643914f9fa5eea5a18b1f92e0b45e91
+    cd "$top"; w=$top/stock-kernel; kd=$top/device/google/pantah-kernels/6.1
+    [[ -d $kd ]] || { echo "KERNEL=FAIL $kd isn't there (sync first)"; exit 1; }
+    mkdir -p "$w" && cd "$w"
+    if [[ ! -f factory.zip ]] || ! echo "$sha  factory.zip" | sha256sum -c --quiet; then
+        curl -fL --retry 3 -o factory.zip "$url" && echo "$sha  factory.zip" | sha256sum -c \
+            || { echo "KERNEL=FAIL download or SHA-256"; exit 1; }
+    fi
+    rm -rf img && mkdir img
+    unzip -q -o -j factory.zip '*/image-*.zip' -d . && unzip -q -o image-*.zip boot.img vendor_kernel_boot.img super.img -d img \
+        || { echo "KERNEL=FAIL unzip"; exit 1; }
+    cd "$top"
+    export USE_CCACHE=0 DEVICE_CODENAME=cheetah DEVICE_PATH=device/google/pantah VENDOR_PATH=vendor/google/cheetah ALLOW_MISSING_DEPENDENCIES=true
+    source build/envsetup.sh && lunch aosp_cheetah-trunk_staging-userdebug >/dev/null
+    m simg2img lpunpack fsck.erofs || { echo "KERNEL=FAIL host tools"; exit 1; }
+    hb=$top/out/host/linux-x86/bin; lz4=$top/prebuilts/build-tools/linux-x86/bin/lz4
+    cd "$w"
+    "$hb/simg2img" img/super.img img/super.raw && rm img/super.img
+    "$hb/lpunpack" -p vendor_dlkm_a -p system_dlkm_a img/super.raw img/ 2>/dev/null \
+        || "$hb/lpunpack" -p vendor_dlkm -p system_dlkm img/super.raw img/ || { echo "KERNEL=FAIL lpunpack"; exit 1; }
+    rm img/super.raw; ls -la img
+    python3 "$top/system/tools/mkbootimg/unpack_bootimg.py" --boot_img img/vendor_kernel_boot.img --out vkb >/dev/null \
+        || { echo "KERNEL=FAIL unpack vendor_kernel_boot"; exit 1; }
+    rm -rf ex && mkdir -p ex/vkb ex/vendor_dlkm ex/system_dlkm
+    for r in vkb/vendor_ramdisk*; do "$lz4" -dc "$r" 2>/dev/null | (cd ex/vkb && cpio -idm --quiet) || true; done
+    for p in vendor_dlkm system_dlkm; do
+        f=$(ls img/${p}*.img | head -1)
+        if file -b "$f" | grep -qi ext; then debugfs -R "rdump / $w/ex/$p" "$f" >/dev/null 2>&1
+        else "$hb/fsck.erofs" --extract="$w/ex/$p" "$f" >/dev/null; fi
+        echo "== $p ($(file -b "$f" | cut -c1-40)): $(find ex/$p -name '*.ko' | wc -l) modules"
+    done
+    echo "== vendor_kernel_boot: $(find ex/vkb -name '*.ko' | wc -l) modules"
+    # Into the kernel folder: Google's files over Lineage's lists (sync-run puts Lineage's back)
+    cp img/boot.img "$kd/boot.img"
+    cp vkb/dtb "$kd/stock-cp4a.dtb"
+    find ex -name '*.ko' -exec cp -f {} "$kd/" \;
+    lst() { local m; m=$(find "ex/$1" -name modules.load | head -1); if [[ -n $m ]]; then xargs -n1 basename < "$m" > "$kd/$2"; fi; }
+    lst vkb vendor_kernel_boot.modules.load; lst vendor_dlkm vendor_dlkm.modules.load; lst system_dlkm system_dlkm.modules.load
+    b=$(find ex/vendor_dlkm -name modules.blocklist | head -1); if [[ -n $b ]]; then cp "$b" "$kd/vendor_dlkm.modules.blocklist"; fi
+    b=$(find ex/system_dlkm -name modules.blocklist | head -1); if [[ -n $b ]]; then cp "$b" "$kd/system_dlkm.modules.blocklist"; fi
+    find ex/vendor_dlkm -name 'init.insmod.*.cfg' -exec cp -f {} "$kd/" \;
+    echo "== $kd: $(ls "$kd"/*.ko | wc -l) modules; lists:"; wc -l "$kd"/*.modules.load
+    # Every module a list names must be there, or the image build fails later
+    miss=$(cat "$kd"/*.modules.load | sort -u | while read -r k; do [[ -f $kd/$k ]] || echo "$k"; done)
+    if [[ -n $miss ]]; then echo "== listed but missing:"; echo "$miss" | head -40; echo "KERNEL=FAIL modules missing"; exit 1; fi
+    echo "KERNEL=OK $(TZ=America/New_York date)" ;;
 round-run)
     bash "$kitc/aosp-proto.sh" sync-run && bash "$kitc/aosp-proto.sh" build-run ;;
-*) fail "usage: aosp-proto.sh status|sync|build|full|round|clean" ;;
+*) fail "usage: aosp-proto.sh status|sync|build|full|kernel|round|clean" ;;
 esac
