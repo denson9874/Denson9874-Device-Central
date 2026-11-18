@@ -160,18 +160,29 @@ kernel-run)
             || { echo "KERNEL=FAIL download or SHA-256"; exit 1; }
     fi
     rm -rf img && mkdir img
-    unzip -q -o -j factory.zip '*/image-*.zip' -d . && unzip -q -o image-*.zip boot.img vendor_kernel_boot.img super.img -d img \
-        || { echo "KERNEL=FAIL unzip"; exit 1; }
+    unzip -q -o -j factory.zip '*/image-*.zip' -d . || { echo "KERNEL=FAIL unzip"; exit 1; }
+    # CP4A's image zip has no super.img (measured 11-18): the dlkm partitions come as their own
+    # images; take super.img only if they don't
+    names=$(unzip -Z1 image-*.zip); echo "== image zip: $(echo $names)"
+    want="boot.img vendor_kernel_boot.img"
+    for n in vendor_dlkm.img system_dlkm.img; do grep -qx "$n" <<<"$names" && want+=" $n"; done
+    if ! grep -qx vendor_dlkm.img <<<"$names"; then want+=" super.img"; fi
+    unzip -q -o image-*.zip $want -d img || { echo "KERNEL=FAIL unzip $want"; exit 1; }
     cd "$top"
     export USE_CCACHE=0 DEVICE_CODENAME=cheetah DEVICE_PATH=device/google/pantah VENDOR_PATH=vendor/google/cheetah ALLOW_MISSING_DEPENDENCIES=true
     source build/envsetup.sh && lunch aosp_cheetah-trunk_staging-userdebug >/dev/null
     m simg2img lpunpack fsck.erofs || { echo "KERNEL=FAIL host tools"; exit 1; }
     hb=$top/out/host/linux-x86/bin; lz4=$top/prebuilts/build-tools/linux-x86/bin/lz4
     cd "$w"
-    "$hb/simg2img" img/super.img img/super.raw && rm img/super.img
-    "$hb/lpunpack" -p vendor_dlkm_a -p system_dlkm_a img/super.raw img/ 2>/dev/null \
-        || "$hb/lpunpack" -p vendor_dlkm -p system_dlkm img/super.raw img/ || { echo "KERNEL=FAIL lpunpack"; exit 1; }
-    rm img/super.raw; ls -la img
+    if [[ -f img/super.img ]]; then
+        "$hb/simg2img" img/super.img img/super.raw && rm img/super.img
+        "$hb/lpunpack" -p vendor_dlkm_a -p system_dlkm_a img/super.raw img/ 2>/dev/null \
+            || "$hb/lpunpack" -p vendor_dlkm -p system_dlkm img/super.raw img/ || { echo "KERNEL=FAIL lpunpack"; exit 1; }
+        rm img/super.raw
+    fi
+    # A dlkm image may be sparse: make it raw before reading it
+    for f in img/*dlkm*.img; do if file -b "$f" | grep -qi sparse; then "$hb/simg2img" "$f" "$f.raw" && mv "$f.raw" "$f"; fi; done
+    ls -la img
     python3 "$top/system/tools/mkbootimg/unpack_bootimg.py" --boot_img img/vendor_kernel_boot.img --out vkb >/dev/null \
         || { echo "KERNEL=FAIL unpack vendor_kernel_boot"; exit 1; }
     rm -rf ex && mkdir -p ex/vkb ex/vendor_dlkm ex/system_dlkm
