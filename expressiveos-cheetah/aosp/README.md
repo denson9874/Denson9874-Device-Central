@@ -124,3 +124,12 @@ config are done. Soong's analysis then stops on the blobs:
 line 827): `dump_modem` and `gpuflag` use a module type only Lineage's `build/soong` has
 (`round-20261118-1539.log`). Stand-in for the next round, in the throwaway tree only:
 `build-run` declares both as `cc_prebuilt_binary` without their Rust library links.
+
+## Round 6 (2026-11-18 3:47 PM ET, measured)
+
+Past the two binaries, Soong stops on the third Rust blob:
+`vendor/google/cheetah/Android.bp:7764:1: module "libgpuflag_aconfig_rust" ...: Rust prebuilt modules not supported for non-system images.`
+Lineage's `build/soong` allows Rust prebuilts on vendor; AOSP's doesn't. The stand-in now covers
+it too (as a plain shared library). These three are Google's own vendor blobs, so a real AOSP
+port needs either that Soong change carried in our own `build/soong` or the blobs packaged
+another way.

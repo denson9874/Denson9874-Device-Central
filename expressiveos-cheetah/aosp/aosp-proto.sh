@@ -91,10 +91,12 @@ build-run)
     python3 - vendor/google/cheetah/Android.bp <<'PY'
 import re, sys
 p = sys.argv[1]; s = open(p).read()
-n = s.count("rust_prebuilt_binary {")
+n = s.count("rust_prebuilt_binary {") + s.count("rust_prebuilt_dylib {")
 s = s.replace("rust_prebuilt_binary {", "cc_prebuilt_binary {\n    check_elf_files: false,")
+# Round 6: AOSP's Soong refuses Rust prebuilts outside the system image (libgpuflag_aconfig_rust)
+s = s.replace("rust_prebuilt_dylib {", "cc_prebuilt_library_shared {\n    check_elf_files: false,")
 s = re.sub(r"\n\s*rustlibs: \[[^\]]*\],", "", s)
-open(p, "w").write(s); print(f"== stand-in: {n} rust_prebuilt_binary blobs declared as cc_prebuilt_binary")
+open(p, "w").write(s); print(f"== stand-in: {n} Rust prebuilt blobs declared as plain cc prebuilts")
 PY
     source build/envsetup.sh
     echo "== lunch choices the cheetah trees offer"
