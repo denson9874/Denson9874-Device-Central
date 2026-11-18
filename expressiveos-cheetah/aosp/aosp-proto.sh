@@ -64,6 +64,8 @@ sync-run)
     (( $(free_gb) >= MIN_FREE_GB )) || { echo "SYNC=FAIL only $(free_gb) GB free, need $MIN_FREE_GB"; exit 1; }
     command -v repo >/dev/null || { echo "SYNC=FAIL repo isn't installed"; exit 1; }
     mkdir -p "$top" && cd "$top"
+    # This round's local manifest before repo init, which reads the one already there
+    if [[ -d .repo ]]; then mkdir -p .repo/local_manifests && cp "$kitc/eos-aosp-cheetah.xml" .repo/local_manifests/; fi
     repo init -u https://android.googlesource.com/platform/manifest -b "$AOSP_TAG" --depth=1 </dev/null \
         || { echo "SYNC=FAIL repo init"; exit 1; }
     mkdir -p .repo/local_manifests
