@@ -115,3 +115,12 @@ With the names set, the board config reads on to its kernel part and stops at
 what fails after product config, the local manifest now adds Lineage's
 `android_device_google_pantah-kernels` at the commit 1.0 used. Google's stock kernel replaces it
 before anything boots.
+
+## Round 5 (2026-11-18 3:40 PM ET, measured)
+
+With the stand-in module lists, `lunch aosp_cheetah` passes for the first time: product and board
+config are done. Soong's analysis then stops on the blobs:
+`vendor/google/cheetah/Android.bp:802:1: unrecognized module type "rust_prebuilt_binary"` (and
+line 827): `dump_modem` and `gpuflag` use a module type only Lineage's `build/soong` has
+(`round-20261118-1539.log`). Stand-in for the next round, in the throwaway tree only:
+`build-run` declares both as `cc_prebuilt_binary` without their Rust library links.

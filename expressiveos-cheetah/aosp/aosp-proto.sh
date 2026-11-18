@@ -66,6 +66,8 @@ sync-run)
     mkdir -p "$top" && cd "$top"
     # This round's local manifest before repo init, which reads the one already there
     if [[ -d .repo ]]; then mkdir -p .repo/local_manifests && cp "$kitc/eos-aosp-cheetah.xml" .repo/local_manifests/; fi
+    # build-run's stand-in edit of the blobs' Android.bp: put it back so repo sync updates cleanly
+    if [[ -e vendor/google/cheetah/.git ]]; then git -C vendor/google/cheetah checkout -- Android.bp 2>/dev/null || true; fi
     repo init -u https://android.googlesource.com/platform/manifest -b "$AOSP_TAG" --depth=1 </dev/null \
         || { echo "SYNC=FAIL repo init"; exit 1; }
     mkdir -p .repo/local_manifests
@@ -83,6 +85,17 @@ build-run)
     # Round 3: the cheetah trees set these only in lineage_cheetah.mk:11-13, and BoardConfig.mk:22
     # includes $(DEVICE_PATH)/BoardConfigCommon.mk; aosp_cheetah.mk leaves them empty
     export DEVICE_CODENAME=cheetah DEVICE_PATH=device/google/pantah VENDOR_PATH=vendor/google/cheetah
+    # Round 5: the blobs declare dump_modem and gpuflag as rust_prebuilt_binary, a module type
+    # only Lineage's build/soong has. STAND-IN, in this throwaway tree only (sync-run puts the
+    # file back): declare them as plain prebuilt binaries without the Rust library links
+    python3 - vendor/google/cheetah/Android.bp <<'PY'
+import re, sys
+p = sys.argv[1]; s = open(p).read()
+n = s.count("rust_prebuilt_binary {")
+s = s.replace("rust_prebuilt_binary {", "cc_prebuilt_binary {\n    check_elf_files: false,")
+s = re.sub(r"\n\s*rustlibs: \[[^\]]*\],", "", s)
+open(p, "w").write(s); print(f"== stand-in: {n} rust_prebuilt_binary blobs declared as cc_prebuilt_binary")
+PY
     source build/envsetup.sh
     echo "== lunch choices the cheetah trees offer"
     grep -hs -A8 COMMON_LUNCH_CHOICES device/google/pantah/AndroidProducts.mk || echo "(no AndroidProducts.mk lunch choices)"
