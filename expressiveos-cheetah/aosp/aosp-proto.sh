@@ -164,7 +164,7 @@ kernel-run)
     # CP4A's image zip has no super.img (measured 11-18): the dlkm partitions come as their own
     # images; take super.img only if they don't
     names=$(unzip -Z1 image-*.zip); echo "== image zip: $(echo $names)"
-    want="boot.img vendor_kernel_boot.img"
+    want="boot.img vendor_kernel_boot.img dtbo.img"
     for n in vendor_dlkm.img system_dlkm.img; do grep -qx "$n" <<<"$names" && want+=" $n"; done
     if ! grep -qx vendor_dlkm.img <<<"$names"; then want+=" super.img"; fi
     unzip -q -o image-*.zip $want -d img || { echo "KERNEL=FAIL unzip $want"; exit 1; }
@@ -219,12 +219,15 @@ kernel-run)
     # Into the kernel folder: Google's files over Lineage's lists (sync-run puts Lineage's back)
     cp img/boot.img "$kd/boot.img"
     cp vkb/dtb "$kd/stock-cp4a.dtb"
+    cp img/dtbo.img "$kd/dtbo.img"   # BoardConfig-common.mk:207 (full compile 6:25 PM ET stopped on it)
     find ex -name '*.ko' -exec cp -f {} "$kd/" \;
     lst() { local m; m=$(find "ex/$1" -name modules.load | head -1); if [[ -n $m ]]; then xargs -n1 basename < "$m" > "$kd/$2"; fi; }
     lst vkb vendor_kernel_boot.modules.load; lst vendor_dlkm vendor_dlkm.modules.load; lst system_dlkm system_dlkm.modules.load
     b=$(find ex/vendor_dlkm -name modules.blocklist | head -1); if [[ -n $b ]]; then cp "$b" "$kd/vendor_dlkm.modules.blocklist"; fi
     b=$(find ex/system_dlkm -name modules.blocklist | head -1); if [[ -n $b ]]; then cp "$b" "$kd/system_dlkm.modules.blocklist"; fi
     find ex/vendor_dlkm -name 'init.insmod.*.cfg' -exec cp -f {} "$kd/" \;
+    # BoardConfig-common.mk:241 names this one without a wildcard: an empty list if Google has none
+    [[ -f $kd/vendor_dlkm.modules.blocklist ]] || : > "$kd/vendor_dlkm.modules.blocklist"
     echo "== $kd: $(ls "$kd"/*.ko | wc -l) modules; lists:"; wc -l "$kd"/*.modules.load
     # Every module a list names must be there, or the image build fails later
     miss=$(cat "$kd"/*.modules.load | xargs -n1 basename | sort -u | while read -r k; do [[ -f $kd/$k ]] || echo "$k"; done)
