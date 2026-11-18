@@ -33,7 +33,10 @@ start() {   # start <step>: run this script's <step>-run in the eos-aosp tmux se
     mkdir -p "$kitc" "$jobs"
     cp "$here/aosp-proto.sh" "$kitc/" && cp "$here/local_manifests/eos-aosp-cheetah.xml" "$kitc/"
     local log=$jobs/$1-$(TZ=America/New_York date +%Y%m%d-%H%M).log
-    tmux new-session -d -s eos-aosp "bash -l -c 'bash $kitc/aosp-proto.sh $1-run > $log 2>&1'"
+    # A fresh login's environment, as the kit's sessions get: the runner kills every process that
+    # carries this job's RUNNER_TRACKING_ID when the job ends
+    env -i HOME="$HOME" USER="$(id -un)" LOGNAME="$(id -un)" SHELL=/bin/bash LANG=C.UTF-8 TERM=screen \
+        PATH="$HOME/bin:$PATH" tmux new-session -d -s eos-aosp "bash -l -c 'bash $kitc/aosp-proto.sh $1-run > $log 2>&1'"
     echo "started $1 in tmux session eos-aosp, log $log"
 }
 
