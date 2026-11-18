@@ -32,6 +32,14 @@
   <remote name="lineage-pantah" fetch="https://github.com/LineageOS" revision="lineage-24.0" />
   <project path="device/google/pantah-kernels" name="android_device_google_pantah-kernels" remote="lineage-pantah"
            revision="e0bcfb04231e9c0d3df942604218dfc8dbed2011" upstream="lineage-24.0" />
+  <!-- Round 8 (2026-11-18): Google's thermal blob (android.hardware.thermal-service.pixel) links
+       android.frameworks.stats-V3, which AOSP android-17.0.0_r1 has only as an unfrozen
+       development version; Lineage's copy freezes V1-V3 (stats/aidl/Android.bp:43-59). STAND-IN:
+       Lineage's frameworks/hardware/interfaces at the commit 1.0 used. A real port carries the
+       frozen V3 in a fork of our own. -->
+  <remove-project name="platform/frameworks/hardware/interfaces" />
+  <project path="frameworks/hardware/interfaces" name="android_frameworks_hardware_interfaces" remote="lineage-pantah"
+           revision="f80da5a738798ed94d061f79ebe78edf26391424" upstream="lineage-24.0" />
   <!-- Not carried yet:
        device/google/gs-common: not checked yet whether our manifest carries it as a fork;
          add it here if lunch asks for it (README.md, "Step 2"). -->

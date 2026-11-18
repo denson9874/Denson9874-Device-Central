@@ -141,3 +141,13 @@ Past the Rust blobs, Soong stops on our own device tree:
 Soong stops at the first such module, so from here `build-run` sets `ALLOW_MISSING_DEPENDENCIES=true`
 and lists every missing module in one round. `build` now runs analysis only (`m -k nothing`, no
 compiling); the new `full` query runs `m -k droid`, which takes hours and holds the server.
+
+## Round 8 (2026-11-18 4:05 PM ET, measured)
+
+With missing modules allowed, Soong stops on a Google blob instead:
+`vendor/google/cheetah/Android.bp:10349:1: module "android.hardware.thermal-service.pixel" ...: android.frameworks.stats-V3-ndk is an unfrozen development version`.
+Google's thermal service needs version 3 of the stats interface, which AOSP `android-17.0.0_r1`
+doesn't have frozen; Lineage's `frameworks/hardware/interfaces` freezes V1-V3
+(`stats/aidl/Android.bp:43-59` at the commit 1.0 used). So Google's own stock blobs expect
+interfaces newer than the public AOSP tag. Stand-in for the next round: Lineage's copy of that
+project; a real port carries the frozen V3 in a fork of our own.
