@@ -181,3 +181,13 @@ Lineage's `pantah-kernels` holds only the module lists; the 1.0 kernel and modul
 `build_kernel`. So the kernel is now the one thing in front of a full compile. Next (needs a
 tool of its own): fill `device/google/pantah-kernels/6.1` with Google's stock kernel, DTBs and
 modules unpacked from the cheetah factory image (`firmware/cheetah.conf`, CP4A.261105.040.A1).
+
+## Stock kernel (2026-11-18 6:19 PM ET, measured)
+
+Daryl's go 4:48 PM ET. `aosp-proto.sh kernel` takes Google's own kernel from the cheetah factory
+image (CP4A.261105.040.A1, SHA-256 checked) and fills `device/google/pantah-kernels/6.1`: the
+stock `boot.img` (used as `BOARD_PREBUILT_BOOTIMAGE`), the DTB from `vendor_kernel_boot`, and every
+module with Google's own load lists. Result `KERNEL=OK`: 204 modules in vendor_kernel_boot, 66
+loaded from vendor_dlkm (328 there), 59 in system_dlkm, and every listed module present
+(`kernel-20261118-1810.log`). CP4A ships the dlkm partitions as their own ext4 images, not
+inside `super.img`. Next: `full` (`m -k droid`).
