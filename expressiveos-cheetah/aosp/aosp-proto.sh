@@ -74,7 +74,8 @@ sync-run)
         || { echo "SYNC=FAIL repo init"; exit 1; }
     mkdir -p .repo/local_manifests
     cp "$kitc/eos-aosp-cheetah.xml" .repo/local_manifests/
-    repo sync -c -j8 --no-tags --no-clone-bundle --fail-fast </dev/null || { echo "SYNC=FAIL repo sync"; exit 1; }
+    # --force-sync: a stand-in swaps the project at an existing path (round 9: frameworks/hardware/interfaces)
+    repo sync -c -j8 --no-tags --no-clone-bundle --fail-fast --force-sync </dev/null || { echo "SYNC=FAIL repo sync"; exit 1; }
     echo "projects: $(repo list | wc -l); free $(free_gb) GB"
     echo "SYNC=OK $(TZ=America/New_York date)" ;;
 
