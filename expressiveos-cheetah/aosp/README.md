@@ -151,3 +151,23 @@ doesn't have frozen; Lineage's `frameworks/hardware/interfaces` freezes V1-V3
 (`stats/aidl/Android.bp:43-59` at the commit 1.0 used). So Google's own stock blobs expect
 interfaces newer than the public AOSP tag. Stand-in for the next round: Lineage's copy of that
 project; a real port carries the frozen V3 in a fork of our own.
+
+## Round 9 (2026-11-18 4:33 PM ET, measured): the whole build plan passes
+
+With Lineage's `frameworks/hardware/interfaces` as a stand-in (the sync needed `--force-sync` to
+swap the project), `m -k nothing` ends `BUILD=OK (nothing)`: Soong and Kati read every module and
+make file for `aosp_cheetah` (`round-20261118-1616.log`, 3:15 analysis). Nothing is compiled yet.
+Kati warns that no kernel or boot image is defined: expected, the kernel is still missing.
+
+What stood between AOSP and a cheetah build plan, and what stands in for it now:
+
+| # | Blocker (measured) | Stand-in now | Real fix without Lineage |
+|---|---|---|---|
+| 1 | Pixel parts (`rebalance_interrupts.mk`) not in AOSP 17 | our `hardware_google_pixel` fork | keep our fork |
+| 2 | folder names set only in `lineage_cheetah.mk` | exported in `build-run` | set them in `aosp_cheetah.mk` (device tree commit) |
+| 3 | kernel module lists (`pantah-kernels`) | Lineage's lists | Google's stock kernel and modules from the factory image |
+| 4 | 3 Google Rust blobs use a Lineage-only Soong module type | declared as plain prebuilts | carry Lineage's Soong change in our `build/soong`, or repackage the blobs |
+| 5 | `GoogleParts` (our gs201 tree) needs `org.lineageos.settings.resources` | missing modules allowed | drop GoogleParts or port its settings |
+| 6 | Google's thermal blob needs stats AIDL V3 frozen | Lineage's `frameworks/hardware/interfaces` | freeze V3 in our own fork |
+
+Next: `full` (`m -k droid`, hours) lists what fails to compile.
