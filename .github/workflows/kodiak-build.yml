@@ -215,7 +215,7 @@ on:
           release's OTA packages, full and incremental (query: the phone; upload; candidate).
           aosp-proto: the eos/aosp experiment only (ExpressiveOS on AOSP without LineageOS,
           cheetah, its own tree ~/eos-aosp): query status (read-only, the default), sync,
-          build or clean (expressiveos-cheetah/aosp/aosp-proto.sh; it refuses while any build runs).
+          build, round (sync then build) or clean (expressiveos-cheetah/aosp/aosp-proto.sh; it refuses while any build runs).
         type: choice
         default: expressiveos-status
         options:
@@ -994,7 +994,7 @@ jobs:
         if: inputs.action == 'aosp-proto'
         run: |
           q=${QUERY:-status}
-          [[ $q =~ ^(status|sync|build|clean)$ ]] || { echo "::error::aosp-proto's query is status, sync, build or clean"; exit 1; }
+          [[ $q =~ ^(status|sync|build|round|clean)$ ]] || { echo "::error::aosp-proto's query is status, sync, build, round or clean"; exit 1; }
           bash expressiveos-cheetah/aosp/aosp-proto.sh "$q"
 
       - name: Check out expressiveos-cheetah

@@ -6,6 +6,7 @@
 #   aosp-proto.sh status   read-only: session, logs' last lines, the tree's size, free disk
 #   aosp-proto.sh sync     repo init AOSP android-17.0.0_r1 (depth 1) + eos-aosp-cheetah.xml, repo sync
 #   aosp-proto.sh build    lunch aosp_cheetah, then m -k droid: the log of what fails is the result
+#   aosp-proto.sh round    sync, then build if it ended SYNC=OK (one round, one dispatch)
 #   aosp-proto.sh clean    remove ~/eos-aosp and the copied scripts (nothing stays on the server)
 #
 # sync and build run in tmux and return at once; status shows how they go. They refuse while an
@@ -51,6 +52,7 @@ status)
     done ;;
 sync)  start sync ;;
 build) start build ;;
+round) start round ;;
 clean)
     if why=$(busy); then fail "not cleaning: $why"; fi
     before=$(free_gb)
@@ -72,7 +74,7 @@ sync-run)
 
 build-run)
     echo "BUILD start $(TZ=America/New_York date)"
-    grep -qs '^SYNC=OK' $(ls -t "$jobs"/sync-*.log 2>/dev/null | head -1) /dev/null \
+    grep -qs '^SYNC=OK' $(ls -t "$jobs"/sync-*.log "$jobs"/round-*.log 2>/dev/null | head -1) /dev/null \
         || { echo "BUILD=FAIL no sync ended SYNC=OK"; exit 1; }
     cd "$top"
     export USE_CCACHE=0   # its own tree: keep the release tree's ccache as it is
@@ -91,5 +93,7 @@ build-run)
     if m -k droid; then echo "BUILD=OK $(TZ=America/New_York date)"
     else echo "== errors"; grep -E '^(FAILED|error:)|error: ' out/error.log 2>/dev/null | head -100 || true
          echo "BUILD=FAIL m $(TZ=America/New_York date)"; exit 1; fi ;;
-*) fail "usage: aosp-proto.sh status|sync|build|clean" ;;
+round-run)
+    bash "$kitc/aosp-proto.sh" sync-run && bash "$kitc/aosp-proto.sh" build-run ;;
+*) fail "usage: aosp-proto.sh status|sync|build|round|clean" ;;
 esac
