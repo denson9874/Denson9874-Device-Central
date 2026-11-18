@@ -94,8 +94,13 @@ build-run)
         # Each make error's own lines, so the next round's fix can be read off this log
         lunch aosp_cheetah-trunk_staging-userdebug 2>&1 | grep -oE '^[A-Za-z0-9_./-]+\.mk:[0-9]+: error' | sort -u |
         while IFS=: read -r f n _; do
-            echo "== $f around line $n"; [[ -f $f ]] && sed -n "$(( n > 15 ? n - 15 : 1 )),$(( n + 5 ))p" "$f" | cat -n
+            echo "== $f, lines 1-$(( n + 5 ))"; [[ -f $f ]] && sed -n "1,$(( n + 5 ))p" "$f" | cat -n
         done
+        # Where the device trees set the folder variables a Lineage-style tree uses
+        echo "== DEVICE_PATH / DEVICE_CODENAME / VENDOR_PATH set in device/google and vendor/google"
+        grep -rnE '^\s*(DEVICE_PATH|DEVICE_CODENAME|VENDOR_PATH|COMMON_PATH)\s*[:?]?=' device/google vendor/google 2>/dev/null | head -30
+        echo "== products the cheetah trees define"
+        grep -rlE 'PRODUCT_NAME\s*:?=' device/google/pantah 2>/dev/null | head; grep -rhE 'PRODUCT_MAKEFILES|COMMON_LUNCH' device/google/pantah/AndroidProducts.mk 2>/dev/null
         echo "BUILD=FAIL lunch (the errors above are the device side's first list)"; exit 1
     fi
     echo "== m -k droid ($ok): keeps going past errors to list as many as it can"
