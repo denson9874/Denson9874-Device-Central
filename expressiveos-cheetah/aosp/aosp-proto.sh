@@ -80,6 +80,9 @@ build-run)
         || { echo "BUILD=FAIL no sync ended SYNC=OK"; exit 1; }
     cd "$top"
     export USE_CCACHE=0   # its own tree: keep the release tree's ccache as it is
+    # Round 3: the cheetah trees set these only in lineage_cheetah.mk:11-13, and BoardConfig.mk:22
+    # includes $(DEVICE_PATH)/BoardConfigCommon.mk; aosp_cheetah.mk leaves them empty
+    export DEVICE_CODENAME=cheetah DEVICE_PATH=device/google/pantah VENDOR_PATH=vendor/google/cheetah
     source build/envsetup.sh
     echo "== lunch choices the cheetah trees offer"
     grep -hs -A8 COMMON_LUNCH_CHOICES device/google/pantah/AndroidProducts.mk || echo "(no AndroidProducts.mk lunch choices)"

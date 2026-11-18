@@ -98,3 +98,11 @@ With our `hardware_google_pixel` fork added (AOSP 17 has no `hardware/google/pix
 product config passes. The board config stops next:
 `device/google/pantah/cheetah/BoardConfig.mk:22: error: /BoardConfigCommon.mk: No such file or directory`
 (a path whose folder variable is empty without Lineage). The kernel folder is still missing too.
+
+## Round 3 (2026-11-18, measured)
+
+`DEVICE_CODENAME`, `DEVICE_PATH` and `VENDOR_PATH` are set only in
+`device/google/pantah/lineage_cheetah.mk:11-13` (and `lineage_panther.mk`); `aosp_cheetah.mk`
+doesn't set them. The cheetah BoardConfig carries LineageOS and Calyx copyright lines: our device
+tree itself is Lineage/Calyx-shaped, not Google's. Next try (inferred): `build-run` exports the
+three names before lunch.
