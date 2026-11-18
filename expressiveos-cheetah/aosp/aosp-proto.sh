@@ -180,8 +180,13 @@ kernel-run)
             || "$hb/lpunpack" -p vendor_dlkm -p system_dlkm img/super.raw img/ || { echo "KERNEL=FAIL lpunpack"; exit 1; }
         rm img/super.raw
     fi
+    # The server has no file(1) (measured 11-18): tell image types by their magic numbers
+    fstype() { local m; m=$(od -An -tx1 -N4 "$1" | tr -d ' \n'); [[ $m == 3aff26ed ]] && { echo sparse; return; }
+        m=$(od -An -tx1 -j1080 -N2 "$1" | tr -d ' \n'); [[ $m == 53ef ]] && { echo ext4; return; }
+        m=$(od -An -tx1 -j1024 -N4 "$1" | tr -d ' \n'); [[ $m == e2e1f5e0 ]] && { echo erofs; return; }
+        echo unknown; }
     # A dlkm image may be sparse: make it raw before reading it
-    for f in img/*dlkm*.img; do if file -b "$f" | grep -qi sparse; then "$hb/simg2img" "$f" "$f.raw" && mv "$f.raw" "$f"; fi; done
+    for f in img/*dlkm*.img; do if [[ $(fstype "$f") == sparse ]]; then "$hb/simg2img" "$f" "$f.raw" && mv "$f.raw" "$f"; fi; done
     ls -la img
     python3 "$top/system/tools/mkbootimg/unpack_bootimg.py" --boot_img img/vendor_kernel_boot.img --out vkb >/dev/null \
         || { echo "KERNEL=FAIL unpack vendor_kernel_boot"; exit 1; }
@@ -189,9 +194,13 @@ kernel-run)
     for r in vkb/vendor_ramdisk*; do "$lz4" -dc "$r" 2>/dev/null | (cd ex/vkb && cpio -idm --quiet) || true; done
     for p in vendor_dlkm system_dlkm; do
         f=$(ls img/${p}*.img | head -1)
-        if file -b "$f" | grep -qi ext; then debugfs -R "rdump / $w/ex/$p" "$f" >/dev/null 2>&1
-        else "$hb/fsck.erofs" --extract="$w/ex/$p" "$f" >/dev/null; fi
-        echo "== $p ($(file -b "$f" | cut -c1-40)): $(find ex/$p -name '*.ko' | wc -l) modules"
+        t=$(fstype "$f")
+        case $t in
+        ext4)  debugfs -R "rdump / $w/ex/$p" "$f" >/dev/null 2>&1 || { echo "KERNEL=FAIL debugfs $f"; exit 1; } ;;
+        erofs) "$hb/fsck.erofs" --extract="$w/ex/$p" "$f" >/dev/null || { echo "KERNEL=FAIL fsck.erofs $f"; exit 1; } ;;
+        *)     echo "KERNEL=FAIL $f: unknown image type ($(od -An -tx1 -N16 "$f"))"; exit 1 ;;
+        esac
+        echo "== $p ($t): $(find ex/$p -name '*.ko' | wc -l) modules"
     done
     echo "== vendor_kernel_boot: $(find ex/vkb -name '*.ko' | wc -l) modules"
     # Into the kernel folder: Google's files over Lineage's lists (sync-run puts Lineage's back)
