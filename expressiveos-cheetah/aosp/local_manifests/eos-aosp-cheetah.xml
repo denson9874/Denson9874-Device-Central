@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ExpressiveOS on AOSP, cheetah only: an EXPERIMENT on branch eos/aosp (Daryl, 2026-11-18).
+     Never used by the kit's builds, releases or setup.sh (they read eos.conf's manifest).
+
+     Use in its own tree, never in ~/expressiveos (the commands are in README.md, "Step 2";
+     an XML comment can't hold the double dash of their options).
+
+     The base is Google's own platform manifest at the tag our Lineage tree is built on
+     (android-17.0.0_r1, see ../../sources/eos-1.0-base/manifest.xml), with no LineageOS
+     project at all. On top of it, step 1 adds only what a Pixel 7 Pro build needs and AOSP
+     no longer carries (Google stopped shipping Pixel device trees in AOSP in 2025): the
+     cheetah device trees and blobs from ExpressiveOS's own forks. These forks are
+     Lineage-based today, so step 1 is expected to fail at lunch: that failure list is the
+     first measurement (README.md, "Step 2"). ExpressiveOS's apps and Google apps join
+     one at a time in step 3, each with what it breaks. -->
+<manifest>
+  <remote name="eos" fetch="https://github.com/ExpressiveOS" revision="refs/heads/expressiveos" />
+
+  <!-- cheetah: device trees and blobs (cheetah.xml lists the same four in 1.0) -->
+  <project path="device/google/pantah" name="device_google_pantah" remote="eos" />
+  <project path="device/google/gs201" name="device_google_gs201" remote="eos" />
+  <project path="vendor/google/cheetah" name="vendor_google_cheetah" remote="eos" clone-depth="1" />
+  <!-- Not carried on purpose in step 1:
+       device/google/pantah-kernels (LineageOS): the prototype boots Google's own stock kernel
+         and modules from the factory image instead of building gs-6.1 from Lineage's manifest;
+       device/google/gs-common: not checked yet whether our manifest carries it as a fork;
+         add it here if lunch asks for it (README.md, "Step 2"). -->
+</manifest>
