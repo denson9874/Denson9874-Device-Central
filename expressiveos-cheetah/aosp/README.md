@@ -191,3 +191,12 @@ module with Google's own load lists. Result `KERNEL=OK`: 204 modules in vendor_k
 loaded from vendor_dlkm (328 there), 59 in system_dlkm, and every listed module present
 (`kernel-20261118-1810.log`). CP4A ships the dlkm partitions as their own ext4 images, not
 inside `super.img`. Next: `full` (`m -k droid`).
+
+## Full compile (2026-11-18, measured)
+
+- 6:25 PM ET: stopped at scheduling, `device/google/pantah-kernels/6.1/dtbo.img` missing (the gs201
+  board config takes a prebuilt dtbo). The kernel step now also copies Google's `dtbo.img` and
+  writes an empty `vendor_dlkm.modules.blocklist` when Google ships none (7fe035a); re-run
+  6:30 PM ET: `KERNEL=OK`.
+- 6:37 PM ET: `full` started. 6:45 PM ET: past scheduling and compiling, `[4% 9216/226918]`
+  (run 745). First AOSP-without-Lineage compile of real sources; result to follow.
