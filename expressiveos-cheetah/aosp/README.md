@@ -211,3 +211,24 @@ inside `super.img`. Next: `full` (`m -k droid`).
   | `check_vintf_compatible` | inferred: follows from the touch HAL manifest | re-check after the touch HAL goes |
 
   Everything else in AOSP plus our cheetah trees compiled.
+
+## Rounds 11-13: the first complete AOSP-only image (2026-11-18, measured)
+
+Daryl: "Keep going" 9:40 PM ET. Each round reuses the build before it (4 minutes each).
+
+- Round 11 (10:11 PM ET): the sepolicy steps stopped at `pixel_bugreport`, a macro from
+  hardware/google/pixel-sepolicy, which AOSP r1 doesn't carry. Stand-in: Lineage's copy at 1.0's
+  commit (manifest). Also left out the Lineage touch HAL and GoogleParts (`standins()` in
+  aosp-proto.sh). The touch HAL, GoogleParts and the vintf check passed after that.
+- Round 12 (10:39 PM ET): `unknown type hal_lineage_health_default`, then
+  `hal_lineage_powershare_default` (pixel-sepolicy dirs for Lineage-only HALs). Stand-in: leave
+  out the Lineage health HAL (charge limit) and powershare (battery share) includes too.
+- Round 13 (10:46 PM ET): `BUILD=OK (droid)`, run 760, `build completed successfully`.
+  `out/target/product/cheetah` holds system.img, vbmeta.img, vbmeta_system.img,
+  vendor_kernel_boot.img, init_boot.img and dtbo.img. Not flashed, not booted.
+
+What the image lacks against ExpressiveOS today (all stand-ins, listed so a real port can plan):
+Lineage's touch HAL (gestures and glove mode), charge limit (Limit to 80%), battery share,
+GoogleParts, and every ExpressiveOS app (step 3 never started). Google's kernel and modules are the
+CP4A factory ones; pixel-sepolicy, frameworks/hardware/interfaces and the pantah module lists
+are still Lineage's copies.
