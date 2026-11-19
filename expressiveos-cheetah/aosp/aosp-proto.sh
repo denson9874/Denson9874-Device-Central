@@ -53,7 +53,10 @@ import re, sys
 p = sys.argv[1]; s = open(p).read()
 s, a = re.subn(r"(?m)^include hardware/google/pixel/touch/device\.mk\n", "", s)
 s, b = re.subn(r"(?m)^[ \t]+GoogleParts[ \t]*\n", "", s)
-open(p, "w").write(s); print(f"== stand-in: gs201 common.mk without the Lineage touch HAL ({a}) and GoogleParts ({b})")
+# Round 12: and Lineage's health HAL (charge limit): its sepolicy dir in pixel-sepolicy names
+# hal_lineage_health_default, a type only Lineage's device/lineage/sepolicy declares
+s, c = re.subn(r"(?m)^include hardware/google/pixel/lineage_health/device\.mk\n", "", s)
+open(p, "w").write(s); print(f"== stand-in: gs201 common.mk without the Lineage touch HAL ({a}), GoogleParts ({b}) and Lineage health HAL ({c})")
 PY
 }
 
