@@ -4,8 +4,8 @@
 #   1. fetch-v4a.sh: the pinned app APK and both driver libraries (and the AIDL config), verified;
 #   2. stage them with tree/ into vendor/extra/viper4android (Android.bp and Android.mk removed
 #      first and written last, so the build never sees them without their files);
-#   3. vendor/extra/product.mk inherits viper4android.mk (Evolution X's vendor_evolution,
-#      checked out at vendor/lineage, has config/common.mk inherit vendor/extra/product.mk);
+#   3. vendor/extra/product.mk inherits viper4android.mk (vendor/expressiveos/config/common.mk
+#      inherits vendor/extra/product.mk);
 #   4. patches/frameworks_av/*.patch in frameworks/av (lib.sh's am_patches: commits of
 #      ExpressiveOS's frameworks_av fork already, else local commits by git am --3way);
 #   5. tools/v4a-check.sh tree: the pre-build guards.
@@ -136,7 +136,7 @@ elif [[ -f "$pm" ]]; then
     echo "added to vendor/extra/product.mk: $line"
 else
     printf '%s\n' \
-        "# ExpressiveOS additions. vendor/lineage/config/common.mk inherits this file when it exists." \
+        "# ExpressiveOS additions. vendor/expressiveos/config/common.mk inherits this file when it exists." \
         "# Not a repo project, so repo sync leaves it alone." \
         "" \
         "# ViPER4Android RE (expressiveos-cheetah/viper4android)" \

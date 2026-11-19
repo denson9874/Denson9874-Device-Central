@@ -15,12 +15,12 @@
 #      .device-ok stay
 #   3  the build output of grizzly, cubs and yogi: out/target/product/<phone> and each
 #      product's own files in out/ and out/soong (Kati's and Soong's ninja files,
-#      raw-lineage_<phone>/ ...). Each phone's next build starts its product over; the shared
+#      raw-eos_<phone>/ ...). Each phone's next build starts its product over; the shared
 #      build output and ccache stay. husky's stays between releases (Daryl, 2026-11-08), and
 #      kodiak's stays for its ViPER4Android test build, which comes next
 #   4  the 1.1.1 target-files of all six phones: the 1.1.2 incrementals are built and on R2,
 #      1.1.2's target-files are the next delta's base, and Drive keeps 1.1.1's
-# Kept, whatever the groups say: cheetah's, husky's and kodiak's build output, out-kernel, the
+# Kept, whatever the groups say: cheetah's, husky's and kodiak's build output, the
 # ExpressiveOS records (out/eos*), the firmware the pack scripts read, each phone's newest
 # release target-files (the next delta's base), every .device-ok record, ccache's cache.
 # Exact paths only (built from the fixed phone and release names below, never a glob), and
@@ -66,7 +66,7 @@ for d in "${ALL[@]}"; do
     g4+=("$t" "$t.uploaded")
 done
 for d in "${DONE[@]}"; do
-    P=lineage_$d
+    P=eos_$d
     g3+=("$X/target/product/$d/")
     for f in "build-$P-cleanspec.ninja" "build-$P.ninja" "build-$P-package.ninja" "combined-$P.ninja" \
              "env-$P-cleanspec.sh" "env-$P-package.sh" "env-$P.sh" \
@@ -86,9 +86,8 @@ done
 keep=(
     # The firmware the pack scripts and fetch-firmware.sh read
     android-dt/firmware/
-    # The test builds: cheetah's build output; husky's and kodiak's (see group 3); the kernel build
+    # The test builds: cheetah's build output; husky's and kodiak's (see group 3)
     "$X/target/product/cheetah/" "$X/target/product/husky/" "$X/target/product/kodiak/"
-    expressiveos/out-kernel/
     # The ExpressiveOS records, and ccache's cache
     "$X/eos/"
     .ccache/
@@ -181,12 +180,9 @@ for n in "${chosen[@]}"; do
 done
 
 if [[ "$mode" = delete ]]; then
-    # Held to the end: no routine or build starts while files go. The tree lock is
-    # ~/.expressiveos-tree.lock since 1.1; through 1.1 the kit holds its old name too
+    # Held to the end: no routine or build starts while files go.
     exec 9>"$home/.expressiveos-tree.lock"
     flock -n 9 || fail "the tree lock is held (a build is running); run delete again later (nothing was removed)"
-    exec 7>"$home/.evolution-tree.lock"
-    flock -n 7 || fail "the tree lock's old name, ~/.evolution-tree.lock, is held (a build of an older kit is running); run delete again later (nothing was removed)"
     exec 8>"$home/.expressiveos.lock"
     flock -n 8 || fail "ExpressiveOS's lock is held (a build, pack or kit script is running); run delete again later (nothing was removed)"
 fi

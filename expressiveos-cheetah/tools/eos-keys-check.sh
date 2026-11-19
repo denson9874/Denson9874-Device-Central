@@ -13,9 +13,7 @@
 #                                          quick build, EOS_QUICK=1: images only)
 #   eos-keys-check.sh vbmeta <img> [top]   one image's AVB signer is the tree's key
 #
-# The key folder is vendor/expressiveos-priv/keys since 1.1 (tools/eos-keys-move.sh moves it
-# there), vendor/evolution-priv/keys before: the new one whenever it's in the tree, the old one
-# only while it isn't (lib.sh's eos_priv; the tree check says which it found).
+# The key folder is exclusively vendor/expressiveos-priv/keys (lib.sh's eos_priv).
 # Evolution X's and DerpFest's keys are read from evo-retire keep's copy in ~/retired (their
 # trees were deleted on 2026-11-02; eos.conf's EVO_* pins count either way).
 # Pins: once the keys exist and are backed up, eos.conf's EOS_AVB_PUBKEY_SHA1 and
@@ -167,17 +165,14 @@ signed_by_us() {   # signed_by_us <image> <label>
 
 case "$mode" in
 tree)
-    # Which key folder: the new name, or the old one while the new one isn't there
-    if [[ $priv = "$EOS_PRIV_NEW" && ( -e $top/$EOS_PRIV_NEW || -L $top/$EOS_PRIV_NEW ) ]]; then
-        echo "OK: the key folder is $priv (1.1's name)"
-    elif [[ $priv = "$EOS_PRIV_OLD" ]]; then
-        echo "note: the key folder is $priv, its name before 1.1: $EOS_PRIV_NEW isn't in the tree (tools/eos-keys-move.sh move puts it there; a 1.1 build reads only the new one)"
+    if [[ -e $top/$EOS_PRIV_NEW || -L $top/$EOS_PRIV_NEW ]]; then
+        echo "OK: the key folder is $priv"
     fi
-    if [[ $priv = "$EOS_PRIV_NEW" ]] && [[ -e $top/$EOS_PRIV_OLD || -L $top/$EOS_PRIV_OLD ]]; then
-        echo "WARNING: $EOS_PRIV_OLD is in the tree too: the keys are moved, never copied, so one of the two is a leftover. This check and the build use $priv; check the other with tools/eos-keys-move.sh check before anything removes it"
+    if [[ -e $top/vendor/evolution-priv || -L $top/vendor/evolution-priv ]]; then
+        fail "legacy vendor/evolution-priv is present in the tree: remove it (EOS 2.0 uses $priv exclusively)"
     fi
     in_top "$top/$priv"
-    [[ ! -L $top/$priv ]] || fail "$priv is a symlink: the key folder is the tree's own, moved (tools/eos-keys-move.sh), never linked"
+    [[ ! -L $top/$priv ]] || fail "$priv is a symlink: the key folder is the tree's own, never linked"
     in_top "$keys"
     [[ -d "$keys" && ! -L "$keys" ]] \
         || fail "no $rel folder of the tree's own: restore ExpressiveOS's keys from the backup, never make new ones (README.md, \"Keys\"). Without it the build signs with the AOSP test keys"
@@ -187,14 +182,12 @@ tree)
     [[ -z "$hard" ]] || fail "$rel holds hard-linked files ($(oneline "$hard")): shared with another tree's keys?"
     mk=$keys/keys.mk
     [[ -f "$mk" && ! -L "$mk" ]] || fail "no $rel/keys.mk of the tree's own: the build would use the AOSP test keys"
-    # keys.mk names its own folder: tools/eos-keys-move.sh rewrites these two paths as it moves it
     for line in "AVB_CUSTOM_KEY_PATH := $rel/avb.pk8" \
                 'AVB_CUSTOM_ALGORITHM := SHA256_RSA4096' \
                 "PRODUCT_DEFAULT_DEV_CERTIFICATE := $rel/testkey"; do
-        grep -qxF -- "$line" "$mk" || fail "$rel/keys.mk lacks the line '$line' (the template's, with the folder it's in: a move that didn't rewrite keys.mk? tools/eos-keys-move.sh check)"
+        grep -qxF -- "$line" "$mk" || fail "$rel/keys.mk lacks the line '$line'"
     done
-    if [[ $priv = "$EOS_PRIV_NEW" ]]; then other=$EOS_PRIV_OLD; else other=$EOS_PRIV_NEW; fi
-    ! grep -qF -- "$other/" "$mk" || fail "$rel/keys.mk still names $other/ (lines $(grep -nF -- "$other/" "$mk" | cut -d: -f1 | paste -sd, -)): the key folder is $priv now (tools/eos-keys-move.sh rewrites every such path)"
+    ! grep -qF -- "vendor/evolution-priv/" "$mk" || fail "$rel/keys.mk still names vendor/evolution-priv/ (lines $(grep -nF -- "vendor/evolution-priv/" "$mk" | cut -d: -f1 | paste -sd, -)): the key folder is $priv"
     # A key pair for every AOSP key name and every certificate override keys.mk names
     names=$( { for f in "$top"/build/make/target/product/security/*.pk8; do basename "$f" .pk8; done
                { grep -o ':[A-Za-z0-9_.]*certificate\.override' "$mk" || true; } | cut -c2-; } | sort -u)
@@ -249,10 +242,9 @@ vars)
         v=$(var_of "$vars" "$1")
         [[ "$v" = "$2" ]] || fail "$1 is '${v:-unset}', want '$2'${3:+ ($3)}"
     }
-    check_var PRODUCT_DEFAULT_DEV_CERTIFICATE "$rel/testkey" "$rel/keys.mk isn't read: is the build type Official (EXPRESSIVE_BUILD_TYPE, EVO_BUILD_TYPE), and does the tree's vendor/lineage include this folder's keys.mk (1.1's reads $EOS_PRIV_NEW, 1.0's $EOS_PRIV_OLD)?"
-    # build/make tags builds whose certificate is under vendor/expressiveos-priv/ (and, through
-    # 1.1, vendor/evolution-priv/) release-keys (core/config.mk); test-keys means the AOSP test
-    # keys, and dev-keys a key folder build/make doesn't know
+    check_var PRODUCT_DEFAULT_DEV_CERTIFICATE "$rel/testkey" "$rel/keys.mk isn't read: is EXPRESSIVE_BUILD_TYPE=Official, and does vendor/expressiveos include $rel/keys.mk?"
+    # build/make tags builds whose certificate is under vendor/expressiveos-priv/ release-keys
+    # (core/config.mk); test-keys means AOSP test keys, dev-keys an unknown folder
     check_var BUILD_KEYS release-keys
     check_var BOARD_AVB_ALGORITHM SHA256_RSA4096
     for v in BOARD_AVB_KEY_PATH BOARD_AVB_BOOT_KEY_PATH BOARD_AVB_INIT_BOOT_KEY_PATH \
@@ -283,15 +275,8 @@ out|vbmeta)
         O=$top/$EOS_PRODUCT_OUT
         [[ -d "$O" ]] || fail "no $O: build first"
         # Recovery and the Updater only take packages signed by a certificate in otacerts.
-        # Evolution X's config/common.mk adds LineageOS's release certificate to recovery's
-        # (PRODUCT_EXTRA_RECOVERY_KEYS), so recovery also sideloads official LineageOS
-        # packages, as on Evolution X. That one certificate, as this tree has it, is allowed
-        # in recovery's otacerts and nowhere else
-        lineage='' lf=vendor/lineage/build/target/product/security/lineage.x509.pem
-        if [[ -f "$top/$lf" ]]; then
-            lineage=$(cert_fp "$top/$lf") || fail "can't read $lf"
-            w=$(whose certs "$lineage"); [[ -z "$w" ]] || fail "$lf is $w"
-        fi
+        # In EOS 2.0 (pure AOSP), EVERY otacerts.zip — including recovery's — trusts ONLY
+        # ExpressiveOS's OTA certificate (EOS_OTA_CERT_SHA256) and zero third-party keys.
         n=0
         for z in "$O"/{system,system_ext,product,vendor}/etc/security/otacerts.zip "$O"/recovery/root/system/etc/security/otacerts.zip; do
             [[ -f "$z" ]] || continue
@@ -304,18 +289,16 @@ out|vbmeta)
                 fp=$(cert_fp "$c") || fail "${z#"$O"/} holds ${c##*/}, which isn't a certificate"
                 if [[ "$fp" = "$ota" ]]; then
                     mine=1
-                elif [[ "$z" = "$O"/recovery/* && -n "$lineage" && "$fp" = "$lineage" ]]; then
-                    echo "note: ${z#"$O"/} also trusts LineageOS's release certificate ($lf, recovery PRODUCT_EXTRA_RECOVERY_KEYS)"
                 else
-                    w=$(whose certs "$fp"); [[ "$fp" != "$lineage" ]] || w="LineageOS's release certificate, allowed in recovery's only"
-                    fail "${z#"$O"/} trusts ${c##*/} (${w:+$w, }${fp:0:16}...), not only ExpressiveOS's OTA certificate"
+                    w=$(whose certs "$fp")
+                    fail "${z#"$O"/} trusts ${c##*/} (${w:+$w, }${fp:0:16}...), not exclusively ExpressiveOS's OTA certificate"
                 fi
             done
             (( mine )) || fail "${z#"$O"/} doesn't trust ExpressiveOS's OTA certificate"
             n=$((n + 1))
         done
         [[ -f "$O/system/etc/security/otacerts.zip" ]] || fail "no system/etc/security/otacerts.zip in $O"
-        echo "OK: $n otacerts.zip trust ExpressiveOS's OTA certificate and no other key (LineageOS's aside, recovery only)"
+        echo "OK: $n otacerts.zip trust exclusively ExpressiveOS's OTA certificate (EOS_OTA_CERT_SHA256) and zero other keys"
         # update_engine's older payload key, where a build still installs it
         pk() { openssl pkey -pubin -in "$1" -outform DER 2>/dev/null | sha256sum | cut -d' ' -f1; }
         openssl x509 -in "$keys/testkey.x509.pem" -noout -pubkey > "$work/ota.pub" || fail "can't read $rel/testkey.x509.pem's public key"
@@ -338,14 +321,14 @@ out|vbmeta)
             [[ -f "$O/$i.img" ]] || fail "vbmeta.img chains $i, but there's no $i.img in $O"
             signed_by_us "$O/$i.img" "$i.img (chained)"
         done < <(sort -u "$work/chained" | grep -vxE 'vbmeta|vbmeta_system|vbmeta_vendor|boot|init_boot' || true)
-        # The OTA package the last full build made (m bacon), named by patches/vendor_lineage/0001. A quick
+        # The OTA package the last full build made (m eos), named by vendor/expressiveos/config/version.mk. A quick
         # build (EOS_QUICK=1, lib.sh) makes none, and nothing of it is ever released
         pkg=$(find "$O" -maxdepth 1 -name 'ExpressiveOS-*.zip' ! -name '*-fastboot.zip' -printf '%T@ %p\n' | sort -n | tail -1 | cut -d' ' -f2-)
         if [[ $EOS_QUICK = 1 ]]; then
             [[ -z "$pkg" ]] || fail "${pkg##*/} is in $O, but this is a quick build (EOS_QUICK=1), which makes no OTA package"
             echo "note: a quick build (EOS_QUICK=1) has no OTA package: no package certificate to check"
         else
-            [[ -n "$pkg" ]] || fail "no ExpressiveOS-*.zip OTA package in $O (no full build, m bacon, run, or the version patch missing)"
+            [[ -n "$pkg" ]] || fail "no ExpressiveOS-*.zip OTA package in $O (no full build, m eos, run, or version.mk missing)"
             unzip -p "$pkg" META-INF/com/android/otacert > "$work/otacert" 2>/dev/null || fail "${pkg##*/} has no META-INF/com/android/otacert"
             fp=$(cert_fp "$work/otacert") || fail "${pkg##*/}'s otacert isn't a certificate"
             [[ "$fp" = "$ota" ]] || fail "${pkg##*/} is signed by certificate ${fp:0:16}... ($(whose certs "$fp"; true)), not ExpressiveOS's OTA key"

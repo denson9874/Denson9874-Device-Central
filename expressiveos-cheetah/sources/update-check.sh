@@ -1,21 +1,14 @@
 #!/usr/bin/env bash
-# ExpressiveOS's monthly update, checked (update.py check): what LineageOS has added since the
-# sources ExpressiveOS's manifest pins (and through it Google's AOSP tags and the monthly
-# security patches), and whether ExpressiveOS's forks of LineageOS's repos would take it
-# cleanly. A dry run: it changes nothing in the tree, makes no commit and pushes nothing.
-# update.py fetches and merges in scratch repos in the work folder, which borrow the tree's git
-# objects (git alternates: read, never written), so only the new commits are downloaded.
-# It holds ~/.expressiveos.lock while it runs: setup.sh can't sync under it, and a build waits.
+# ExpressiveOS 2.0's monthly AOSP ASB update check (update-aosp.py check): dry-run check of
+# new android-security-17.0.0_r* commits against EOS 2.0's pure-AOSP manifest. Changes nothing
+# in the tree, makes no commit and pushes nothing.
+# Holds ~/.expressiveos.lock while it runs: setup.sh can't sync under it, and a build waits.
 #
 #   update-check.sh [top]       # default ~/expressiveos
 #
-#   EOS_UPDATE_WORK=<dir>   the work folder (default ~/expressiveos-update): the scratch repos and
-#                           reports/update-check-<time>.txt. Shared with update.sh, whose plan and
-#                           push keep an update there until its pull request is merged and its
-#                           kernel.xml committed; safe to delete when no update is under way
-#   EOS_UPDATE_JOBS=<n>     projects checked at once (default 6)
+#   EOS_UPDATE_WORK=<dir>   the work folder (default ~/expressiveos-update), shared with update.sh
 set -euo pipefail
-# A stop before update.py runs still ends with UPDATE_CHECK=FAILED (update.py prints its own)
+# A stop before update-aosp.py runs still ends with UPDATE_CHECK=FAILED (update-aosp.py prints its own)
 st=UPDATE_CHECK=FAILED why=
 trap 'e=$?; [[ $e -eq 0 || -z $st ]] || echo "$st (stopped: ${why:-see the FAIL line})"' EXIT
 # shellcheck source=../lib.sh
@@ -38,4 +31,4 @@ fi
 mf=$(tree_manifest) || exit 1
 mkdir -p -- "$r"
 st=
-python3 -I "$kit/sources/update.py" check --top "$top" --manifest "$mf" --work "$r"
+python3 -I "$kit/sources/update-aosp.py" check --top "$top" --manifest "$mf" --work "$r"

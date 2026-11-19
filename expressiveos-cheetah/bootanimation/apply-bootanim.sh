@@ -4,12 +4,11 @@
 #   1. check bootanimation.zip and bootanimation_holiday.zip against bootanim.conf;
 #   2. stage them, expressiveos-bootanim-hint.rc and bootanimation.mk into
 #      vendor/extra/bootanimation;
-#   3. vendor/extra/product.mk inherits bootanimation.mk (Evolution X's vendor_evolution,
-#      checked out at vendor/lineage, has config/common.mk inherit vendor/extra/product.mk),
-#      which sets TARGET_BOOTANIMATION for ExpressiveOS's lineage_<device> products and
-#      installs the holiday zip and its init rc.
-# Before that, the phone's lineage_<device>.mk (EOS_DEVICE, cheetah unless set) mustn't turn
-# Evolution X's other styles on, and frameworks/base and device/lineage/sepolicy must let
+#   3. vendor/extra/product.mk inherits bootanimation.mk (vendor/expressiveos/config/common.mk
+#      inherits vendor/extra/product.mk), which sets TARGET_BOOTANIMATION for ExpressiveOS's
+#      eos_<device> products and installs the holiday zip and its init rc.
+# Before that, the phone's eos_<device>.mk (EOS_DEVICE, cheetah unless set) mustn't turn
+# extra boot animation styles on, and frameworks/base and vendor/expressiveos/sepolicy must let
 # bootanim read the holiday zip's /metadata hint. Notes, without failing, when the hint looks
 # unneeded (README.md, "Holiday boot animations").
 # Nothing is written through a symlink that leads out of the tree.
@@ -28,23 +27,19 @@ arg=${1:-$HOME/expressiveos}
 [[ -d "$arg" ]] || fail "no tree at $arg"
 top="$(cd "$arg" && pwd -P)"
 [[ -f "$top/build/envsetup.sh" ]] || fail "$top isn't an Android tree (no build/envsetup.sh)"
-bmk="$top/vendor/lineage/bootanimation/Android.mk"
+bmk="$top/vendor/expressiveos/bootanimation/Android.mk"
 grep -q 'TARGET_BOOTANIMATION' "$bmk" 2>/dev/null \
-    || fail "$bmk is missing or no longer reads TARGET_BOOTANIMATION; check how Evolution X installs its boot animation now"
-grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/lineage/config/common.mk" 2>/dev/null \
-    || fail "vendor/lineage/config/common.mk no longer inherits vendor/extra/product.mk: the boot animation would silently not ship"
-# Evolution X's 12 other styles (about 190 MiB) stay out of /product/media only while
-# TARGET_INCLUDE_BOOT_ANIMATIONS is false for this phone. Its lineage_<device>.mk sets that
-# (cheetah: ../patches/device_google_pantah/0010; husky: ../devices/husky/patches/
-# device_google_shusky/; the Pixel 11s: a commit on their own trees), and eos-images.sh
-# exports it as well. The export only wins over vendor/lineage's common.mk default (?= true),
-# never over a := true in the device tree (the Pixel 11 trees started with one), so that's
-# refused here, before hours of building
-read -r dev lmk vdir <<<"$(source "$here/../lib.sh" && printf '%s %s %s' "$EOS_DEVICE" "$EOS_DEVICE_TREE/lineage_$EOS_DEVICE.mk" "$EOS_VENDOR_DIR")"
+    || fail "$bmk is missing or no longer reads TARGET_BOOTANIMATION"
+grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/expressiveos/config/common.mk" 2>/dev/null \
+    || fail "vendor/expressiveos/config/common.mk no longer inherits vendor/extra/product.mk: the boot animation would silently not ship"
+# Extra boot animation styles stay out of /product/media only while
+# TARGET_INCLUDE_BOOT_ANIMATIONS is false for this phone. Its eos_<device>.mk sets that
+# and eos-images.sh exports it as well.
+read -r dev lmk vdir <<<"$(source "$here/../lib.sh" && printf '%s %s %s' "$EOS_DEVICE" "$EOS_DEVICE_TREE/eos_$EOS_DEVICE.mk" "$EOS_VENDOR_DIR")"
 [[ -n ${dev:-} && -n ${lmk:-} && -n ${vdir:-} ]] || fail "can't read this phone's device and vendor trees (lib.sh, devices/<device>.conf)"
 ib=$(sed -nE 's/^[[:space:]]*TARGET_INCLUDE_BOOT_ANIMATIONS[[:space:]]*:?=[[:space:]]*([^[:space:]#]*).*$/\1/p' -- "$top/$lmk" 2>/dev/null | tail -1 || true)
 [[ -z $ib || $ib = false ]] \
-    || fail "$lmk sets TARGET_INCLUDE_BOOT_ANIMATIONS to '$ib', which eos-images.sh's export can't override: Evolution X's 12 other styles (about 190 MiB) would ship for $dev. Set it to false there: a commit on that tree, or a patch in devices/$dev/patches (bootanimation/README.md)"
+    || fail "$lmk sets TARGET_INCLUDE_BOOT_ANIMATIONS to '$ib', which eos-images.sh's export can't override: extra boot animation styles would ship for $dev. Set it to false there"
 in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top
     local r
     r=$(realpath -m -- "$1") || fail "can't resolve $1"
@@ -80,14 +75,14 @@ late=$(find "$top/$vdir" -path '*/etc/init/hw/init.*.rc' -type f -exec awk '
 [[ -n $late ]] \
     || echo "note: no init rc in $vdir starts bootanim under 'on late-fs' (cheetah's init.gs201.rc did): check whether holiday boots still need the /metadata hint (README.md, \"Holiday boot animations\")"
 # But the hint does nothing unless frameworks/base's BootAnimation reads it and
-# device/lineage/sepolicy labels it for bootanim: without either, every holiday boot plays the
+# vendor/expressiveos/sepolicy labels it for bootanim: without either, every holiday boot plays the
 # everyday animation. eos-verify.sh fails such a build, so it's refused here, before hours of building
 grep -qF '/metadata/bootanim' "$top/frameworks/base/cmds/bootanimation/BootAnimation.cpp" 2>/dev/null \
     || fail "frameworks/base's BootAnimation.cpp doesn't read /metadata/bootanim: holiday boots would play the everyday animation (README.md, \"Holiday boot animations\")"
-grep -qF 'u:object_r:bootanim_metadata_file:s0' "$top/device/lineage/sepolicy/common/private/file_contexts" 2>/dev/null \
-    || fail "device/lineage/sepolicy's common/private/file_contexts doesn't label /metadata/bootanim bootanim_metadata_file: bootanim couldn't read the hint, so holiday boots would play the everyday animation (README.md, \"Holiday boot animations\")"
-grep -qF 'r_dir_file(bootanim, bootanim_metadata_file)' "$top/device/lineage/sepolicy/common/private/bootanim.te" 2>/dev/null \
-    || fail "device/lineage/sepolicy's common/private/bootanim.te doesn't let bootanim read bootanim_metadata_file: holiday boots would play the everyday animation (README.md, \"Holiday boot animations\")"
+grep -qF 'u:object_r:bootanim_metadata_file:s0' "$top/vendor/expressiveos/sepolicy/private/file_contexts" 2>/dev/null \
+    || fail "vendor/expressiveos/sepolicy/private/file_contexts doesn't label /metadata/bootanim bootanim_metadata_file: bootanim couldn't read the hint, so holiday boots would play the everyday animation (README.md, \"Holiday boot animations\")"
+grep -qF 'r_dir_file(bootanim, bootanim_metadata_file)' "$top/vendor/expressiveos/sepolicy/private/bootanim.te" 2>/dev/null \
+    || fail "vendor/expressiveos/sepolicy/private/bootanim.te doesn't let bootanim read bootanim_metadata_file: holiday boots would play the everyday animation (README.md, \"Holiday boot animations\")"
 
 # 2. Stage. The folder belongs to this kit: anything else in it goes.
 dest="$top/vendor/extra/bootanimation"
@@ -118,7 +113,7 @@ elif [[ -f "$pm" ]]; then
     echo "added to vendor/extra/product.mk: $line"
 else
     printf '%s\n' \
-        "# ExpressiveOS additions. vendor/lineage/config/common.mk inherits this file when it exists." \
+        "# ExpressiveOS additions. vendor/expressiveos/config/common.mk inherits this file when it exists." \
         "# Not a repo project, so repo sync leaves it alone." \
         "" \
         "# Boot animation (expressiveos-cheetah/bootanimation)" \

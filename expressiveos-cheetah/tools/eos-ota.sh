@@ -12,7 +12,7 @@
 #   eos-ota.sh --candidate   # an incremental from the feed's build to check/'s candidate, to
 #                            # try on a phone on that build before the release: into check/
 #                            # and R2's ota/test/, with a test feed of its own there that only
-#                            # a phone pointed at it reads (setprop evolution.updater.uri)
+#                            # a phone pointed at it reads (setprop expressiveos.updater.uri)
 #
 # Nothing here writes the feed itself (EOS_FEED_REPO's builds/<device>.json and
 # changelogs/<device>.txt): they go there as a pull request, and phones see the update once
@@ -103,17 +103,13 @@ rc2() { ~/bin/rclone "$@"; }
 T=$(mktemp -d "$HOME/.eos-ota.XXXXXX")
 H=out/host/linux-x86/bin
 for t in ota_from_target_files check_ota_package_signature delta_generator; do
-    [[ -x $H/$t ]] || fail "no $H/$t (a full build, m bacon, builds it)"
+    [[ -x $H/$t ]] || fail "no $H/$t (a full build, m eos, builds it)"
 done
 # signapk.jar signs the package with the tree's own JDK, as in the build (soong's PATH)
 jdk=$(find prebuilts/jdk -maxdepth 3 -path '*/linux-x86/bin' -type d 2>/dev/null | sort -V | tail -1) || true
 [[ -n $jdk && -x $jdk/java ]] || fail "no prebuilts/jdk/<jdk>/linux-x86/bin/java in the tree"
-# Signed with ExpressiveOS's own release key, the one eos.conf pins, as the build signs
-# the full package (eos-target-files.sh checks target-files names it), from the tree's key
-# folder: vendor/expressiveos-priv, or vendor/evolution-priv while that isn't there (lib.sh's
-# eos_priv; the same files either way)
+# Signed with ExpressiveOS's own release key in vendor/expressiveos-priv/keys
 key=$(eos_priv)/keys/testkey
-[[ $key = "$EOS_PRIV_NEW"/* ]] || echo "note: the release key is in $EOS_PRIV_OLD, the key folder's name before 1.1 ($EOS_PRIV_NEW isn't in the tree)"
 [[ -f $key.pk8 && -f $key.x509.pem ]] || fail "no $key.pk8 and $key.x509.pem in the tree"
 "$kit/tools/eos-keys-check.sh" tree "$top" > "$T/keys.log" 2>&1 || true
 [[ "$(tail -1 "$T/keys.log")" = KEYS_CHECK=OK ]] \
@@ -209,7 +205,6 @@ for f in META/misc_info.txt META/ab_partitions.txt SYSTEM/build.prop SYSTEM/etc/
 done
 ts=$(tfprop "$TF" ro.build.date.utc) incr=$(tfprop "$TF" ro.build.version.incremental)
 spl=$(tfprop "$TF" ro.build.version.security_patch) ver=$(tfprop "$TF" ro.expressiveos.build.version)
-[[ -n $ver ]] || ver=$(tfprop "$TF" ro.evolution.build.version)   # the name through 1.2
 [[ $ts =~ ^[0-9]+$ && -n $incr ]] || fail "${TF##*/} has no ro.build.date.utc or ro.build.version.incremental"
 # The release name is the build's, with -r<n> for a second release of the same day
 [[ $REL = "$ver" || $REL =~ ^"$ver"-r[0-9]+$ ]] || fail "${TF##*/} is $ver's build, not $REL's"
@@ -450,7 +445,7 @@ if [[ $mode = --candidate ]]; then
     echo "===== OTA_FEED test/$EOS_DEVICE.json"; cat -- "$tf"; echo "===== OTA_FEED_END"
     cat <<EOF
 To try it: a phone on $BASE (root), then the Updater's "check for updates":
-  adb shell "su -c 'setprop evolution.updater.uri $URL/test/$EOS_DEVICE.json'"
+  adb shell "su -c 'setprop expressiveos.updater.uri $URL/test/$EOS_DEVICE.json'"
 It should offer ${inc##*/} ($(stat -c %s -- "$inc") bytes). The setting goes away with the reboot into $REL.
 EOF
     echo "OTA_TEST $URL/test/$EOS_DEVICE.json"

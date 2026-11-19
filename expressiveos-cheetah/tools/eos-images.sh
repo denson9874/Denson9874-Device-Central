@@ -2,9 +2,8 @@
 # Build ExpressiveOS for a phone (EOS_DEVICE, cheetah unless set; devices/<device>.conf),
 # start to finish, in its own tree (setup.sh made it):
 #   1. prepare.sh: Git LFS files, the kit's tree patches, the phone's firmware;
-#   2. eos-keys-check.sh tree and vars: ExpressiveOS's own keys are in the tree's key folder
-#      (vendor/expressiveos-priv/keys; vendor/evolution-priv/keys before 1.1's move) and the
-#      build will sign with them, not with test keys or Evolution X's;
+#   2. eos-keys-check.sh tree and vars: ExpressiveOS's own keys are in vendor/expressiveos-priv/keys
+#      and the build will sign with them, not with test keys or Evolution X's;
 #   3. the kits: ksu/fetch-ksu.sh (checks what it downloaded before, fetches only what's new
 #      in ksu.conf) and apply-ksu.sh on a phone with EOS_KSU=wild (Wild Kernels),
 #      viper4android/apply-v4a.sh on one with EOS_V4A=1, aidl or aidl-overlay,
@@ -14,25 +13,20 @@
 #      in EOS_STATE (out/eos/ for cheetah, out/eos-<device>/ for the others: the tree's repo
 #      manifest -r, each patched project's upstream revision, the kit's commit, and the
 #      Google files that aren't in the manifest; eos-make.sh adds the kernel's);
-#   5. tools/eos-make.sh: lunch, build_kernel, kernelsu.ko, the two make passes (as
-#      many of them as the phone's EOS_KERNEL and EOS_KSU need);
+#   5. tools/eos-make.sh: lunch, Wild boot.img repack (EOS_KSU=wild), and the make pass;
 #   6. eos-verify.sh: the finished build, offline.
 # Only a run that gets through all six writes build.ok and target-files.ok there (the
 # sha256 of the OTA package and of the target-files zip kept with it), which eos-pack.sh needs.
 # A quick one (EOS_QUICK=1: the images only, m droid; lib.sh) writes quick.ok instead (the
 # sha256 of every file the fastboot zip takes from out/, and with EOS_KSU=wild the stock boot),
 # which eos-pack.sh packs as a quick candidate to test on a phone, never to release.
-# Holds ~/.expressiveos.lock and the tree lock (~/.expressiveos-tree.lock, and through 1.1
-# its old name ~/.evolution-tree.lock; lib.sh's eos_lock) for the whole run, and first waits
-# for any build already running. Everything also goes
+# Holds ~/.expressiveos.lock and ~/.expressiveos-tree.lock (lib.sh's eos_lock) for the whole
+# run, and first waits for any build already running. Everything also goes
 # to EOS_BUILD_LOG (~/expressiveos-build.log for cheetah, ~/expressiveos-build-<device>.log
 # for the others; the one before is kept as .1); the last line is BUILD_EXIT=0 or BUILD_EXIT=1.
 #
 #   eos-images.sh [top]                  # default ~/expressiveos
 #   EOS_DEVICE=husky eos-images.sh       # another phone (devices/husky.conf)
-#   KERNEL_ONLY=1 eos-images.sh [top]    # steps 1-4, then build_kernel and kernelsu.ko only
-#   EOS_KERNEL_SYNC=1 eos-images.sh      # sync the kernel source to pins/kernel.xml again
-#                                        # (otherwise only the first build syncs it)
 #   EOS_INSTALLCLEAN=1 eos-images.sh     # start the make with m installclean (eos-make.sh)
 #   EOS_QUICK=1 eos-images.sh            # a quick build: the images only (m droid), about 5
 #                                        # minutes sooner; packed for testing, never released
@@ -63,11 +57,8 @@ clean_env
 cd "$top" || fail "can't cd to $top"
 PATH=$HOME/bin:$PATH
 rm -f -- "$EOS_STATE/build.ok" "$EOS_STATE/target-files.ok" "$EOS_STATE/quick.ok" "$EOS_STATE/verified.ok" "$EOS_STATE/images-verify.log"
-# The build type under its 1.1 name and its old one (a tree from before 1.1 reads that), as
-# eos-make.sh exports them. patches/device_google_pantah/0010 sets TARGET_INCLUDE_BOOT_ANIMATIONS
-# too; apply-bootanim.sh checks for it here
-export EXPRESSIVE_BUILD_TYPE=$EOS_BUILD_TYPE EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
-kind="full build (m bacon: the images, the OTA package and its target-files)"
+export EXPRESSIVE_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
+kind="full build (m eos: the images, the OTA package and its target-files)"
 [[ $EOS_QUICK != 1 ]] || kind="quick build (EOS_QUICK=1: the images only, m droid; for testing, never released)"
 # What the STEP and TIME lines (lib.sh's eos_step) say this build is; eos-make.sh's too
 EOS_RUN_KIND=full EOS_RUN_FRESH=0
@@ -117,25 +108,16 @@ step "wallpapers" 'WALLPAPERS_APPLY=OK.*' "$kit/wallpapers/apply-wallpapers.sh" 
 step "Expressive Launcher" 'LAUNCHER_APPLY=OK.*' "$kit/launcher/apply-launcher.sh" "$top"
 
 echo "== identity"
-# The version and build type under their 1.1 names (vendor/lineage's version.mk:
-# EXPRESSIVE_MODVERSION, EXPRESSIVE_BUILD_TYPE), else their old ones (EVO_VERSION,
-# EVO_BUILD_TYPE): a tree from before 1.1, or a manifest rollback, has only those
-vars=$(dump_vars LINEAGE_VERSION EXPRESSIVE_MODVERSION EXPRESSIVE_BUILD_TYPE EVO_VERSION EVO_BUILD_TYPE \
+# ExpressiveOS 2.0 version and build type from vendor/expressiveos/config/version.mk
+vars=$(dump_vars EXPRESSIVE_BUILD_VERSION EXPRESSIVE_MODVERSION EXPRESSIVE_BUILD_TYPE \
     TARGET_DEVICE TARGET_BUILD_VARIANT PRODUCT_PACKAGES) || fail "dumpvars failed"
-name=$(var_of "$vars" LINEAGE_VERSION)
+name=$(var_of "$vars" EXPRESSIVE_BUILD_VERSION)
 [[ "$name" =~ ^ExpressiveOS-17\.[0-9]+-[0-9]{8}-$EOS_DEVICE-${EOS_VERSION//./\\.}-$EOS_BUILD_TYPE$ ]] \
-    || fail "the build would be named '$name', not ExpressiveOS-17.x-<date>-$EOS_DEVICE-$EOS_VERSION-$EOS_BUILD_TYPE (vendor/lineage config/version.mk)"
-modver=$(var_new_or_old "$vars" EXPRESSIVE_MODVERSION EVO_VERSION)
-btype=$(var_new_or_old "$vars" EXPRESSIVE_BUILD_TYPE EVO_BUILD_TYPE)
-[[ -n $(var_of "$vars" EXPRESSIVE_MODVERSION) ]] \
-    || echo "note: the tree has no EXPRESSIVE_MODVERSION (vendor/lineage from before 1.1): its version is EVO_VERSION"
-[[ $modver = "$EOS_VERSION" ]] || fail "the build's version (EXPRESSIVE_MODVERSION, else EVO_VERSION) is '$modver', want '$EOS_VERSION'"
-[[ $btype = "$EOS_BUILD_TYPE" ]] || fail "the build type (EXPRESSIVE_BUILD_TYPE, else EVO_BUILD_TYPE) is '$btype', want '$EOS_BUILD_TYPE'"
-# The old names too, where the tree has them: through 1.1 they're the new ones' aliases
-for v in EVO_VERSION:$EOS_VERSION EVO_BUILD_TYPE:$EOS_BUILD_TYPE; do
-    x=$(var_of "$vars" "${v%%:*}")
-    [[ -z $x || $x = "${v#*:}" ]] || fail "${v%%:*} is '$x', want '${v#*:}' (vendor/lineage's version.mk keeps it as an alias through 1.1)"
-done
+    || fail "the build would be named '$name', not ExpressiveOS-17.x-<date>-$EOS_DEVICE-$EOS_VERSION-$EOS_BUILD_TYPE (vendor/expressiveos/config/version.mk)"
+modver=$(var_of "$vars" EXPRESSIVE_MODVERSION)
+btype=$(var_of "$vars" EXPRESSIVE_BUILD_TYPE)
+[[ $modver = "$EOS_VERSION" ]] || fail "the build's version (EXPRESSIVE_MODVERSION) is '$modver', want '$EOS_VERSION'"
+[[ $btype = "$EOS_BUILD_TYPE" ]] || fail "the build type (EXPRESSIVE_BUILD_TYPE) is '$btype', want '$EOS_BUILD_TYPE'"
 for kv in "TARGET_DEVICE=$EOS_DEVICE" "TARGET_BUILD_VARIANT=${EOS_LUNCH##*-}"; do
     [[ "$(var_of "$vars" "${kv%%=*}")" = "${kv#*=}" ]] || fail "${kv%%=*} is '$(var_of "$vars" "${kv%%=*}")', want '${kv#*=}'"
 done
@@ -229,9 +211,7 @@ fi
 } > "$EOS_STATE/sources.txt"
 cat "$EOS_STATE/sources.txt"
 
-# Kernel source (EOS_KERNEL=gs-6.1): eos-make.sh syncs it to pins/kernel.xml when it's
-# missing or EOS_KERNEL_SYNC=1, and checks it's on them otherwise. Its kernel and make steps
-# are its own (eos_step)
+# All EOS 2.0 devices use prebuilt stock factory kernel images + Wild GKI boot (pins/wild-kernel.conf)
 eos_step end
 step "make (eos-make.sh)" 'MAKE_EXIT=0' "$kit/tools/eos-make.sh" "$top"
 if [[ "${KERNEL_ONLY:-0}" = 1 ]]; then

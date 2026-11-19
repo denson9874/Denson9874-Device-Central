@@ -6,7 +6,7 @@
 # tree builds all of ExpressiveOS's phones: each gets what its devices/<device>.conf's EOS_V4A
 # says, and eos-images.sh checks that before building.
 # EOS_V4A=1, the HIDL driver (gs201's HIDL effect HAL; Evolution X's libeffects loads it):
-ifneq ($(filter lineage_cheetah,$(TARGET_PRODUCT)),)
+ifneq ($(filter eos_cheetah,$(TARGET_PRODUCT)),)
 
 PRODUCT_SOONG_NAMESPACES += \
     vendor/extra/viper4android
@@ -20,7 +20,7 @@ endif
 # EOS_V4A=aidl, the AIDL driver and the effects config that loads it (an AIDL effect HAL in a
 # vendor this tree builds, with no audio_effects_config.xml of its own; the device tree labels
 # the driver's viper.control service). The Pixel 11s' vendor is Google's image: see aidl-overlay.
-ifneq ($(filter lineage_husky,$(TARGET_PRODUCT)),)
+ifneq ($(filter eos_husky,$(TARGET_PRODUCT)),)
 
 PRODUCT_SOONG_NAMESPACES += \
     vendor/extra/viper4android
@@ -37,7 +37,7 @@ endif
 # them over /vendor/lib64/soundfx and /vendor/etc at boot, and this folder's product policy
 # (viper4android.te and its contexts) labels viper.control and the off switch's properties.
 # kodiak first; grizzly, cubs and yogi joined after kodiak's phone test (Daryl, 2026-11-11).
-ifneq ($(filter lineage_kodiak lineage_grizzly lineage_cubs lineage_yogi,$(TARGET_PRODUCT)),)
+ifneq ($(filter eos_kodiak eos_grizzly eos_cubs eos_yogi,$(TARGET_PRODUCT)),)
 
 PRODUCT_SOONG_NAMESPACES += \
     vendor/extra/viper4android

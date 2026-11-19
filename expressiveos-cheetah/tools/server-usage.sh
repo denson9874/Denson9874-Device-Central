@@ -17,7 +17,7 @@ newest() { # newest() <dir>: the date of the newest file at most 2 levels down
 echo "== disk"; df -h ~ /tmp | sed 1d
 echo "== locks and sessions"
 # The tree lock is ~/.expressiveos-tree.lock since 1.1; through 1.1 the kit holds its old name too
-for l in ~/.expressiveos.lock ~/.expressiveos-tree.lock ~/.evolution-tree.lock; do
+for l in ~/.expressiveos.lock ~/.expressiveos-tree.lock; do
     if [[ ! -e $l ]]; then echo "${l#"$HOME"/}: free (no file yet)"
     elif flock -n "$l" true 2>/dev/null; then echo "${l#"$HOME"/}: free"; else echo "${l#"$HOME"/}: held"; fi
 done

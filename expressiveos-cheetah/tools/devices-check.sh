@@ -76,7 +76,7 @@ h "disk"
 df -BG ~ | sed 1d
 h "ExpressiveOS tree, per product (GiB)"
 # One du per path: GNU du skips an operand nested in one it already counted
-for p in .repo out/soong out/host out-kernel; do lowdu "$eos/$p"; done
+for p in .repo out/soong out/host; do lowdu "$eos/$p"; done
 lowdu "$eos"/out/target/product/*
 for d in "${P11[@]}" husky; do lowdu "$eos/vendor/google/$d" "$eos/vendor/google/$d-images"; done
 h "releases (GiB)"
@@ -121,25 +121,13 @@ for d in "${DEVICES[@]}"; do
         echo "$d: couldn't unpack $b"
     fi
 done
-for b in "$eos"/device/google/shusky-kernels/*/boot.img "$eos"/device/google/pantah-kernels/*/boot.img \
+for b in "$eos"/vendor/google/*-kernel-images/boot.img \
          "$eos"/vendor/google/*-images/images/boot.img; do
     [[ -f $b ]] && echo "${b#"$HOME"/}: sha256 $(sha256sum < "$b" | cut -c1-16)"
 done
-echo "-- kernel source trees (out-kernel)"
-ls -d "$eos"/out-kernel/*/* 2> /dev/null
-if [[ -d $eos/out-kernel/google/gs-6.1/.repo ]]; then
-    (cd "$eos/out-kernel/google/gs-6.1" && repo manifest -r -o "$work/kernel.xml" > /dev/null 2>&1) || true
-    if [[ -f $work/kernel.xml && -f $kit/pins/kernel.xml ]]; then
-        if diff -q <(grep -oE '<project [^>]*' "$work/kernel.xml" | grep -oE '(name|revision)="[^"]*"' | paste - - | sort) \
-                   <(grep -oE '<project [^>]*' "$kit/pins/kernel.xml" | grep -oE '(name|revision)="[^"]*"' | paste - - | sort) > /dev/null; then
-            echo "Upstream gs-6.1 kernel source: same projects and revisions as pins/kernel.xml"
-        else
-            echo "Upstream gs-6.1 kernel source differs from pins/kernel.xml:"
-            diff <(grep -oE '<project [^>]*' "$work/kernel.xml" | grep -oE '(name|revision)="[^"]*"' | paste - - | sort) \
-                 <(grep -oE '<project [^>]*' "$kit/pins/kernel.xml" | grep -oE '(name|revision)="[^"]*"' | paste - - | sort) | head -20
-        fi
-    fi
-    ls "$eos/out-kernel/google/gs-6.1"/build_*.sh "$eos/out-kernel/google/gs-6.1"/private/devices/google/ 2> /dev/null | head -20
+if [[ -f $kit/pins/wild-kernel.conf ]]; then
+    echo "-- Wild kernel pin (pins/wild-kernel.conf)"
+    grep -E '^(version|uname_)=' "$kit/pins/wild-kernel.conf" || true
 fi
 
 h "stock and built kernel config facts (CONFIG_IKCONFIG) and struct module sizes"

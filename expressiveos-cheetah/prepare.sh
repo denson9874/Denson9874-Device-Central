@@ -62,7 +62,7 @@ cache)
     cached=$(cat "$fw/CURRENT" 2>/dev/null || true)
     # What the vendor repo ships when we don't touch it: its BuildFingerprint build id
     shipped=$(cat "$vendor/FIRMWARE_SOURCE" 2>/dev/null ||
-              grep -oE "$EOS_DEVICE:17/[A-Z0-9]{4}\.[0-9]{6}\.[0-9]{3}" "$top/$EOS_DEVICE_TREE/lineage_$EOS_DEVICE.mk" | cut -d/ -f2 | tr '[:upper:]' '[:lower:]' ||
+              grep -oE "$EOS_DEVICE:17/[A-Z0-9]{4}\.[0-9]{6}\.[0-9]{3}" "$top/$EOS_DEVICE_TREE/eos_$EOS_DEVICE.mk" | cut -d/ -f2 | tr '[:upper:]' '[:lower:]' ||
               true)   # neither: unknown, said below
     if [[ -z "$cached" ]]; then
         echo "WARNING: no cached factory firmware in $fw (runner action expressiveos-firmware fills it: tools/fetch-firmware.sh); shipping the vendor repo's ${shipped:-unknown}"
@@ -115,7 +115,7 @@ fi
 # No guess when the tree doesn't say (never today's month): an image without a level is then
 # left alone and named below.
 
-for b in "$top"/device/google/*-kernels/*/boot.img "$top"/vendor/google/*-images/boot.img; do
+for b in "$top"/vendor/google/*-kernel-images/boot.img "$top"/vendor/google/*-images/boot.img "$top"/vendor/google/*-images/images/boot.img; do
     [[ -f $b ]] || continue
     t=$(mktemp -d "${TMPDIR:-/tmp}/boot_patch.XXXXXX")
     if python3 "$top/system/tools/mkbootimg/unpack_bootimg.py" --boot_img "$b" --out "$t" >/dev/null 2>&1; then

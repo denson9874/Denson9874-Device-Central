@@ -14,8 +14,7 @@
 #
 #   EOS_SYNC_JOBS=<n>       repo sync jobs (default 4; GitHub refuses many more)
 #   EOS_MIN_FREE_GB=<n>     free disk a new tree needs first (default 450: source with
-#                           history, out/ and out-kernel/ for one device; DerpFest's
-#                           tree, the same kind with two devices built, used 386 GB)
+#                           history and out/ for one device)
 set -euo pipefail
 done=0
 trap '[[ $done = 1 ]] || echo "SETUP=FAIL"' EXIT
@@ -66,7 +65,7 @@ lm="$top/.repo/local_manifests"
 url=$(git -C "$m" config --get remote.origin.url || true)
 [[ -n "$url" ]] || fail "$top/.repo has no manifest (no remote.origin.url in $m), a repo init that didn't finish: run (cd $top && repo init -u $EOS_MANIFEST_URL -b $EOS_MANIFEST_BRANCH --git-lfs), then setup.sh again"
 # Full history: git am --3way can then merge a kit patch around a later change to the same
-# file, and a merge of LineageOS's changes needs it too; in a shallow tree they just fail
+# file, and monthly AOSP ASB cherry-picks need it too; in a shallow tree they just fail
 depth=$(git -C "$m" config --get repo.depth || true)
 [[ -z "$depth" ]] || fail "$top was initialized with --depth=$depth; the kit needs full history. Set up a fresh folder, or unshallow it: git -C $m config --unset repo.depth, then git -C $top/frameworks/base fetch --unshallow"
 [[ "$(git -C "$m" config --get --bool repo.git-lfs || true)" = true ]] \
@@ -140,7 +139,7 @@ pins_check "$top" "$EOS_MANIFEST_BRANCH" "$mf" || fail "the tree isn't on its ma
 
 # cheetah's, and the phone this run is for (EOS_DEVICE): a manifest without its projects stops
 # here, and so does a tree that's a hardlinked copy of another
-for f in build/make/core/Makefile vendor/lineage/config/common.mk device/google/pantah/device-cheetah.mk "$EOS_SENTINEL"; do
+for f in build/make/core/Makefile vendor/expressiveos/config/common.mk device/google/pantah/eos_cheetah.mk "$EOS_SENTINEL"; do
     [[ -f "$top/$f" ]] || fail "$f is missing after the sync"
     [[ "$(stat -c %h -- "$top/$f")" = 1 ]] || fail "$f has other hard links: is $top a hardlinked copy of another tree? Set it up again from scratch"
 done
