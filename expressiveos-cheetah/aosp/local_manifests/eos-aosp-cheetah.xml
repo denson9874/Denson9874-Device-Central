@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ExpressiveOS on AOSP, cheetah only: an EXPERIMENT on branch eos/aosp (Daryl, 2026-11-18).
+     Never used by the kit's builds, releases or setup.sh (they read eos.conf's manifest).
+
+     Use in its own tree, never in ~/expressiveos (the commands are in README.md, "Step 2";
+     an XML comment can't hold the double dash of their options).
+
+     The base is Google's own platform manifest at the tag our Lineage tree is built on
+     (android-17.0.0_r1, see ../../sources/eos-1.0-base/manifest.xml), with no LineageOS
+     project at all. On top of it, step 1 adds only what a Pixel 7 Pro build needs and AOSP
+     no longer carries (Google stopped shipping Pixel device trees in AOSP in 2025): the
+     cheetah device trees and blobs from ExpressiveOS's own forks. These forks are
+     Lineage-based today, so step 1 is expected to fail at lunch: that failure list is the
+     first measurement (README.md, "Step 2"). ExpressiveOS's apps and Google apps join
+     one at a time in step 3, each with what it breaks. -->
+<manifest>
+  <remote name="eos" fetch="https://github.com/ExpressiveOS" revision="refs/heads/expressiveos" />
+
+  <!-- cheetah: device trees and blobs (cheetah.xml lists the same four in 1.0) -->
+  <project path="device/google/pantah" name="device_google_pantah" remote="eos" />
+  <project path="device/google/gs201" name="device_google_gs201" remote="eos" />
+  <project path="vendor/google/cheetah" name="vendor_google_cheetah" remote="eos" clone-depth="1" />
+  <!-- Round 2 (first build attempt, 2026-11-18): gs201/common.mk needs hardware/google/pixel
+       (rebalance_interrupts.mk), which AOSP android-17.0.0_r1 doesn't carry at all (repo:
+       "remove-project element specifies non-existent project"): our fork does -->
+  <project path="hardware/google/pixel" name="hardware_google_pixel" remote="eos" />
+  <!-- Round 4 (2026-11-18): the board config reads the kernel's module lists from
+       $(TARGET_KERNEL_DIR) ("vendor_kernel_boot.modules.load not found or empty"). STAND-IN ONLY,
+       to get past product config and list what fails next: Lineage's pantah module lists, the
+       commit ExpressiveOS 1.0 used (../../sources/eos-1.0-base/cheetah.xml). Google's stock kernel
+       and modules from the factory image replace it before anything boots. -->
+  <remote name="lineage-pantah" fetch="https://github.com/LineageOS" revision="lineage-24.0" />
+  <project path="device/google/pantah-kernels" name="android_device_google_pantah-kernels" remote="lineage-pantah"
+           revision="e0bcfb04231e9c0d3df942604218dfc8dbed2011" upstream="lineage-24.0" />
+  <!-- Round 8 (2026-11-18): Google's thermal blob (android.hardware.thermal-service.pixel) links
+       android.frameworks.stats-V3, which AOSP android-17.0.0_r1 has only as an unfrozen
+       development version; Lineage's copy freezes V1-V3 (stats/aidl/Android.bp:43-59). STAND-IN:
+       Lineage's frameworks/hardware/interfaces at the commit 1.0 used. A real port carries the
+       frozen V3 in a fork of our own. -->
+  <remove-project name="platform/frameworks/hardware/interfaces" />
+  <project path="frameworks/hardware/interfaces" name="android_frameworks_hardware_interfaces" remote="lineage-pantah"
+           revision="f80da5a738798ed94d061f79ebe78edf26391424" upstream="lineage-24.0" />
+  <!-- Round 11 (2026-11-18): the full compile's sepolicy steps stop at pantah's dump_syna.te,
+       "syntax error at token 'pixel_bugreport'": that macro lives in hardware/google/pixel-sepolicy
+       (common/vendor/te_macros), which AOSP android-17.0.0_r1 doesn't carry. STAND-IN: Lineage's
+       copy at the commit ExpressiveOS 1.0 used (../../sources/eos-1.0-base/manifest.xml:85). -->
+  <project path="hardware/google/pixel-sepolicy" name="android_hardware_google_pixel-sepolicy" remote="lineage-pantah"
+           revision="1117c69c767ca3b45187f6602fa7466334ced1be" upstream="lineage-24.0" />
+  <!-- Not carried yet:
+       device/google/gs-common: not checked yet whether our manifest carries it as a fork;
+         add it here if lunch asks for it (README.md, "Step 2"). -->
+</manifest>
