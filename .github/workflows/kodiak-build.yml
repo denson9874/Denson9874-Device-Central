@@ -994,7 +994,7 @@ jobs:
         if: inputs.action == 'aosp-proto'
         run: |
           q=${QUERY:-status}
-          [[ $q =~ ^(status|sync|build|full|kernel|round|clean)$ ]] || { echo "::error::aosp-proto's query is status, sync, build, full, kernel, round or clean"; exit 1; }
+          [[ $q =~ ^(status|sync|build|full|pack|kernel|round|clean)$ ]] || { echo "::error::aosp-proto's query is status, sync, build, full, pack, kernel, round or clean"; exit 1; }
           bash expressiveos-cheetah/aosp/aosp-proto.sh "$q"
 
       - name: Check out expressiveos-cheetah

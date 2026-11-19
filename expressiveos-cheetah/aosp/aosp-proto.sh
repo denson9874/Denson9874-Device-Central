@@ -7,6 +7,8 @@
 #   aosp-proto.sh sync     repo init AOSP android-17.0.0_r1 (depth 1) + eos-aosp-cheetah.xml, repo sync
 #   aosp-proto.sh build    lunch aosp_cheetah, then m -k nothing (analysis only): what fails is the result
 #   aosp-proto.sh full     the same with m -k droid: the whole image, hours, holds the server
+#   aosp-proto.sh pack     after a full build: m updatepackage, the fastboot zip (aosp_cheetah-img-*.zip),
+#                          for a boot test only (never a release; flashing it needs Daryl's go and wipes)
 #   aosp-proto.sh kernel   Google's stock cheetah kernel, DTB and modules from the factory image
 #                          into device/google/pantah-kernels/6.1 (stand-in for Lineage's build_kernel)
 #   aosp-proto.sh round    sync, then build if it ended SYNC=OK (one round, one dispatch)
@@ -95,6 +97,7 @@ status)
 sync)  start sync ;;
 build) start build ;;
 full)  start full ;;
+pack)  start pack ;;
 kernel) start kernel ;;
 round) start round ;;
 clean)
@@ -165,9 +168,16 @@ build-run)
     fi
     # build: analysis only (Soong and Kati, minutes, no compiling), so a missing-module list
     # doesn't hold the server for hours. full: m -k droid, the whole image, hours
-    goal=nothing; if [[ ${2:-} == full ]]; then goal=droid; fi
+    goal=nothing; if [[ ${2:-} == full ]]; then goal=droid; elif [[ ${2:-} == pack ]]; then goal=updatepackage; fi
     echo "== m -k $goal ($ok): keeps going past errors to list as many as it can"
     if m -k "$goal"; then echo "BUILD=OK ($goal) $(TZ=America/New_York date)"
+        if [[ $goal == updatepackage ]]; then
+            z=$(ls -t out/target/product/cheetah/aosp_cheetah-img-*.zip 2>/dev/null | head -1)
+            [[ -n $z ]] || { echo "PACK=FAIL no aosp_cheetah-img zip"; exit 1; }
+            echo "== $z: $(du -h "$z" | cut -f1)"; unzip -l "$z"
+            echo "== android-info.txt"; unzip -p "$z" android-info.txt
+            echo "PACK=OK $z sha256 $(sha256sum "$z" | cut -d' ' -f1)"
+        fi
     else echo "== errors"; grep -E '^(FAILED|error:)|error: ' out/error.log 2>/dev/null | head -100 || true
          echo "== missing modules (count, what)"
          grep -ohE 'missing dependencies: .*|depends on undefined module "[^"]+"' out/error.log out/soong/*.log 2>/dev/null |
@@ -175,6 +185,8 @@ build-run)
          echo "BUILD=FAIL m $(TZ=America/New_York date)"; exit 1; fi ;;
 full-run)
     bash "$kitc/aosp-proto.sh" build-run full ;;
+pack-run)
+    bash "$kitc/aosp-proto.sh" build-run pack ;;
 kernel-run)
     # Daryl's go 11-18 4:48 PM ET ("Build it"). Google's own kernel for the prototype: boot.img as
     # BOARD_PREBUILT_BOOTIMAGE, the DTB from vendor_kernel_boot, and every module with its load list
