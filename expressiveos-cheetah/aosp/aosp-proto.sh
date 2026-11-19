@@ -30,6 +30,32 @@ busy() {
     return 1
 }
 free_gb() { df -BG --output=avail ~ | tail -1 | tr -dc 0-9; }
+standins() {   # the stand-in edits, in this throwaway tree only, from $top (sync-run puts the files back)
+    # Round 5: the blobs declare dump_modem and gpuflag as rust_prebuilt_binary, a module type
+    # only Lineage's build/soong has. STAND-IN, in this throwaway tree only (sync-run puts the
+    # file back): declare them as plain prebuilt binaries without the Rust library links
+    python3 - vendor/google/cheetah/Android.bp <<'PY'
+import re, sys
+p = sys.argv[1]; s = open(p).read()
+n = s.count("rust_prebuilt_binary {") + s.count("rust_prebuilt_dylib {")
+s = s.replace("rust_prebuilt_binary {", "cc_prebuilt_binary {\n    check_elf_files: false,")
+# Round 6: AOSP's Soong refuses Rust prebuilts outside the system image (libgpuflag_aconfig_rust)
+s = s.replace("rust_prebuilt_dylib {", "cc_prebuilt_library_shared {\n    check_elf_files: false,")
+s = re.sub(r"\n\s*rustlibs: \[[^\]]*\],", "", s)
+open(p, "w").write(s); print(f"== stand-in: {n} Rust prebuilt blobs declared as plain cc prebuilts")
+PY
+    # Round 11: the full compile's last Lineage-only pieces in gs201's common.mk. STAND-IN, in this
+    # throwaway tree only (sync-run puts the file back): leave out Lineage's touch HAL
+    # (vendor.lineage.touch-service.pixel needs vendor.lineage.touch-V1-ndk) and GoogleParts
+    # (needs org.lineageos.settings.resources)
+    python3 - device/google/gs201/common.mk <<'PY'
+import re, sys
+p = sys.argv[1]; s = open(p).read()
+s, a = re.subn(r"(?m)^include hardware/google/pixel/touch/device\.mk\n", "", s)
+s, b = re.subn(r"(?m)^[ \t]+GoogleParts[ \t]*\n", "", s)
+open(p, "w").write(s); print(f"== stand-in: gs201 common.mk without the Lineage touch HAL ({a}) and GoogleParts ({b})")
+PY
+}
 
 start() {   # start <step>: run this script's <step>-run in the eos-aosp tmux session, from a copy
     local why
@@ -100,30 +126,7 @@ build-run)
     # Round 3: the cheetah trees set these only in lineage_cheetah.mk:11-13, and BoardConfig.mk:22
     # includes $(DEVICE_PATH)/BoardConfigCommon.mk; aosp_cheetah.mk leaves them empty
     export DEVICE_CODENAME=cheetah DEVICE_PATH=device/google/pantah VENDOR_PATH=vendor/google/cheetah
-    # Round 5: the blobs declare dump_modem and gpuflag as rust_prebuilt_binary, a module type
-    # only Lineage's build/soong has. STAND-IN, in this throwaway tree only (sync-run puts the
-    # file back): declare them as plain prebuilt binaries without the Rust library links
-    python3 - vendor/google/cheetah/Android.bp <<'PY'
-import re, sys
-p = sys.argv[1]; s = open(p).read()
-n = s.count("rust_prebuilt_binary {") + s.count("rust_prebuilt_dylib {")
-s = s.replace("rust_prebuilt_binary {", "cc_prebuilt_binary {\n    check_elf_files: false,")
-# Round 6: AOSP's Soong refuses Rust prebuilts outside the system image (libgpuflag_aconfig_rust)
-s = s.replace("rust_prebuilt_dylib {", "cc_prebuilt_library_shared {\n    check_elf_files: false,")
-s = re.sub(r"\n\s*rustlibs: \[[^\]]*\],", "", s)
-open(p, "w").write(s); print(f"== stand-in: {n} Rust prebuilt blobs declared as plain cc prebuilts")
-PY
-    # Round 11: the full compile's last Lineage-only pieces in gs201's common.mk. STAND-IN, in this
-    # throwaway tree only (sync-run puts the file back): leave out Lineage's touch HAL
-    # (vendor.lineage.touch-service.pixel needs vendor.lineage.touch-V1-ndk) and GoogleParts
-    # (needs org.lineageos.settings.resources)
-    python3 - device/google/gs201/common.mk <<'PY'
-import re, sys
-p = sys.argv[1]; s = open(p).read()
-s, a = re.subn(r"(?m)^include hardware/google/pixel/touch/device\.mk\n", "", s)
-s, b = re.subn(r"(?m)^[ \t]+GoogleParts[ \t]*\n", "", s)
-open(p, "w").write(s); print(f"== stand-in: gs201 common.mk without the Lineage touch HAL ({a}) and GoogleParts ({b})")
-PY
+    standins
     # Round 7: Soong stops at the first module that depends on a Lineage-only module
     # (gs201/parts' GoogleParts needs org.lineageos.settings.resources). Let it go on, so one
     # round lists every such dependency; m -k then fails each of those modules on its own
@@ -188,6 +191,7 @@ kernel-run)
     unzip -q -o image-*.zip $want -d img || { echo "KERNEL=FAIL unzip $want"; exit 1; }
     cd "$top"
     export USE_CCACHE=0 DEVICE_CODENAME=cheetah DEVICE_PATH=device/google/pantah VENDOR_PATH=vendor/google/cheetah ALLOW_MISSING_DEPENDENCIES=true
+    standins   # round 11: a sync puts back the blobs' Android.bp, and Soong reads it for host tools too
     source build/envsetup.sh && lunch aosp_cheetah-trunk_staging-userdebug >/dev/null
     m simg2img lpunpack fsck.erofs || { echo "KERNEL=FAIL host tools"; exit 1; }
     hb=$top/out/host/linux-x86/bin; lz4=$top/prebuilts/build-tools/linux-x86/bin/lz4
