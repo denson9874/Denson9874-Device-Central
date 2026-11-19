@@ -40,6 +40,12 @@
   <remove-project name="platform/frameworks/hardware/interfaces" />
   <project path="frameworks/hardware/interfaces" name="android_frameworks_hardware_interfaces" remote="lineage-pantah"
            revision="f80da5a738798ed94d061f79ebe78edf26391424" upstream="lineage-24.0" />
+  <!-- Round 11 (2026-11-18): the full compile's sepolicy steps stop at pantah's dump_syna.te,
+       "syntax error at token 'pixel_bugreport'": that macro lives in hardware/google/pixel-sepolicy
+       (common/vendor/te_macros), which AOSP android-17.0.0_r1 doesn't carry. STAND-IN: Lineage's
+       copy at the commit ExpressiveOS 1.0 used (../../sources/eos-1.0-base/manifest.xml:85). -->
+  <project path="hardware/google/pixel-sepolicy" name="android_hardware_google_pixel-sepolicy" remote="lineage-pantah"
+           revision="1117c69c767ca3b45187f6602fa7466334ced1be" upstream="lineage-24.0" />
   <!-- Not carried yet:
        device/google/gs-common: not checked yet whether our manifest carries it as a fork;
          add it here if lunch asks for it (README.md, "Step 2"). -->

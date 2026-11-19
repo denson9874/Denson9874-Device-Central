@@ -78,6 +78,8 @@ sync-run)
     if [[ -d .repo ]]; then mkdir -p .repo/local_manifests && cp "$kitc/eos-aosp-cheetah.xml" .repo/local_manifests/; fi
     # build-run's stand-in edit of the blobs' Android.bp: put it back so repo sync updates cleanly
     if [[ -e vendor/google/cheetah/.git ]]; then git -C vendor/google/cheetah checkout -- Android.bp 2>/dev/null || true; fi
+    # and build-run's round-11 stand-in edit of gs201's common.mk
+    if [[ -e device/google/gs201/.git ]]; then git -C device/google/gs201 checkout -- common.mk 2>/dev/null || true; fi
     # and kernel-run's stock kernel files in Lineage's module-list project
     if [[ -e device/google/pantah-kernels/.git ]]; then git -C device/google/pantah-kernels checkout -- . 2>/dev/null || true; git -C device/google/pantah-kernels clean -fdq 2>/dev/null || true; fi
     repo init -u https://android.googlesource.com/platform/manifest -b "$AOSP_TAG" --depth=1 </dev/null \
@@ -110,6 +112,17 @@ s = s.replace("rust_prebuilt_binary {", "cc_prebuilt_binary {\n    check_elf_fil
 s = s.replace("rust_prebuilt_dylib {", "cc_prebuilt_library_shared {\n    check_elf_files: false,")
 s = re.sub(r"\n\s*rustlibs: \[[^\]]*\],", "", s)
 open(p, "w").write(s); print(f"== stand-in: {n} Rust prebuilt blobs declared as plain cc prebuilts")
+PY
+    # Round 11: the full compile's last Lineage-only pieces in gs201's common.mk. STAND-IN, in this
+    # throwaway tree only (sync-run puts the file back): leave out Lineage's touch HAL
+    # (vendor.lineage.touch-service.pixel needs vendor.lineage.touch-V1-ndk) and GoogleParts
+    # (needs org.lineageos.settings.resources)
+    python3 - device/google/gs201/common.mk <<'PY'
+import re, sys
+p = sys.argv[1]; s = open(p).read()
+s, a = re.subn(r"(?m)^include hardware/google/pixel/touch/device\.mk\n", "", s)
+s, b = re.subn(r"(?m)^[ \t]+GoogleParts[ \t]*\n", "", s)
+open(p, "w").write(s); print(f"== stand-in: gs201 common.mk without the Lineage touch HAL ({a}) and GoogleParts ({b})")
 PY
     # Round 7: Soong stops at the first module that depends on a Lineage-only module
     # (gs201/parts' GoogleParts needs org.lineageos.settings.resources). Let it go on, so one
