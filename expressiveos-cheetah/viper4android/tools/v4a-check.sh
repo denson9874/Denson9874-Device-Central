@@ -594,12 +594,11 @@ EOF
         nested) bad "vendor/extra/product.mk inherits viper4android.mk only inside an ifeq/ifdef/define block: move the line to the top level" ;;
         *) bad "vendor/extra/product.mk doesn't inherit viper4android.mk: run apply-v4a.sh" ;;
     esac
-    # Evolution X's vendor_evolution is checked out at vendor/lineage (manifest
-    # snippets/evolution.xml:146); its config/common.mk line 2 (cnb e717ec3) reads vendor/extra/product.mk
-    if grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/lineage/config/common.mk" 2>/dev/null; then
-        pass "vendor/lineage/config/common.mk inherits vendor/extra/product.mk"
+    # vendor/expressiveos/config/common.mk inherits vendor/extra/product.mk
+    if grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/expressiveos/config/common.mk" 2>/dev/null; then
+        pass "vendor/expressiveos/config/common.mk inherits vendor/extra/product.mk"
     else
-        bad "vendor/lineage/config/common.mk is missing or no longer inherits vendor/extra/product.mk: ViPER4Android would silently not ship"
+        bad "vendor/expressiveos/config/common.mk is missing or no longer inherits vendor/extra/product.mk: ViPER4Android would silently not ship"
     fi
     ;;
 

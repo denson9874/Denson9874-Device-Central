@@ -42,9 +42,8 @@ ALLOW = [
 ]
 # The apps (by APK name) whose resource XML and dex are scanned in full
 REBRANDED = {"SettingsGoogle", "Settings", "Updater", "EvoEgg", "ExpressiveEgg", "AxSandbox",
-             "LineageParts",
-             "LineageSettingsProvider", "SystemUIGoogle", "SystemUI", "framework-res",
-             "org.lineageos.platform-res", "PixelSetupWizardOverlayExpressive"}
+             "SystemUIGoogle", "SystemUI", "framework-res",
+             "PixelSetupWizardOverlayExpressive"}
 JARS = ["system/framework/framework.jar", "system/framework/services.jar"]
 
 out = sys.argv[1] if len(sys.argv) == 2 else sys.exit(__doc__)

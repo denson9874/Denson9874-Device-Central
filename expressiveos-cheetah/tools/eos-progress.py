@@ -204,10 +204,10 @@ def tmux_running(session):
 
 
 def builds_kernel(d):
-    """Whether the phone builds its kernel from source (devices/<device>.conf: EOS_KERNEL=gs-6.1)."""
+    """Whether the phone builds its kernel from source (all EOS 2.0 phones use EOS_KERNEL=prebuilt)."""
     conf = read(os.path.join(KIT, 'devices', d + '.conf')).decode('utf-8', 'replace')
     m = re.search(r'^EOS_KERNEL=(\S+)', conf, re.M)
-    return m.group(1) == 'gs-6.1' if m else d in ('cheetah', 'husky')
+    return bool(m and m.group(1) != 'prebuilt')
 
 
 TIME_RE = r'TIME (\w+) device=([a-z0-9]+) kind=(\S+) fresh=(\S+) at=\S+ secs=(\d+)(?: prev=[a-z0-9-]+)?'

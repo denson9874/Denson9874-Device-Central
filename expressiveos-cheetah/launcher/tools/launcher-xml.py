@@ -19,7 +19,7 @@
 #       res/values/*.xml, highest priority first
 #   launcher-xml.py sources <name> <top>
 #       the same for every value of <name> the tree's framework config could come from:
-#       framework-res's own (priority -1), vendor/lineage/overlay/common (a static product
+#       framework-res's own (priority -1), vendor/expressiveos/overlay/common (a static product
 #       overlay, priority 1) and vendor/pixel-style's static overlays of "android"
 #   launcher-xml.py zip-has <apk> <entry> <text>...
 #       print "found <text>" or "missing <text>" for each text, looked for in that zip entry
@@ -108,7 +108,7 @@ def main(argv):
         for pr, d, v in sorted(rows, key=lambda r: -r[0]):
             print("%d\t%s\t%s" % (pr, d, v))
     elif mode == "sources" and len(args) == 2:
-        # where the build's value comes from: framework-res's own, vendor/lineage/overlay/common
+        # where the build's value comes from: framework-res's own, vendor/expressiveos/overlay/common
         # (the build makes it a static product overlay, priority 1: build/make
         # core/generate_enforce_rro.mk) and vendor/pixel-style's static product overlays
         name, top = args
@@ -120,7 +120,7 @@ def main(argv):
                         for v in strings(os.path.join(d, f), name):
                             rows.append((pr, label, v))
         scan(os.path.join(top, "frameworks/base/core/res/res/values"), -1, "frameworks/base (framework-res)")
-        scan(os.path.join(top, "vendor/lineage/overlay/common/frameworks/base/core/res/res/values"), 1, "vendor/lineage/overlay/common")
+        scan(os.path.join(top, "vendor/expressiveos/overlay/common/frameworks/base/core/res/res/values"), 1, "vendor/expressiveos/overlay/common")
         rro = os.path.join(top, "vendor/pixel-style/rro_overlays")
         if os.path.isdir(rro):
             for d in sorted(os.listdir(rro)):

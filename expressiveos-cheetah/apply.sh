@@ -12,21 +12,10 @@
 #   vendor_google_cheetah
 #   device_google_gs201 0005                ExpressiveOS's own: target-files takes the built
 #                                           system, vendor, product... images (incrementals)
-#   frameworks_base                         the fixes the Evolution X tree carries for
-#                                           every build there (the old Pixel 11 kit's copies)
-#   vendor_lineage 0001                     ExpressiveOS 1.0 names and the build's own date
-#   vendor_lineage 0002                     the old Pixel 11 kit's: stock's 60 fps game default
-#   vendor_lineage 0003                     ExpressiveOS's own: m bacon keeps target-files
-#   frameworks_base 0021-0024, Settings,    ExpressiveOS's branding: no screen names Evolution X
-#   Evolver, Updater and the rest
-#   packages_apps_Updater 0005              ExpressiveOS's own: an incremental is offered
-#                                           only to its base build
-#   packages_apps_Settings 0005,            the Bloom colours: the glowing wordmark and the
-#   packages_apps_Updater 0006,             egg's stars take the logo's petals, not neon
-#   packages_apps_EvoEgg 0003
-#   system_update_engine 0001-0003          OTA payloads must be signed again (ExpressiveOS's
-#                                           key; recovery's sideload also takes LineageOS's
-#                                           release key, in its otacerts), never older
+#   frameworks_base                         ExpressiveOS 2.0 platform features on pure AOSP
+#   vendor_expressiveos                     ExpressiveOS 2.0 branding, version, and m eos target
+#   system_update_engine                    OTA payloads must be signed with ExpressiveOS's key
+#                                           only (no third-party release keys in otacerts)
 # prepare.sh runs this; repo sync drops the local commits again.
 # For another phone (EOS_DEVICE, devices/<device>.conf), its own devices/<device>/patches/
 # come after the shared ones, and its device tree (EOS_DEVICE_TREE) must carry

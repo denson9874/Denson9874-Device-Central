@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Expressive Launcher in the framework's config, on system_ext: the platform applies static
      overlays partition by partition and system_ext's last, so these values win over every
-     product overlay (Pixel's in vendor/pixel-style, and vendor/lineage/overlay/common, which
+     product overlay (Pixel's in vendor/pixel-style, and vendor/expressiveos/overlay/common, which
      the build turns into a product overlay).
      Expressive Launcher is the Recents app in Pixel Launcher's place (overlay/pixelmode puts
      Pixel Launcher back in Pixel Launcher mode). Pixel Launcher still ships for the launcher
@@ -28,7 +28,7 @@
 
     <!-- The apps a fully managed (work) phone's provisioning keeps: Expressive Launcher's Home
          activity is also in the app drawer (Pixel Launcher's isn't), so without it here
-         provisioning would disable it. vendor/lineage/overlay/common's list, which wins today. -->
+         provisioning would disable it. vendor/expressiveos/overlay/common's list. -->
     <string-array name="vendor_required_apps_managed_device" translatable="false">
         <item>com.android.vending</item>
         <item>com.google.android.gms</item>
@@ -42,11 +42,10 @@
         <item>com.google.android.apps.messaging</item>
         <item>com.android.messaging</item>
         <item>com.google.android.setupwizard</item>
-        <item>org.lineageos.setupwizard</item>
         <item>dev.launcher.expressive.l3</item>
     </string-array>
 
-    <!-- The same for a managed user. vendor/lineage/overlay/common's list. -->
+    <!-- The same for a managed user. vendor/expressiveos/overlay/common's list. -->
     <string-array name="vendor_required_apps_managed_user" translatable="false">
         <item>com.android.vending</item>
         <item>com.google.android.gms</item>

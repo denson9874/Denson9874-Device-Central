@@ -7,7 +7,7 @@
 # vendor/extra/product.mk is read for every product the ExpressiveOS tree builds: every
 # ExpressiveOS phone (devices/<device>.conf) gets the launcher. tools/launcher-check.sh tree
 # checks that this list names each of them.
-ifneq ($(filter lineage_cheetah lineage_husky lineage_kodiak lineage_grizzly lineage_cubs lineage_yogi,$(TARGET_PRODUCT)),)
+ifneq ($(filter eos_cheetah eos_husky eos_kodiak eos_grizzly eos_cubs eos_yogi,$(TARGET_PRODUCT)),)
 
 PRODUCT_SOONG_NAMESPACES += \
     vendor/extra/launcher

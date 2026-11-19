@@ -156,23 +156,22 @@ tree)
         nested) bad "vendor/extra/product.mk inherits launcher.mk only inside an ifeq/ifdef/define block: move the line to the top level" ;;
         *) bad "vendor/extra/product.mk doesn't inherit launcher.mk: run apply-launcher.sh" ;;
     esac
-    # Evolution X's vendor_evolution is checked out at vendor/lineage; its config/common.mk
-    # line 2 reads vendor/extra/product.mk
-    if grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/lineage/config/common.mk" 2>/dev/null; then
-        pass "vendor/lineage/config/common.mk inherits vendor/extra/product.mk"
+    # vendor/expressiveos/config/common.mk reads vendor/extra/product.mk
+    if grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/expressiveos/config/common.mk" 2>/dev/null; then
+        pass "vendor/expressiveos/config/common.mk inherits vendor/extra/product.mk"
     else
-        bad "vendor/lineage/config/common.mk is missing or no longer inherits vendor/extra/product.mk: Expressive Launcher would silently be left out"
+        bad "vendor/expressiveos/config/common.mk is missing or no longer inherits vendor/extra/product.mk: Expressive Launcher would silently be left out"
     fi
     # Every ExpressiveOS phone's product is in launcher.mk's list
     mk_filter=$(grep -m1 -E '^ifneq \(\$\(filter ' "$kit/tree/launcher.mk" || true)
     miss=()
     for d in "${phones[@]}"; do
-        [[ " ${mk_filter//[(),]/ } " = *" lineage_$d "* ]] || miss+=("$d")
+        [[ " ${mk_filter//[(),]/ } " = *" eos_$d "* ]] || miss+=("$d")
     done
     if [[ ${#miss[@]} = 0 && ${#phones[@]} -gt 0 ]]; then
         pass "launcher.mk covers every ExpressiveOS phone (${phones[*]})"
     else
-        bad "launcher.mk's product list lacks: ${miss[*]:-no devices/*.conf found} (add lineage_<device> to its filter)"
+        bad "launcher.mk's product list lacks: ${miss[*]:-no devices/*.conf found} (add eos_<device> to its filter)"
     fi
 
     # The privapp allowlist. A privileged permission the APK asks for that the XML doesn't
@@ -210,7 +209,7 @@ tree)
         want=$(xq string "$fw_res" "$n")
         xq sources "$n" "$top" > "$T/src"
         if [[ ! -s "$T/src" ]]; then
-            bad "nothing in the tree sets $n (frameworks/base, vendor/lineage/overlay/common, vendor/pixel-style): check tree/overlay/framework's by hand (README.md)"
+            bad "nothing in the tree sets $n (frameworks/base, vendor/expressiveos/overlay/common, vendor/pixel-style): check tree/overlay/framework's by hand (README.md)"
             continue
         fi
         IFS=$'\t' read -r pr from val < "$T/src"
@@ -326,7 +325,7 @@ out)
         # "priority|component|note" for each
         case "$en:${comp%%/*}" in
             false:*) off+=("$comp") ;;
-            true:com.google.android.setupwizard|true:com.google.android.pixel.setupwizard|true:org.lineageos.setupwizard|true:com.android.provision)
+            true:com.google.android.setupwizard|true:com.google.android.pixel.setupwizard|true:com.android.provision)
                 (( pr > 0 )) && suw+=("$pr|$comp|$f") || others+=("$pr|$comp|$f") ;;
             true:*) others+=("$pr|$comp|$f") ;;
             *) others+=("$pr|$comp|enabled set by a resource: check by hand, $f") ;;
