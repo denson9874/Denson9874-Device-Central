@@ -232,3 +232,22 @@ Lineage's touch HAL (gestures and glove mode), charge limit (Limit to 80%), batt
 GoogleParts, and every ExpressiveOS app (step 3 never started). Google's kernel and modules are the
 CP4A factory ones; pixel-sepolicy, frameworks/hardware/interfaces and the pantah module lists
 are still Lineage's copies.
+
+## Boot test 1 on the 7 Pro (2026-11-18 11:17 PM ET, measured)
+
+- `pack` (`m updatepackage`) failed: `AssertionError: Failed to find abl.img` in
+  add_img_to_target_files (CheckAbOtaImages). AB_OTA_PARTITIONS lists the bootloader and modem
+  partitions, which an AOSP tree doesn't carry. Not needed for a test: the built images flash directly.
+- 17 images + android-info.txt + fastboot-info.txt copied to the Mac (sha256 all match), then
+  `fastboot -w flashall` on slot b: 54 s, every step OKAY. Bootloader and modem untouched
+  (cloudripper-17.0-16466937, g5300q-260818-261007-B-16536936), `unlocked: yes`.
+- NO BOOT: adb never appeared. After about 6 min the phone was in the bootloader with
+  `enter-reason: reboot bootloader`, `slot-retry-count:b: 2`, `slot-unbootable:a: yes`.
+- Cause: hypothesis only. Android's init gave up and rebooted to the bootloader on purpose (not a
+  crash or an AVB failure). Most likely first-boot setup of the wiped userdata/metadata (fstab).
+  Disproved if a console-ramoops log shows something else. That log could not be read: 1.3 was
+  flashed next (unrooted shell, no pstore access) and its own first-boot reformat reboot replaced it.
+- Phone restored to ExpressiveOS 1.3 (`fastboot -w update`, 194 s, boot_completed=1) at 11:40 PM ET.
+- Next try, if any: check the AOSP fstab against Lineage's for cheetah, and set
+  `androidboot.init_fatal_reboot_target=recovery` or read `/sys/fs/pstore` with a rooted phone right
+  after the failed boot (warm reboot keeps ramoops).
