@@ -52,7 +52,12 @@ status)
     if [[ -d $top ]]; then echo "$top: $(du -sh --apparent-size "$top" 2>/dev/null | cut -f1)"; else echo "$top: not there"; fi
     for f in $(ls -t "$jobs"/*.log 2>/dev/null | head -1); do
         echo "== $f (last 150 lines)"; tail -n 150 "$f"
-    done ;;
+    done
+    # Round 11: each failed step's own error lines (sepolicy's reasons aren't on FAILED lines)
+    if [[ -s $top/out/error.log ]]; then
+        echo "== out/error.log: each FAILED step and the lines after it"
+        grep -E -A14 '^FAILED: ' "$top/out/error.log" | grep -vE '^\s*$' | head -260 || true
+    fi ;;
 sync)  start sync ;;
 build) start build ;;
 full)  start full ;;
