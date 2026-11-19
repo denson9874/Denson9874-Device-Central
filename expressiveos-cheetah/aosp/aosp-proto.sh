@@ -48,15 +48,20 @@ PY
     # throwaway tree only (sync-run puts the file back): leave out Lineage's touch HAL
     # (vendor.lineage.touch-service.pixel needs vendor.lineage.touch-V1-ndk) and GoogleParts
     # (needs org.lineageos.settings.resources)
-    python3 - device/google/gs201/common.mk <<'PY'
+    python3 - device/google/gs201/common.mk device/google/pantah/device-cheetah.mk <<'PY'
 import re, sys
-p = sys.argv[1]; s = open(p).read()
-s, a = re.subn(r"(?m)^include hardware/google/pixel/touch/device\.mk\n", "", s)
-s, b = re.subn(r"(?m)^[ \t]+GoogleParts[ \t]*\n", "", s)
-# Round 12: and Lineage's health HAL (charge limit): its sepolicy dir in pixel-sepolicy names
-# hal_lineage_health_default, a type only Lineage's device/lineage/sepolicy declares
-s, c = re.subn(r"(?m)^include hardware/google/pixel/lineage_health/device\.mk\n", "", s)
-open(p, "w").write(s); print(f"== stand-in: gs201 common.mk without the Lineage touch HAL ({a}), GoogleParts ({b}) and Lineage health HAL ({c})")
+# Rounds 11-13: gs201's common.mk and pantah's device-cheetah.mk include Lineage-only HALs from
+# our hardware_google_pixel fork: touch (needs vendor.lineage.touch-V1-ndk), lineage_health
+# (charge limit) and powershare (battery share); their pixel-sepolicy dirs name types only
+# Lineage's device/lineage/sepolicy declares (hal_lineage_*_default). And GoogleParts (needs
+# org.lineageos.settings.resources). Leave all of them out.
+for p in sys.argv[1:]:
+    s = open(p).read()
+    s, a = re.subn(r"(?m)^-?include hardware/google/pixel/(touch|lineage_health|powershare)/device\.mk\n", "", s)
+    s, b = re.subn(r"(?m)^[ \t]+GoogleParts[ \t]*\n", "", s)
+    open(p, "w").write(s); print(f"== stand-in: {p} without {a} Lineage HAL include(s) and {b} GoogleParts line(s)")
+    for n, line in enumerate(s.splitlines(), 1):
+        if re.search(r"lineage", line, re.I): print(f"   still names Lineage: {p}:{n}: {line.strip()}")
 PY
 }
 
@@ -109,6 +114,7 @@ sync-run)
     if [[ -e vendor/google/cheetah/.git ]]; then git -C vendor/google/cheetah checkout -- Android.bp 2>/dev/null || true; fi
     # and build-run's round-11 stand-in edit of gs201's common.mk
     if [[ -e device/google/gs201/.git ]]; then git -C device/google/gs201 checkout -- common.mk 2>/dev/null || true; fi
+    if [[ -e device/google/pantah/.git ]]; then git -C device/google/pantah checkout -- device-cheetah.mk 2>/dev/null || true; fi
     # and kernel-run's stock kernel files in Lineage's module-list project
     if [[ -e device/google/pantah-kernels/.git ]]; then git -C device/google/pantah-kernels checkout -- . 2>/dev/null || true; git -C device/google/pantah-kernels clean -fdq 2>/dev/null || true; fi
     repo init -u https://android.googlesource.com/platform/manifest -b "$AOSP_TAG" --depth=1 </dev/null \
