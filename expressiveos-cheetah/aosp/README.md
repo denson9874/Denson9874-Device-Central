@@ -200,3 +200,14 @@ inside `super.img`. Next: `full` (`m -k droid`).
   6:30 PM ET: `KERNEL=OK`.
 - 6:37 PM ET: `full` started. 6:45 PM ET: past scheduling and compiling, `[4% 9216/226918]`
   (run 745). First AOSP-without-Lineage compile of real sources; result to follow.
+- 9:37 PM ET: `BUILD=FAIL` after 3h01m, measured (run 747, `full-20261118-1836.log`): 222,118 of
+  222,406 build steps done, 9 failed, 246 left waiting on them. The failures fall in four groups:
+
+  | What failed | Why (measured unless marked) | Real fix |
+  |---|---|---|
+  | `vendor.lineage.touch-service.pixel` (hardware/google/pixel fork) | needs `vendor.lineage.touch-V1-ndk`, a Lineage interface | drop it from the product, or a touch HAL of our own |
+  | `GoogleParts` (device/google/gs201/parts) signapk + dexpreopt | needs `org.lineageos.settings.resources` | drop it, or port its settings off Lineage's SDK |
+  | sepolicy: vendor cil, recovery cil, neverallow check | not read yet; inferred: our device sepolicy names Lineage types | read `out/siso_output`, then fix in the fork |
+  | `check_vintf_compatible` | inferred: follows from the touch HAL manifest | re-check after the touch HAL goes |
+
+  Everything else in AOSP plus our cheetah trees compiled.
