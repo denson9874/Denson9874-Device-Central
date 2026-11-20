@@ -74,6 +74,23 @@ cache)
         [[ -n "$bl" && -n "$rd" ]] || fail "$fw/CURRENT says $cached, but its bootloader or radio image is missing"
         "$kit/update-firmware.sh" "$top" "$bl" "$rd" "$cached"
     fi
+    if [[ ${EOS_KERNEL:-} = prebuilt && -f "$top/$EOS_DEVICE_TREE/$EOS_DEVICE/extract-kernel-images.sh" ]]; then
+        kimgs="$top/vendor/google/$EOS_DEVICE-kernel-images"
+        ksource=$(awk "{print \$1}" "$kimgs/SOURCE" 2>/dev/null || true)
+        izip=$(find "$fw" -maxdepth 1 -name "image-$EOS_DEVICE-*.zip" 2>/dev/null | sort | tail -1)
+        if [[ -n "$cached" && "$ksource" != "$cached" ]]; then
+            [[ -n "$izip" ]] || fail "vendor/google/$EOS_DEVICE-kernel-images is ${ksource:-missing} while firmware is $cached: run tools/fetch-firmware.sh $EOS_DEVICE first so $fw/image-$EOS_DEVICE-$cached.zip is cached"
+            echo "== vendor/google/$EOS_DEVICE-kernel-images from ${izip##*/}"
+            mkdir -p -- "$top/out/.eos-extract"
+            TMPDIR="$top/out/.eos-extract" bash "$top/$EOS_DEVICE_TREE/$EOS_DEVICE/extract-kernel-images.sh" "$izip" || fail "extract-kernel-images.sh failed for $EOS_DEVICE"
+        elif [[ ! -f "$kimgs/images/boot.img" ]]; then
+            [[ -n "$izip" ]] || fail "vendor/google/$EOS_DEVICE-kernel-images/images/boot.img is missing and no $fw/image-$EOS_DEVICE-*.zip is cached"
+            mkdir -p -- "$top/out/.eos-extract"
+            TMPDIR="$top/out/.eos-extract" bash "$top/$EOS_DEVICE_TREE/$EOS_DEVICE/extract-kernel-images.sh" "$izip" || fail "extract-kernel-images.sh failed for $EOS_DEVICE"
+        else
+            echo "unchanged: vendor/google/$EOS_DEVICE-kernel-images ($ksource)"
+        fi
+    fi
     fwsrc=$(cat "$vendor/FIRMWARE_SOURCE" 2>/dev/null || echo "${shipped:-unknown} (vendor repo)")
     ;;
 blobs)
@@ -115,7 +132,7 @@ fi
 # No guess when the tree doesn't say (never today's month): an image without a level is then
 # left alone and named below.
 
-for b in "$top"/vendor/google/*-kernel-images/boot.img "$top"/vendor/google/*-images/boot.img "$top"/vendor/google/*-images/images/boot.img; do
+for b in "$top"/vendor/google/*-kernel-images/boot.img "$top"/vendor/google/*-kernel-images/images/boot.img "$top"/vendor/google/*-images/boot.img "$top"/vendor/google/*-images/images/boot.img; do
     [[ -f $b ]] || continue
     t=$(mktemp -d "${TMPDIR:-/tmp}/boot_patch.XXXXXX")
     if python3 "$top/system/tools/mkbootimg/unpack_bootimg.py" --boot_img "$b" --out "$t" >/dev/null 2>&1; then
