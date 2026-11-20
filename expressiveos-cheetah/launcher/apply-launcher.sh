@@ -29,7 +29,7 @@ source "$here/launcher.conf" || fail "can't read $here/launcher.conf"
 mkline="$here/tools/mk-line.awk"
 [[ -f "$mkline" ]] || fail "no $mkline"
 
-arg=${1:-$HOME/expressiveos}
+arg=${1:-${EOS_TOP:-$HOME/expressiveos}}
 [[ $# -le 1 ]] || fail "usage: apply-launcher.sh [top]"
 [[ -d "$arg" ]] || fail "no tree at $arg"
 top="$(cd "$arg" && pwd -P)"

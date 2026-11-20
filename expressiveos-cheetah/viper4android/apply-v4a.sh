@@ -32,7 +32,7 @@ here="$(cd "$(dirname -- "$(readlink -f -- "$0")")" && pwd)"
 # shellcheck source=v4a.conf
 source "$here/v4a.conf" || fail "can't read $here/v4a.conf"
 
-arg=${1:-$HOME/expressiveos}
+arg=${1:-${EOS_TOP:-$HOME/expressiveos}}
 [[ $# -le 1 ]] || fail "usage: apply-v4a.sh [top]"
 # Only for a phone whose devices/<device>.conf has EOS_V4A=1, aidl or aidl-overlay (EOS_DEVICE, cheetah unless set;
 # lib.sh reads it). For the others this leaves the tree as it is (below, after the checks on

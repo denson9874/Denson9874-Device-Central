@@ -48,11 +48,11 @@ case $1 in
         eos_top "${3:-}"
         [[ "$r" != "$top" && "$r" != "$top"/* && "$top" != "$r"/* ]] || fail "the work folder $work is in the tree $top, or holds it"
         # Not while setup or a build runs: the scratch repos borrow the tree's git objects
-        exec 8>"$HOME/.expressiveos.lock"
+        exec 8>"$EOS_LOCK"
         if ! flock -n 8; then
             h=$(lock_holder) st=
-            echo "UPDATE_${mode^^}=NOT_RUN (an ExpressiveOS build or setup holds ~/.expressiveos.lock${h:+: $h})"
-            fail "an ExpressiveOS build or setup is running (~/.expressiveos.lock); run this when it's done"
+            echo "UPDATE_${mode^^}=NOT_RUN (an ExpressiveOS build or setup holds ${EOS_LOCK/#"$HOME"/\~}${h:+: $h})"
+            fail "an ExpressiveOS build or setup is running (${EOS_LOCK/#"$HOME"/\~}); run this when it's done"
         fi
         mkdir -p -- "$r"
         if [[ $mode = plan ]]; then

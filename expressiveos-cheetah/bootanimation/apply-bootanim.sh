@@ -22,7 +22,7 @@ here="$(cd "$(dirname -- "$(readlink -f -- "$0")")" && pwd)"
 # shellcheck source=bootanim.conf
 source "$here/bootanim.conf" || fail "can't read $here/bootanim.conf"
 
-arg=${1:-$HOME/expressiveos}
+arg=${1:-${EOS_TOP:-$HOME/expressiveos}}
 [[ $# -le 1 ]] || fail "usage: apply-bootanim.sh [top]"
 [[ -d "$arg" ]] || fail "no tree at $arg"
 top="$(cd "$arg" && pwd -P)"

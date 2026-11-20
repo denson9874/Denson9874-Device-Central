@@ -232,24 +232,15 @@ else
 fi
 ue=$O/system/bin/update_engine
 [[ -f $ue ]] || fail "no $ue"
-! grep -aqF 'Payload signature verification skipped' "$ue" || fail "$ue still skips payload signatures (patches/system_update_engine 0001)"
-grep -aqF ' signatures is correct. Expected hash before padding:' "$ue" || fail "$ue has no payload signature check (patches/system_update_engine 0001)"
-ue_checks="payload signatures"
-if compgen -G "$kit/patches/system_update_engine/0002-*.patch" > /dev/null; then
-    grep -aqF ro.ota.allow_downgrade "$ue" || fail "$ue installs older builds (patches/system_update_engine 0002)"
-    ue_checks+=", no downgrades"
-fi
-if compgen -G "$kit/patches/system_update_engine/0003-*.patch" > /dev/null; then
-    ues=$O/recovery/root/system/bin/update_engine_sideload
-    [[ -f $ues ]] || fail "no $ues"
-    ! grep -aqF 'Payload signature verification skipped' "$ues" || fail "$ues still skips payload signatures (patches/system_update_engine 0001)"
-    grep -aqF 'Public key verification failed, thus update failed.' "$ues" || fail "$ues doesn't check payload signatures in recovery (patches/system_update_engine 0003)"
-    # update_engine_sideload is built from the same hardware_android.cc as update_engine
-    if compgen -G "$kit/patches/system_update_engine/0002-*.patch" > /dev/null; then
-        grep -aqF ro.ota.allow_downgrade "$ues" || fail "$ues installs older builds in recovery (patches/system_update_engine 0002)"
-    fi
-    ue_checks+=", and in recovery's sideload too"
-fi
+! grep -aqF 'Payload signature verification skipped' "$ue" || fail "$ue skips payload signatures"
+grep -aqF ' signatures is correct. Expected hash before padding:' "$ue" || fail "$ue has no payload signature check"
+grep -aqF ro.ota.allow_downgrade "$ue" || fail "$ue installs older builds (missing ro.ota.allow_downgrade check)"
+ues=$O/recovery/root/system/bin/update_engine_sideload
+[[ -f $ues ]] || fail "no $ues"
+! grep -aqF 'Payload signature verification skipped' "$ues" || fail "$ues skips payload signatures"
+grep -aqF 'Public key verification failed, thus update failed.' "$ues" || fail "$ues doesn't check payload signatures in recovery"
+grep -aqF ro.ota.allow_downgrade "$ues" || fail "$ues installs older builds in recovery"
+ue_checks="payload signatures, no downgrades, and in recovery's sideload too"
 if [[ $EOS_QUICK = 1 ]]; then
     echo "OK: update_engine checks $ue_checks"
 else

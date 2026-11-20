@@ -21,7 +21,7 @@ trap '[[ $done = 1 ]] || echo "SETUP=FAIL"' EXIT
 # shellcheck source=lib.sh
 source "$(dirname -- "$(readlink -f -- "$0")")/lib.sh"
 
-arg=${1:-$HOME/expressiveos}
+arg=${1:-${EOS_TOP:-$HOME/expressiveos}}
 [[ $# -le 1 ]] || fail "usage: setup.sh [top]"
 PATH=$HOME/bin:$PATH
 command -v repo >/dev/null || fail "repo isn't installed"
@@ -31,8 +31,8 @@ git lfs version >/dev/null 2>&1 || fail "git-lfs isn't installed (vendor/google/
 if [[ "${EOS_HOLDS_LOCK:-}" = 1 ]]; then
     locks_held
 else
-    exec 8>"$HOME/.expressiveos.lock"
-    flock -n 8 || fail "an ExpressiveOS build or setup is running (~/.expressiveos.lock)"
+    exec 8>"$EOS_LOCK"
+    flock -n 8 || fail "an ExpressiveOS build or setup is running (${EOS_LOCK/#"$HOME"/\~})"
 fi
 
 fresh=0

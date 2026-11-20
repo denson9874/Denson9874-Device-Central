@@ -73,14 +73,14 @@ case "$mode" in ''|--upload|--candidate) ;; *) fail "$usage" ;; esac
 [[ $# -le 1 ]] || fail "$usage"
 eos_top ""
 cd "$top"
-exec 8>"$HOME/.expressiveos.lock"
-flock -n 8 || fail "an ExpressiveOS build, setup or pack is running (~/.expressiveos.lock)"
+exec 8>"$EOS_LOCK"
+flock -n 8 || fail "an ExpressiveOS build, setup or pack is running (${EOS_LOCK/#"$HOME"/\~})"
 b=$(tree_build); [[ -z "$b" ]] || fail "a build is running in $top: $b"
 
 # ExpressiveOS's own release folder, as eos-pack.sh checks it: no symlink on the way
 [[ "$EOS_RELEASES" =~ ^releases/expressiveos-[a-z0-9-]+$ ]] || fail "devices/$EOS_DEVICE.conf's EOS_RELEASES ($EOS_RELEASES) isn't releases/expressiveos-<something>"
-DEST=$HOME/$EOS_RELEASES; CHECK=$DEST/check; TFD=$DEST/target-files; OTAD=$DEST/ota
-want=$(cd ~ && pwd -P)/$EOS_RELEASES
+eos_releases_paths
+CHECK=$DEST/check; TFD=$DEST/target-files; OTAD=$DEST/ota
 for f in "$DEST" "$CHECK" "$TFD" "$OTAD" "$OTAD/feed"; do
     d=$(realpath -m -- "$f") || fail "can't resolve $f"
     [[ "$d" = "$want${f#"$DEST"}" ]] || fail "$f leads to $d, not ExpressiveOS's own folder (a symlink?)"

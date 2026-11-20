@@ -64,10 +64,10 @@ import sys
 import time
 
 HOME = os.path.expanduser('~')
-TOP = os.path.join(HOME, 'expressiveos')
-JOBS = os.path.join(HOME, 'expressiveos-jobs')
-KIT = os.path.join(HOME, 'expressiveos-cheetah')
-TIMES = os.path.join(HOME, 'expressiveos-build-times.txt')
+TOP = os.environ.get('EOS_TOP') or os.path.join(HOME, 'expressiveos')
+JOBS = os.environ.get('EOS_JOBS') or os.path.join(HOME, 'expressiveos-jobs')
+KIT = os.environ.get('EOS_KIT') or os.path.join(HOME, 'expressiveos-cheetah')
+TIMES = os.environ.get('EOS_TIMES') or os.path.join(HOME, 'expressiveos-build-times.txt')
 NOW = time.time()
 LOG_LINES, LOG_WIDTH = 40, 400
 
@@ -640,7 +640,7 @@ def pick_run(procs):
         if any(re.search(r'/tools/eos-(images|pack)\.sh$', a) for a in argv[:2]):
             d = environ(pid, 'EOS_DEVICE') or 'cheetah'
             if re.fullmatch(r'[a-z0-9]+', d):
-                log = os.path.join(HOME, 'expressiveos-build.log' if d == 'cheetah' else f'expressiveos-build-{d}.log')
+                log = environ(pid, 'EOS_BUILD_LOG') or os.path.join(HOME, 'expressiveos-build.log' if d == 'cheetah' else f'expressiveos-build-{d}.log')
                 r = Run('-', log, None, True, d)
                 r.started = r.started or start
                 return r

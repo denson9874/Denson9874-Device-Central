@@ -75,11 +75,34 @@ unset -f _e
 # builds, packs and logs don't move; the other phones' sit beside them in the one tree
 EOS_PRODUCT_OUT=out/target/product/$EOS_DEVICE
 if [[ $EOS_DEVICE = cheetah ]]; then
-    EOS_STATE=out/eos EOS_KSU_OUT=out/ksu EOS_BUILD_LOG=$HOME/expressiveos-build.log
+    EOS_STATE=out/eos EOS_KSU_OUT=out/ksu
+    : "${EOS_BUILD_LOG:=$HOME/expressiveos-build.log}"
 else
     EOS_STATE=out/eos-$EOS_DEVICE EOS_KSU_OUT=out/ksu-$EOS_DEVICE
-    EOS_BUILD_LOG=$HOME/expressiveos-build-$EOS_DEVICE.log
+    : "${EOS_BUILD_LOG:=$HOME/expressiveos-build-$EOS_DEVICE.log}"
 fi
+export EOS_BUILD_LOG
+
+eos_releases_paths() {   # sets DEST and want for EOS_DEVICE's releases (EOS_RELEASES_DIR overrides ~/releases)
+    local root=${EOS_RELEASES_DIR:-} hr p
+    hr=$(cd ~ && pwd -P) || fail "can't resolve ~"
+    if [[ -z $root ]]; then
+        DEST=$HOME/$EOS_RELEASES
+        want=$hr/$EOS_RELEASES
+        return 0
+    fi
+    [[ /$root/ != */../* && $root != -* ]] || fail "EOS_RELEASES_DIR ($root) isn't a plain folder path"
+    [[ $root = /* ]] || root=$HOME/$root
+    root=${root%/}
+    DEST=$root/expressiveos-$EOS_DEVICE
+    if [[ $root == "$HOME"/* ]]; then
+        want=$hr/${root#"$HOME"/}/expressiveos-$EOS_DEVICE
+    else
+        p=$(dirname -- "$root")
+        [[ -d $p ]] || fail "parent of EOS_RELEASES_DIR ($p) does not exist"
+        want=$(cd "$p" && pwd -P)/${root##*/}/expressiveos-$EOS_DEVICE
+    fi
+}
 
 # For the runner's expressiveos-progress (tools/eos-progress.py): a STEP line in the log as a
 # phone's build or pack reaches each step (prepare, kernel, make, verify, pack), and each
@@ -89,7 +112,9 @@ fi
 # built; - when it doesn't apply) say what the times are of. The make's TIME line also says
 # prev=<phone>: whose make ran in the tree before (eos-make.sh's EOS_PREV_DEVICE), since a
 # change of phone redoes work
-EOS_TIMES=$HOME/expressiveos-build-times.txt
+: "${EOS_TIMES:=$HOME/expressiveos-build-times.txt}"
+: "${EOS_LAST_MAKE:=$HOME/.expressiveos-last-make}"
+export EOS_TIMES EOS_LAST_MAKE
 eos_step() {   # eos_step <step>|end: say this run is at <step> now, after recording how long the step before took (a failure records nothing)
     local now
     now=$(date -u +%s)
@@ -112,8 +137,8 @@ kit_patch_dirs() {   # kit_patch_dirs: the kit's patch folders for EOS_DEVICE, o
     return 0
 }
 
-eos_top() {   # eos_top [path]: sets top to the ExpressiveOS tree (default ~/expressiveos), checked
-    local arg=${1:-$HOME/expressiveos}
+eos_top() {   # eos_top [path]: sets top to the ExpressiveOS tree (default ${EOS_TOP:-~/expressiveos}), checked
+    local arg=${1:-${EOS_TOP:-$HOME/expressiveos}}
     [[ -d "$arg" ]] || fail "no tree at $arg (run setup.sh)"
     top=$(cd "$arg" && pwd -P)
     [[ -f "$top/build/envsetup.sh" ]] || fail "$top isn't an Android tree (no build/envsetup.sh)"
@@ -427,15 +452,16 @@ images_verified() {   # images_verified <package, relative to top>: true when eo
 
 # The build locks: ExpressiveOS's own (setup, build, pack, OTA, the monthly update), then the
 # tree lock, which a build and server-cleanup.sh's delete hold.
-EOS_LOCK=$HOME/.expressiveos.lock
-EOS_TREE_LOCK=$HOME/.expressiveos-tree.lock
+: "${EOS_LOCK:=$HOME/.expressiveos.lock}"
+: "${EOS_TREE_LOCK:=$HOME/.expressiveos-tree.lock}"
+export EOS_LOCK EOS_TREE_LOCK
 
-eos_lock() {   # eos_lock <script> [arg]...: run <script> holding ~/.expressiveos.lock and ~/.expressiveos-tree.lock, waiting up to 8 h for each
+eos_lock() {   # eos_lock <script> [arg]...: run <script> holding $EOS_LOCK and $EOS_TREE_LOCK, waiting up to 8 h for each
     local rc=0
     # Its own lock first, then the tree lock, always in this order (no two runs
     # can each hold one the other waits for): waiting for an ExpressiveOS run (eos-pack.sh)
     # never holds the tree lock
-    echo "== waiting for ~/.expressiveos.lock, then ~/.expressiveos-tree.lock (ExpressiveOS build locks)"
+    echo "== waiting for ${EOS_LOCK/#"$HOME"/\~}, then ${EOS_TREE_LOCK/#"$HOME"/\~} (ExpressiveOS build locks)"
     env EOS_HOLDS_LOCK=1 flock -o -E 75 -w 28800 "$EOS_LOCK" \
         flock -o -E 75 -w 28800 "$EOS_TREE_LOCK" "$@" || rc=$?
     [[ $rc != 75 ]] || echo "FAIL: a lock was held for 8 hours; nothing was built" >&2

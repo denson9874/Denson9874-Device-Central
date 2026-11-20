@@ -22,11 +22,11 @@ eos_top "${1:-}"
 work=${EOS_UPDATE_WORK:-$HOME/expressiveos-update}
 r=$(realpath -m -- "$work") || fail "can't resolve $work"
 [[ "$r" != "$top" && "$r" != "$top"/* && "$top" != "$r"/* ]] || fail "the work folder $work is in the tree $top, or holds it"
-exec 8>"$HOME/.expressiveos.lock"
+exec 8>"$EOS_LOCK"
 if ! flock -n 8; then
     h=$(lock_holder) st=
-    echo "UPDATE_CHECK=NOT_RUN (an ExpressiveOS build or setup holds ~/.expressiveos.lock${h:+: $h})"
-    fail "an ExpressiveOS build or setup is running (~/.expressiveos.lock); check again when it's done"
+    echo "UPDATE_CHECK=NOT_RUN (an ExpressiveOS build or setup holds ${EOS_LOCK/#"$HOME"/\~}${h:+: $h})"
+    fail "an ExpressiveOS build or setup is running (${EOS_LOCK/#"$HOME"/\~}); check again when it's done"
 fi
 mf=$(tree_manifest) || exit 1
 mkdir -p -- "$r"

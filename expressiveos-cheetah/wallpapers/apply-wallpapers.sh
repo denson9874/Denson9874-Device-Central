@@ -18,7 +18,7 @@ here="$(cd "$(dirname -- "$(readlink -f -- "$0")")" && pwd)"
 # shellcheck source=wallpapers.conf
 source "$here/wallpapers.conf" || fail "can't read $here/wallpapers.conf"
 
-arg=${1:-$HOME/expressiveos}
+arg=${1:-${EOS_TOP:-$HOME/expressiveos}}
 [[ $# -le 1 ]] || fail "usage: apply-wallpapers.sh [top]"
 [[ -d "$arg" ]] || fail "no tree at $arg"
 top="$(cd "$arg" && pwd -P)"

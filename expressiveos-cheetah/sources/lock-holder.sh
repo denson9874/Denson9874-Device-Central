@@ -1,6 +1,6 @@
 # Sourced by update-check.sh and update.sh (after lib.sh).
-lock_holder() {   # lock_holder: what holds ~/.expressiveos.lock, as ps shows it, or nothing; never fails
-    local l=$HOME/.expressiveos.lock f p n holders=() pid c
+lock_holder() {   # lock_holder: what holds $EOS_LOCK, as ps shows it, or nothing; never fails
+    local l=${EOS_LOCK:-$HOME/.expressiveos.lock} f p n holders=() pid c
     # The processes with the lock file open whose descriptor holds the lock (its fdinfo has a
     # lock: line; one still waiting for it has none). /proc/locks names the pid that took the
     # lock, which may have exited since, handing it on (flock in a subshell)

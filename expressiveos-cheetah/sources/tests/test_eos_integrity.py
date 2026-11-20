@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 TESTS_DIR = Path(__file__).resolve().parent
@@ -428,8 +429,11 @@ class TestEosIntegrityTool(unittest.TestCase):
         spki_b64 = kg_fields["PUBKEY_SPKI_B64"]
         raw32_b64 = kg_fields["PUBKEY_RAW32_B64"]
 
+        now_dt = datetime.now(timezone.utc)
+        pif_doc = self._make_valid_pif_dict()
+        pif_doc["expires_utc"] = (now_dt + timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
         pif_file = work / "pif.json"
-        pif_file.write_text(json.dumps(self._make_valid_pif_dict()), encoding="utf-8")
+        pif_file.write_text(json.dumps(pif_doc), encoding="utf-8")
 
         tgt_file = work / "target.txt"
         tgt_file.write_text(
@@ -450,7 +454,7 @@ class TestEosIntegrityTool(unittest.TestCase):
             "--revoked-pif", "google/old_beta/old:16/BP11.250101.001/11111111:user/release-keys",
             "--roots-file", str(self.roots_json),
             "--crl-file", str(self.clean_crl_json),
-            "--now", "2026-11-19T12:00:00Z",
+            "--now", (now_dt + timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ"),
         ])
         self.assertEqual(proc_bm.returncode, 0, proc_bm.stderr)
         self.assertIn("INTEGRITY_MANIFEST=OK", proc_bm.stdout)
