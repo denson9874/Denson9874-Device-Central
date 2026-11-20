@@ -44,6 +44,10 @@ export EOS_DEVICE
 EOS_QUICK=${EOS_QUICK:-0}
 [[ $EOS_QUICK = 0 || $EOS_QUICK = 1 ]] || fail "EOS_QUICK is '$EOS_QUICK': 1 for a quick build (images only, m droid), 0 or unset for a full one"
 export EOS_QUICK
+EOS_QUICK_USERDEBUG=${EOS_QUICK_USERDEBUG:-0}
+[[ $EOS_QUICK_USERDEBUG = 0 || ( $EOS_QUICK_USERDEBUG = 1 && $EOS_QUICK = 1 ) ]] \
+    || fail "EOS_QUICK_USERDEBUG is '$EOS_QUICK_USERDEBUG': 1 is allowed only with EOS_QUICK=1 (never on full or released builds)"
+export EOS_QUICK_USERDEBUG
 # eos.conf's own values of the keys cheetah's file restates, which must agree (sources/update-aosp.py
 # reads eos.conf's EOS_LUNCH); then none of the device keys from the caller's environment
 _eosc="$EOS_LUNCH|$EOS_RELEASES|$EOS_SF_DIR|$EOS_R2_PREFIX"
@@ -58,6 +62,7 @@ done
 unset _k
 # One phone's names only: its lunch product, board line, release and upload folders are its own
 [[ $EOS_LUNCH =~ ^eos_${EOS_DEVICE}-[a-z0-9]+-(user|userdebug)$ ]] || fail "devices/$EOS_DEVICE.conf: EOS_LUNCH $EOS_LUNCH isn't eos_$EOS_DEVICE-<release>-<variant>"
+[[ $EOS_QUICK_USERDEBUG != 1 ]] || EOS_LUNCH="${EOS_LUNCH%-*}-userdebug"
 [[ $EOS_BOARD = "$EOS_DEVICE" ]] || fail "devices/$EOS_DEVICE.conf: EOS_BOARD is $EOS_BOARD; a zip names its own phone only"
 [[ $EOS_RELEASES = "releases/expressiveos-$EOS_DEVICE" ]] || fail "devices/$EOS_DEVICE.conf: EOS_RELEASES isn't releases/expressiveos-$EOS_DEVICE"
 [[ $EOS_SF_DIR == /home/frs/project/*/expressiveos/"$EOS_DEVICE" ]] || fail "devices/$EOS_DEVICE.conf: EOS_SF_DIR isn't .../expressiveos/$EOS_DEVICE"

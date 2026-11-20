@@ -126,8 +126,12 @@ else
 fi
 
 echo "== identity"
+want_btype=user
+if [[ $EOS_QUICK = 1 && "$(prop ro.build.type)" = userdebug ]]; then
+    want_btype=userdebug
+fi
 for kv in "ro.product.product.device=$EOS_DEVICE" "ro.product.product.model=$EOS_MODEL" "ro.product.vendor.device=$EOS_DEVICE" \
-          "ro.expressiveos.device=$EOS_DEVICE" ro.build.type=user; do
+          "ro.expressiveos.device=$EOS_DEVICE" "ro.build.type=$want_btype"; do
     [[ "$(prop "${kv%%=*}")" = "${kv#*=}" ]] || fail "${kv%%=*} is '$(prop "${kv%%=*}")', want '${kv#*=}'"
 done
 lineage_props=$(grep -hE '^ro\.lineage\.' "$O"/system/build.prop "$O"/system_ext/etc/build.prop "$O"/product/etc/build.prop "$O"/vendor/build.prop 2>/dev/null || true)
@@ -136,7 +140,7 @@ lineage_props=$(grep -hE '^ro\.lineage\.' "$O"/system/build.prop "$O"/system_ext
 # Pixel 11 trees have none, and the build writes 'board=<device>'. eos-pack.sh makes either
 # 'require board=<device>'
 grep -qE '^(require )?board=' "$O/android-info.txt" || fail "no 'require board=' or 'board=' in $O/android-info.txt"
-echo "OK: $EOS_DEVICE, $EOS_MODEL, user build"
+echo "OK: $EOS_DEVICE, $EOS_MODEL, $want_btype build"
 n=0
 # The shared patches/, ksu/ and viper4android/ ones, then the phone's own devices/<device>/
 mapfile -t dirs < <(kit_patch_dirs)
