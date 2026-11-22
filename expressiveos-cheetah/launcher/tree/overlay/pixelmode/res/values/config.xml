@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pixel Launcher mode: Pixel Launcher is the Recents app, as on a stock Pixel
+     (vendor/pixel-style's PixelConfigOverlayCommon). -->
+<resources>
+    <string name="config_recentsComponentName" translatable="false">com.google.android.apps.nexuslauncher/com.android.quickstep.RecentsActivity</string>
+</resources>

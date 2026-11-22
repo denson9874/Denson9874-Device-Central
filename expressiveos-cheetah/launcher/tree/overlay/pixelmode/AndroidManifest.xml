@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pixel Launcher mode (the launcher switch in Expressive Studio): Pixel Launcher is the
+     Recents app again. Only scanned at boot when persist.sys.expressiveos.launcher is "pixel"
+     (unset or anything else: Expressive Launcher's mode), so the switch sets the property and
+     reboots. Priority 101 puts it after ExpressiveLauncherFrameworkOverlay (100) on
+     /system_ext. frameworks/base's PackageCacher must not cache static overlays, or the
+     property's old value would stick (ExpressiveOS/frameworks_base). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.expressiveos.overlay.launcher.pixelmode">
+    <overlay android:targetPackage="android"
+        android:isStatic="true"
+        android:priority="101"
+        android:requiredSystemPropertyName="persist.sys.expressiveos.launcher"
+        android:requiredSystemPropertyValue="pixel" />
+</manifest>

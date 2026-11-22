@@ -134,18 +134,19 @@ tree)
         nested) bad "vendor/extra/product.mk inherits launcher.mk only inside an ifeq/ifdef/define block: move the line to the top level" ;;
         *) bad "vendor/extra/product.mk doesn't inherit launcher.mk: run apply-launcher.sh" ;;
     esac
-    # Evolution X's vendor_evolution is checked out at vendor/lineage; its config/common.mk
-    # line 2 reads vendor/extra/product.mk
-    if grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/lineage/config/common.mk" 2>/dev/null; then
+    # ExpressiveOS 2.0 vendor/expressiveos (or legacy vendor/lineage) common.mk reads vendor/extra/product.mk
+    if grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/expressiveos/config/common.mk" 2>/dev/null; then
+        pass "vendor/expressiveos/config/common.mk inherits vendor/extra/product.mk"
+    elif grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/lineage/config/common.mk" 2>/dev/null; then
         pass "vendor/lineage/config/common.mk inherits vendor/extra/product.mk"
     else
-        bad "vendor/lineage/config/common.mk is missing or no longer inherits vendor/extra/product.mk: Pixel Launcher would silently stay"
+        bad "vendor/{expressiveos,lineage}/config/common.mk is missing or no longer inherits vendor/extra/product.mk: Pixel Launcher would silently stay"
     fi
     # Every ExpressiveOS phone's product is in launcher.mk's list
     mk_filter=$(grep -m1 -E '^ifneq \(\$\(filter ' "$kit/tree/launcher.mk" || true)
     miss=()
     for d in "${phones[@]}"; do
-        [[ " ${mk_filter//[(),]/ } " = *" lineage_$d "* ]] || miss+=("$d")
+        [[ " ${mk_filter//[(),]/ } " = *" eos_$d "* || " ${mk_filter//[(),]/ } " = *" lineage_$d "* ]] || miss+=("$d")
     done
     if [[ ${#miss[@]} = 0 && ${#phones[@]} -gt 0 ]]; then
         pass "launcher.mk covers every ExpressiveOS phone (${phones[*]})"
@@ -269,16 +270,27 @@ out)
     fi
     [[ -d "$O/system_ext/priv-app/ExpressiveLauncher/oat" ]] && info "dexpreopted (system_ext/priv-app/ExpressiveLauncher/oat)" \
         || info "not dexpreopted (no oat/ next to the APK): the phone compiles it after boot"
-    # One Home app: Pixel Launcher, AOSP's Launcher3 and Trebuchet stay out
+    # Launcher apps: ExpressiveLauncher is default Home/Recents; NexusLauncherRelease is allowed
+    # only when paired with pixel-launcher-home-off.xml for Expressive Studio's LauncherSwitch.
+    # AOSP Launcher3, Trebuchet, Lawnchair and QuickSearchBox must stay out.
     hits=$(cd "$O" && find system system_ext product vendor -maxdepth 3 \( -path '*app/ExpressiveLauncher*' -o -path '*app/NexusLauncher*' \
         -o -path '*app/Launcher3*' -o -path '*app/Trebuchet*' -o -path '*app/Lawnchair*' -o -path '*app/QuickSearchBox*' \) -prune -print 2>/dev/null | LC_ALL=C sort | paste -sd' ' || true)
     if [[ "$hits" = system_ext/priv-app/ExpressiveLauncher ]]; then
         pass "the only launcher app is system_ext/priv-app/ExpressiveLauncher (no NexusLauncherRelease, Launcher3, Trebuchet or QuickSearchBox)"
+    elif [[ "$hits" = "system_ext/priv-app/ExpressiveLauncher system_ext/priv-app/NexusLauncherRelease" \
+            && -f "$O/system_ext/etc/sysconfig/pixel-launcher-home-off.xml" ]]; then
+        pass "ExpressiveLauncher ships as default alongside disabled-Home NexusLauncherRelease (LauncherSwitch dual-launcher mode)"
     else
-        bad "launcher apps in the images: ${hits:-none} (want only system_ext/priv-app/ExpressiveLauncher)"
+        bad "launcher apps in the images: ${hits:-none} (want ExpressiveLauncher, optionally with disabled-Home NexusLauncherRelease)"
     fi
     hits=$(cd "$O" && find system system_ext product vendor -path '*/overlay/*' -name 'PixelLauncher*' 2>/dev/null | LC_ALL=C sort | paste -sd' ' || true)
-    [[ -z "$hits" ]] && pass "no Pixel Launcher overlays" || bad "Pixel Launcher overlays shipped: $hits"
+    if [[ -z "$hits" ]]; then
+        pass "no Pixel Launcher overlays"
+    elif [[ -f "$O/system_ext/etc/sysconfig/pixel-launcher-home-off.xml" ]]; then
+        info "Pixel Launcher overlays co-shipped for LauncherSwitch mode: $hits"
+    else
+        bad "Pixel Launcher overlays shipped without LauncherSwitch mode: $hits"
+    fi
     # One Home activity. The HOME role has no default holder: the highest-priority HOME
     # activity gets it, and a tie leaves nobody (the chooser comes up on Home). So no other
     # app may ship an enabled one at priority 0 or more, except a setup wizard's (above 0),

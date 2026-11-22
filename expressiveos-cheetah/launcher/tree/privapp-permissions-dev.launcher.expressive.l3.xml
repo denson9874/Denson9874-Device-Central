@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Expressive Launcher (/system_ext/priv-app/ExpressiveLauncher): every privileged permission
-     it asks for (launcher.conf EL_PRIVAPP_PERMS). Pixel Launcher, which it replaces, is granted
-     all nine too (vendor/gms privapp-permissions-google-se.xml). Without a line here a
+     it asks for (launcher.conf EL_PRIVAPP_PERMS). Pixel Launcher, which it replaces as the Recents app, holds
+     them too (vendor/gms privapp-permissions-google-se.xml). Without a line here a
      privileged system app stops the boot under ro.control_privapp_permissions=enforce; the
-     build sets "log" today (vendor/lineage config/common.mk), which only logs it. -->
+     build sets "log" today (vendor/expressiveos/config/common.mk), which only logs it. -->
 <permissions>
     <privapp-permissions package="dev.launcher.expressive.l3">
         <!-- Suggested apps (Lawnchair's usage-stats ranker) -->
@@ -19,5 +19,10 @@
         <permission name="android.permission.WRITE_SECURE_SETTINGS" />
         <!-- Private space in the app drawer -->
         <permission name="android.permission.ACCESS_HIDDEN_PROFILES_FULL" />
+        <!-- Circle to Search from a navigation handle long-press (5.1.3, ExpressiveOS 1.1.2) -->
+        <permission name="android.permission.ACCESS_CONTEXTUAL_SEARCH" />
+        <!-- Widget binding and Android 17 keep-clear areas (M3 Expressive parity) -->
+        <permission name="android.permission.BIND_APPWIDGET" />
+        <permission name="android.permission.SET_UNRESTRICTED_KEEP_CLEAR_AREAS" />
     </privapp-permissions>
 </permissions>

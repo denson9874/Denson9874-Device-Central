@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pixel Launcher mode (the launcher switch in Expressive Studio): SystemUI's launcher package is
+     Pixel Launcher again, for the lock screen hub's widget picker and launcher icon packs.
+     ExpressiveOS's SystemUIGoogle names Expressive Launcher by default. Scanned at boot only
+     when persist.sys.expressiveos.launcher is "pixel", like ExpressiveLauncherPixelModeOverlay. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.expressiveos.overlay.launcher.pixelmode.systemui">
+    <overlay android:targetPackage="com.android.systemui"
+        android:isStatic="true"
+        android:priority="101"
+        android:requiredSystemPropertyName="persist.sys.expressiveos.launcher"
+        android:requiredSystemPropertyValue="pixel" />
+</manifest>
