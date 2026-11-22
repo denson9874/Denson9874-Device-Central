@@ -96,7 +96,7 @@ elif [[ -n $mode ]]; then
 fi
 [[ "${EOS_OTA_MIRROR:-}" =~ ^https://[a-z0-9.-]+$ ]] || fail "eos.conf's EOS_OTA_MIRROR (${EOS_OTA_MIRROR:-}) isn't https://<host>"
 URL=$EOS_OTA_MIRROR/${EOS_R2_PREFIX}ota
-FEED=https://raw.githubusercontent.com/$EOS_FEED_REPO/$EOS_FEED_BRANCH/builds/$EOS_DEVICE.json
+FEED=https://raw.githubusercontent.com/$EOS_FEED_REPO/$EOS_FEED_BRANCH/builds/v2/$EOS_DEVICE.json
 rc2() { ~/bin/rclone "$@"; }
 [[ -z $mode || -x ~/bin/rclone ]] || fail "no ~/bin/rclone for the R2 upload (tools/ota_mirror/README.md)"
 
@@ -455,14 +455,14 @@ EOF
 fi
 
 echo "== the feed files: $OTAD/feed"
-mkdir -p -- "$OTAD/feed/builds" "$OTAD/feed/changelogs"
+mkdir -p -- "$OTAD/feed/builds/v2" "$OTAD/feed/changelogs/v2"
 entries=()
 [[ -z $inc ]] || entries+=("$(entry "$inc" "$BTS" "")")
 entries+=("$(entry "$FULL" "" "")")
-feed "$OTAD/feed/builds/$EOS_DEVICE.json" "${entries[@]}"
+feed "$OTAD/feed/builds/v2/$EOS_DEVICE.json" "${entries[@]}"
 # The release notes eos-pack.sh --release wrote for it
 [[ -f $DEST/$REL-changelog.txt ]] || fail "no $DEST/$REL-changelog.txt (eos-pack.sh --release writes it)"
-cp -- "$DEST/$REL-changelog.txt" "$OTAD/feed/changelogs/$EOS_DEVICE.txt"
+cp -- "$DEST/$REL-changelog.txt" "$OTAD/feed/changelogs/v2/$EOS_DEVICE.txt"
 
 if [[ $mode = --upload ]]; then
     echo "== upload to R2: $R2OTA"
@@ -478,7 +478,7 @@ if [[ $mode = --upload ]]; then
     done < "$T/ota.ls"
     echo "UPLOADED_OTA $URL/$REL.zip${inc:+ $URL/${inc##*/}}"
 fi
-for f in "builds/$EOS_DEVICE.json" "changelogs/$EOS_DEVICE.txt"; do
+for f in "builds/v2/$EOS_DEVICE.json" "changelogs/v2/$EOS_DEVICE.txt"; do
     echo "===== OTA_FEED $f"; cat -- "$OTAD/feed/$f"
 done
 echo "===== OTA_FEED_END"

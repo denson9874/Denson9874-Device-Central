@@ -130,12 +130,12 @@ C=ExpressiveOS-17.0-20261210-cheetah-1.0-Unofficial
 rc=$(ota); ok "no release yet: refuses" '[[ $rc = 1 ]] && grep -q "nothing released yet" "$W/out.log" && tail -1 "$W/out.log" | grep -qx OTA=FAIL'
 release "$A" 1762100000 eng.a
 rc=$(ota); ok "first release, no feed file: full only, preview" '[[ $rc = 0 ]] && grep -q "the full package only" "$W/out.log" && grep -q OTA_PREVIEW "$W/out.log" && [[ ! -d $W/r2/expressiveos ]]'
-ok "  feed JSON: one full entry" 'python3 -c "import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]; assert len(r)==1 and \"base_timestamp\" not in r[0] and r[0][\"timestamp\"]==1762100000 and r[0][\"version\"]==\"1.0\" and r[0][\"download\"].endswith(\"/expressiveos/cheetah/ota/$A.zip\")" "$D/ota/feed/builds/cheetah.json"'
-ok "  changelog copied" 'grep -qx "notes for $A" "$D/ota/feed/changelogs/cheetah.txt"'
+ok "  feed JSON: one full entry" 'python3 -c "import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]; assert len(r)==1 and \"base_timestamp\" not in r[0] and r[0][\"timestamp\"]==1762100000 and r[0][\"version\"]==\"1.0\" and r[0][\"download\"].endswith(\"/expressiveos/cheetah/ota/$A.zip\")" "$D/ota/feed/builds/v2/cheetah.json"'
+ok "  changelog copied" 'grep -qx "notes for $A" "$D/ota/feed/changelogs/v2/cheetah.txt"'
 rc=$(ota --upload); ok "no .uploaded: refuses --upload" '[[ $rc = 1 ]] && grep -q "the release hasn.t been uploaded yet" "$W/out.log"'
 touch "$D/$A-fastboot.zip.uploaded"
-rc=$(ota --upload); ok "--upload: full on R2, feed printed" '[[ $rc = 0 ]] && [[ -f $W/r2/expressiveos/cheetah/ota/$A.zip ]] && grep -q "^OTA_FEED_READY" "$W/out.log" && grep -q "^===== OTA_FEED builds/cheetah.json" "$W/out.log"'
-cp "$D/ota/feed/builds/cheetah.json" "$W/feed/cheetah.json"   # the feed PR merged
+rc=$(ota --upload); ok "--upload: full on R2, feed printed" '[[ $rc = 0 ]] && [[ -f $W/r2/expressiveos/cheetah/ota/$A.zip ]] && grep -q "^OTA_FEED_READY" "$W/out.log" && grep -q "^===== OTA_FEED builds/v2/cheetah.json" "$W/out.log"'
+cp "$D/ota/feed/builds/v2/cheetah.json" "$W/feed/cheetah.json"   # the feed PR merged
 rc=$(ota --upload); ok "rerun of A once A is in the feed: still full only" '[[ $rc = 0 ]] && grep -q "the full package only" "$W/out.log"'
 
 release "$B" 1764700000 eng.b
@@ -153,11 +153,11 @@ import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]
 assert len(r)==2, r
 assert r[0][\"filename\"]==\"$B-incremental-from-20261103.zip\" and r[0][\"base_timestamp\"]==1762100000 and r[0][\"timestamp\"]==1764700001
 assert r[1][\"filename\"]==\"$B.zip\" and \"base_timestamp\" not in r[1] and r[1][\"timestamp\"]==1764700000
-" "$D/ota/feed/builds/cheetah.json"'
+" "$D/ota/feed/builds/v2/cheetah.json"'
 ok "  R2 keeps A (the live feed's) and B" '[[ -f $W/r2/expressiveos/cheetah/ota/$A.zip && -f $W/r2/expressiveos/cheetah/ota/$B.zip && -f $W/r2/expressiveos/cheetah/ota/$B-incremental-from-20261103.zip ]]'
-cp "$D/ota/feed/builds/cheetah.json" "$W/feed/cheetah.json"   # merged
+cp "$D/ota/feed/builds/v2/cheetah.json" "$W/feed/cheetah.json"   # merged
 : > "$HOME/otf.log"
-rc=$(ota --upload); ok "rerun of B once B is in the feed: same base, not made again" '[[ $rc = 0 ]] && grep -q "made already" "$W/out.log" && [[ ! -s $HOME/otf.log ]] && grep -q "$B-incremental-from-20261103.zip" "$D/ota/feed/builds/cheetah.json"'
+rc=$(ota --upload); ok "rerun of B once B is in the feed: same base, not made again" '[[ $rc = 0 ]] && grep -q "made already" "$W/out.log" && [[ ! -s $HOME/otf.log ]] && grep -q "$B-incremental-from-20261103.zip" "$D/ota/feed/builds/v2/cheetah.json"'
 ok "  R2 drops A now that no feed names it" '[[ ! -f $W/r2/expressiveos/cheetah/ota/$A.zip && -f $W/r2/expressiveos/cheetah/ota/$B.zip ]]'
 
 # The feed has B; LATEST pointing at A (older) must stop
@@ -199,7 +199,7 @@ ok "  its .sha256 names the release's file, its .base the same base and target-f
 ok "  feed: that incremental first" 'python3 -c "
 import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]
 assert r[0][\"filename\"]==\"$C-incremental-from-20261203.zip\" and r[0][\"base_timestamp\"]==1764700000
-" "$D/ota/feed/builds/cheetah.json"'
+" "$D/ota/feed/builds/v2/cheetah.json"'
 # A candidate incremental made to other target-files (an older build of the same name): made again
 rm -f "$D/ota/$C-incremental-from-20261203.zip"*
 sed -i 's/ [0-9a-f]*$/ 0000/' "$D/check/$C-incremental-from-20261203.zip.base"

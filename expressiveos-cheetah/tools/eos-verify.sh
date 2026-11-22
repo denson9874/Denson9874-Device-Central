@@ -171,7 +171,7 @@ import sys, zipfile
 arsc = zipfile.ZipFile(sys.argv[1]).read('resources.arsc')
 def has(s):
     return s.encode() in arsc or s.encode('utf-16-le') in arsc
-if not has('https://raw.githubusercontent.com/denson9874/expressiveos_ota/main/builds/{device}.json'):
+if not has('https://raw.githubusercontent.com/denson9874/expressiveos_ota/main/builds/v2/{device}.json'):
     sys.exit('FAIL: %s has no denson9874/expressiveos_ota/main feed URL' % sys.argv[2])
 if has('evolution_ota'):
     sys.exit('FAIL: %s names evolution_ota' % sys.argv[2])
