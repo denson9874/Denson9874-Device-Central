@@ -42,6 +42,10 @@ android_app_import {
     presigned: true,
     privileged: true,
     system_ext_specific: true,
+    dex_preopt: {
+        enabled: true,
+        profile_guided: false,
+    },
     // The manifest's <uses-library required="false"> tags, in the same order, as the build's
     // uses-library check requires.
     optional_uses_libs: [
