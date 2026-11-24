@@ -130,11 +130,11 @@ C=ExpressiveOS-17.0-20261210-cheetah-1.0-Unofficial
 rc=$(ota); ok "no release yet: refuses" '[[ $rc = 1 ]] && grep -q "nothing released yet" "$W/out.log" && tail -1 "$W/out.log" | grep -qx OTA=FAIL'
 release "$A" 1762100000 eng.a
 rc=$(ota); ok "first release, no feed file: full only, preview" '[[ $rc = 0 ]] && grep -q "the full package only" "$W/out.log" && grep -q OTA_PREVIEW "$W/out.log" && [[ ! -d $W/r2/expressiveos ]]'
-ok "  feed JSON: one full entry" 'python3 -c "import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]; assert len(r)==1 and \"base_timestamp\" not in r[0] and r[0][\"timestamp\"]==1762100000 and r[0][\"version\"]==\"1.0\" and r[0][\"download\"].endswith(\"/expressiveos/cheetah/ota/$A.zip\")" "$D/ota/feed/builds/v2/cheetah.json"'
+ok "  feed JSON: one full entry" 'python3 -c "import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]; assert len(r)==1 and \"base_timestamp\" not in r[0] and r[0][\"timestamp\"]==1762100000 and r[0][\"version\"]==\"1.0\" and r[0][\"download\"].endswith(\"/expressiveos/v2/cheetah/ota/$A.zip\")" "$D/ota/feed/builds/v2/cheetah.json"'
 ok "  changelog copied" 'grep -qx "notes for $A" "$D/ota/feed/changelogs/v2/cheetah.txt"'
 rc=$(ota --upload); ok "no .uploaded: refuses --upload" '[[ $rc = 1 ]] && grep -q "the release hasn.t been uploaded yet" "$W/out.log"'
 touch "$D/$A-fastboot.zip.uploaded"
-rc=$(ota --upload); ok "--upload: full on R2, feed printed" '[[ $rc = 0 ]] && [[ -f $W/r2/expressiveos/cheetah/ota/$A.zip ]] && grep -q "^OTA_FEED_READY" "$W/out.log" && grep -q "^===== OTA_FEED builds/v2/cheetah.json" "$W/out.log"'
+rc=$(ota --upload); ok "--upload: full on R2, feed printed" '[[ $rc = 0 ]] && [[ -f $W/r2/expressiveos/v2/cheetah/ota/$A.zip ]] && grep -q "^OTA_FEED_READY" "$W/out.log" && grep -q "^===== OTA_FEED builds/v2/cheetah.json" "$W/out.log"'
 cp "$D/ota/feed/builds/v2/cheetah.json" "$W/feed/cheetah.json"   # the feed PR merged
 rc=$(ota --upload); ok "rerun of A once A is in the feed: still full only" '[[ $rc = 0 ]] && grep -q "the full package only" "$W/out.log"'
 
@@ -154,11 +154,11 @@ assert len(r)==2, r
 assert r[0][\"filename\"]==\"$B-incremental-from-20261103.zip\" and r[0][\"base_timestamp\"]==1762100000 and r[0][\"timestamp\"]==1764700001
 assert r[1][\"filename\"]==\"$B.zip\" and \"base_timestamp\" not in r[1] and r[1][\"timestamp\"]==1764700000
 " "$D/ota/feed/builds/v2/cheetah.json"'
-ok "  R2 keeps A (the live feed's) and B" '[[ -f $W/r2/expressiveos/cheetah/ota/$A.zip && -f $W/r2/expressiveos/cheetah/ota/$B.zip && -f $W/r2/expressiveos/cheetah/ota/$B-incremental-from-20261103.zip ]]'
+ok "  R2 keeps A (the live feed's) and B" '[[ -f $W/r2/expressiveos/v2/cheetah/ota/$A.zip && -f $W/r2/expressiveos/v2/cheetah/ota/$B.zip && -f $W/r2/expressiveos/v2/cheetah/ota/$B-incremental-from-20261103.zip ]]'
 cp "$D/ota/feed/builds/v2/cheetah.json" "$W/feed/cheetah.json"   # merged
 : > "$HOME/otf.log"
 rc=$(ota --upload); ok "rerun of B once B is in the feed: same base, not made again" '[[ $rc = 0 ]] && grep -q "made already" "$W/out.log" && [[ ! -s $HOME/otf.log ]] && grep -q "$B-incremental-from-20261103.zip" "$D/ota/feed/builds/v2/cheetah.json"'
-ok "  R2 drops A now that no feed names it" '[[ ! -f $W/r2/expressiveos/cheetah/ota/$A.zip && -f $W/r2/expressiveos/cheetah/ota/$B.zip ]]'
+ok "  R2 drops A now that no feed names it" '[[ ! -f $W/r2/expressiveos/v2/cheetah/ota/$A.zip && -f $W/r2/expressiveos/v2/cheetah/ota/$B.zip ]]'
 
 # The feed has B; LATEST pointing at A (older) must stop
 echo "$A-target_files.zip" > "$D/target-files/LATEST"
@@ -176,14 +176,14 @@ echo old > "$D/check/ExpressiveOS-17.0-20261201-cheetah-1.0-Unofficial-increment
 rm -f "$top/build/make/tools/releasetools/ota_from_target_files.py"
 echo "notes for $C" > "$D/check/$C-changelog.txt"
 : > "$HOME/otf-chlog.log"
-rc=$(ota --candidate); ok "--candidate: incremental B->C to R2 test/ with a test feed" '[[ $rc = 0 ]] && [[ -f $D/check/$C-incremental-from-20261203.zip && -f $W/r2/expressiveos/cheetah/ota/test/$C-incremental-from-20261203.zip && -f $W/r2/expressiveos/cheetah/ota/test/cheetah.json ]] && grep -q "^OTA_TEST https://ota-mirror.daryldenson-apps.workers.dev/expressiveos/cheetah/ota/test/cheetah.json" "$W/out.log"'
+rc=$(ota --candidate); ok "--candidate: incremental B->C to R2 test/ with a test feed" '[[ $rc = 0 ]] && [[ -f $D/check/$C-incremental-from-20261203.zip && -f $W/r2/expressiveos/v2/cheetah/ota/test/$C-incremental-from-20261203.zip && -f $W/r2/expressiveos/v2/cheetah/ota/test/cheetah.json ]] && grep -q "^OTA_TEST https://ota-mirror.daryldenson-apps.workers.dev/expressiveos/v2/cheetah/ota/test/cheetah.json" "$W/out.log"'
 ok "  no --changelog for a tree whose tool doesn't know it" '[[ -s $HOME/otf.log && ! -s $HOME/otf-chlog.log ]]'
 ok "  older candidate incremental removed from check/" '[[ ! -e $D/check/ExpressiveOS-17.0-20261201-cheetah-1.0-Unofficial-incremental-from-20261103.zip ]]'
 ok "  test feed: the incremental only, its download in test/" 'python3 -c "
 import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]
 assert len(r)==1 and r[0][\"base_timestamp\"]==1764700000 and r[0][\"download\"].endswith(\"/ota/test/$C-incremental-from-20261203.zip\")
-" "$W/r2/expressiveos/cheetah/ota/test/cheetah.json"'
-ok "  the live feed's R2 files untouched" '[[ -f $W/r2/expressiveos/cheetah/ota/$B.zip ]]'
+" "$W/r2/expressiveos/v2/cheetah/ota/test/cheetah.json"'
+ok "  the live feed's R2 files untouched" '[[ -f $W/r2/expressiveos/v2/cheetah/ota/$B.zip ]]'
 # C tested and released (eos-pack.sh --release: its target-files a hard link to check/'s): the
 # release's incremental is check/'s, the one the phone test installed, not made again
 ln "$D/check/$C-target_files.zip" "$D/target-files/$C-target_files.zip"
@@ -226,22 +226,22 @@ rc=$(ota); ok "  a candidate incremental with the release's notes is taken" '[[ 
 rm -f "$top/build/make/tools/releasetools/ota_from_target_files.py"
 rm -f "$D/target-files/$C-target_files.zip"* "$D/ota/$C"* "$D/$C-fastboot.zip"* "$D/$C-changelog.txt"
 echo "$B-target_files.zip" > "$D/target-files/LATEST"
-# A tree from before 1.1's key move (or after its revert): the key folder's old name
+# EOS 2.0 requires vendor/expressiveos-priv/keys exclusively (legacy vendor/evolution-priv is refused)
 mv "$top/vendor/expressiveos-priv" "$top/vendor/evolution-priv"
 rm -f "$D/check/$C-incremental-from-20261203.zip"*
 : > "$HOME/otf-k.log"
-rc=$(ota --candidate); ok "key folder still vendor/evolution-priv: -k takes it, with a note" '[[ $rc = 0 ]] && grep -q "^note: the release key is in vendor/evolution-priv" "$W/out.log" && tail -1 "$HOME/otf-k.log" | grep -qx vendor/evolution-priv/keys/testkey'
+rc=$(ota --candidate); ok "key folder at legacy vendor/evolution-priv: refused in EOS 2.0" '[[ $rc = 1 ]] && grep -q "no vendor/expressiveos-priv/keys/" "$W/out.log" && [[ ! -s $HOME/otf-k.log ]]'
 mv "$top/vendor/evolution-priv" "$top/vendor/expressiveos-priv"
 sed -i 's/^build full/build quick/' "$D/check/$C-fastboot.zip.pack-ok"
 rc=$(ota --candidate); ok "--candidate refuses a quick build" '[[ $rc = 1 ]] && grep -q "quick build" "$W/out.log"'
 sed -i 's/^build quick/build full/' "$D/check/$C-fastboot.zip.pack-ok"
 
 # Base target-files gone from the server: fetched from R2
-mkdir -p "$W/r2/expressiveos/cheetah/target-files"
-cp "$D/target-files/$B-target_files.zip"* "$W/r2/expressiveos/cheetah/target-files/"
+mkdir -p "$W/r2/expressiveos/v2/cheetah/target-files"
+cp "$D/target-files/$B-target_files.zip"* "$W/r2/expressiveos/v2/cheetah/target-files/"
 rm "$D/target-files/$B-target_files.zip"
 rc=$(ota --candidate); ok "base target-files fetched from R2" '[[ $rc = 0 ]] && grep -q "fetching it from" "$W/out.log"'
-echo corrupt >> "$W/r2/expressiveos/cheetah/target-files/$B-target_files.zip"
+echo corrupt >> "$W/r2/expressiveos/v2/cheetah/target-files/$B-target_files.zip"
 rc=$(ota --candidate); ok "  a corrupt R2 copy is refused" '[[ $rc = 1 ]] && grep -q "isn.t the zip its .sha256 names" "$W/out.log"'
 
 # A candidate with an older security patch than the feed's build (B has 2026-11-05)

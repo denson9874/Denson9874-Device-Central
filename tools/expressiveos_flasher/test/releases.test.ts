@@ -110,15 +110,15 @@ describe("release manifest", () => {
 
 describe("release file URLs", () => {
 	const zip = "ExpressiveOS-16.0-20261029-cheetah-1.0-Unofficial-fastboot.zip";
-	it("serves a release's files from the device's folder, a testers build's from testers/", () => {
-		expect(fileUrl("cheetah", { channel: "release" }, zip)).toBe(`/dl/cheetah/${zip}`);
-		expect(fileUrl("cheetah", { channel: "testers" }, zip)).toBe(`/dl/cheetah/testers/${zip}`);
+	it("serves a release's files from the device's v2 folder, a testers build's from testers/", () => {
+		expect(fileUrl("cheetah", { channel: "release" }, zip)).toBe(`/dl/v2/cheetah/${zip}`);
+		expect(fileUrl("cheetah", { channel: "testers" }, zip)).toBe(`/dl/v2/cheetah/testers/${zip}`);
 		const stock = "ExpressiveOS-16.0-20261029-cheetah-1.0-Unofficial-boot-stock.img";
-		expect(fileUrl("cheetah", { channel: "testers" }, stock)).toBe(`/dl/cheetah/testers/${stock}`);
+		expect(fileUrl("cheetah", { channel: "testers" }, stock)).toBe(`/dl/v2/cheetah/testers/${stock}`);
 	});
 
 	it("URL-encodes the device and the file name", () => {
-		expect(fileUrl("cheetah", { channel: "release" }, "../a b/c#d?.zip")).toBe("/dl/cheetah/..%2Fa%20b%2Fc%23d%3F.zip");
-		expect(fileUrl("che/tah", { channel: "testers" }, "x/y")).toBe("/dl/che%2Ftah/testers/x%2Fy");
+		expect(fileUrl("cheetah", { channel: "release" }, "../a b/c#d?.zip")).toBe("/dl/v2/cheetah/..%2Fa%20b%2Fc%23d%3F.zip");
+		expect(fileUrl("che/tah", { channel: "testers" }, "x/y")).toBe("/dl/v2/che%2Ftah/testers/x%2Fy");
 	});
 });

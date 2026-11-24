@@ -22,9 +22,9 @@ lives at `https://expressiveos-flash.daryldenson-apps.workers.dev`.
 | Path | What |
 |---|---|
 | `/` | The page (Vite's build of `index.html` and `src/`, served as static assets) |
-| `/api/releases/<device>` | R2 `expressiveos/<device>/flasher.json`, the device's build list |
-| `/dl/<device>/<file>` | R2 `expressiveos/<device>/flasher/<file>`, a release's file, with byte ranges so downloads resume |
-| `/dl/<device>/testers/<file>` | R2 `expressiveos/<device>/flasher/testers/<file>`, a testers build's file, the same way |
+| `/api/releases/v2/<device>` | R2 `expressiveos/v2/<device>/flasher.json`, the device's EOS 2.0 build list (`/api/releases/<device>` keeps 1.x live) |
+| `/dl/v2/<device>/<file>` | R2 `expressiveos/v2/<device>/flasher/<file>`, a release's file, with byte ranges so downloads resume (`/dl/<device>/<file>` keeps 1.x live) |
+| `/dl/v2/<device>/testers/<file>` | R2 `expressiveos/v2/<device>/flasher/testers/<file>`, a testers build's file, the same way |
 
 `worker/index.ts` answers only those R2 paths, and only for the six codenames and file names shaped like a release's
 fastboot zip or stock `init_boot`. Nothing else in the bucket can be reached: no listing, no target-files, no OTA

@@ -117,7 +117,7 @@ export function parseManifest(value: unknown, device: string): { releases: Relea
 export async function fetchReleases(device: string, signal?: AbortSignal): Promise<Release[]> {
 	let res: Response;
 	try {
-		res = await fetch(`/api/releases/${encodeURIComponent(device)}`, { signal, headers: { Accept: "application/json" } });
+		res = await fetch(`/api/releases/v2/${encodeURIComponent(device)}`, { signal, headers: { Accept: "application/json" } });
 	} catch (e) {
 		if (signal?.aborted) throw e;
 		throw new ReleasesError("Couldn't reach the build list. Check your connection and try again.", "network");
@@ -137,7 +137,7 @@ export async function fetchReleases(device: string, signal?: AbortSignal): Promi
 
 /** Where the Worker serves a release's file: the testers channel has its own folder. */
 export const fileUrl = (device: string, release: Pick<Release, "channel">, file: string) =>
-	`/dl/${encodeURIComponent(device)}/${release.channel === "testers" ? "testers/" : ""}${encodeURIComponent(file)}`;
+	`/dl/v2/${encodeURIComponent(device)}/${release.channel === "testers" ? "testers/" : ""}${encodeURIComponent(file)}`;
 
 export function formatBytes(n: number): string {
 	if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(n >= 10 * 1024 ** 3 ? 0 : 1)} GB`;

@@ -77,6 +77,8 @@ command -v python3 >/dev/null || fail "python3 isn't installed"
 command -v tar >/dev/null || fail "tar isn't installed"
 work=$(mktemp -d "${TMPDIR:-/tmp}/eos-keys-move.XXXXXX") || fail "can't make a temporary folder"
 
+: "${EOS_PRIV_OLD:=vendor/evolution-priv}"
+: "${EOS_TREE_LOCK_OLD:=$HOME/.evolution-tree.lock}"
 OLD=$EOS_PRIV_OLD NEW=$EOS_PRIV_NEW MK=keys/keys.mk
 TMPMK=keys/.keys.mk.eos-keys-move   # the new keys.mk, step 4, before its rename over keys.mk
 if [[ $mode = revert ]]; then from=$NEW to=$OLD; else from=$OLD to=$NEW; fi
