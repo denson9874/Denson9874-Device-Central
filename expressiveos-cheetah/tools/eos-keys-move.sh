@@ -305,7 +305,7 @@ busy() {
     fi
     # pgrep alone in its command substitution: a command beside it in a pipeline (a sed whose
     # script says "repo") would match too
-    p=$(pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' 2>/dev/null || true)
+    p=$(pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja|prebuilts/siso/[a-z0-9_-]+/siso' 2>/dev/null || true)
     while IFS= read -r l; do [[ -z $l ]] || echo "a build runs: ${l:0:150}"; done <<<"$p"
     p=$(pgrep -a -u "$(id -u)" -f '(^|[ /])repo( |$)|\.repo/repo/main\.py' 2>/dev/null || true)
     while IFS= read -r l; do [[ -z $l || $l == *eos-keys-move.sh* ]] || echo "a repo command runs: ${l:0:150}"; done <<<"$p"

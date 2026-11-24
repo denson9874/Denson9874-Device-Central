@@ -22,7 +22,7 @@ for l in ~/.expressiveos.lock ~/.expressiveos-tree.lock; do
     elif flock -n "$l" true 2>/dev/null; then echo "${l#"$HOME"/}: free"; else echo "${l#"$HOME"/}: held"; fi
 done
 tmux ls 2>/dev/null | cut -d: -f1 | tr '\n' ' '; echo
-pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja|eos-(images|pack)' | cut -c1-160 | head -5 || true
+pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja|prebuilts/siso/[a-z0-9_-]+/siso|eos-(images|pack)' | cut -c1-160 | head -5 || true
 
 echo "== ~, one level"
 lowdu1 ~ | head -40

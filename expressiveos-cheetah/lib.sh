@@ -522,19 +522,19 @@ run_locked() {   # run_locked <status line> <script> [arg]...: run alone, the sc
     exit $rc
 }
 
-wait_builds() {   # wait until no soong_ui or ninja of this user is running (a build started by hand), up to 8 h
+wait_builds() {   # wait until no soong_ui, ninja or siso of this user is running (a build started by hand), up to 8 h
     local i
     for ((i = 0; i < 960; i++)); do
-        pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' >/dev/null || return 0
-        ((i % 20)) || echo "waiting for a running build to finish: $(pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | head -1 | cut -c1-150)"
+        pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja|prebuilts/siso/[a-z0-9_-]+/siso' >/dev/null || return 0
+        ((i % 20)) || echo "waiting for a running build to finish: $(pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja|prebuilts/siso/[a-z0-9_-]+/siso' | head -1 | cut -c1-150)"
         sleep 30
     done
     fail "a build has been running for 8 hours; not starting another on top of it"
 }
 
-tree_build() {   # tree_build: the soong_ui or ninja of this user running in $top (a build started by hand there), or nothing
+tree_build() {   # tree_build: the soong_ui, ninja or siso of this user running in $top (a build started by hand there), or nothing
     local pid cwd
-    for pid in $(pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' || true); do
+    for pid in $(pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja|prebuilts/siso/[a-z0-9_-]+/siso' || true); do
         cwd=$(readlink -- "/proc/$pid/cwd" 2>/dev/null) || continue
         [[ "$cwd" != "$top" && "$cwd" != "$top"/* ]] || { ps -o args= -p "$pid" 2>/dev/null | cut -c1-150; return 0; }
     done
