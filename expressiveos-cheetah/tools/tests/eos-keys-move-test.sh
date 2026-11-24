@@ -9,8 +9,11 @@ set -euo pipefail
 KITSRC=$(cd "$(dirname -- "$(readlink -f -- "$0")")/../.." && pwd)
 S=$KITSRC/tools/eos-keys-move.sh
 W=$(mktemp -d "${TMPDIR:-/tmp}/eos-keys-move-test.XXXXXX")
-export HOME=$W/home TMPDIR=$W/tmp TMUX_TMPDIR=$W/tmux
-mkdir -p "$HOME" "$TMPDIR" "$TMUX_TMPDIR"
+# Unset TMUX so tmux uses TMUX_TMPDIR instead of killing an outer host tmux server
+unset TMUX
+TMUX_TMPDIR=$(mktemp -d /tmp/eos-keys-move-tmux.XXXXXX)
+export HOME=$W/home TMPDIR=$W/tmp TMUX_TMPDIR
+mkdir -p "$HOME" "$TMPDIR"
 top=$HOME/expressiveos
 OLD=$top/vendor/evolution-priv NEW=$top/vendor/expressiveos-priv
 mkdir -p "$top/build" "$top/vendor/lineage/config"
@@ -72,7 +75,7 @@ release() {   # stop what hold started, and its children (flock's sleep)
     done
     bg_pids=()
 }
-trap release EXIT
+trap 'tmux kill-server 2>/dev/null || true; release; rm -rf -- "$TMUX_TMPDIR"' EXIT
 
 mkfolder
 snap "$OLD" > "$W/orig.snap"
