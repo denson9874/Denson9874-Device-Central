@@ -1566,7 +1566,7 @@ jobs:
               trap 'rm -rf -- "$TEST_TMP"' EXIT
               for ts in eos-keys-move-test.sh eos-ota-test.sh eos-verified-test.sh eos-release-test.sh eos-progress-publish-test.sh gms-drop-test.sh; do
                 echo "--- $ts"
-                perl -e 'alarm 180; exec @ARGV' -- env TMPDIR="$TEST_TMP" bash "$KIT/tools/tests/$ts"
+                perl -e 'alarm 180; exec @ARGV' -- env -u TMUX TMPDIR="$TEST_TMP" bash "$KIT/tools/tests/$ts"
               done
               echo "--- test_update_aosp.py"
               perl -e 'alarm 120; exec @ARGV' -- python3 -B "$KIT/sources/tests/test_update_aosp.py" -v
