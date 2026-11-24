@@ -105,6 +105,9 @@ hold bash -c 'exec -a soong_ui sleep 30'
 rc=$(run move); ok "move refuses while a build (soong_ui) runs" '[[ $rc = 1 ]] && last | grep -q "^KEYS_MOVE=FAIL: a build runs" && unchanged'
 rc=$(run check); ok "  check reports it, MOVE_READY=no" '[[ $rc = 0 ]] && grep -q "^a build runs: " "$W/out.log" && grep -q "^MOVE_READY=no: something builds or syncs" "$W/out.log"'
 release
+hold bash -c 'exec -a prebuilts/siso/linux-x86/siso sleep 30'
+rc=$(run move); ok "move refuses while a build (siso) runs" '[[ $rc = 1 ]] && last | grep -q "^KEYS_MOVE=FAIL: a build runs" && unchanged'
+release
 hold bash -c 'exec -a /home/build/bin/repo sleep 30'
 rc=$(run move); ok "move refuses while repo runs" '[[ $rc = 1 ]] && last | grep -q "^KEYS_MOVE=FAIL: a repo command runs" && unchanged'
 release

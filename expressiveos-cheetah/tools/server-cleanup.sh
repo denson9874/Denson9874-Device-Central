@@ -154,7 +154,7 @@ for k in "${keep[@]}"; do
     done
 done
 
-build_running() { pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' >/dev/null; }
+build_running() { pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja|prebuilts/siso/[a-z0-9_-]+/siso' >/dev/null; }
 eos_session() { local s; for s in eos-build eos-pack; do tmux has-session -t "=$s" 2>/dev/null && return 0; done; return 1; }
 IFS=, read -r -a chosen <<<"$groups"
 

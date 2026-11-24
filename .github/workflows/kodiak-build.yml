@@ -306,7 +306,7 @@ concurrency:
 jobs:
   server:
     runs-on: [self-hosted, kodiak-build]
-    timeout-minutes: 240
+    timeout-minutes: 300
     env:
       ACTION: ${{ inputs.action }}
       TREE_REF: ${{ inputs.tree_ref }}
@@ -326,8 +326,8 @@ jobs:
           # expressiveos-update (the same, and pushes to GitHub) and expressiveos-keys-move
           # (check is read-only; move and revert refuse by themselves while anything builds
           # or syncs, as server-cleanup does)
-          if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja' > /dev/null; then
-            pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-200
+          if pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja|prebuilts/siso/[a-z0-9_-]+/siso' > /dev/null; then
+            pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja|prebuilts/siso/[a-z0-9_-]+/siso' | cut -c1-200
             if [[ ! "$ACTION" =~ ^(expressiveos-host|build-speed|server-usage|server-cleanup-list|server-cleanup|expressiveos-keys-move|expressiveos-status|expressiveos-progress|expressiveos-kit|expressiveos-pins|expressiveos-devices|expressiveos-update-check|expressiveos-update|expressiveos-setup|expressiveos-flasher-release|expressiveos-storage)$ ]]; then
               echo "::error::a build is already running on the server"
               exit 1
@@ -639,7 +639,7 @@ jobs:
               echo "  by $p, started $(ps -o lstart= -p "$p" 2>/dev/null || echo "?"): $(ps -o args= -p "$p" 2>/dev/null | cut -c1-150 || true)"
             done
           done
-          pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' | cut -c1-160 | head -3 || true
+          pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja|prebuilts/siso/[a-z0-9_-]+/siso' | cut -c1-160 | head -3 || true
           # A build or pack started some other way (by hand, from a routine) has no eos-*
           # session: name what started it
           p=$(pgrep -o -u "$(id -u)" -f "$HOME/expressiveos-cheetah/tools/eos-(images|pack)\.sh" || true)
@@ -1662,17 +1662,34 @@ jobs:
                   *) echo "::error::unknown build option: $w"; exit 1 ;;
                 esac
               done
-              (( ${#devs[@]} > 0 )) || devs=(husky cheetah kodiak grizzly cubs yogi)
+              (( ${#devs[@]} > 0 )) || devs=(husky kodiak grizzly cubs yogi cheetah)
               for d in "${devs[@]}"; do
                 [[ "$d" =~ ^(cheetah|husky|kodiak|grizzly|cubs|yogi)$ ]] || { echo "::error::invalid device $d"; exit 1; }
               done
+              cleanup_eos2_build() {
+                local pid cwd found=0
+                for pid in $(pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja|prebuilts/siso/[a-z0-9_-]+/siso' || true); do
+                  cwd=$(readlink -- "/proc/$pid/cwd" 2>/dev/null) || continue
+                  [[ "$cwd" = "$EOS_TOP" || "$cwd" = "$EOS_TOP"/* ]] || continue
+                  kill -TERM "$pid" 2>/dev/null || true
+                  found=1
+                done
+                (( found )) || return 0
+                sleep 2
+                for pid in $(pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja|prebuilts/siso/[a-z0-9_-]+/siso' || true); do
+                  cwd=$(readlink -- "/proc/$pid/cwd" 2>/dev/null) || continue
+                  [[ "$cwd" = "$EOS_TOP" || "$cwd" = "$EOS_TOP"/* ]] || continue
+                  kill -KILL "$pid" 2>/dev/null || true
+                done
+              }
+              trap cleanup_eos2_build EXIT
               for d in "${devs[@]}"; do
                 export EOS_BUILD_LOG="/home/build/expressiveos2-build-$d.log"
                 echo "================================================================"
                 echo "== EOS 2.0 build verification: device=$d quick=$quick pack=$do_pack sepol_only=$sepol_only ($(date -u '+%F %T') UTC)"
                 df -h ~ | sed 1d
                 if (( sepol_only )); then
-                  perl -e 'alarm 3600; exec @ARGV' -- env EOS_DEVICE="$d" bash -c '
+                  perl -e 'alarm 7200; exec @ARGV' -- env EOS_DEVICE="$d" bash -c '
                     set -eo pipefail
                     source "$1/lib.sh"
                     eos_top "$2"
@@ -1720,7 +1737,7 @@ jobs:
                   echo "== eos-pack.sh ($d -> $EOS_RELEASES_DIR)"
                   perl -e 'alarm 1800; exec @ARGV' -- env EOS_DEVICE="$d" bash "$KIT/tools/eos-pack.sh" "$EOS_TOP"
                 fi
-                if (( clean_nonkeeper )) && [[ "$d" != cheetah && "$d" != husky ]]; then
+                if (( clean_nonkeeper )) && [[ "$d" != cheetah && "$d" != husky && "$d" != kodiak ]]; then
                   echo "== freeing non-keeper $EOS_TOP/out/target/product/$d"
                   rm -rf -- "$EOS_TOP/out/target/product/$d"
                   df -h ~ | sed 1d
