@@ -238,6 +238,7 @@ on:
           - expressiveos-ota
           - expressiveos-flasher-release
           - expressiveos-storage
+          - eos2-verify
       tree_ref:
         description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
@@ -1517,4 +1518,207 @@ jobs:
               else
                 launch pack "$kit/tools/eos-pack.sh$t$mirror"
               fi ;;
+          esac
+
+      # ---- ExpressiveOS 2.0 isolated verification (~/expressiveos2 + ~/expressiveos2-kit) ----
+      # Never touches ~/expressiveos (1.3), ~/expressiveos-cheetah, ~/.expressiveos*.lock,
+      # ~/releases/, or vendor/expressiveos-priv/keys.
+      - name: ExpressiveOS 2.0 isolated sync, tests, and build verification
+        if: inputs.action == 'eos2-verify'
+        run: |
+          export EOS_TOP=/home/build/expressiveos2
+          export KIT_REPO=/home/build/expressiveos2-kit
+          export KIT=/home/build/expressiveos2-kit/expressiveos-cheetah
+          export EOS_LOCK=/home/build/.expressiveos2.lock
+          export EOS_TREE_LOCK=/home/build/.expressiveos2-tree.lock
+          export EOS_RELEASES_DIR=/home/build/releases-eos2
+          export EOS_TIMES=/home/build/expressiveos2-build-times.txt
+          export EOS_LAST_MAKE=/home/build/.expressiveos2-last-make
+          export EOS_JOBS=/home/build/expressiveos2-jobs
+          export PATH="$HOME/bin:$PATH"
+          if ! git config --global user.name > /dev/null || ! git config --global user.email > /dev/null; then
+            export GIT_AUTHOR_NAME="ExpressiveOS build" GIT_AUTHOR_EMAIL="$(id -un)@$(hostname -s)"
+            export GIT_COMMITTER_NAME="ExpressiveOS build" GIT_COMMITTER_EMAIL="$(id -un)@$(hostname -s)"
+          fi
+          mkdir -p -- "$EOS_RELEASES_DIR" "$EOS_JOBS"
+          chmod 700 -- "$EOS_JOBS"
+
+          read -r -a q <<< "${QUERY:-sync-and-test}"
+          mode="${q[0]:-sync-and-test}"
+
+          case "$mode" in
+            sync-and-test)
+              echo "== pre-sync disk & EOS 2.0 state"
+              df -h ~ /tmp
+              du -sh "$EOS_TOP"/out/target/product/* 2>/dev/null || true
+              [[ -d "$EOS_TOP" && -d "$KIT_REPO" ]] || { echo "::error::missing $EOS_TOP or $KIT_REPO"; exit 1; }
+              echo "pre-sync kit HEAD: $(git -C "$KIT_REPO" log -1 --oneline)"
+              dirty_kit=$(git -C "$KIT_REPO" status --porcelain --untracked-files=no)
+              [[ -z "$dirty_kit" ]] || { echo "::error::dirty tracked files in $KIT_REPO"; git -C "$KIT_REPO" status -s --untracked-files=no; exit 1; }
+
+              echo "== syncing $KIT_REPO to origin/eos-2.0"
+              perl -e 'alarm 120; exec @ARGV' -- git -C "$KIT_REPO" fetch origin eos-2.0
+              perl -e 'alarm 60; exec @ARGV' -- git -C "$KIT_REPO" checkout -B eos-2.0 origin/eos-2.0
+              echo "post-sync kit HEAD: $(git -C "$KIT_REPO" rev-parse HEAD)"
+
+              echo "== Linux kit, flasher, and launcher unit tests"
+              TEST_TMP=$(mktemp -d /tmp/eos2-tests.XXXXXX)
+              trap 'rm -rf -- "$TEST_TMP"' EXIT
+              for ts in eos-keys-move-test.sh eos-ota-test.sh eos-verified-test.sh eos-release-test.sh eos-progress-publish-test.sh gms-drop-test.sh; do
+                echo "--- $ts"
+                perl -e 'alarm 180; exec @ARGV' -- env TMPDIR="$TEST_TMP" bash "$KIT/tools/tests/$ts"
+              done
+              echo "--- test_update_aosp.py"
+              perl -e 'alarm 120; exec @ARGV' -- python3 -B "$KIT/sources/tests/test_update_aosp.py" -v
+              echo "--- test_eos_integrity.py"
+              perl -e 'alarm 120; exec @ARGV' -- python3 -B "$KIT/sources/tests/test_eos_integrity.py" -v
+              echo "--- dex-refs-test.py"
+              perl -e 'alarm 120; exec @ARGV' -- python3 -B -I "$KIT/launcher/tools/tests/dex-refs-test.py"
+              echo "--- test_flasher_publish.py"
+              perl -e 'alarm 120; exec @ARGV' -- python3 -B "$KIT_REPO/tools/expressiveos_flasher/publish/test_flasher_publish.py" -v
+              echo "--- fetch-launcher.sh"
+              perl -e 'alarm 180; exec @ARGV' -- env TMPDIR="$TEST_TMP" bash "$KIT/launcher/fetch-launcher.sh" --out "$TEST_TMP/launcher"
+              rm -rf -- "$TEST_TMP"
+              trap - EXIT
+
+              echo "== pre-sync $EOS_TOP cleanup (B3 lmkd d343810 + H4 vendor/google/husky)"
+              if [[ -d "$EOS_TOP/system/memory/lmkd/.git" ]]; then
+                echo "lmkd before: $(git -C "$EOS_TOP/system/memory/lmkd" log -1 --oneline || true)"
+                git -C "$EOS_TOP/system/memory/lmkd" checkout -q -f --detach c3601e823bd07c9c190f67e2f9bc7486e4978328
+                echo "lmkd after:  $(git -C "$EOS_TOP/system/memory/lmkd" log -1 --oneline)"
+              fi
+              vh="$EOS_TOP/vendor/google/husky"
+              if [[ -d "$vh" ]]; then
+                rem=$(git -C "$vh" config --get remote.expressiveos.url 2>/dev/null || true)
+                if [[ "${rem%.git}" != "https://github.com/ExpressiveOS/vendor_google_husky" || ! -d "$EOS_TOP/.repo/projects/vendor/google/husky.git" ]]; then
+                  echo "removing pre-manifest vendor/google/husky (remote=${rem:-none}) inside $EOS_TOP so repo sync clones ExpressiveOS/vendor_google_husky"
+                  rm -rf -- "$vh" "$EOS_TOP/.repo/projects/vendor/google/husky.git" "$EOS_TOP/.repo/project-objects/vendor_google_husky.git"
+                fi
+              fi
+              while IFS= read -r p; do
+                [[ -n "$p" && -d "$EOS_TOP/$p" ]] || continue
+                mrev=$(git -C "$EOS_TOP/$p" rev-parse -q --verify 'refs/remotes/m/expressiveos-2.0^{commit}' 2>/dev/null || true)
+                hrev=$(git -C "$EOS_TOP/$p" rev-parse -q --verify 'HEAD^{commit}' 2>/dev/null || true)
+                if [[ -n "$mrev" && "$hrev" != "$mrev" ]]; then
+                  echo "detaching $p ($hrev -> $mrev) before repo sync"
+                  git -C "$EOS_TOP/$p" checkout -q -f --detach "$mrev"
+                fi
+              done < <(cd "$EOS_TOP" && repo list -p)
+
+              echo "== setup.sh $EOS_TOP"
+              perl -e 'alarm 2700; exec @ARGV' -- bash "$KIT/setup.sh" "$EOS_TOP"
+
+              echo "== post-sync manifest & pin verification"
+              echo "manifest HEAD: $(git -C "$EOS_TOP/.repo/manifests" rev-parse HEAD)"
+              echo "lmkd HEAD:     $(git -C "$EOS_TOP/system/memory/lmkd" rev-parse HEAD)"
+              echo "husky vendor:  $(git -C "$EOS_TOP/vendor/google/husky" config --get remote.expressiveos.url) @ $(git -C "$EOS_TOP/vendor/google/husky" rev-parse HEAD)"
+              [[ "$(git -C "$EOS_TOP/system/memory/lmkd" rev-parse HEAD)" = "c3601e823bd07c9c190f67e2f9bc7486e4978328" ]] \
+                || { echo "::error::lmkd HEAD is not c3601e823bd07c9c190f67e2f9bc7486e4978328"; exit 1; }
+              off_head=0
+              while IFS= read -r p; do
+                [[ -n "$p" ]] || continue
+                mrev=$(git -C "$EOS_TOP/$p" rev-parse 'refs/remotes/m/expressiveos-2.0^{commit}')
+                hrev=$(git -C "$EOS_TOP/$p" rev-parse 'HEAD^{commit}')
+                if [[ "$hrev" != "$mrev" ]]; then
+                  echo "OFF_HEAD $p $hrev != $mrev"
+                  off_head=$((off_head + 1))
+                fi
+              done < <(cd "$EOS_TOP" && repo list -p)
+              echo "projects with HEAD != m/expressiveos-2.0: $off_head"
+              (( off_head == 0 )) || { echo "::error::$off_head project(s) not at manifest HEAD"; exit 1; }
+
+              echo "== Wild downloads + shared staging"
+              perl -e 'alarm 300; exec @ARGV' -- bash "$KIT/ksu/fetch-ksu.sh"
+              perl -e 'alarm 300; exec @ARGV' -- bash "$KIT/bootanimation/apply-bootanim.sh" "$EOS_TOP"
+              perl -e 'alarm 300; exec @ARGV' -- bash "$KIT/wallpapers/apply-wallpapers.sh" "$EOS_TOP"
+              perl -e 'alarm 300; exec @ARGV' -- bash "$KIT/launcher/apply-launcher.sh" "$EOS_TOP"
+
+              for d in cheetah husky kodiak grizzly cubs yogi; do
+                echo "== pre-build prepare + keys + ksu + v4a checks for $d"
+                perl -e 'alarm 1200; exec @ARGV' -- env EOS_DEVICE="$d" bash "$KIT/prepare.sh" "$EOS_TOP"
+                perl -e 'alarm 180; exec @ARGV' -- env EOS_DEVICE="$d" bash "$KIT/tools/eos-keys-check.sh" tree "$EOS_TOP"
+                perl -e 'alarm 300; exec @ARGV' -- env EOS_DEVICE="$d" bash "$KIT/tools/eos-keys-check.sh" vars "$EOS_TOP"
+                perl -e 'alarm 180; exec @ARGV' -- env EOS_DEVICE="$d" bash "$KIT/ksu/apply-ksu.sh" "$EOS_TOP"
+                perl -e 'alarm 180; exec @ARGV' -- env EOS_DEVICE="$d" bash "$KIT/viper4android/apply-v4a.sh" "$EOS_TOP"
+              done
+              echo "== post-prepare disk state"
+              df -h ~ /tmp
+              echo "EOS2_SYNC_AND_TEST=OK"
+              ;;
+
+            build)
+              devs=() quick=0 ic=0 do_pack=0 clean_nonkeeper=0 sepol_only=0
+              for w in "${q[@]:1}"; do
+                case "$w" in
+                  devices=*) IFS=, read -r -a devs <<< "${w#devices=}" ;;
+                  quick) quick=1 ;;
+                  installclean) ic=1 ;;
+                  pack) do_pack=1 ;;
+                  clean-nonkeeper) clean_nonkeeper=1 ;;
+                  sepolicy-only) sepol_only=1 ;;
+                  *) echo "::error::unknown build option: $w"; exit 1 ;;
+                esac
+              done
+              (( ${#devs[@]} > 0 )) || devs=(husky cheetah kodiak grizzly cubs yogi)
+              for d in "${devs[@]}"; do
+                [[ "$d" =~ ^(cheetah|husky|kodiak|grizzly|cubs|yogi)$ ]] || { echo "::error::invalid device $d"; exit 1; }
+              done
+              for d in "${devs[@]}"; do
+                export EOS_BUILD_LOG="/home/build/expressiveos2-build-$d.log"
+                echo "================================================================"
+                echo "== EOS 2.0 build verification: device=$d quick=$quick pack=$do_pack sepol_only=$sepol_only ($(date -u '+%F %T') UTC)"
+                df -h ~ | sed 1d
+                if (( sepol_only )); then
+                  perl -e 'alarm 3600; exec @ARGV' -- env EOS_DEVICE="$d" bash -c '
+                    set -o pipefail
+                    source "$1/lib.sh"
+                    eos_top "$2"
+                    clean_env
+                    cd "$top" || exit 1
+                    export EXPRESSIVE_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
+                    if command -v ccache >/dev/null; then export USE_CCACHE=1 CCACHE_EXEC=$(command -v ccache); fi
+                    source build/envsetup.sh >/dev/null || exit 1
+                    lunch "$EOS_LUNCH" || exit 1
+                    st=${EOS_STATE:-out/eos}
+                    mkdir -p -- "$st" && touch -- "$st/installclean"
+                    m -j"$(nproc)" sepolicy_neverallows selinux_policy vbmetaimage
+                  ' _ "$KIT" "$EOS_TOP"
+                else
+                  rc=0
+                  perl -e 'alarm 7200; exec @ARGV' -- env EOS_DEVICE="$d" EOS_QUICK="$quick" EOS_INSTALLCLEAN="$ic" bash "$KIT/tools/eos-images.sh" "$EOS_TOP" || rc=$?
+                  if (( rc != 0 )); then
+                    echo "== $d build failed (rc=$rc); last 120 lines of $EOS_BUILD_LOG:"
+                    tail -n 120 "$EOS_BUILD_LOG" 2>/dev/null || true
+                    [[ ! -f "$EOS_TOP/out/error.log" ]] || { echo "== out/error.log:"; tail -n 160 "$EOS_TOP/out/error.log"; }
+                    exit "$rc"
+                  fi
+                fi
+                vbm="$EOS_TOP/out/target/product/$d/vbmeta.img"
+                avb="$EOS_TOP/out/host/linux-x86/bin/avbtool"
+                echo "== avbtool info_image ($d vbmeta.img)"
+                perl -e 'alarm 60; exec @ARGV' -- "$avb" info_image --image "$vbm" | tee "$RUNNER_TEMP/vbmeta-$d.txt"
+                grep -A3 'Hash descriptor:' "$RUNNER_TEMP/vbmeta-$d.txt" | grep -q 'Partition Name: *vendor_kernel_boot' \
+                  || { echo "::error::$d vbmeta.img missing vendor_kernel_boot Hash descriptor"; exit 1; }
+                for prop_k in com.android.build.boot.os_version com.android.build.boot.security_patch com.android.build.system.os_version com.android.build.system.security_patch; do
+                  grep -q "Prop: $prop_k -> " "$RUNNER_TEMP/vbmeta-$d.txt" \
+                    || { echo "::error::$d vbmeta.img missing $prop_k Prop"; exit 1; }
+                done
+                echo "AVB_VBMETA_CHECK=OK ($d)"
+                if (( do_pack && ! sepol_only )); then
+                  echo "== eos-pack.sh ($d -> $EOS_RELEASES_DIR)"
+                  perl -e 'alarm 1800; exec @ARGV' -- env EOS_DEVICE="$d" bash "$KIT/tools/eos-pack.sh" "$EOS_TOP"
+                fi
+                if (( clean_nonkeeper )) && [[ "$d" != cheetah && "$d" != husky ]]; then
+                  echo "== freeing non-keeper $EOS_TOP/out/target/product/$d"
+                  rm -rf -- "$EOS_TOP/out/target/product/$d"
+                  df -h ~ | sed 1d
+                fi
+              done
+              echo "EOS2_BUILD_VERIFY=OK (${devs[*]})"
+              ;;
+
+            *)
+              echo "::error::eos2-verify query must start with 'sync-and-test' or 'build'"
+              exit 1
+              ;;
           esac
