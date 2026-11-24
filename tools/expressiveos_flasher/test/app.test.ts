@@ -102,7 +102,7 @@ beforeEach(() => {
 	for (const [k, v] of Object.entries(dom.globals)) vi.stubGlobal(k, v);
 	vi.stubGlobal("navigator", { usb: fakeNavigatorUsb(), userAgent: "Mozilla/5.0 (X11; Linux x86_64) Chrome/141.0", storage: {} });
 	vi.stubGlobal("fetch", async (url: string) => {
-		const m = /^\/api\/releases\/(\w+)$/.exec(url);
+		const m = /^\/api\/releases\/v2\/(\w+)$/.exec(url);
 		if (!m) return new Response(null, { status: 404 });
 		return Response.json({ schema: 1, device: m[1], updated: "2026-10-30T12:00:00Z", releases: world.releases });
 	});
@@ -546,12 +546,12 @@ describe("a direct download", () => {
 		await press("Continue");
 		await until(() => !!buttonIn(page.panel, "Use a zip I already have"), "the download step");
 		const a = page.panel.querySelector(".direct-download a")!;
-		expect(a.getAttribute("href")).toBe(`/dl/cheetah/${b.release.zip.file}`);
+		expect(a.getAttribute("href")).toBe(`/dl/v2/cheetah/${b.release.zip.file}`);
 		expect(a.getAttribute("download")).toBe(b.release.zip.file);
 		expect(page.panel.querySelector(".direct-download code")!.textContent).toBe(b.release.zip.sha256);
 		// A BakaSU build also links its stock boot, with the fastboot command and its SHA-256
 		const stock = page.panel.querySelectorAll(".direct-download")[1]!;
-		expect(stock.querySelector("a")!.getAttribute("href")).toBe(`/dl/cheetah/${b.release.bootStock!.file}`);
+		expect(stock.querySelector("a")!.getAttribute("href")).toBe(`/dl/v2/cheetah/${b.release.bootStock!.file}`);
 		expect(stock.textContent).toContain(`fastboot flash boot ${b.release.bootStock!.file}`);
 		expect(stock.textContent).toContain(b.release.bootStock!.sha256);
 	});

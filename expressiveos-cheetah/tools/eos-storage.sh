@@ -97,11 +97,11 @@ phone_conf() {
     [[ ${#v[@]} = 7 ]] || { echo "$1: can't read its configuration (lib.sh)"; return 1; }
     [[ ${v[0]} = "releases/expressiveos-$1" ]] || { echo "$1: EOS_RELEASES is '${v[0]}'"; return 1; }
     [[ ${v[1]} =~ ^[A-Za-z0-9_-]+:[a-z0-9][a-z0-9-]*$ ]] || { echo "$1: EOS_R2_REMOTE is '${v[1]}'"; return 1; }
-    [[ ${v[2]} = "expressiveos/$1/" ]] || { echo "$1: EOS_R2_PREFIX is '${v[2]}'"; return 1; }
+    [[ ${v[2]} = "expressiveos/v2/$1/" ]] || { echo "$1: EOS_R2_PREFIX is '${v[2]}'"; return 1; }
     [[ ${v[3]} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ && ${v[4]} =~ ^[A-Za-z0-9_./-]+$ ]] || { echo "$1: EOS_FEED_REPO/BRANCH is '${v[3]}' '${v[4]}'"; return 1; }
     DEST=${v[6]} BUCKET=${v[1]} R2=${v[1]}/${v[2]%/}
-    FEED=https://raw.githubusercontent.com/${v[3]}/${v[4]}/builds/$1.json DRIVE=${v[5]}
-    PENDING=$DEST/ota/feed/builds/$1.json
+    FEED=https://raw.githubusercontent.com/${v[3]}/${v[4]}/builds/v2/$1.json DRIVE=${v[5]}
+    PENDING=$DEST/ota/feed/builds/v2/$1.json
 }
 
 # newest: the newest release here (eos-pack.sh writes target-files/LATEST): RTF, BASE, REL

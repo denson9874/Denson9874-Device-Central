@@ -115,7 +115,7 @@ beforeEach(() => {
 	for (const [k, v] of Object.entries(dom.globals)) vi.stubGlobal(k, v);
 	vi.stubGlobal("navigator", { usb: fakeNavigatorUsb(), userAgent: "Mozilla/5.0 (X11; Linux x86_64) Chrome/141.0", storage: {} });
 	vi.stubGlobal("fetch", async (url: string) => {
-		const m = /^\/api\/releases\/(\w+)$/.exec(url);
+		const m = /^\/api\/releases\/v2\/(\w+)$/.exec(url);
 		if (!m) return new Response(null, { status: 404 });
 		return Response.json({ schema: 1, device: m[1], updated: "2026-10-30T12:00:00Z", releases: world.releases });
 	});

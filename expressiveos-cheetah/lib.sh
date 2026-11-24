@@ -66,7 +66,7 @@ unset _k
 [[ $EOS_BOARD = "$EOS_DEVICE" ]] || fail "devices/$EOS_DEVICE.conf: EOS_BOARD is $EOS_BOARD; a zip names its own phone only"
 [[ $EOS_RELEASES = "releases/expressiveos-$EOS_DEVICE" ]] || fail "devices/$EOS_DEVICE.conf: EOS_RELEASES isn't releases/expressiveos-$EOS_DEVICE"
 [[ $EOS_SF_DIR == /home/frs/project/*/expressiveos/"$EOS_DEVICE" ]] || fail "devices/$EOS_DEVICE.conf: EOS_SF_DIR isn't .../expressiveos/$EOS_DEVICE"
-[[ $EOS_R2_PREFIX = "expressiveos/$EOS_DEVICE/" ]] || fail "devices/$EOS_DEVICE.conf: EOS_R2_PREFIX isn't expressiveos/$EOS_DEVICE/"
+[[ $EOS_R2_PREFIX = "expressiveos/v2/$EOS_DEVICE/" ]] || fail "devices/$EOS_DEVICE.conf: EOS_R2_PREFIX isn't expressiveos/v2/$EOS_DEVICE/"
 for _v in "$EOS_DEVICE_TREE" "$EOS_BOARDCONFIG" "$EOS_VENDOR_DIR" "$EOS_RADIO_MK" "$EOS_SENTINEL" $EOS_LFS_PROJECTS ${EOS_SCONE_PATCH:-}; do
     [[ $_v =~ ^[A-Za-z0-9_][A-Za-z0-9._-]*(/[A-Za-z0-9._-]+)*$ && /$_v/ != */../* ]] || fail "devices/$EOS_DEVICE.conf: '$_v' isn't a plain relative path"
 done

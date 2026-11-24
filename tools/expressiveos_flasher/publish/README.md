@@ -43,7 +43,7 @@ It writes these paths and nothing else:
 |---|---|
 | `expressiveos/<device>/flasher/<file>` and `<file>.sha256` | a release's zip, and its stock boot if there is one |
 | `expressiveos/<device>/flasher/testers/<file>` and `<file>.sha256` | the same for a testers build (`--testers`) |
-| `expressiveos/<device>/flasher.json` | the manifest the flasher reads, which lists both channels |
+| `expressiveos/v2/<device>/flasher.json` | the EOS 2.0 manifest the flasher reads, which lists both channels (`--prefix expressiveos` targets 1.x) |
 
 Each channel has its own folder. The Worker serves `flasher/<file>` as `/dl/<device>/<file>` and `flasher/testers/<file>`
 as `/dl/<device>/testers/<file>`. A testers build and a release can have the same name, as `eos-pack.sh` keeps names

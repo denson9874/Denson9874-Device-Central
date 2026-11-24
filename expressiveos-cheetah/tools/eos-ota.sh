@@ -89,7 +89,7 @@ done
 R2OTA='' R2TF=''
 if [[ -n "${EOS_R2_REMOTE:-}" ]]; then
     [[ "$EOS_R2_REMOTE" =~ ^[A-Za-z0-9_-]+:[a-z0-9][a-z0-9-]*$ ]] || fail "eos.conf's EOS_R2_REMOTE ($EOS_R2_REMOTE) isn't <rclone remote>:<bucket>"
-    [[ "$EOS_R2_PREFIX" =~ ^expressiveos/[a-z0-9-]+/$ ]] || fail "devices/$EOS_DEVICE.conf's EOS_R2_PREFIX ($EOS_R2_PREFIX) isn't expressiveos/<device>/"
+    [[ "$EOS_R2_PREFIX" =~ ^expressiveos/v2/[a-z0-9-]+/$ ]] || fail "devices/$EOS_DEVICE.conf's EOS_R2_PREFIX ($EOS_R2_PREFIX) isn't expressiveos/v2/<device>/"
     R2OTA=$EOS_R2_REMOTE/${EOS_R2_PREFIX}ota R2TF=$EOS_R2_REMOTE/${EOS_R2_PREFIX}target-files
 elif [[ -n $mode ]]; then
     fail "eos.conf's EOS_R2_REMOTE is empty: the Updater downloads from the OTA mirror, which serves R2"

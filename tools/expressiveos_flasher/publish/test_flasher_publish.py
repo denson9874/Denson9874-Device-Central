@@ -22,9 +22,9 @@ sys.path.insert(0, HERE)
 import flasher_publish as fp  # noqa: E402
 
 REMOTE = "r2:denson9874-ota"
-FLASHER = REMOTE + "/expressiveos/cheetah/flasher"
+FLASHER = REMOTE + "/expressiveos/v2/cheetah/flasher"
 TESTERS = FLASHER + "/testers"     # the testers channel's own folder
-MANIFEST = REMOTE + "/expressiveos/cheetah/flasher.json"
+MANIFEST = REMOTE + "/expressiveos/v2/cheetah/flasher.json"
 
 # lsf (--files-only, --format s), cat and copyto (--s3-no-check-bucket only) on <ROOT>/<remote>/<bucket>/...
 # lsf shows a folder as rclone does: "<name>/", or -1 with --format s, and not at all with --files-only.
@@ -231,7 +231,7 @@ class FlasherPublishTest(unittest.TestCase):
             self.assertIn(part, p.stderr)
 
     def bucket(self, *parts):
-        return os.path.join(self.root, "r2", "denson9874-ota", "expressiveos", *parts)
+        return os.path.join(self.root, "r2", "denson9874-ota", "expressiveos", "v2", *parts)
 
     def put(self, data: bytes, *parts):
         path = self.bucket(*parts)
@@ -296,9 +296,9 @@ class FlasherPublishTest(unittest.TestCase):
         for n in (name, name + ".sha256", stock, stock + ".sha256"):
             with open(os.path.join(self.rel, n), "rb") as a, open(self.bucket("cheetah", "flasher", n), "rb") as b:
                 self.assertEqual(a.read(), b.read(), n)
-        # Nothing anywhere else: only expressiveos/cheetah/flasher/ and flasher.json
+        # Nothing anywhere else: only expressiveos/v2/cheetah/flasher/ and flasher.json
         self.assertEqual(sorted(self.snapshot()),
-                         sorted(os.path.join("r2", "denson9874-ota", "expressiveos", "cheetah", *x) for x in
+                         sorted(os.path.join("r2", "denson9874-ota", "expressiveos", "v2", "cheetah", *x) for x in
                                 [("flasher.json",)] + [("flasher", n) for n in self.flasher_files()]))
         with open(z, "rb") as f:
             zdata = f.read()
@@ -321,9 +321,9 @@ class FlasherPublishTest(unittest.TestCase):
         ups = self.uploads()
         self.assertEqual(ups, [f"{FLASHER}/{name}.sha256", f"{FLASHER}/{name}",
                                f"{FLASHER}/{stock}.sha256", f"{FLASHER}/{stock}",
-                               REMOTE + "/expressiveos/cheetah/flasher.json"])
+                               REMOTE + "/expressiveos/v2/cheetah/flasher.json"])
         self.assertTrue(all(c[1] == "--s3-no-check-bucket" for c in self.calls() if c[0] == "copyto"))
-        self.assertIn(f"PUBLISHED {base} release {REMOTE}/expressiveos/cheetah/flasher.json", p.stdout)
+        self.assertIn(f"PUBLISHED {base} release {REMOTE}/expressiveos/v2/cheetah/flasher.json", p.stdout)
 
     def test_refuses_check_and_testers_on_release(self):
         # A check/ candidate is untested (maybe try= commits or unpinned keys): never published,
@@ -403,13 +403,19 @@ class FlasherPublishTest(unittest.TestCase):
         os.makedirs(os.path.join(self.root, "backup", "other-bucket"))
         p = self.run_publish("kodiak", z, "--remote", "backup:other-bucket")
         self.assertOK(p)
-        d = os.path.join(self.root, "backup", "other-bucket", "expressiveos", "kodiak")
+        d = os.path.join(self.root, "backup", "other-bucket", "expressiveos", "v2", "kodiak")
         self.assertEqual(sorted(os.listdir(d)), ["flasher", "flasher.json"])
         self.assertEqual(sorted(os.listdir(os.path.join(self.root, "r2", "denson9874-ota"))), [])
         with open(os.path.join(d, "flasher.json")) as f:
             m = json.load(f)
         self.assertEqual(m["device"], "kodiak")
         self.assertEqual(m["releases"][0]["requirements"][0], "require board=kodiak")
+        # Explicit --prefix expressiveos keeps 1.x namespace isolated from v2
+        p_v1 = self.run_publish("kodiak", z, "--remote", "backup:other-bucket", "--prefix", "expressiveos")
+        self.assertOK(p_v1)
+        d_v1 = os.path.join(self.root, "backup", "other-bucket", "expressiveos", "kodiak")
+        self.assertEqual(sorted(os.listdir(d_v1)), ["flasher", "flasher.json"])
+        self.assertFAIL(self.run_publish("kodiak", z, "--prefix", "expressiveos/v3"), "--prefix")
 
     def test_rerun_skips_upload(self):
         z = self.make_release()
@@ -420,7 +426,7 @@ class FlasherPublishTest(unittest.TestCase):
         p = self.run_publish("cheetah", z)
         self.assertOK(p)
         self.assertEqual(p.stdout.count("already published: "), 2)
-        self.assertEqual(self.uploads(), [REMOTE + "/expressiveos/cheetah/flasher.json"])
+        self.assertEqual(self.uploads(), [REMOTE + "/expressiveos/v2/cheetah/flasher.json"])
         self.assertEqual({k: v for k, v in self.snapshot().items() if not k.endswith("flasher.json")}, before)
         # The same release, as it was listed: its published time too
         self.assertEqual(self.manifest()["releases"], listed)
@@ -524,7 +530,7 @@ class FlasherPublishTest(unittest.TestCase):
             self.put(f.read(), "cheetah", "flasher", name + ".sha256")
         p = self.run_publish("cheetah", z)
         self.assertOK(p)
-        self.assertEqual(self.uploads(), [f"{FLASHER}/{name}", REMOTE + "/expressiveos/cheetah/flasher.json"])
+        self.assertEqual(self.uploads(), [f"{FLASHER}/{name}", REMOTE + "/expressiveos/v2/cheetah/flasher.json"])
         self.assertEqual(self.flasher_files(), [name, name + ".sha256"])
 
     # -- local checks: each fails before rclone runs at all
@@ -1019,7 +1025,7 @@ class FlasherPublishTest(unittest.TestCase):
                  "releases": [self.entry("ExpressiveOS-17.0-20261025-cheetah-1.0-OFFICIAL", channel="testers")]}
         env = self.hook(
             "if phase == 'before' and args[0] == 'copyto' and args[3].endswith('-fastboot.zip'):\n"
-            f"    open(bucket({REMOTE + '/expressiveos/cheetah/flasher.json'!r}), 'w').write({json.dumps(other)!r})\n")
+            f"    open(bucket({REMOTE + '/expressiveos/v2/cheetah/flasher.json'!r}), 'w').write({json.dumps(other)!r})\n")
         self.assertOK(self.run_publish("cheetah", z, env=env))
         self.assertEqual([e["name"] for e in self.manifest()["releases"]],
                          ["ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL", "ExpressiveOS-17.0-20261025-cheetah-1.0-OFFICIAL"])
@@ -1220,7 +1226,7 @@ class UnitTest(unittest.TestCase):
                 self.assertIn(f"{x} is listed twice in the {channel} channel", str(cm.exception))
 
     def test_copyto_writes_only_the_manifest_and_its_channel_folder(self):
-        dev = REMOTE + "/expressiveos/cheetah"
+        dev = REMOTE + "/expressiveos/v2/cheetah"
         base = "ExpressiveOS-17.0-20261030-cheetah-1.0-OFFICIAL"
         names = [base + "-fastboot.zip", base + "-fastboot.zip.sha256",
                  base + "-boot-stock.img", base + "-boot-stock.img.sha256"]
@@ -1240,8 +1246,9 @@ class UnitTest(unittest.TestCase):
                     f"{own}/../{names[0]}", f"{own}/notes.txt", f"{own}/{names[0]}.bak",
                     f"{own}/ExpressiveOS-17.0-20261030-husky-1.0-OFFICIAL-fastboot.zip",
                     f"{dev}/{names[0]}", f"{dev}/target-files/{names[0]}", f"{dev}/flasher.json.sha256",
-                    f"{REMOTE}/expressiveos/husky/flasher/{names[0]}", f"{REMOTE}/expressiveos/husky/flasher.json",
-                    f"backup:other/expressiveos/cheetah/{fp.CHANNEL_DIRS[channel]}/{names[0]}"]
+                    f"{REMOTE}/expressiveos/cheetah/flasher/{names[0]}", f"{REMOTE}/expressiveos/cheetah/flasher.json",
+                    f"{REMOTE}/expressiveos/v2/husky/flasher/{names[0]}", f"{REMOTE}/expressiveos/v2/husky/flasher.json",
+                    f"backup:other/expressiveos/v2/cheetah/{fp.CHANNEL_DIRS[channel]}/{names[0]}"]
                 for remote in refused:
                     with self.assertRaises(fp.Fail) as cm:
                         r2.copyto("/dev/null", remote)

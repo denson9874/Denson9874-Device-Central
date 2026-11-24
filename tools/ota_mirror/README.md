@@ -7,9 +7,9 @@ R2 doesn't charge for downloads, and a file is downloadable as soon as its uploa
 
 | Keys | Uploaded by |
 |---|---|
-| `expressiveos/<dev>/target-files/<target-files zip>` | `expressiveos-cheetah/tools/eos-pack.sh --upload` |
-| `expressiveos/<dev>/ota/<OTA package>` (full and incremental) | `expressiveos-cheetah/tools/eos-ota.sh --upload` |
-| `expressiveos/<dev>/ota/test/<incremental>`, `<dev>.json` (a test feed) | `expressiveos-cheetah/tools/eos-ota.sh --candidate` |
+| `expressiveos/v2/<dev>/target-files/<target-files zip>` | `expressiveos-cheetah/tools/eos-pack.sh --upload` (EOS 2.0; 1.x uses `expressiveos/<dev>/target-files/`) |
+| `expressiveos/v2/<dev>/ota/<OTA package>` (full and incremental) | `expressiveos-cheetah/tools/eos-ota.sh --upload` (EOS 2.0; 1.x uses `expressiveos/<dev>/ota/`) |
+| `expressiveos/v2/<dev>/ota/test/<incremental>`, `<dev>.json` (a test feed) | `expressiveos-cheetah/tools/eos-ota.sh --candidate` (EOS 2.0; 1.x uses `expressiveos/<dev>/ota/test/`) |
 | `expressiveos/keybox.xml` | `expressiveos-cheetah/tools/eos-keybox.py upload <keybox.xml>` |
 | `expressiveos/progress/<key>/index.html`, `status.txt` (the live build page) | `expressiveos-cheetah/tools/eos-progress-publish.sh` |
 
