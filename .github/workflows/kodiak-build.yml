@@ -1575,6 +1575,8 @@ jobs:
               perl -e 'alarm 120; exec @ARGV' -- python3 -B "$KIT/sources/tests/test_update_aosp.py" -v
               echo "--- test_eos_integrity.py"
               perl -e 'alarm 120; exec @ARGV' -- python3 -B "$KIT/sources/tests/test_eos_integrity.py" -v
+              echo "--- test_brand_check.py"
+              perl -e 'alarm 60; exec @ARGV' -- python3 -B "$KIT/tools/tests/test_brand_check.py" -v
               echo "--- dex-refs-test.py"
               perl -e 'alarm 120; exec @ARGV' -- python3 -B -I "$KIT/launcher/tools/tests/dex-refs-test.py"
               echo "--- test_flasher_publish.py"
