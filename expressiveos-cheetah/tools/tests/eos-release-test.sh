@@ -14,6 +14,9 @@ W=$(mktemp -d "${TMPDIR:-/tmp}/eos-release-test.XXXXXX")
 # server's own eos-pack or runner session; unset TMUX first (otherwise tmux ignores TMUX_TMPDIR
 # and connects to the outer $TMUX socket); in /tmp, as a socket's path has to be short
 unset TMUX
+mapfile -t _eos_vars < <(compgen -v EOS_ || true)
+(( ${#_eos_vars[@]} == 0 )) || unset "${_eos_vars[@]}"
+unset _eos_vars
 export TMUX_TMPDIR
 TMUX_TMPDIR=$(mktemp -d /tmp/eos-release-tmux.XXXXXX)
 trap 'tmux kill-server 2>/dev/null || true; rm -rf -- "$W" "$TMUX_TMPDIR"' EXIT

@@ -10,11 +10,17 @@
 #                                      # kodiak (from the factory zip, plus vendor_kernel_boot)
 set -euo pipefail
 KITSRC=$(cd "$(dirname -- "$(readlink -f -- "$0")")/../.." && pwd)
-if [[ -z ${EOS_DEVICE:-} ]]; then
+_test_dev=${EOS_DEVICE:-}
+mapfile -t _eos_vars < <(compgen -v EOS_ || true)
+(( ${#_eos_vars[@]} == 0 )) || unset "${_eos_vars[@]}"
+unset _eos_vars
+if [[ -z $_test_dev ]]; then
     rc=0
     for d in cheetah husky kodiak; do echo "== $d"; EOS_DEVICE=$d bash "$0" || rc=1; done
     exit $rc
 fi
+EOS_DEVICE=$_test_dev
+unset _test_dev
 W=$(mktemp -d "${TMPDIR:-/tmp}/eos-verified-test.XXXXXX")
 trap 'rm -rf -- "$W"' EXIT
 pass=0 failed=0
