@@ -76,5 +76,5 @@ jobs:
 
       - name: Flasher & OTA Mirror Vitest, Typecheck, and Worker Build
         run: |
-          (cd tools/expressiveos_flasher && perl -e 'alarm 180; exec @ARGV' -- npm ci && perl -e 'alarm 180; exec @ARGV' -- npm test && perl -e 'alarm 180; exec @ARGV' -- npm run build && perl -e 'alarm 60; exec @ARGV' -- npx tsc -p tsconfig.test.json --noEmit)
-          (cd tools/ota_mirror && perl -e 'alarm 180; exec @ARGV' -- npm ci && perl -e 'alarm 60; exec @ARGV' -- npx tsc --noEmit)
+          (cd tools/expressiveos_flasher && perl -e 'alarm 180; exec @ARGV' -- npm ci && perl -e 'alarm 180; exec @ARGV' -- npm run typecheck && perl -e 'alarm 180; exec @ARGV' -- npm test && perl -e 'alarm 180; exec @ARGV' -- npm run build)
+          (cd tools/ota_mirror && perl -e 'alarm 180; exec @ARGV' -- npm ci && perl -e 'alarm 180; exec @ARGV' -- npm run typecheck && perl -e 'alarm 180; exec @ARGV' -- npm run build)
