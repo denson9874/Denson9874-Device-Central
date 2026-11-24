@@ -7,6 +7,9 @@
 #   tools/tests/eos-progress-publish-test.sh     # about 20 s; needs python3
 set -euo pipefail
 KITSRC=$(cd "$(dirname -- "$(readlink -f -- "$0")")/../.." && pwd)
+mapfile -t _eos_vars < <(compgen -v EOS_ || true)
+(( ${#_eos_vars[@]} == 0 )) || unset "${_eos_vars[@]}"
+unset _eos_vars
 W=$(mktemp -d "${TMPDIR:-/tmp}/eos-progress-publish-test.XXXXXX")
 trap 'rm -rf -- "$W"' EXIT
 export HOME=$W/home

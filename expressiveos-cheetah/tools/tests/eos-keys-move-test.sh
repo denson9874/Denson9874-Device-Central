@@ -9,8 +9,12 @@ set -euo pipefail
 KITSRC=$(cd "$(dirname -- "$(readlink -f -- "$0")")/../.." && pwd)
 S=$KITSRC/tools/eos-keys-move.sh
 W=$(mktemp -d "${TMPDIR:-/tmp}/eos-keys-move-test.XXXXXX")
-# Unset TMUX so tmux uses TMUX_TMPDIR instead of killing an outer host tmux server
+# Unset TMUX and any caller EOS_* overrides so the test never touches an outer tmux server
+# or a real build tree / lock file outside its fake $HOME.
 unset TMUX
+mapfile -t _eos_vars < <(compgen -v EOS_ || true)
+(( ${#_eos_vars[@]} == 0 )) || unset "${_eos_vars[@]}"
+unset _eos_vars
 TMUX_TMPDIR=$(mktemp -d /tmp/eos-keys-move-tmux.XXXXXX)
 export HOME=$W/home TMPDIR=$W/tmp TMUX_TMPDIR
 mkdir -p "$HOME" "$TMPDIR"

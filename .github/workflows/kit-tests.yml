@@ -38,11 +38,19 @@ jobs:
 
           for ts in eos-keys-move-test.sh eos-ota-test.sh eos-verified-test.sh eos-release-test.sh eos-progress-publish-test.sh gms-drop-test.sh; do
             echo "=== $ts ==="
-            perl -e 'alarm 180; exec @ARGV' -- env TMUX="$OUTER_TMUX_SOCK" bash "expressiveos-cheetah/tools/tests/$ts"
+            perl -e 'alarm 180; exec @ARGV' -- env \
+              TMUX="$OUTER_TMUX_SOCK" \
+              EOS_TOP=/nonexistent/poison-top \
+              EOS_LOCK=/nonexistent/poison.lock \
+              EOS_TREE_LOCK=/nonexistent/poison-tree.lock \
+              EOS_RELEASES_DIR=/nonexistent/poison-releases \
+              EOS_JOBS=/nonexistent/poison-jobs \
+              EOS_TIMES=/nonexistent/poison-times \
+              bash "expressiveos-cheetah/tools/tests/$ts"
             env -u TMUX TMUX_TMPDIR="$OUTER_TMUX_DIR" tmux has-session -t "=runner" \
               || { echo "::error::$ts killed the outer runner tmux session!"; exit 1; }
           done
-          echo "OUTER_TMUX_SURVIVED=OK"
+          echo "OUTER_TMUX_AND_EOS_ENV_ISOLATION=OK"
 
       - name: Kit & Flasher Python unit tests
         run: |

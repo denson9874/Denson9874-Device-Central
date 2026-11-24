@@ -7,6 +7,9 @@
 #   tools/tests/eos-ota-test.sh        # about 10 seconds; needs openssl, python3, zip, unzip
 set -euo pipefail
 KITSRC=$(cd "$(dirname -- "$(readlink -f -- "$0")")/../.." && pwd)
+mapfile -t _eos_vars < <(compgen -v EOS_ || true)
+(( ${#_eos_vars[@]} == 0 )) || unset "${_eos_vars[@]}"
+unset _eos_vars
 W=$(mktemp -d "${TMPDIR:-/tmp}/eos-ota-test.XXXXXX")
 export HOME=$W/home
 mkdir -p "$HOME/bin" "$W/stub" "$W/r2" "$W/feed"
