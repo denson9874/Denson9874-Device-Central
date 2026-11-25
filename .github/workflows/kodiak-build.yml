@@ -889,7 +889,7 @@ jobs:
           bash expressiveos-cheetah/sources/update-check.sh
 
       # The only step given a secret. The token is in this step's environment alone; the runner
-      # masks it in the log, and update.py passes it to git and GitHub without writing it down
+      # masks it in the log, and update-aosp.py passes it to git and GitHub without writing it down
       - name: ExpressiveOS update
         if: inputs.action == 'expressiveos-update'
         env:
@@ -1043,7 +1043,7 @@ jobs:
                 IFS=, read -r -a ms <<< "$mods"
                 for m in "${ms[@]}"; do
                   case $m in
-                    clean|clobber|installclean|dataclean|nuke|dist|droid|droidcore|evolution|bacon|otapackage|target-files-package|*clean|*image|*images|*package)
+                    clean|clobber|installclean|dataclean|nuke|dist|droid|droidcore|eos|evolution|bacon|otapackage|target-files-package|*clean|*image|*images|*package)
                       fail "modules=$m is a build goal, not a module" ;;
                   esac
                 done ;;
@@ -1424,11 +1424,8 @@ jobs:
           cd "$top" || fail "can't cd to $top"
           PATH=$HOME/bin:$PATH
           wait_builds
-          # EXPRESSIVE_BUILD_TYPE since 1.1; EVO_BUILD_TYPE for a tree from before it (goes in 1.2)
-          export EXPRESSIVE_BUILD_TYPE=$EOS_BUILD_TYPE EVO_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
+          export EXPRESSIVE_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
           if command -v ccache >/dev/null; then export USE_CCACHE=1 CCACHE_EXEC; CCACHE_EXEC=$(command -v ccache); fi
-          # Before lunch, which runs build_kernel (the phones whose kernel is built here)
-          [[ ${EOS_KERNEL:-gs-6.1} != gs-6.1 ]] || kernel_pinned
           # shellcheck source=/dev/null
           source build/envsetup.sh >/dev/null || fail "build/envsetup.sh failed"
           lunch "$EOS_LUNCH" || fail "lunch $EOS_LUNCH failed"
@@ -1577,6 +1574,8 @@ jobs:
               perl -e 'alarm 120; exec @ARGV' -- python3 -B "$KIT/sources/tests/test_eos_integrity.py" -v
               echo "--- test_brand_check.py"
               perl -e 'alarm 60; exec @ARGV' -- python3 -B "$KIT/tools/tests/test_brand_check.py" -v
+              echo "--- test_eos_progress.py"
+              perl -e 'alarm 60; exec @ARGV' -- python3 -B "$KIT/tools/tests/test_eos_progress.py" -v
               echo "--- dex-refs-test.py"
               perl -e 'alarm 120; exec @ARGV' -- python3 -B -I "$KIT/launcher/tools/tests/dex-refs-test.py"
               echo "--- test_flasher_publish.py"

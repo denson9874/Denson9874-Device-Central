@@ -5,18 +5,22 @@ Uses local bare git repositories (file://) and a mock gh CLI script via EOS_GH_B
 Every subprocess call enforces an explicit timeout.
 """
 
+import base64
+import http.server
 import json
 import os
 import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
 TESTS_DIR = Path(__file__).resolve().parent
 SOURCES_DIR = TESTS_DIR.parent
 UPDATE_SCRIPT = SOURCES_DIR / "update-aosp.py"
+UPDATE_SH = SOURCES_DIR / "update.sh"
 
 TEST_ENV_BASE = {
     "GIT_AUTHOR_NAME": "Test Author",
@@ -439,6 +443,41 @@ sys.exit(1)
         self.assertEqual(res_push.returncode, 0, res_push.stdout + res_push.stderr)
         self.assertIn("UPDATE_PUSH=OK (forks_pushed=4, manifest_branch=update/2026-07)", res_push.stdout)
 
+        # Idempotent re-run when update/2026-07 already exists on manifest remote must succeed (0 forks pushed)
+        res_push_rerun = self.run_cli(
+            "push", "2026-07",
+            "--work", str(self.world.work_dir),
+            "--eos-org-base", self.world.eos_org_url,
+            "--manifest-url", f"file://{self.world.eos_manifest_bare}",
+        )
+        self.assertEqual(res_push_rerun.returncode, 0, res_push_rerun.stdout + res_push_rerun.stderr)
+        self.assertIn("already pushed: manifest @ update/2026-07", res_push_rerun.stdout)
+        self.assertIn("UPDATE_PUSH=OK (forks_pushed=0, manifest_branch=update/2026-07)", res_push_rerun.stdout)
+
+        # HTTPS GitHub push without EOS_PUSH_TOKEN must fail fast before any git network call
+        res_no_tok = self.run_cli(
+            "push", "2026-07",
+            "--work", str(self.world.work_dir),
+            "--eos-org-base", "https://github.com/ExpressiveOS",
+            "--manifest-url", "https://github.com/ExpressiveOS/manifest",
+            env={"EOS_PUSH_TOKEN": ""},
+        )
+        self.assertNotEqual(res_no_tok.returncode, 0)
+        self.assertIn("EOS_PUSH_TOKEN is empty", res_no_tok.stderr)
+        self.assertIn("UPDATE_PUSH=FAILED", res_no_tok.stdout)
+
+        # Non-GitHub HTTPS remote must be refused so EOS_PUSH_TOKEN never leaks off github.com
+        res_off_gh = self.run_cli(
+            "push", "2026-07",
+            "--work", str(self.world.work_dir),
+            "--eos-org-base", "https://evil.example/ExpressiveOS",
+            "--manifest-url", "https://evil.example/ExpressiveOS/manifest",
+            env={"EOS_PUSH_TOKEN": "github_pat_dummy"},
+        )
+        self.assertNotEqual(res_off_gh.returncode, 0)
+        self.assertIn("not on GitHub", res_off_gh.stderr)
+        self.assertIn("UPDATE_PUSH=FAILED", res_off_gh.stdout)
+
         # Verify BEFORE merging update/2026-07 into expressiveos-2.0 -> DIFFERS
         res_ver_pre = self.run_cli(
             "verify", "2026-07",
@@ -534,6 +573,85 @@ sys.exit(1)
             "RELEASE_PLATFORM_SECURITY_PATCH",
         ):
             self.assertIn(expected, res_bad.stderr)
+
+    def test_token_subcommand_and_update_sh_wrapper(self):
+        # Empty token fails fast via update.sh token (matching kodiak-build.yml expressiveos-update)
+        empty_proc = run(
+            ["bash", str(UPDATE_SH), "token"],
+            env={"EOS_PUSH_TOKEN": "", "EOS_UPDATE_WORK": str(self.tmp / "upd-work")},
+            check=False,
+            timeout=15,
+        )
+        self.assertNotEqual(empty_proc.returncode, 0)
+        self.assertIn("EOS_PUSH_TOKEN is empty", empty_proc.stderr)
+        self.assertIn("TOKEN_CHECK=FAIL", empty_proc.stdout)
+
+        # Mock receive-pack server verifying Basic x-access-token:<token>
+        expected_auth = "Basic " + base64.b64encode(b"x-access-token:github_pat_test123").decode("ascii")
+        deny_repo = {"name": None}
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, fmt, *args):
+                return
+
+            def do_GET(self):
+                auth = self.headers.get("Authorization")
+                if not auth:
+                    self.send_response(401)
+                    self.end_headers()
+                    return
+                if auth != expected_auth:
+                    self.send_response(401)
+                    self.end_headers()
+                    return
+                if deny_repo["name"] and f"/{deny_repo['name']}.git/" in self.path:
+                    self.send_response(403)
+                    self.end_headers()
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-git-receive-pack-advertisement")
+                self.end_headers()
+                self.wfile.write(b"001f# service=git-receive-pack\n0000")
+
+        srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        srv.daemon_threads = True
+        t = threading.Thread(target=srv.serve_forever, daemon=True)
+        t.start()
+        try:
+            base_url = f"http://127.0.0.1:{srv.server_port}/ExpressiveOS"
+            ok_res = self.run_cli(
+                "token",
+                "--work", str(self.tmp / "tok-work"),
+                "--manifest", str(self.world.manifest_file()),
+                "--eos-org-base", base_url,
+                "--manifest-url", f"{base_url}/manifest",
+                env={
+                    "EOS_PUSH_TOKEN": "github_pat_test123",
+                    "EOS_ALLOW_LOCAL_TOKEN_TEST": "1",
+                },
+            )
+            self.assertEqual(ok_res.returncode, 0, ok_res.stdout + ok_res.stderr)
+            self.assertIn("TOKEN_CHECK=OK", ok_res.stdout)
+
+            # 403 on one repo fails with TOKEN_CHECK=FAIL
+            deny_repo["name"] = "frameworks_base"
+            bad_res = self.run_cli(
+                "token",
+                "--work", str(self.tmp / "tok-work"),
+                "--manifest", str(self.world.manifest_file()),
+                "--eos-org-base", base_url,
+                "--manifest-url", f"{base_url}/manifest",
+                env={
+                    "EOS_PUSH_TOKEN": "github_pat_test123",
+                    "EOS_ALLOW_LOCAL_TOKEN_TEST": "1",
+                },
+            )
+            self.assertEqual(bad_res.returncode, 1)
+            self.assertIn("no push access", bad_res.stderr)
+            self.assertIn("TOKEN_CHECK=FAIL", bad_res.stdout)
+        finally:
+            srv.shutdown()
+            srv.server_close()
 
 
 if __name__ == "__main__":

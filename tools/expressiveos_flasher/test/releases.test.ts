@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { ReleasesError, fileUrl, parseManifest, rnum } from "../src/releases.ts";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { ReleasesError, fetchReleases, fileUrl, parseManifest, rnum } from "../src/releases.ts";
 
 const sha = (c: string) => c.repeat(64);
 function release(name: string, over: Record<string, unknown> = {}) {
@@ -120,5 +120,63 @@ describe("release file URLs", () => {
 	it("URL-encodes the device and the file name", () => {
 		expect(fileUrl("cheetah", { channel: "release" }, "../a b/c#d?.zip")).toBe("/dl/v2/cheetah/..%2Fa%20b%2Fc%23d%3F.zip");
 		expect(fileUrl("che/tah", { channel: "testers" }, "x/y")).toBe("/dl/v2/che%2Ftah/testers/x%2Fy");
+	});
+
+	it("serves 1.x fallback releases from /dl/<device>/ without the v2/ prefix", () => {
+		expect(fileUrl("yogi", { channel: "release", legacyV1: true }, zip)).toBe(`/dl/yogi/${zip}`);
+		expect(fileUrl("yogi", { channel: "testers", legacyV1: true }, zip)).toBe(`/dl/yogi/testers/${zip}`);
+	});
+});
+
+describe("fetchReleases v2-first with 1.x fallback", () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("prefers /api/releases/v2/<device> when present without querying v1", async () => {
+		const calls: string[] = [];
+		const v2Name = "ExpressiveOS-17.0-20261201-kodiak-2.0-Official";
+		vi.stubGlobal("fetch", async (url: string) => {
+			calls.push(url);
+			return Response.json({ schema: 1, device: "kodiak", releases: [release(v2Name, { android: "17.0", version: "2.0", type: "Official", requirements: ["require board=kodiak"] })] });
+		});
+		const got = await fetchReleases("kodiak");
+		expect(calls).toEqual(["/api/releases/v2/kodiak"]);
+		expect(got).toHaveLength(1);
+		expect(got[0].legacyV1).toBeUndefined();
+		expect(fileUrl("kodiak", got[0], got[0].zip.file)).toBe(`/dl/v2/kodiak/${v2Name}-fastboot.zip`);
+	});
+
+	it("falls back to /api/releases/<device> when v2 returns 404 so 1.3 stays live before v2 rollout", async () => {
+		const calls: string[] = [];
+		const v1Name = "ExpressiveOS-16.0-20261115-yogi-1.3-Official";
+		vi.stubGlobal("fetch", async (url: string) => {
+			calls.push(url);
+			if (url === "/api/releases/v2/yogi") return new Response(null, { status: 404 });
+			if (url === "/api/releases/yogi") {
+				return Response.json({
+					schema: 1,
+					device: "yogi",
+					releases: [release(v1Name, { version: "1.3", type: "Official", requirements: ["require board=yogi"] })],
+				});
+			}
+			return new Response(null, { status: 404 });
+		});
+		const got = await fetchReleases("yogi");
+		expect(calls).toEqual(["/api/releases/v2/yogi", "/api/releases/yogi"]);
+		expect(got).toHaveLength(1);
+		expect(got[0].legacyV1).toBe(true);
+		expect(fileUrl("yogi", got[0], got[0].zip.file)).toBe(`/dl/yogi/${v1Name}-fastboot.zip`);
+	});
+
+	it("throws kind=none when both v2 and v1 return 404, and does not mask v2 5xx errors", async () => {
+		vi.stubGlobal("fetch", async () => new Response(null, { status: 404 }));
+		await expect(fetchReleases("cubs")).rejects.toMatchObject({ name: "ReleasesError", kind: "none" });
+
+		const calls500: string[] = [];
+		vi.stubGlobal("fetch", async (url: string) => {
+			calls500.push(url);
+			return new Response("boom", { status: 503 });
+		});
+		await expect(fetchReleases("cubs")).rejects.toMatchObject({ name: "ReleasesError", kind: "network" });
+		expect(calls500).toEqual(["/api/releases/v2/cubs"]);
 	});
 });

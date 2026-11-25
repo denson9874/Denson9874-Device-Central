@@ -57,6 +57,7 @@ jobs:
           perl -e 'alarm 60; exec @ARGV' -- python3 -B expressiveos-cheetah/sources/tests/test_update_aosp.py -v
           perl -e 'alarm 60; exec @ARGV' -- python3 -B expressiveos-cheetah/sources/tests/test_eos_integrity.py -v
           perl -e 'alarm 60; exec @ARGV' -- python3 -B expressiveos-cheetah/tools/tests/test_brand_check.py -v
+          perl -e 'alarm 60; exec @ARGV' -- python3 -B expressiveos-cheetah/tools/tests/test_eos_progress.py -v
           perl -e 'alarm 90; exec @ARGV' -- python3 -B -I expressiveos-cheetah/launcher/tools/tests/dex-refs-test.py
           perl -e 'alarm 120; exec @ARGV' -- python3 -B tools/expressiveos_flasher/publish/test_flasher_publish.py -v
 

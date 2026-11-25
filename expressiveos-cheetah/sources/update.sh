@@ -6,6 +6,7 @@
 #                                      # SPL bump, new manifest; nothing pushed. Ends UPDATE_PLAN=READY|CONFLICTS
 #   update.sh create-repos <id>        # Mac admin: create new ExpressiveOS ASB fork repos via gh api
 #   update.sh push <id> [top]          # fast-forward push staged forks + manifest update/<id> branch
+#   update.sh token                    # read-only: check EOS_PUSH_TOKEN push access across EOS 2.0 repos
 #   update.sh verify <id> [top]        # read-only, after manifest PR merge: verify live manifest & forks
 #   update.sh lint [manifest]          # strict EOS 2.0 manifest validator (40-hex SHAs, zero LineageOS)
 #
@@ -13,6 +14,7 @@
 set -euo pipefail
 case ${1:-} in
     lint) st=MANIFEST_LINT=FAIL ;;
+    token) st=TOKEN_CHECK=FAIL ;;
     plan) st=UPDATE_PLAN=NOT_READY ;;
     create-repos) st=CREATE_REPOS=FAIL ;;
     push) st=UPDATE_PUSH=FAILED ;;
@@ -27,11 +29,17 @@ fail() { why=$*; why=${why//$'\n'/ }; why=${why:0:300}; echo "FAIL: $*" >&2; exi
 # shellcheck source=lock-holder.sh
 source "$(dirname -- "$(readlink -f -- "$0")")/lock-holder.sh"
 
-usage="usage: update.sh lint [manifest] | update.sh create-repos <id> | update.sh plan|push|verify <id> [top]"
+usage="usage: update.sh token | update.sh lint [manifest] | update.sh create-repos <id> | update.sh plan|push|verify <id> [top]"
 [[ $# -ge 1 ]] || fail "$usage"
 work=${EOS_UPDATE_WORK:-$HOME/expressiveos-update}
-r=$(realpath -m -- "$work") || fail "can't resolve $work"
+r=$(realpath -m -- "$work" 2>/dev/null || python3 -I -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$work") || fail "can't resolve $work"
 case $1 in
+    token)
+        [[ $# -eq 1 ]] || fail "$usage"
+        mkdir -p -- "$r"
+        st=
+        exec python3 -I "$kit/sources/update-aosp.py" token --work "$r"
+        ;;
     lint)
         [[ $# -le 2 ]] || fail "$usage"
         st=

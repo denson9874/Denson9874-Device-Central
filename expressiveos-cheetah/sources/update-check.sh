@@ -20,7 +20,7 @@ source "$(dirname -- "$(readlink -f -- "$0")")/lock-holder.sh"
 [[ $# -le 1 ]] || fail "usage: update-check.sh [top]"
 eos_top "${1:-}"
 work=${EOS_UPDATE_WORK:-$HOME/expressiveos-update}
-r=$(realpath -m -- "$work") || fail "can't resolve $work"
+r=$(realpath -m -- "$work" 2>/dev/null || python3 -I -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$work") || fail "can't resolve $work"
 [[ "$r" != "$top" && "$r" != "$top"/* && "$top" != "$r"/* ]] || fail "the work folder $work is in the tree $top, or holds it"
 exec 8>"$EOS_LOCK"
 if ! flock -n 8; then
