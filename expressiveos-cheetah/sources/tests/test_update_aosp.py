@@ -256,7 +256,12 @@ class MockASBWorld:
             self.eos_mf_checkout,
             {
                 "default.xml": make_eos_manifest(eos_projects, self.eos_org_url, self.aosp_base_url),
-                "last-update.conf": "UPDATE=2026-06\nAOSP_SEC_TAG=android-security-17.0.0_r1\nSPL=2026-06-05\n",
+                "last-update.conf": (
+                    "UPDATE=2026-06\n"
+                    "AOSP_BASE_TAG=android-17.0.0_r1\n"
+                    "AOSP_SEC_TAG=android-security-17.0.0_r1\n"
+                    "SPL=2026-06-05\n"
+                ),
             },
             "Initial EOS 2.0 manifest",
         )
@@ -351,7 +356,9 @@ class TestUpdateAosp(unittest.TestCase):
         )
         self.assertIn('string_value: "2026-07-05"', spl_file.read_text(encoding="utf-8"))
 
-        # Lint generated manifest + SPL file must pass
+        # Lint generated manifest + SPL file must pass, and last-update.conf must preserve AOSP_BASE_TAG
+        last_upd_txt = (plan_dir / "last-update.conf").read_text(encoding="utf-8")
+        self.assertIn("AOSP_BASE_TAG=android-17.0.0_r1", last_upd_txt)
         lint_res = self.run_cli("lint", str(plan_dir / "default.xml"), "--spl-file", str(spl_file))
         self.assertEqual(lint_res.returncode, 0, lint_res.stdout + lint_res.stderr)
         self.assertIn("MANIFEST_LINT=OK", lint_res.stdout)
@@ -573,6 +580,27 @@ sys.exit(1)
             "RELEASE_PLATFORM_SECURITY_PATCH",
         ):
             self.assertIn(expected, res_bad.stderr)
+
+        # Remote ref lint: default branch, explicit branch, pull/<n> ref, and bad ref rejection
+        mf_url = f"file://{self.world.eos_manifest_bare}"
+        res_def = self.run_cli("lint", "--manifest-url", mf_url, "--work", str(self.tmp / "lint-work"))
+        self.assertEqual(res_def.returncode, 0, res_def.stdout + res_def.stderr)
+        self.assertIn("MANIFEST_LINT=OK", res_def.stdout)
+
+        run(["git", "push", str(self.world.eos_manifest_bare), "HEAD:refs/pull/42/head"], cwd=self.world.eos_mf_checkout)
+        res_pr = self.run_cli("lint", "pull/42", "--manifest-url", mf_url, "--work", str(self.tmp / "lint-work"))
+        self.assertEqual(res_pr.returncode, 0, res_pr.stdout + res_pr.stderr)
+        self.assertIn("MANIFEST_LINT=OK", res_pr.stdout)
+
+        res_bad_ref = self.run_cli("lint", "bad..ref", "--manifest-url", mf_url, "--work", str(self.tmp / "lint-work"))
+        self.assertNotEqual(res_bad_ref.returncode, 0)
+        self.assertIn("MANIFEST_LINT=FAIL", res_bad_ref.stdout)
+
+        # QPR tag notice when a new android-17.0.0_r2 tag appears beyond AOSP_BASE_TAG
+        run(["git", "--git-dir", str(self.world.aosp_manifest_bare), "tag", "android-17.0.0_r2", "refs/tags/android-security-17.0.0_r2"])
+        res_qpr = self.run_cli("check", *self.world.common_args())
+        self.assertEqual(res_qpr.returncode, 0, res_qpr.stderr)
+        self.assertIn("NOTE: new AOSP release tag(s) beyond AOSP_BASE_TAG (android-17.0.0_r1): android-17.0.0_r2", res_qpr.stdout)
 
     def test_token_subcommand_and_update_sh_wrapper(self):
         # Empty token fails fast via update.sh token (matching kodiak-build.yml expressiveos-update)

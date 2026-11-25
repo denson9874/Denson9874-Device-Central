@@ -16,23 +16,23 @@ ones, a patch for one of ExpressiveOS's own repos must already be a commit there
 
 | Key | What it is |
 |---|---|
-| `EOS_LUNCH` | lunch target, `lineage_<device>-<release>-user` |
+| `EOS_LUNCH` | lunch target, `eos_<device>-<release>-user` |
 | `EOS_MODEL` | `ro.product.product.model` the build must carry |
 | `EOS_BOARD` | the one board the fastboot zip's `android-info.txt` requires (the device) |
-| `EOS_RELEASES`, `EOS_SF_DIR`, `EOS_R2_PREFIX` | release folder, SourceForge folder, R2 prefix: `expressiveos-<device>`, `.../expressiveos/<device>`, `expressiveos/<device>/` |
+| `EOS_RELEASES`, `EOS_SF_DIR`, `EOS_R2_PREFIX` | release folder, SourceForge folder, R2 prefix: `releases/expressiveos-<device>`, `.../expressiveos/<device>`, `expressiveos/v2/<device>/` |
 | `EOS_DEVICE_TREE` | the device tree whose log holds ExpressiveOS's identity commits (maintainer, feed) |
-| `EOS_BOARDCONFIG` | the BoardConfig.mk the SukiSU patches change |
+| `EOS_BOARDCONFIG` | the BoardConfig.mk for the device |
 | `EOS_VENDOR_DIR` | the vendor blobs project |
 | `EOS_RADIO_MK` | the makefile listing the firmware images with their sha1 (`radio/<x>.img,<sha1>`) |
 | `EOS_FIRMWARE` | the firmware partitions the OTA payload must carry |
 | `EOS_FIRMWARE_MODE` | `cache`: newest cached factory firmware put into the vendor repo (cheetah, husky: `firmware/<device>.conf`, runner action `expressiveos-firmware`); `blobs`: the vendor repo's own; `images`: `vendor/google/<device>-images` made from `~/android-dt/firmware/image-<device>-*.zip` by the tree's extract-images.sh (Pixel 11) |
 | `EOS_LFS_PROJECTS` | projects whose Git LFS files must all be present |
-| `EOS_UPDATER_OVERLAY` | the Updater overlay APK that must point at `denson9874/expressiveos_ota` |
-| `EOS_SENTINEL` | a file setup.sh expects after a sync |
-| `EOS_KERNEL` | `gs-6.1`: built from `pins/kernel.xml`'s source; `prebuilt`: the tree's prebuilt boot image |
+| `EOS_UPDATER_OVERLAY` | the Updater overlay APK that must point at `denson9874/expressiveos_ota` (`builds/v2/{device}.json`) |
+| `EOS_SENTINEL` | a file setup.sh expects after a sync (`eos_<device>.mk`) |
+| `EOS_KERNEL` | `prebuilt`: stock factory kernel images (`vendor/google/<device>-kernel-images` or `<device>-images`) |
 | `EOS_KMI` | the kernel's KMI (`android14-6.1`, `android16-6.12`) |
 | `EOS_KSU` | `wild`: Wild Kernels' BakaSU kernel (susfs built in) in boot.img, no manager shipped (users install BakaSU's APK); `none`: the stock boot, no root |
-| `EOS_V4A` | ViPER4Android built in: `1` with the HIDL driver (gs201's HIDL effect HAL: cheetah), `aidl` with the AIDL driver (an AIDL effect HAL whose vendor ExpressiveOS builds: husky); `aidl-overlay`, the same driver laid over Google's stock vendor image at boot (kodiak; viper4android/README.md); `0`: none (grizzly, cubs and yogi until kodiak's phone test) |
+| `EOS_V4A` | ViPER4Android built in: `1` with the HIDL driver (gs201's HIDL effect HAL: cheetah), `aidl` with the AIDL driver (an AIDL effect HAL whose vendor ExpressiveOS builds: husky); `aidl-overlay`, the same driver laid over Google's stock vendor image at boot (`on post-fs`, Pixel 11s: kodiak, grizzly, cubs, yogi; viper4android/README.md); `0`: none |
 | `EOS_SUPER_EMPTY` | `out`: the build's super_empty.img; `factory`: the one in the factory image zip |
 | `EOS_FLASH_VKB` | `1`: the fastboot zip flashes vendor_kernel_boot even when the tree's fastboot-info.txt doesn't |
 | `EOS_SCONE_PATCH` | the kit patch naming the SCONE module that must be installed (optional) |
