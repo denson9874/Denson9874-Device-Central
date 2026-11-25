@@ -256,6 +256,13 @@ rc=$(ota --candidate); ok "--candidate refuses an older security patch than the 
 rc=$(FAKE_KEYS=UNPINNED ota); ok "unpinned keys: refuses" '[[ $rc = 1 ]] && grep -q "pinned ones" "$W/out.log"'
 echo x >> "$D/ota/$B.zip"
 rc=$(ota); ok "a changed full package: refuses" '[[ $rc = 1 ]] && grep -q "isn.t the package its .sha256 names" "$W/out.log"'
+rc=$(ota "$top"); ok "optional [top] positional arg accepted on eos-ota.sh" '[[ $rc = 1 ]] && grep -q "isn.t the package its .sha256 names" "$W/out.log" && ! grep -q "usage:" "$W/out.log"'
+rc=$(ota --bogus); ok "unknown flag refused on eos-ota.sh" '[[ $rc = 1 ]] && grep -q "usage: eos-ota.sh" "$W/out.log"'
+mkdir -p "$top/device/google/pantah" && touch "$top/device/google/pantah/eos_cheetah.mk"
+rc=0; "$kit/tools/eos-pack.sh" "$top" > "$W/out.log" 2>&1 || rc=$?
+ok "optional [top] positional arg accepted on eos-pack.sh" '[[ $rc = 1 ]] && grep -q "no out/eos/build.ok" "$W/out.log" && ! grep -q "usage:" "$W/out.log"'
+rc=0; "$kit/tools/eos-pack.sh" --bogus > "$W/out.log" 2>&1 || rc=$?
+ok "unknown flag refused on eos-pack.sh" '[[ $rc = 1 ]] && grep -q "usage: eos-pack.sh" "$W/out.log"'
 
 echo "PASSED $pass FAILED $failn"
 [[ $failn = 0 ]] && rm -rf "$W"
