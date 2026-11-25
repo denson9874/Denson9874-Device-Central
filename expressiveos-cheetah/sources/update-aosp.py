@@ -24,6 +24,10 @@ around April 2026, this tool NEVER switches <default revision> to the security t
                      expressiveos-2.0 (never force-push) and push manifest branch
                      update/<id> for PR review. Ends with UPDATE_PUSH=OK.
 
+  token              Read-only check that EOS_PUSH_TOKEN has git-receive-pack push access
+                     to ExpressiveOS/manifest and every remote="expressiveos" repo on
+                     expressiveos-2.0. Ends with TOKEN_CHECK=OK|FAIL.
+
   verify <id>        Verify merged manifest + fork heads + SPL match plan.json.
                      Ends with UPDATE_VERIFY=OK|DIFFERS.
 
@@ -34,6 +38,8 @@ around April 2026, this tool NEVER switches <default revision> to the security t
 """
 
 import argparse
+import base64
+import concurrent.futures
 import json
 import os
 import re
@@ -41,6 +47,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.error
+import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -83,6 +91,9 @@ PURE_ENV = {
     "GIT_CONFIG_NOSYSTEM": "1",
     "GIT_ATTR_NOSYSTEM": "1",
 }
+
+# git credential helper reading EOS_PUSH_TOKEN from the environment only, never written to disk or argv.
+PUSH_CRED_HELPER = '!f() { test "$1" = get || exit 0; echo username=x-access-token; printf "password=%s\\n" "$EOS_PUSH_TOKEN"; }; f'
 
 STOPPED = None
 
@@ -851,6 +862,121 @@ def cmd_create_repos(args):
     return 0
 
 
+def is_github_https(url):
+    return (url or "").startswith("https://github.com/")
+
+
+def validate_push_urls_and_token(urls):
+    off = [u for u in urls if not is_github_https(u) and not u.startswith("file://")]
+    if off:
+        raise UpdateError(
+            f"not on GitHub (https://github.com/), the only place EOS_PUSH_TOKEN goes: {', '.join(off)}"
+        )
+    if any(is_github_https(u) for u in urls):
+        token = os.environ.get("EOS_PUSH_TOKEN", "")
+        if not token:
+            raise UpdateError("EOS_PUSH_TOKEN is empty: the Actions secret EXPRESSIVEOS_PUSH_TOKEN isn't set")
+        if token != token.strip() or any(c.isspace() for c in token):
+            raise UpdateError("EOS_PUSH_TOKEN has spaces or line breaks in it: save the secret again with the token alone")
+        return token
+    return ""
+
+
+def git_push_cfg(url):
+    cfg = ["-c", "credential.helper=", "-c", f"core.hooksPath={os.devnull}"]
+    if is_github_https(url):
+        cfg += ["-c", f"credential.https://github.com.helper={PUSH_CRED_HELPER}"]
+    return cfg
+
+
+def receive_pack_check(repo_url, token, timeout=30):
+    base = repo_url.rstrip("/")
+    if not base.endswith(".git"):
+        base += ".git"
+    req = urllib.request.Request(
+        f"{base}/info/refs?service=git-receive-pack",
+        headers={"User-Agent": "git/expressiveos-update"},
+    )
+    if token is not None:
+        auth = base64.b64encode(f"x-access-token:{token}".encode("utf-8")).decode("ascii")
+        req.add_header("Authorization", f"Basic {auth}")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            ctype = (resp.headers.get("Content-Type") or "").split(";", 1)[0].strip()
+            return resp.status, ctype
+    except urllib.error.HTTPError as err:
+        ctype = (err.headers.get("Content-Type") or "").split(";", 1)[0].strip() if err.headers else ""
+        return err.code, ctype
+    except (urllib.error.URLError, OSError) as err:
+        return None, str(err)
+
+
+def cmd_token(args):
+    eos_conf = load_eos_config(KIT)
+    branch = args.branch or eos_conf.get("EOS_MANIFEST_BRANCH", DEFAULT_EOS_BRANCH)
+    eos_org_base = args.eos_org_base or os.environ.get("EOS_ORG_BASE_URL", f"https://github.com/{DEFAULT_EOS_ORG}")
+    manifest_url = (args.manifest_url or eos_conf.get("EOS_MANIFEST_URL", DEFAULT_EOS_MANIFEST_URL)).rstrip("/")
+    allow_local = os.environ.get("EOS_ALLOW_LOCAL_TOKEN_TEST") == "1"
+
+    token = os.environ.get("EOS_PUSH_TOKEN", "")
+    print("== Checking EOS_PUSH_TOKEN git-receive-pack access across ExpressiveOS 2.0 repos (nothing pushed)")
+    if not token:
+        raise UpdateError("EOS_PUSH_TOKEN is empty: the Actions secret EXPRESSIVEOS_PUSH_TOKEN isn't set in this repo")
+    if token != token.strip() or any(c.isspace() for c in token):
+        raise UpdateError("EOS_PUSH_TOKEN has spaces or line breaks in it: save the secret again with the token alone")
+
+    if not is_github_https(manifest_url) and not (allow_local and manifest_url.startswith("http://127.0.0.1:")):
+        raise UpdateError(f"EOS_MANIFEST_URL {manifest_url} isn't on GitHub (https://github.com/), the only place EOS_PUSH_TOKEN goes")
+
+    if args.manifest:
+        mf_path = Path(args.manifest)
+    else:
+        work = Path(args.work).resolve() / "token-check"
+        if work.exists():
+            shutil.rmtree(work)
+        work.parent.mkdir(parents=True, exist_ok=True)
+        git("clone", "--depth=1", "--branch", branch, "--single-branch", manifest_url, str(work), timeout=120)
+        mf_path = work / "default.xml"
+
+    mf = parse_manifest(mf_path)
+    urls = sorted(
+        {manifest_url}
+        | {eos_repo_url(eos_org_base, p["name"]).rstrip("/") for p in mf["projects"].values() if p["remote"] == "expressiveos"}
+    )
+    off = [
+        u for u in urls
+        if not is_github_https(u) and not (allow_local and u.startswith("http://127.0.0.1:"))
+    ]
+    if off:
+        raise UpdateError(f"not on GitHub (https://github.com/), the only place EOS_PUSH_TOKEN goes: {', '.join(off)}")
+
+    code, _ = receive_pack_check(manifest_url, None)
+    if code != 401:
+        raise UpdateError(
+            f"{manifest_url} answered {code} to an unauthenticated git-receive-pack request (401 expected)"
+        )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+        answers = dict(zip(urls, ex.map(lambda u: receive_pack_check(u, token), urls)))
+
+    meaning = {
+        401: "token refused (wrong, expired or revoked)",
+        403: "no push access (check repository access, Contents write permission, or org approval)",
+        404: "not found (or not visible to the token)",
+    }
+    bad = 0
+    for u in urls:
+        rc_code, ctype = answers[u]
+        if rc_code == 200 and ctype == "application/x-git-receive-pack-advertisement":
+            continue
+        bad += 1
+        msg = ctype if rc_code is None else meaning.get(rc_code, f"answered {rc_code} {ctype}".strip())
+        print(f"  {u}: {msg}", file=sys.stderr)
+    print(f"-- {len(urls) - bad} of {len(urls)} repos accept git-receive-pack")
+    print("TOKEN_CHECK=OK" if bad == 0 else "TOKEN_CHECK=FAIL")
+    return 0 if bad == 0 else 1
+
+
 def cmd_push(args):
     upd_id = args.id
     if not UPDATE_ID_RE.fullmatch(upd_id):
@@ -869,6 +995,9 @@ def cmd_push(args):
     eos_org_base = args.eos_org_base or os.environ.get("EOS_ORG_BASE_URL", f"https://github.com/{plan.get('eos_org', DEFAULT_EOS_ORG)}")
     manifest_url = args.manifest_url or eos_conf.get("EOS_MANIFEST_URL", DEFAULT_EOS_MANIFEST_URL)
 
+    all_urls = [eos_repo_url(eos_org_base, upd["eos_repo"]) for _, upd in sorted(plan["updates"].items())] + [manifest_url]
+    validate_push_urls_and_token(all_urls)
+
     pushed = 0
     for path, upd in sorted(plan["updates"].items()):
         scratch = Path(upd["scratch_dir"])
@@ -885,20 +1014,25 @@ def cmd_push(args):
             anc = git("merge-base", "--is-ancestor", "refs/eos/remote_tip", head, cwd=scratch, ok=(0, 1), timeout=15)
             if anc.returncode != 0:
                 raise UpdateError(f"refusing non-fast-forward push on {upd['eos_repo']} ({remote_sha[:12]} not ancestor of {head[:12]})")
-        git("push", remote_url, f"{head}:refs/heads/{branch}", cwd=scratch, timeout=180)
+        git(*git_push_cfg(remote_url), "push", "--no-verify", remote_url, f"{head}:refs/heads/{branch}", cwd=scratch, timeout=180)
         print(f"  pushed: {upd['eos_repo']} -> {branch} @ {head[:12]}")
         pushed += 1
 
-    # Commit and push manifest PR branch update/<id>
+    # Commit and push manifest PR branch update/<id> (idempotent if already pushed with identical tree)
     mf_scratch = work / "manifest-push"
     if mf_scratch.exists():
         shutil.rmtree(mf_scratch)
     git("clone", "--branch", branch, "--single-branch", manifest_url, str(mf_scratch), timeout=120)
+    pr_branch = f"update/{upd_id}"
+    ls_pr = git("ls-remote", "--heads", manifest_url, pr_branch, cwd=mf_scratch, timeout=60).stdout.strip()
+    if ls_pr:
+        git("fetch", manifest_url, f"refs/heads/{pr_branch}:refs/eos/existing_pr", cwd=mf_scratch, timeout=120)
+        git("checkout", "-B", pr_branch, "refs/eos/existing_pr", cwd=mf_scratch, timeout=30)
+    else:
+        git("checkout", "-b", pr_branch, cwd=mf_scratch, timeout=30)
     shutil.copyfile(plan["manifest_out"], mf_scratch / "default.xml")
     shutil.copyfile(plan["last_update_out"], mf_scratch / "last-update.conf")
     git("add", "default.xml", "last-update.conf", cwd=mf_scratch, timeout=30)
-    pr_branch = f"update/{upd_id}"
-    git("checkout", "-b", pr_branch, cwd=mf_scratch, timeout=30)
     if git("diff", "--cached", "--quiet", cwd=mf_scratch, ok=(0, 1), timeout=15).returncode == 1:
         git(
             "commit", "-m", f"manifest: AOSP security update {upd_id} ({plan['to_sec_tag']}, SPL {plan['target_spl']})",
@@ -911,7 +1045,11 @@ def cmd_push(args):
             },
             timeout=30,
         )
-    git("push", "origin", f"HEAD:refs/heads/{pr_branch}", cwd=mf_scratch, timeout=120)
+    elif ls_pr:
+        print(f"  already pushed: manifest @ {pr_branch}")
+        print(f"UPDATE_PUSH=OK (forks_pushed={pushed}, manifest_branch={pr_branch})")
+        return 0
+    git(*git_push_cfg(manifest_url), "push", "--no-verify", manifest_url, f"HEAD:refs/heads/{pr_branch}", cwd=mf_scratch, timeout=120)
     print(f"UPDATE_PUSH=OK (forks_pushed={pushed}, manifest_branch={pr_branch})")
     return 0
 
@@ -1026,6 +1164,13 @@ def build_parser():
     p_push.add_argument("--eos-org-base", help="override ExpressiveOS org base URL")
     p_push.add_argument("--manifest-url", help="override ExpressiveOS/manifest URL")
 
+    p_tok = sub.add_parser("token", help="verify EOS_PUSH_TOKEN git-receive-pack access")
+    p_tok.add_argument("--work", required=True, help="scratch working directory")
+    p_tok.add_argument("--manifest", help="optional local default.xml path")
+    p_tok.add_argument("--branch", help="override EOS branch (default expressiveos-2.0)")
+    p_tok.add_argument("--eos-org-base", help="override ExpressiveOS org base URL")
+    p_tok.add_argument("--manifest-url", help="override ExpressiveOS/manifest URL")
+
     p_ver = sub.add_parser("verify", help="verify merged manifest and pushed forks")
     p_ver.add_argument("id", help="update id (YYYY-MM)")
     p_ver.add_argument("--work", required=True, help="scratch working directory")
@@ -1048,6 +1193,7 @@ def main(argv=None):
         "plan": "UPDATE_PLAN=NOT_READY",
         "create-repos": "CREATE_REPOS=FAIL",
         "push": "UPDATE_PUSH=FAILED",
+        "token": "TOKEN_CHECK=FAIL",
         "verify": "UPDATE_VERIFY=FAILED",
         "lint": "MANIFEST_LINT=FAIL",
     }.get(args.cmd)
@@ -1057,6 +1203,7 @@ def main(argv=None):
         "plan": cmd_plan,
         "create-repos": cmd_create_repos,
         "push": cmd_push,
+        "token": cmd_token,
         "verify": cmd_verify,
         "lint": cmd_lint,
     }

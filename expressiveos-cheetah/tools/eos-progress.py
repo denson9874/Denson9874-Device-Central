@@ -505,25 +505,28 @@ class Run:
         p = next((p for p in self.phones.values() if p.state == 'running'), None)
         if p is None or p.step not in MAKE_STEPS + ('kernel',):
             return
-        # m runs soong_ui --build-mode, make --make-mode; lunch's --dumpvars-mode is no make
+        # m runs soong_ui --build-mode, make --make-mode; lunch's --dumpvars-mode is no make.
+        # Android 17 invokes prebuilts/siso/<host>/siso ... -f out/combined-<product>.ninja
+        # rather than bin/ninja (while bootstrap siso runs out/soong/build.<product>.ninja).
         soong = [x for x in intree if os.path.basename(x[2][0]) == 'soong_ui'
                  and any(a in ('--build-mode', '--make-mode') for a in x[2])]
-        ninja = [x for x in intree if os.path.basename(x[2][0]) == 'ninja'
+        ninja = [x for x in intree if os.path.basename(x[2][0]) in ('ninja', 'siso')
                  and any(re.search(r'combined-.*\.ninja$', a) for a in x[2])]
         ota = [x for x in intree if any('ota_from_target_files' in a for a in x[2][:3])]
         tfp = [x for x in intree if x not in ota and any('target_files_intermediates' in a for a in x[2])]
-        if soong and p.step == 'kernel':
+        if (soong or ninja) and p.step == 'kernel':
             self.set_step(p, 'make')   # a kit without STEP lines: its make header came first
         if p.step not in MAKE_STEPS:
             return
-        if not p.stamped and soong and p.step_at is None:
-            p.step_at = min(x[1] for x in soong)
+        if not p.stamped and (soong or ninja) and p.step_at is None:
+            p.step_at = min(x[1] for x in (soong or ninja))
         if p.kind != 'quick' and (ota or tfp):
             p.step, p.at_end = ('ota_zip', min(x[1] for x in ota)) if ota else ('target_files', min(x[1] for x in tfp))
         self.ninja_start = min(x[1] for x in ninja) if ninja else None
         pb = os.path.join(TOP, 'out/build_progress.pb')
-        since = p.step_at or (min(x[1] for x in soong) if soong else None)
-        if soong and since is not None and (mtime(pb) or 0) >= since - 5:
+        active = soong or ninja
+        since = p.step_at or (min(x[1] for x in active) if active else None)
+        if active and since is not None and (mtime(pb) or 0) >= since - 5:
             p.counts = build_progress(pb)
 
     def eta(self):
