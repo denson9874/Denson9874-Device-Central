@@ -886,6 +886,12 @@ jobs:
         if: inputs.action == 'expressiveos-update-check'
         run: |
           export PATH=~/bin:$PATH
+          if [[ -d ~/expressiveos2/.repo ]]; then
+            export EOS_TOP=~/expressiveos2
+            export EOS_LOCK=~/.expressiveos2.lock
+            export EOS_TREE_LOCK=~/.expressiveos2-tree.lock
+            export EOS_UPDATE_WORK=~/expressiveos2-update
+          fi
           bash expressiveos-cheetah/sources/update-check.sh
 
       # The only step given a secret. The token is in this step's environment alone; the runner
@@ -896,8 +902,14 @@ jobs:
           EOS_PUSH_TOKEN: ${{ secrets.EXPRESSIVEOS_PUSH_TOKEN }}
         run: |
           [[ "$QUERY" =~ ^(token|lint(\ [A-Za-z0-9][A-Za-z0-9._/-]*)?|(plan|push|verify)\ [0-9]{4}-(0[1-9]|1[0-2])(-[2-9])?)$ ]] \
-            || { echo "::error::query must be: token, lint [ref], plan <id>, push <id> or verify <id> (id: the update's month, as 2026-11)"; exit 1; }
+            || { echo "::error::query must be: token, lint [ref], plan <id>, push <id> or verify <id> (id: the update's month, as 2026-12)"; exit 1; }
           export PATH=~/bin:$PATH
+          if [[ -d ~/expressiveos2/.repo ]]; then
+            export EOS_TOP=~/expressiveos2
+            export EOS_LOCK=~/.expressiveos2.lock
+            export EOS_TREE_LOCK=~/.expressiveos2-tree.lock
+            export EOS_UPDATE_WORK=~/expressiveos2-update
+          fi
           read -r -a q <<< "$QUERY"
           bash expressiveos-cheetah/sources/update.sh "${q[@]}"
 
@@ -1553,9 +1565,15 @@ jobs:
               dirty_kit=$(git -C "$KIT_REPO" status --porcelain --untracked-files=no)
               [[ -z "$dirty_kit" ]] || { echo "::error::dirty tracked files in $KIT_REPO"; git -C "$KIT_REPO" status -s --untracked-files=no; exit 1; }
 
-              echo "== syncing $KIT_REPO to origin/eos-2.0"
-              perl -e 'alarm 120; exec @ARGV' -- git -C "$KIT_REPO" fetch origin eos-2.0
-              perl -e 'alarm 60; exec @ARGV' -- git -C "$KIT_REPO" checkout -B eos-2.0 origin/eos-2.0
+              echo "== syncing $KIT_REPO to $TREE_REF"
+              perl -e 'alarm 120; exec @ARGV' -- git -C "$KIT_REPO" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+              perl -e 'alarm 120; exec @ARGV' -- git -C "$KIT_REPO" fetch origin --tags
+              if git -C "$KIT_REPO" show-ref --verify --quiet "refs/remotes/origin/$TREE_REF"; then
+                perl -e 'alarm 60; exec @ARGV' -- git -C "$KIT_REPO" checkout -B "$TREE_REF" "refs/remotes/origin/$TREE_REF"
+              else
+                perl -e 'alarm 120; exec @ARGV' -- git -C "$KIT_REPO" fetch origin "$TREE_REF"
+                perl -e 'alarm 60; exec @ARGV' -- git -C "$KIT_REPO" checkout --detach FETCH_HEAD
+              fi
               echo "post-sync kit HEAD: $(git -C "$KIT_REPO" rev-parse HEAD)"
 
               echo "== Linux kit, flasher, and launcher unit tests"

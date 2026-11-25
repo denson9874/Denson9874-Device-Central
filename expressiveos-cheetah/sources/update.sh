@@ -42,8 +42,9 @@ case $1 in
         ;;
     lint)
         [[ $# -le 2 ]] || fail "$usage"
+        mkdir -p -- "$r"
         st=
-        exec python3 -I "$kit/sources/update-aosp.py" lint ${2:+"$2"}
+        exec python3 -I "$kit/sources/update-aosp.py" lint --work "$r" ${2:+"$2"}
         ;;
     create-repos)
         [[ $# -eq 2 ]] || fail "$usage"

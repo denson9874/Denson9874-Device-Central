@@ -567,6 +567,19 @@ def cmd_check(args):
     sec_tags, rel_tags = list_remote_tags(aosp_manifest_url)
     print(f"AOSP android-17.0.0_r* tags: {len(rel_tags)} (latest: {rel_tags[-1] if rel_tags else 'none'})")
     print(f"AOSP android-security-17.0.0_r* tags: {len(sec_tags)} (latest: {sec_tags[-1] if sec_tags else 'none'})")
+    base_tag = last_conf.get("AOSP_BASE_TAG")
+    if base_tag and rel_tags and rel_tags[-1] != base_tag:
+        m_cur = REL_TAG_RE.fullmatch(base_tag)
+        newer_rels = [
+            t for t in rel_tags
+            if not m_cur or int(REL_TAG_RE.fullmatch(t).group(1)) > int(m_cur.group(1))
+        ]
+        if newer_rels:
+            print(
+                f"NOTE: new AOSP release tag(s) beyond AOSP_BASE_TAG ({base_tag}): "
+                f"{', '.join(newer_rels)} (full QPR rebase requires manual review; "
+                f"update-aosp.py cherry-picks android-security-17.0.0_r* ASB commits only)"
+            )
 
     from_tag = args.from_sec_tag or last_conf.get("AOSP_SEC_TAG") or (sec_tags[-2] if len(sec_tags) >= 2 else None)
     to_tag = args.to_sec_tag or (sec_tags[-1] if sec_tags else None)
@@ -789,9 +802,13 @@ def cmd_plan(args):
     if lint_errs:
         raise UpdateError("generated manifest failed lint: " + "; ".join(lint_errs[:5]))
 
+    existing_last = parse_kv_file(manifest_path.parent / "last-update.conf")
+    base_tag = uconf.get("AOSP_BASE_TAG") or existing_last.get("AOSP_BASE_TAG")
+    base_tag_line = f"AOSP_BASE_TAG={base_tag}\n" if base_tag else ""
     last_update_path = work / "last-update.conf"
     last_update_path.write_text(
         f"UPDATE={upd_id}\n"
+        f"{base_tag_line}"
         f"AOSP_SEC_TAG={to_tag}\n"
         f"PREV_AOSP_SEC_TAG={from_tag}\n"
         f"SPL={target_spl}\n",
@@ -1108,14 +1125,49 @@ def cmd_verify(args):
     return 0
 
 
+def fetch_eos_manifest_ref(manifest_url, ref, work_dir, timeout=90):
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]*", ref) or ".." in ref:
+        raise UpdateError(f"invalid manifest ref '{ref}'")
+    fetch_spec = f"refs/{ref}/head" if re.fullmatch(r"pull/[0-9]+", ref) else ref
+    repo_dir = Path(work_dir) / "lint-manifest.git"
+    if not repo_dir.exists():
+        repo_dir.mkdir(parents=True, exist_ok=True)
+        git("init", "--bare", str(repo_dir), timeout=30)
+    git("fetch", "--depth=1", manifest_url, fetch_spec, git_dir=repo_dir, timeout=timeout)
+    blob = git("show", "FETCH_HEAD:default.xml", git_dir=repo_dir, timeout=30).stdout
+    out_xml = Path(work_dir) / "lint-default.xml"
+    out_xml.write_text(blob, encoding="utf-8")
+    return out_xml
+
+
 def cmd_lint(args):
-    manifest_path = Path(args.manifest) if args.manifest else find_manifest_path(args)
-    spl_file = args.spl_file
-    if not spl_file and args.top:
-        cand = Path(args.top) / "vendor" / "expressiveos" / SPL_REL_PATH
-        if cand.is_file():
-            spl_file = str(cand)
-    errs = lint_manifest_data(manifest_path, spl_file=spl_file)
+    tmp_ctx = None
+    try:
+        if args.manifest and (Path(args.manifest).is_file() or args.manifest.endswith(".xml")):
+            manifest_path = Path(args.manifest)
+        elif not args.manifest and args.top:
+            manifest_path = find_manifest_path(args)
+        else:
+            eos_conf = load_eos_config(KIT)
+            manifest_url = (args.manifest_url or eos_conf.get("EOS_MANIFEST_URL", DEFAULT_EOS_MANIFEST_URL)).rstrip("/")
+            ref = args.manifest or eos_conf.get("EOS_MANIFEST_BRANCH", DEFAULT_EOS_BRANCH)
+            if args.work:
+                work_dir = Path(args.work).resolve() / "lint"
+                work_dir.mkdir(parents=True, exist_ok=True)
+            else:
+                tmp_ctx = tempfile.TemporaryDirectory(prefix="eos-lint-")
+                work_dir = Path(tmp_ctx.name)
+            manifest_path = fetch_eos_manifest_ref(manifest_url, ref, work_dir)
+
+        spl_file = args.spl_file
+        if not spl_file and args.top:
+            cand = Path(args.top) / "vendor" / "expressiveos" / SPL_REL_PATH
+            if cand.is_file():
+                spl_file = str(cand)
+        errs = lint_manifest_data(manifest_path, spl_file=spl_file)
+    finally:
+        if tmp_ctx is not None:
+            tmp_ctx.cleanup()
     if errs:
         for e in errs:
             print(f"  LINT_ERR: {e}", file=sys.stderr)
@@ -1178,9 +1230,11 @@ def build_parser():
     p_ver.add_argument("--manifest-url", help="override ExpressiveOS/manifest URL")
 
     p_lint = sub.add_parser("lint", help="strict EOS 2.0 manifest validator")
-    p_lint.add_argument("manifest", nargs="?", help="path to default.xml")
+    p_lint.add_argument("manifest", nargs="?", help="path to default.xml or remote ref (e.g. pull/50, update/2026-12)")
     p_lint.add_argument("--top", help="optional EOS tree path")
     p_lint.add_argument("--spl-file", help="optional RELEASE_PLATFORM_SECURITY_PATCH.textproto path")
+    p_lint.add_argument("--work", help="optional scratch working directory for remote ref fetches")
+    p_lint.add_argument("--manifest-url", help="override ExpressiveOS/manifest URL")
 
     return ap
 
