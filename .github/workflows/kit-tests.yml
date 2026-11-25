@@ -70,6 +70,61 @@ jobs:
           apksigner verify --print-certs "$L_OUT/files/ExpressiveLauncher.apk" | grep -F "certificate SHA-256 digest: $cert_want"
           echo "APKSIGNER_CHECK=OK"
 
+      - name: Verify release notes exist and render within 200-line limit for all 6 phones
+        run: |
+          RN_TMP=$(mktemp -d /tmp/relnotes-verify.XXXXXX)
+          trap 'rm -rf -- "$RN_TMP"' EXIT
+          ver=$(sed -n 's/^EOS_VERSION=//p' expressiveos-cheetah/eos.conf)
+          notes="expressiveos-cheetah/release-notes/$ver.md"
+          [[ -f "$notes" ]] || { echo "::error::missing $notes for EOS_VERSION=$ver"; exit 1; }
+          for d in cheetah husky kodiak grizzly cubs yogi; do
+            model=$(sed -n 's/^EOS_MODEL=//p' "expressiveos-cheetah/devices/$d.conf" | tr -d '"'"'")
+            python3 -I - "$notes" "$RN_TMP/$d.txt" "$RN_TMP/$d.md" "$d" "$ver" "$model" \
+              "ExpressiveOS-17.0-20261201-$d-$ver-Official" "2026-11-05" \
+              "0000000000000000000000000000000000000000000000000000000000000000" "deadbeef" \
+              "https://expressiveos-flash.daryldenson-apps.workers.dev" <<'EOF'
+          import re, sys
+          notes, out, ann, dev, version, model, build, spl, sha, kitrev, downloads = sys.argv[1:]
+          values = {'VERSION': version, 'MODEL': model, 'DEVICE': dev, 'BUILD': build, 'SPL': spl,
+                    'SHA256': sha, 'KIT_REV': kitrev, 'DOWNLOADS': downloads}
+          text = re.sub(r'<!--[\s\S]*?-->\n?', '', open(notes, encoding='utf-8').read()).strip() + '\n'
+          lines = []
+          for line in text.split('\n'):
+              m = re.match(r'@([a-z0-9]+) (.*)$', line)
+              if m:
+                  if m.group(1) == dev:
+                      lines.append(m.group(2))
+                  continue
+              lines.append(line)
+          text = re.sub(r'\{\{([A-Z0-9_]+)\}\}', lambda m: values.get(m.group(1), m.group(0)), '\n'.join(lines))
+          left = sorted(set(re.findall(r'\{\{[^}]*\}\}', text)))
+          if left:
+              sys.exit('unknown placeholders: ' + ' '.join(left))
+          open(ann, 'w', encoding='utf-8').write(text)
+          plain = re.sub(r'<details>\s*<summary>[\s\S]*?</summary>([\s\S]*?)</details>',
+                         lambda m: 'Answer: ' + re.sub(r'</?b>', '', m.group(1)).strip(), text)
+          res = []
+          for line in plain.split('\n'):
+              if re.match(r'#{1,3} ', line):
+                  line = line.split(' ', 1)[1] + '\n' + ('=' * 30)
+              elif line.startswith('#### '):
+                  line = line[5:]
+              elif line.strip() == '---':
+                  line = '─' * 23
+              elif line.startswith('> '):
+                  line = line[2:].strip().strip('*')
+              line = re.sub(r'\[([^\]]+)\]\(([^)\s]+)\)', lambda m: m.group(2) if m.group(1) == m.group(2) else m.group(1) + ' (' + m.group(2) + ')', line)
+              line = line.replace('**', '').replace('`', '')
+              res.append(re.sub(r'\*([^*\n]+)\*', r'\1', line))
+          plain = re.sub(r'\n{3,}', '\n\n', '\n'.join(res)).strip() + '\n'
+          if plain.count('\n') > 200:
+              sys.exit("the phone's copy is %d lines; the Updater shows 200" % plain.count('\n'))
+          open(out, 'w', encoding='utf-8').write(plain)
+          print(f"{dev}: {plain.count(chr(10))} lines OK")
+          EOF
+          done
+          echo "RELEASE_NOTES_CHECK=OK"
+
       - name: Verify ExpressiveOS/manifest expressiveos-2.0 XML & lint
         run: |
           M_TMP=$(mktemp -d /tmp/manifest-lint.XXXXXX)
