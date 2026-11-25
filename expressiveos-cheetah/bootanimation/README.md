@@ -56,6 +56,30 @@ No phone gets a canvas of its own: that would take a render for each size, each 
 in `bootanim.conf` (`../tools/eos-verify.sh` checks this one on every phone). The holiday copy
 (below) ships on every phone too.
 
+## Silk Aurora (Expressive Studio option)
+
+Expressive Studio (`Themes -> Boot animation`) offers a second built-in style alongside
+`ExpressiveOS`: **Silk Aurora** (`/product/media/bootanimation_silk_aurora.zip`,
+`persist.sys.bootanim.name=silk_aurora`), drawn by `tools/render-silk-aurora.py` from the same
+pinned logo and Google Sans Flex variable font on a `1080x1320` `#000000` canvas at 30 fps:
+
+| Part | desc.txt | What happens | Length |
+|---|---|---|---|
+| `part0` | `c 1 0` | Four Bloom filaments trace the petals, four diagonal plasma arcs converge and detonate into dual chromatic shockwaves and the 3D Bloom mark, the mark glides left as a Bloom wake reveals "Expressive", and a 4-petal Silk Aurora Wave sweeps across into centered "ExpressiveOS". | 160 frames = 5.3 s |
+| `part1` | `c 0 0` | Centered "ExpressiveOS" over a seamless periodic 4-petal Silk Aurora veil and twinkling Bloom embers. Repeats until boot completes. | 36 frames = 1.2 s a loop |
+| `part2` | `c 1 0` | Double Bloom completion ripple and chord shimmer, settling cleanly on `#000000`. | 26 frames = 0.9 s |
+
+Because `expressiveos-bootanim-hint.rc` mirrors `persist.sys.bootanim.name` into
+`/metadata/bootanim/name`, `BootAnimation` resolves `bootanimation_silk_aurora.zip` from the very
+first frame even on Tensor Pixels where `bootanim` starts in `late-fs` before `/data` mounts. While
+a user has `silk_aurora` selected, `HolidayBootAnim` leaves their choice in place instead of
+putting a holiday animation over it. Regenerate with:
+
+```
+tools/make-bootanim.sh --silk-aurora <ExpressiveLauncher>/android/lawnchair/res/font/googlesansflex_variable.ttf \
+    --preview /tmp/silk-aurora.mp4
+```
+
 ## Holiday boot animations
 
 While a holiday theme is on, the phone boots a copy of this animation in the holiday's colours:

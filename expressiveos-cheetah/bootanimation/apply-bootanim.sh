@@ -55,15 +55,18 @@ where=$([[ ! -f "$pm" ]] || want="$line" awk -f "$here/tools/mk-line.awk" -- "$p
     || fail "vendor/extra/product.mk has '$line' only inside an ifeq/ifdef/define block; move it out to the top level"
 
 # 1. The zips are the ones bootanim.conf names
-zip="$here/bootanimation.zip" hzip="$here/bootanimation_holiday.zip" hint="$here/expressiveos-bootanim-hint.rc"
+zip="$here/bootanimation.zip" hzip="$here/bootanimation_holiday.zip" sazip="$here/bootanimation_silk_aurora.zip" hint="$here/expressiveos-bootanim-hint.rc"
 [[ -f "$zip" ]] || fail "no $zip"
 sha=$(sha256sum -- "$zip" | cut -d' ' -f1)
 [[ "$sha" = "$BOOTANIM_ZIP_SHA256" ]] \
     || fail "bootanimation.zip is $sha, bootanim.conf says $BOOTANIM_ZIP_SHA256 (a partial checkout, or a re-render without updating bootanim.conf?)"
-for f in "$hzip" "$hint"; do [[ -f "$f" ]] || fail "no $f (a partial checkout?); the holiday zip and its init rc ship together"; done
+for f in "$hzip" "$sazip" "$hint"; do [[ -f "$f" ]] || fail "no $f (a partial checkout?); Silk Aurora, the holiday zip and their init rc ship together"; done
 hsha=$(sha256sum -- "$hzip" | cut -d' ' -f1)
 [[ "$hsha" = "$BOOTANIM_HOLIDAY_ZIP_SHA256" ]] \
     || fail "bootanimation_holiday.zip is $hsha, bootanim.conf says $BOOTANIM_HOLIDAY_ZIP_SHA256 (a partial checkout, or a re-render without updating bootanim.conf?)"
+sasha=$(sha256sum -- "$sazip" | cut -d' ' -f1)
+[[ "$sasha" = "$BOOTANIM_SILK_AURORA_ZIP_SHA256" ]] \
+    || fail "bootanimation_silk_aurora.zip is $sasha, bootanim.conf says $BOOTANIM_SILK_AURORA_ZIP_SHA256 (a partial checkout, or a re-render without updating bootanim.conf?)"
 
 # The /metadata hint is there because the phone's vendor init starts bootanim at late-fs, before
 # /data and its persist properties (cheetah: init.gs201.rc). If none does any more, the hint may
@@ -87,7 +90,7 @@ grep -qF 'r_dir_file(bootanim, bootanim_metadata_file)' "$top/vendor/expressiveo
 # 2. Stage. The folder belongs to this kit: anything else in it goes.
 dest="$top/vendor/extra/bootanimation"
 mkdir -p -- "$dest"
-for f in "$zip" "$hzip" "$hint" "$here/bootanimation.mk"; do
+for f in "$zip" "$hzip" "$sazip" "$hint" "$here/bootanimation.mk"; do
     n=${f##*/}
     if cmp -s -- "$f" "$dest/$n"; then
         echo "unchanged: vendor/extra/bootanimation/$n"
@@ -99,7 +102,7 @@ for f in "$zip" "$hzip" "$hint" "$here/bootanimation.mk"; do
 done
 while IFS= read -r -d '' f; do
     n=${f##*/}
-    [[ "$n" = bootanimation.zip || "$n" = bootanimation_holiday.zip || "$n" = expressiveos-bootanim-hint.rc || "$n" = bootanimation.mk ]] && continue
+    [[ "$n" = bootanimation.zip || "$n" = bootanimation_holiday.zip || "$n" = bootanimation_silk_aurora.zip || "$n" = expressiveos-bootanim-hint.rc || "$n" = bootanimation.mk ]] && continue
     [[ -f "$f" || -L "$f" ]] || fail "$f isn't a file this kit put there; move it out of the way"
     rm -f -- "$f"; echo "removed: vendor/extra/bootanimation/$n"
 done < <(find "$dest" -mindepth 1 -maxdepth 1 -print0)
@@ -125,4 +128,4 @@ if [[ "${TARGET_INCLUDE_BOOT_ANIMATIONS:-}" != false ]]; then
     echo "note: export TARGET_INCLUDE_BOOT_ANIMATIONS=false before building, or the 12 other boot animation styles (about 190 MiB) ship in /product/media too"
 fi
 done=1
-echo "BOOTANIM_APPLY=OK sha256=$sha holiday=$hsha"
+echo "BOOTANIM_APPLY=OK sha256=$sha holiday=$hsha silk_aurora=$sasha"
