@@ -1768,8 +1768,117 @@ jobs:
               echo "EOS2_BUILD_VERIFY=OK (${devs[*]})"
               ;;
 
+            modules)
+              dev="" mods=() tries=()
+              for w in "${q[@]:1}"; do
+                case "$w" in
+                  device=*) dev="${w#device=}" ;;
+                  modules=*) IFS=, read -r -a mods <<< "${w#modules=}" ;;
+                  try=*@*) tries+=("${w#try=}") ;;
+                  *) echo "::error::unknown modules option: $w"; exit 1 ;;
+                esac
+              done
+              (( ${#mods[@]} > 0 )) || { echo "::error::eos2-verify modules requires modules=<m1>,<m2>,..."; exit 1; }
+              [[ -d "$EOS_TOP" && -d "$KIT_REPO" ]] || { echo "::error::missing $EOS_TOP or $KIT_REPO"; exit 1; }
+              if [[ -z "$dev" ]]; then
+                for cand in cheetah husky kodiak; do
+                  if [[ -d "$EOS_TOP/out/target/product/$cand" ]]; then dev="$cand"; break; fi
+                done
+                dev="${dev:-cheetah}"
+              fi
+              [[ "$dev" =~ ^(cheetah|husky|kodiak|grizzly|cubs|yogi)$ ]] || { echo "::error::invalid device $dev"; exit 1; }
+
+              echo "== syncing $KIT_REPO to $TREE_REF"
+              dirty_kit=$(git -C "$KIT_REPO" status --porcelain --untracked-files=no)
+              [[ -z "$dirty_kit" ]] || { echo "::error::dirty tracked files in $KIT_REPO"; git -C "$KIT_REPO" status -s --untracked-files=no; exit 1; }
+              perl -e 'alarm 120; exec @ARGV' -- git -C "$KIT_REPO" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+              perl -e 'alarm 120; exec @ARGV' -- git -C "$KIT_REPO" fetch origin --tags
+              if git -C "$KIT_REPO" show-ref --verify --quiet "refs/remotes/origin/$TREE_REF"; then
+                perl -e 'alarm 60; exec @ARGV' -- git -C "$KIT_REPO" checkout -B "$TREE_REF" "refs/remotes/origin/$TREE_REF"
+              else
+                perl -e 'alarm 120; exec @ARGV' -- git -C "$KIT_REPO" fetch origin "$TREE_REF"
+                perl -e 'alarm 60; exec @ARGV' -- git -C "$KIT_REPO" checkout --detach FETCH_HEAD
+              fi
+              echo "kit HEAD: $(git -C "$KIT_REPO" log -1 --oneline)"
+
+              saved_projects=()
+              cleanup_eos2_modules() {
+                local pid cwd entry p orig
+                for pid in $(pgrep -u "$(id -u)" -f 'soong_ui|bin/ninja|prebuilts/siso/[a-z0-9_-]+/siso' || true); do
+                  cwd=$(readlink -- "/proc/$pid/cwd" 2>/dev/null) || continue
+                  [[ "$cwd" = "$EOS_TOP" || "$cwd" = "$EOS_TOP"/* ]] || continue
+                  kill -TERM "$pid" 2>/dev/null || true
+                done
+                for entry in ${saved_projects[@]+"${saved_projects[@]}"}; do
+                  p="${entry%@*}" orig="${entry#*@}"
+                  git -C "$EOS_TOP/$p" checkout -q -f --detach "$orig" || true
+                  echo "restored $p -> ${orig:0:12}"
+                done
+              }
+              trap cleanup_eos2_modules EXIT
+
+              for t in ${tries[@]+"${tries[@]}"}; do
+                p="${t%@*}" c="${t#*@}"
+                [[ -d "$EOS_TOP/$p" ]] || { echo "::error::no project $p in $EOS_TOP"; exit 1; }
+                [[ -z "$(git -C "$EOS_TOP/$p" status --porcelain --untracked-files=no)" ]] \
+                  || { echo "::error::$p has dirty tracked files"; exit 1; }
+                orig=$(git -C "$EOS_TOP/$p" rev-parse HEAD)
+                url=$(git -C "$EOS_TOP/$p" config --get remote.expressiveos.url)
+                echo "== try $p: fetching $c from $url (was ${orig:0:12})"
+                perl -e 'alarm 180; exec @ARGV' -- git -C "$EOS_TOP/$p" fetch --no-tags expressiveos "$c"
+                saved_projects+=("$p@$orig")
+                git -C "$EOS_TOP/$p" checkout -q --detach FETCH_HEAD
+                echo "checked out $p @ $(git -C "$EOS_TOP/$p" log -1 --oneline)"
+              done
+
+              echo "== apply-bootanim.sh ($dev)"
+              perl -e 'alarm 180; exec @ARGV' -- env EOS_DEVICE="$dev" bash "$KIT/bootanimation/apply-bootanim.sh" "$EOS_TOP"
+
+              echo "== incremental AOSP module compile ($dev: ${mods[*]})"
+              perl -e 'alarm 3600; exec @ARGV' -- env EOS_DEVICE="$dev" bash -c '
+                set -eo pipefail
+                source "$1/lib.sh"
+                eos_top "$2"
+                clean_env
+                cd "$top" || exit 1
+                export EXPRESSIVE_BUILD_TYPE=$EOS_BUILD_TYPE TARGET_INCLUDE_BOOT_ANIMATIONS=false
+                if command -v ccache >/dev/null; then export USE_CCACHE=1 CCACHE_EXEC=$(command -v ccache) CC_WRAPPER=$(command -v ccache); fi
+                source build/envsetup.sh >/dev/null || exit 1
+                lunch "$EOS_LUNCH" || exit 1
+                st=${EOS_STATE:-out/eos}
+                rm -f -- "$st/build.ok" "$st/target-files.ok" "$st/quick.ok"
+                mkdir -p -- "$st" && touch -- "$st/installclean"
+                m -j"$(nproc)" aapt2 "${@:3}" \
+                  "$EOS_PRODUCT_OUT/product/media/bootanimation_silk_aurora.zip" \
+                  "$EOS_PRODUCT_OUT/product/media/bootanimation_holiday.zip" \
+                  "$EOS_PRODUCT_OUT/product/etc/init/expressiveos-bootanim-hint.rc"
+
+                source "$1/bootanimation/bootanim.conf"
+                sa="$EOS_PRODUCT_OUT/product/media/bootanimation_silk_aurora.zip"
+                [[ -f "$sa" && "$(sha256sum -- "$sa" | cut -d" " -f1)" = "$BOOTANIM_SILK_AURORA_ZIP_SHA256" ]] \
+                  || fail "$sa missing or SHA-256 mismatch"
+                echo "INSTALLED_SILK_AURORA_SHA256=$(sha256sum -- "$sa" | cut -d" " -f1)"
+
+                if [[ -f "$EOS_PRODUCT_OUT/system/lib64/libbootanimation_preapex.so" && -f "$EOS_PRODUCT_OUT/system_ext/etc/selinux/system_ext_sepolicy.cil" ]]; then
+                  O="$EOS_PRODUCT_OUT" kit="$1" bash -euo pipefail -c '\''fail(){ echo "FAIL: $*" >&2; exit 1; }; eval "$(sed -n "381,408p" "$kit/tools/eos-verify.sh")"'\''
+                fi
+
+                apk="$EOS_PRODUCT_OUT/system_ext/priv-app/SettingsGoogle/SettingsGoogle.apk"
+                if [[ -f "$apk" ]]; then
+                  aapt="$top/out/host/linux-x86/bin/aapt2"
+                  "$aapt" dump resources "$apk" > "$RUNNER_TEMP/settings-res.txt"
+                  awk "/^ *resource 0x/ { on = /array\/themes_boot_animation_(entries|values)/ } on" "$RUNNER_TEMP/settings-res.txt" > "$RUNNER_TEMP/ba-arrays.txt"
+                  cat "$RUNNER_TEMP/ba-arrays.txt"
+                  grep -qF "\"Silk Aurora\"" "$RUNNER_TEMP/ba-arrays.txt" || fail "SettingsGoogle.apk missing Silk Aurora entry"
+                  grep -qF "\"silk_aurora\"" "$RUNNER_TEMP/ba-arrays.txt" || fail "SettingsGoogle.apk missing silk_aurora value"
+                  python3 -I -c '\''import sys, zipfile; zf = zipfile.ZipFile(sys.argv[1]); dex = b"".join(zf.read(n) for n in zf.namelist() if n.endswith(".dex")); miss = [s for s in (b"Lorg/expressiveos/settings/utils/BootAnimationUtils;", b"Lorg/expressiveos/settings/fragments/themes/BootAnimationController;", b"Lorg/expressiveos/settings/fragments/themes/BootAnimationKt;", b"Lorg/expressiveos/settings/fragments/themes/Themes;", b"NAME_HOLIDAY", b"isCustomZipSupported") if s not in dex]; miss and sys.exit(f"FAIL: missing {miss!r} in SettingsGoogle.apk"); print("SETTINGS_GOOGLE_DEX_AND_RESOURCES=OK")'\'' "$apk"
+                fi
+              ' _ "$KIT" "$EOS_TOP" "${mods[@]}"
+              echo "EOS2_MODULES_VERIFY=OK ($dev: ${mods[*]})"
+              ;;
+
             *)
-              echo "::error::eos2-verify query must start with 'sync-and-test' or 'build'"
+              echo "::error::eos2-verify query must start with 'sync-and-test', 'build', or 'modules'"
               exit 1
               ;;
           esac
