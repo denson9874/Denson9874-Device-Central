@@ -1,15 +1,14 @@
 # ExpressiveOS wallpapers (expressiveos-cheetah/wallpapers). Inherited from
-# vendor/extra/product.mk, which apply-wallpapers.sh sets up. vendor/lineage/config/common.mk
-# inherits vendor/extra/product.mk on its line 2, before anything else, so the overlay below
-# comes ahead of vendor/lineage/overlay/common in PRODUCT_PACKAGE_OVERLAYS and wins over it.
+# vendor/extra/product.mk, which apply-wallpapers.sh sets up. vendor/expressiveos/config/common.mk
+# inherits vendor/extra/product.mk first, so the overlay below comes ahead of
+# vendor/expressiveos/overlay/common in PRODUCT_PACKAGE_OVERLAYS and wins over it.
 # Every ExpressiveOS phone (devices/<device>.conf) ships it: the system scales and crops the
 # 1440x3120 PNG to each screen (README.md, "On the other phones").
-ifneq ($(filter lineage_cheetah lineage_husky lineage_kodiak lineage_grizzly lineage_cubs lineage_yogi,$(TARGET_PRODUCT)),)
+ifneq ($(filter eos_cheetah eos_husky eos_kodiak eos_grizzly eos_cubs eos_yogi,$(TARGET_PRODUCT)),)
 
 # The first-boot wallpaper. WallpaperManager.openRawDefaultWallpaper() reads
 # ro.config.wallpaper before the CMF path and before framework-res's default_wallpaper
-# drawable (Evolution X's, in vendor/lineage/overlay/common), so this one file replaces it
-# at every density without touching vendor/lineage.
+# drawable, so this one file replaces it at every density.
 PRODUCT_COPY_FILES += \
     vendor/extra/wallpapers/ExpressiveWallpapers/res/drawable-nodpi/expressiveos_bloom.png:$(TARGET_COPY_OUT_PRODUCT)/media/wallpaper/expressiveos_bloom.png
 PRODUCT_PRODUCT_PROPERTIES += \

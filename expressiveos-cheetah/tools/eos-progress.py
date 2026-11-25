@@ -64,10 +64,10 @@ import sys
 import time
 
 HOME = os.path.expanduser('~')
-TOP = os.path.join(HOME, 'expressiveos')
-JOBS = os.path.join(HOME, 'expressiveos-jobs')
-KIT = os.path.join(HOME, 'expressiveos-cheetah')
-TIMES = os.path.join(HOME, 'expressiveos-build-times.txt')
+TOP = os.environ.get('EOS_TOP') or os.path.join(HOME, 'expressiveos')
+JOBS = os.environ.get('EOS_JOBS') or os.path.join(HOME, 'expressiveos-jobs')
+KIT = os.environ.get('EOS_KIT') or os.path.join(HOME, 'expressiveos-cheetah')
+TIMES = os.environ.get('EOS_TIMES') or os.path.join(HOME, 'expressiveos-build-times.txt')
 NOW = time.time()
 LOG_LINES, LOG_WIDTH = 40, 400
 
@@ -204,10 +204,10 @@ def tmux_running(session):
 
 
 def builds_kernel(d):
-    """Whether the phone builds its kernel from source (devices/<device>.conf: EOS_KERNEL=gs-6.1)."""
+    """Whether the phone builds its kernel from source (all EOS 2.0 phones use EOS_KERNEL=prebuilt)."""
     conf = read(os.path.join(KIT, 'devices', d + '.conf')).decode('utf-8', 'replace')
     m = re.search(r'^EOS_KERNEL=(\S+)', conf, re.M)
-    return m.group(1) == 'gs-6.1' if m else d in ('cheetah', 'husky')
+    return bool(m and m.group(1) != 'prebuilt')
 
 
 TIME_RE = r'TIME (\w+) device=([a-z0-9]+) kind=(\S+) fresh=(\S+) at=\S+ secs=(\d+)(?: prev=[a-z0-9-]+)?'
@@ -505,25 +505,28 @@ class Run:
         p = next((p for p in self.phones.values() if p.state == 'running'), None)
         if p is None or p.step not in MAKE_STEPS + ('kernel',):
             return
-        # m runs soong_ui --build-mode, make --make-mode; lunch's --dumpvars-mode is no make
+        # m runs soong_ui --build-mode, make --make-mode; lunch's --dumpvars-mode is no make.
+        # Android 17 invokes prebuilts/siso/<host>/siso ... -f out/combined-<product>.ninja
+        # rather than bin/ninja (while bootstrap siso runs out/soong/build.<product>.ninja).
         soong = [x for x in intree if os.path.basename(x[2][0]) == 'soong_ui'
                  and any(a in ('--build-mode', '--make-mode') for a in x[2])]
-        ninja = [x for x in intree if os.path.basename(x[2][0]) == 'ninja'
+        ninja = [x for x in intree if os.path.basename(x[2][0]) in ('ninja', 'siso')
                  and any(re.search(r'combined-.*\.ninja$', a) for a in x[2])]
         ota = [x for x in intree if any('ota_from_target_files' in a for a in x[2][:3])]
         tfp = [x for x in intree if x not in ota and any('target_files_intermediates' in a for a in x[2])]
-        if soong and p.step == 'kernel':
+        if (soong or ninja) and p.step == 'kernel':
             self.set_step(p, 'make')   # a kit without STEP lines: its make header came first
         if p.step not in MAKE_STEPS:
             return
-        if not p.stamped and soong and p.step_at is None:
-            p.step_at = min(x[1] for x in soong)
+        if not p.stamped and (soong or ninja) and p.step_at is None:
+            p.step_at = min(x[1] for x in (soong or ninja))
         if p.kind != 'quick' and (ota or tfp):
             p.step, p.at_end = ('ota_zip', min(x[1] for x in ota)) if ota else ('target_files', min(x[1] for x in tfp))
         self.ninja_start = min(x[1] for x in ninja) if ninja else None
         pb = os.path.join(TOP, 'out/build_progress.pb')
-        since = p.step_at or (min(x[1] for x in soong) if soong else None)
-        if soong and since is not None and (mtime(pb) or 0) >= since - 5:
+        active = soong or ninja
+        since = p.step_at or (min(x[1] for x in active) if active else None)
+        if active and since is not None and (mtime(pb) or 0) >= since - 5:
             p.counts = build_progress(pb)
 
     def eta(self):
@@ -640,7 +643,7 @@ def pick_run(procs):
         if any(re.search(r'/tools/eos-(images|pack)\.sh$', a) for a in argv[:2]):
             d = environ(pid, 'EOS_DEVICE') or 'cheetah'
             if re.fullmatch(r'[a-z0-9]+', d):
-                log = os.path.join(HOME, 'expressiveos-build.log' if d == 'cheetah' else f'expressiveos-build-{d}.log')
+                log = environ(pid, 'EOS_BUILD_LOG') or os.path.join(HOME, 'expressiveos-build.log' if d == 'cheetah' else f'expressiveos-build-{d}.log')
                 r = Run('-', log, None, True, d)
                 r.started = r.started or start
                 return r

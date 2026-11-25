@@ -27,6 +27,8 @@ export interface Release {
 	 * yet; when present, the page warns if the phone's bootloader differs.
 	 */
 	firmware?: { bootloader?: string; baseband?: string };
+	/** Set when served from the 1.x fallback manifest (/api/releases/<device>) while no v2 manifest exists yet. */
+	legacyV1?: boolean;
 }
 
 /** Where users get the BakaSU app (expressiveos-cheetah/ksu/ksu.conf's manager_release_url and manager_nightly_url). */
@@ -114,13 +116,24 @@ export function parseManifest(value: unknown, device: string): { releases: Relea
 	return { releases, skipped };
 }
 
-export async function fetchReleases(device: string, signal?: AbortSignal): Promise<Release[]> {
-	let res: Response;
+async function requestManifest(url: string, signal?: AbortSignal): Promise<Response> {
 	try {
-		res = await fetch(`/api/releases/${encodeURIComponent(device)}`, { signal, headers: { Accept: "application/json" } });
+		return await fetch(url, { signal, headers: { Accept: "application/json" } });
 	} catch (e) {
 		if (signal?.aborted) throw e;
 		throw new ReleasesError("Couldn't reach the build list. Check your connection and try again.", "network");
+	}
+}
+
+export async function fetchReleases(device: string, signal?: AbortSignal): Promise<Release[]> {
+	const enc = encodeURIComponent(device);
+	let res = await requestManifest(`/api/releases/v2/${enc}`, signal);
+	let legacyV1 = false;
+	if (res.status === 404) {
+		// Until a phone's first EOS 2.0 release is published to expressiveos/v2/<device>/flasher.json,
+		// fall back to its live 1.x manifest so pre-launch Worker deploys and staggered rollouts stay live.
+		res = await requestManifest(`/api/releases/${enc}`, signal);
+		legacyV1 = true;
 	}
 	if (res.status === 404) throw new ReleasesError("There are no ExpressiveOS builds for this phone yet.", "none");
 	if (!res.ok) throw new ReleasesError(`The build list didn't load (HTTP ${res.status}). Try again in a minute.`, "network");
@@ -131,13 +144,16 @@ export async function fetchReleases(device: string, signal?: AbortSignal): Promi
 		throw new ReleasesError("The build list isn't valid", "invalid");
 	}
 	const { releases, skipped } = parseManifest(value, device);
+	if (legacyV1) {
+		for (const r of releases) r.legacyV1 = true;
+	}
 	if (skipped.length) console.warn("Builds left out of the list:", skipped);
 	return releases;
 }
 
-/** Where the Worker serves a release's file: the testers channel has its own folder. */
-export const fileUrl = (device: string, release: Pick<Release, "channel">, file: string) =>
-	`/dl/${encodeURIComponent(device)}/${release.channel === "testers" ? "testers/" : ""}${encodeURIComponent(file)}`;
+/** Where the Worker serves a release's file: v2 unless loaded from the 1.x fallback manifest; testers in testers/. */
+export const fileUrl = (device: string, release: Pick<Release, "channel" | "legacyV1">, file: string) =>
+	`/dl/${release.legacyV1 ? "" : "v2/"}${encodeURIComponent(device)}/${release.channel === "testers" ? "testers/" : ""}${encodeURIComponent(file)}`;
 
 export function formatBytes(n: number): string {
 	if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(n >= 10 * 1024 ** 3 ? 0 : 1)} GB`;

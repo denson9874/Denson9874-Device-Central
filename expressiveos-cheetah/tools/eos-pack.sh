@@ -73,16 +73,20 @@ cleanup() {
 trap cleanup EXIT
 # shellcheck source=../lib.sh
 source "$(dirname -- "$(readlink -f -- "$0")")/../lib.sh"
-mode=${1:-}
-case "$mode" in ''|--release|--upload|--testers) ;; *) fail "usage: eos-pack.sh [--release | --upload | --testers]" ;; esac
-[[ $# -le 1 ]] || fail "usage: eos-pack.sh [--release | --upload | --testers]"
-eos_top ""
+mode=''
+if [[ "${1:-}" = -* ]]; then
+    mode=$1
+    shift
+fi
+case "$mode" in ''|--release|--upload|--testers) ;; *) fail "usage: eos-pack.sh [--release | --upload | --testers] [top]" ;; esac
+[[ $# -le 1 ]] || fail "usage: eos-pack.sh [--release | --upload | --testers] [top]"
+eos_top "${1:-}"
 cd "$top"
 O=$EOS_PRODUCT_OUT
 # Not while an ExpressiveOS build or setup runs: out/ would change under the zip (--testers
 # reads check/ only, which a candidate run, under this lock too, rewrites)
-exec 8>"$HOME/.expressiveos.lock"
-flock -n 8 || fail "an ExpressiveOS build or setup is running (~/.expressiveos.lock)"
+exec 8>"$EOS_LOCK"
+flock -n 8 || fail "an ExpressiveOS build or setup is running (${EOS_LOCK/#"$HOME"/\~})"
 # A build started by hand changes out/ only, which --testers never reads
 if [[ "$mode" != --testers ]]; then
     b=$(tree_build); [[ -z "$b" ]] || fail "a build is running in $top: $b"
@@ -119,8 +123,8 @@ eos_step pack
 # ExpressiveOS's own release folder, never Evolution X's: ~/releases/expressiveos-*/ and
 # its check/, as named, with no symlink anywhere on the way. Checked before anything is made
 [[ "$EOS_RELEASES" =~ ^releases/expressiveos-[a-z0-9-]+$ ]] || fail "devices/$EOS_DEVICE.conf's EOS_RELEASES ($EOS_RELEASES) isn't releases/expressiveos-<something>"
-DEST=$HOME/$EOS_RELEASES; CHECK=$DEST/check
-want=$(cd ~ && pwd -P)/$EOS_RELEASES
+eos_releases_paths
+CHECK=$DEST/check
 dirs=("$DEST" "$CHECK" "$DEST/target-files" "$DEST/ota")
 [[ "$mode" != --testers ]] || dirs+=("$DEST/testers")
 for f in "${dirs[@]}"; do
@@ -134,7 +138,7 @@ mkdir -p -- "$CHECK"
 R2TF=
 if [[ -n "${EOS_R2_REMOTE:-}" ]]; then
     [[ "$EOS_R2_REMOTE" =~ ^[A-Za-z0-9_-]+:[a-z0-9][a-z0-9-]*$ ]] || fail "eos.conf's EOS_R2_REMOTE ($EOS_R2_REMOTE) isn't <rclone remote>:<bucket>"
-    [[ "$EOS_R2_PREFIX" =~ ^expressiveos/[a-z0-9-]+/$ ]] || fail "devices/$EOS_DEVICE.conf's EOS_R2_PREFIX ($EOS_R2_PREFIX) isn't expressiveos/<device>/"
+    [[ "$EOS_R2_PREFIX" =~ ^expressiveos/v2/[a-z0-9-]+/$ ]] || fail "devices/$EOS_DEVICE.conf's EOS_R2_PREFIX ($EOS_R2_PREFIX) isn't expressiveos/v2/<device>/"
     R2TF=$EOS_R2_REMOTE/${EOS_R2_PREFIX}target-files
 fi
 

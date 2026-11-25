@@ -6,7 +6,7 @@
 #
 #   update-firmware.sh <top> <bootloader-cheetah-*.img> <radio-cheetah-*.img> <build-id>
 #
-# Uses the tree's lineage/scripts/fbpacktool, rewrites the sha1s in
+# Uses the kit's tools/fbpacktool, rewrites the sha1s in
 # vendor/google/cheetah/Android.mk and commits the result locally (repo sync discards
 # local commits cleanly; prepare.sh reapplies them). Idempotent.
 set -euo pipefail
@@ -18,7 +18,7 @@ eos_top "$1"; bootloader="$2"; radio="$3"; build="$4"
 vendor="$top/$EOS_VENDOR_DIR"   # vendor/google/cheetah (devices/<device>.conf, EOS_FIRMWARE_MODE=cache)
 project_ok "$vendor"
 for p in radio Android.mk FIRMWARE_SOURCE; do in_top "$vendor/$p"; done
-fbpacktool="$top/lineage/scripts/fbpacktool/fbpacktool.py"
+fbpacktool="$kit/tools/fbpacktool/fbpacktool.py"
 [[ -f "$fbpacktool" ]] || fail "no $fbpacktool"
 
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT

@@ -101,7 +101,6 @@ checked() {   # checked <title> <regex> <command>...: run it quietly; its last l
 
 echo "== package"
 ver=$(prop ro.expressiveos.build.version)
-[[ -n $ver ]] || ver=$(prop ro.evolution.build.version)   # the name through 1.2
 [[ "$ver" =~ ^ExpressiveOS-17\.[0-9]+-[0-9]{8}-$EOS_DEVICE-${EOS_VERSION//./\\.}-$EOS_BUILD_TYPE$ ]] \
     || fail "ro.expressiveos.build.version is '$ver', not ExpressiveOS-17.x-<date>-$EOS_DEVICE-$EOS_VERSION-$EOS_BUILD_TYPE"
 if [[ $EOS_QUICK = 1 ]]; then
@@ -115,7 +114,7 @@ if [[ $EOS_QUICK = 1 ]]; then
     echo "OK: $ver, a quick build (EOS_QUICK=1: the images only, no OTA package or target-files), built $(date -ud "@$ts" '+%F %T') UTC"
 else
     ota=$O/$ver.zip
-    [[ -f $ota ]] || fail "no $ota (a full build, m bacon, makes it)"
+    [[ -f $ota ]] || fail "no $ota (a full build, m eos, makes it)"
     others=$(find "$O" -maxdepth 1 -name 'ExpressiveOS-*.zip' ! -name "$ver.zip" -printf '%f ')
     [[ -z "$others" ]] || fail "out/ also holds $others; it must hold only this build's package"
     unzip -p -- "$ota" META-INF/com/android/metadata > "$T/metadata" || fail "$ota has no OTA metadata"
@@ -127,15 +126,21 @@ else
 fi
 
 echo "== identity"
+want_btype=user
+if [[ $EOS_QUICK = 1 && "$(prop ro.build.type)" = userdebug ]]; then
+    want_btype=userdebug
+fi
 for kv in "ro.product.product.device=$EOS_DEVICE" "ro.product.product.model=$EOS_MODEL" "ro.product.vendor.device=$EOS_DEVICE" \
-          "ro.lineage.device=$EOS_DEVICE" ro.build.type=user; do
+          "ro.expressiveos.device=$EOS_DEVICE" "ro.build.type=$want_btype"; do
     [[ "$(prop "${kv%%=*}")" = "${kv#*=}" ]] || fail "${kv%%=*} is '$(prop "${kv%%=*}")', want '${kv#*=}'"
 done
+lineage_props=$(grep -hE '^ro\.lineage\.' "$O"/system/build.prop "$O"/system_ext/etc/build.prop "$O"/product/etc/build.prop "$O"/vendor/build.prop 2>/dev/null || true)
+[[ -z "$lineage_props" ]] || fail "EOS 2.0 pure-AOSP build must not emit any ro.lineage.* prop: $(tr '\n' ' ' <<<"$lineage_props" | cut -c1-300)"
 # A tree with a board-info file writes 'require board=<boards>' (pantah: cheetah|panther); the
 # Pixel 11 trees have none, and the build writes 'board=<device>'. eos-pack.sh makes either
 # 'require board=<device>'
 grep -qE '^(require )?board=' "$O/android-info.txt" || fail "no 'require board=' or 'board=' in $O/android-info.txt"
-echo "OK: $EOS_DEVICE, $EOS_MODEL, user build"
+echo "OK: $EOS_DEVICE, $EOS_MODEL, $want_btype build"
 n=0
 # The shared patches/, ksu/ and viper4android/ ones, then the phone's own devices/<device>/
 mapfile -t dirs < <(kit_patch_dirs)
@@ -166,7 +171,7 @@ import sys, zipfile
 arsc = zipfile.ZipFile(sys.argv[1]).read('resources.arsc')
 def has(s):
     return s.encode() in arsc or s.encode('utf-16-le') in arsc
-if not has('https://raw.githubusercontent.com/denson9874/expressiveos_ota/main/builds/{device}.json'):
+if not has('https://raw.githubusercontent.com/denson9874/expressiveos_ota/main/builds/v2/{device}.json'):
     sys.exit('FAIL: %s has no denson9874/expressiveos_ota/main feed URL' % sys.argv[2])
 if has('evolution_ota'):
     sys.exit('FAIL: %s names evolution_ota' % sys.argv[2])
@@ -231,24 +236,15 @@ else
 fi
 ue=$O/system/bin/update_engine
 [[ -f $ue ]] || fail "no $ue"
-! grep -aqF 'Payload signature verification skipped' "$ue" || fail "$ue still skips payload signatures (patches/system_update_engine 0001)"
-grep -aqF ' signatures is correct. Expected hash before padding:' "$ue" || fail "$ue has no payload signature check (patches/system_update_engine 0001)"
-ue_checks="payload signatures"
-if compgen -G "$kit/patches/system_update_engine/0002-*.patch" > /dev/null; then
-    grep -aqF ro.ota.allow_downgrade "$ue" || fail "$ue installs older builds (patches/system_update_engine 0002)"
-    ue_checks+=", no downgrades"
-fi
-if compgen -G "$kit/patches/system_update_engine/0003-*.patch" > /dev/null; then
-    ues=$O/recovery/root/system/bin/update_engine_sideload
-    [[ -f $ues ]] || fail "no $ues"
-    ! grep -aqF 'Payload signature verification skipped' "$ues" || fail "$ues still skips payload signatures (patches/system_update_engine 0001)"
-    grep -aqF 'Public key verification failed, thus update failed.' "$ues" || fail "$ues doesn't check payload signatures in recovery (patches/system_update_engine 0003)"
-    # update_engine_sideload is built from the same hardware_android.cc as update_engine
-    if compgen -G "$kit/patches/system_update_engine/0002-*.patch" > /dev/null; then
-        grep -aqF ro.ota.allow_downgrade "$ues" || fail "$ues installs older builds in recovery (patches/system_update_engine 0002)"
-    fi
-    ue_checks+=", and in recovery's sideload too"
-fi
+! grep -aqF 'Payload signature verification skipped' "$ue" || fail "$ue skips payload signatures"
+grep -aqF ' signatures is correct. Expected hash before padding:' "$ue" || fail "$ue has no payload signature check"
+grep -aqF ro.ota.allow_downgrade "$ue" || fail "$ue installs older builds (missing ro.ota.allow_downgrade check)"
+ues=$O/recovery/root/system/bin/update_engine_sideload
+[[ -f $ues ]] || fail "no $ues"
+! grep -aqF 'Payload signature verification skipped' "$ues" || fail "$ues skips payload signatures"
+grep -aqF 'Public key verification failed, thus update failed.' "$ues" || fail "$ues doesn't check payload signatures in recovery"
+grep -aqF ro.ota.allow_downgrade "$ues" || fail "$ues installs older builds in recovery"
+ue_checks="payload signatures, no downgrades, and in recovery's sideload too"
 if [[ $EOS_QUICK = 1 ]]; then
     echo "OK: update_engine checks $ue_checks"
 else
@@ -339,7 +335,7 @@ if [[ $EOS_KSU = wild ]]; then
     echo "== Wild Kernels"
     checked "no root manager" 'KSU_CHECK=OK' "$kit/ksu/tools/ksu-check.sh" manager "$top"
     checked "Wild images" 'KSU_CHECK=OK' "$kit/ksu/tools/ksu-check.sh" images "$top/$O" "$top"
-    # The stock boot users flash for no root: Google's (or our gs-6.1) kernel, signed as boot.img
+    # The stock boot users flash for no root: Google's stock kernel, signed as boot.img
     stock=$EOS_KSU_OUT/boot-stock.img
     [[ -f $stock ]] || fail "no $stock (wild-boot.sh stock keeps the stock boot for users who want no root)"
     "$H/unpack_bootimg" --boot_img "$stock" --out "$T/bs" >/dev/null || fail "can't unpack $stock"
@@ -396,15 +392,15 @@ hz=$O/product/media/bootanimation_holiday.zip hint=$O/product/etc/init/expressiv
 [[ "$(sha256sum -- "$hz" | cut -d' ' -f1)" = "$BOOTANIM_HOLIDAY_ZIP_SHA256" ]] || fail "$hz isn't bootanim.conf's holiday boot animation"
 cmp -s -- "$hint" "$kit/bootanimation/expressiveos-bootanim-hint.rc" || fail "$hint isn't the kit's bootanimation/expressiveos-bootanim-hint.rc"
 # The hint only works while BootAnimation reads it (frameworks/base; BootAnimation.cpp is built
-# into libbootanimation_preapex.so) and device/lineage/sepolicy labels it for bootanim. A rebase
+# into libbootanimation_preapex.so) and vendor/expressiveos/sepolicy labels it for bootanim. A rebase
 # that drops either change leaves every holiday boot playing the everyday animation, and nothing
 # else would say so
 grep -qaF /metadata/bootanim -- "$O"/system/bin/bootanimation "$O"/system/lib64/libbootanimation*.so 2>/dev/null \
     || fail "$O/system/lib64/libbootanimation_preapex.so doesn't read /metadata/bootanim (frameworks/base's cmds/bootanimation): holiday boots would play the everyday animation"
 grep -qF u:object_r:bootanim_metadata_file:s0 "$O/system_ext/etc/selinux/system_ext_file_contexts" 2>/dev/null \
-    || fail "$O/system_ext/etc/selinux/system_ext_file_contexts doesn't label /metadata/bootanim bootanim_metadata_file (device/lineage/sepolicy): bootanim can't read the hint, so holiday boots would play the everyday animation"
+    || fail "$O/system_ext/etc/selinux/system_ext_file_contexts doesn't label /metadata/bootanim bootanim_metadata_file (vendor/expressiveos/sepolicy): bootanim can't read the hint, so holiday boots would play the everyday animation"
 grep -qF '(allow bootanim bootanim_metadata_file (file ' "$O/system_ext/etc/selinux/system_ext_sepolicy.cil" 2>/dev/null \
-    || fail "$O/system_ext/etc/selinux/system_ext_sepolicy.cil doesn't let bootanim read bootanim_metadata_file (device/lineage/sepolicy's bootanim.te): holiday boots would play the everyday animation"
+    || fail "$O/system_ext/etc/selinux/system_ext_sepolicy.cil doesn't let bootanim read bootanim_metadata_file (vendor/expressiveos/sepolicy's bootanim.te): holiday boots would play the everyday animation"
 extra=$(find "$O/product/media" -maxdepth 1 -name 'bootanimation_*.zip' ! -name bootanimation_holiday.zip -printf '%f ')
 [[ -z "$extra" ]] || fail "Other boot animation styles shipped: $extra(TARGET_INCLUDE_BOOT_ANIMATIONS)"
 echo "OK: ExpressiveOS's boot animation and its holiday copy, with the /metadata hint that BootAnimation reads; no other styles"

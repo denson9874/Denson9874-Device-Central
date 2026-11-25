@@ -26,7 +26,7 @@ set -uo pipefail
 umask 022
 export LC_ALL=C
 kit=$(cd "$(dirname -- "$(readlink -f -- "$0")")/.." && pwd)
-jobs=$HOME/expressiveos-jobs times=$HOME/expressiveos-build-times.txt
+jobs=${EOS_JOBS:-$HOME/expressiveos-jobs} times=${EOS_TIMES:-$HOME/expressiveos-build-times.txt}
 done=0
 t=$(mktemp) || { echo "can't make a temporary file"; echo "RELEASE=FAIL"; exit 1; }
 trap 'rm -f -- "$t"; [[ $done = 1 ]] || echo "RELEASE=FAIL"' EXIT
@@ -76,7 +76,9 @@ for d in "${all[@]}"; do
     header "$d" flasher_publish.py
     s=$(date -u +%s)
     # The release eos-pack.sh just made, found as the runner's expressiveos-flasher-release finds it
-    r=$HOME/releases/expressiveos-$d
+    r=${EOS_RELEASES_DIR:-$HOME/releases}
+    [[ $r = /* ]] || r=$HOME/$r
+    r=${r%/}/expressiveos-$d
     l=$(cat -- "$r/target-files/LATEST" 2>/dev/null) || { echo "FAIL: no $r/target-files/LATEST"; stop "$d" web 1; }
     [[ $l == *-target_files.zip && $l != */* ]] || { echo "FAIL: $r/target-files/LATEST names $l"; stop "$d" web 1; }
     z=$r/${l%-target_files.zip}-fastboot.zip

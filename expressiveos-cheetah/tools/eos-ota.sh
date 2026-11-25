@@ -12,7 +12,7 @@
 #   eos-ota.sh --candidate   # an incremental from the feed's build to check/'s candidate, to
 #                            # try on a phone on that build before the release: into check/
 #                            # and R2's ota/test/, with a test feed of its own there that only
-#                            # a phone pointed at it reads (setprop evolution.updater.uri)
+#                            # a phone pointed at it reads (setprop expressiveos.updater.uri)
 #
 # Nothing here writes the feed itself (EOS_FEED_REPO's builds/<device>.json and
 # changelogs/<device>.txt): they go there as a pull request, and phones see the update once
@@ -67,20 +67,24 @@ cleanup() {
 trap cleanup EXIT
 # shellcheck source=../lib.sh
 source "$(dirname -- "$(readlink -f -- "$0")")/../lib.sh"
-mode=${1:-}
-usage="usage: eos-ota.sh [--upload | --candidate]"
+mode=''
+usage="usage: eos-ota.sh [--upload | --candidate] [top]"
+if [[ "${1:-}" = -* ]]; then
+    mode=$1
+    shift
+fi
 case "$mode" in ''|--upload|--candidate) ;; *) fail "$usage" ;; esac
 [[ $# -le 1 ]] || fail "$usage"
-eos_top ""
+eos_top "${1:-}"
 cd "$top"
-exec 8>"$HOME/.expressiveos.lock"
-flock -n 8 || fail "an ExpressiveOS build, setup or pack is running (~/.expressiveos.lock)"
+exec 8>"$EOS_LOCK"
+flock -n 8 || fail "an ExpressiveOS build, setup or pack is running (${EOS_LOCK/#"$HOME"/\~})"
 b=$(tree_build); [[ -z "$b" ]] || fail "a build is running in $top: $b"
 
 # ExpressiveOS's own release folder, as eos-pack.sh checks it: no symlink on the way
 [[ "$EOS_RELEASES" =~ ^releases/expressiveos-[a-z0-9-]+$ ]] || fail "devices/$EOS_DEVICE.conf's EOS_RELEASES ($EOS_RELEASES) isn't releases/expressiveos-<something>"
-DEST=$HOME/$EOS_RELEASES; CHECK=$DEST/check; TFD=$DEST/target-files; OTAD=$DEST/ota
-want=$(cd ~ && pwd -P)/$EOS_RELEASES
+eos_releases_paths
+CHECK=$DEST/check; TFD=$DEST/target-files; OTAD=$DEST/ota
 for f in "$DEST" "$CHECK" "$TFD" "$OTAD" "$OTAD/feed"; do
     d=$(realpath -m -- "$f") || fail "can't resolve $f"
     [[ "$d" = "$want${f#"$DEST"}" ]] || fail "$f leads to $d, not ExpressiveOS's own folder (a symlink?)"
@@ -89,31 +93,27 @@ done
 R2OTA='' R2TF=''
 if [[ -n "${EOS_R2_REMOTE:-}" ]]; then
     [[ "$EOS_R2_REMOTE" =~ ^[A-Za-z0-9_-]+:[a-z0-9][a-z0-9-]*$ ]] || fail "eos.conf's EOS_R2_REMOTE ($EOS_R2_REMOTE) isn't <rclone remote>:<bucket>"
-    [[ "$EOS_R2_PREFIX" =~ ^expressiveos/[a-z0-9-]+/$ ]] || fail "devices/$EOS_DEVICE.conf's EOS_R2_PREFIX ($EOS_R2_PREFIX) isn't expressiveos/<device>/"
+    [[ "$EOS_R2_PREFIX" =~ ^expressiveos/v2/[a-z0-9-]+/$ ]] || fail "devices/$EOS_DEVICE.conf's EOS_R2_PREFIX ($EOS_R2_PREFIX) isn't expressiveos/v2/<device>/"
     R2OTA=$EOS_R2_REMOTE/${EOS_R2_PREFIX}ota R2TF=$EOS_R2_REMOTE/${EOS_R2_PREFIX}target-files
 elif [[ -n $mode ]]; then
     fail "eos.conf's EOS_R2_REMOTE is empty: the Updater downloads from the OTA mirror, which serves R2"
 fi
 [[ "${EOS_OTA_MIRROR:-}" =~ ^https://[a-z0-9.-]+$ ]] || fail "eos.conf's EOS_OTA_MIRROR (${EOS_OTA_MIRROR:-}) isn't https://<host>"
 URL=$EOS_OTA_MIRROR/${EOS_R2_PREFIX}ota
-FEED=https://raw.githubusercontent.com/$EOS_FEED_REPO/$EOS_FEED_BRANCH/builds/$EOS_DEVICE.json
+FEED=https://raw.githubusercontent.com/$EOS_FEED_REPO/$EOS_FEED_BRANCH/builds/v2/$EOS_DEVICE.json
 rc2() { ~/bin/rclone "$@"; }
 [[ -z $mode || -x ~/bin/rclone ]] || fail "no ~/bin/rclone for the R2 upload (tools/ota_mirror/README.md)"
 
 T=$(mktemp -d "$HOME/.eos-ota.XXXXXX")
 H=out/host/linux-x86/bin
 for t in ota_from_target_files check_ota_package_signature delta_generator; do
-    [[ -x $H/$t ]] || fail "no $H/$t (a full build, m bacon, builds it)"
+    [[ -x $H/$t ]] || fail "no $H/$t (a full build, m eos, builds it)"
 done
 # signapk.jar signs the package with the tree's own JDK, as in the build (soong's PATH)
 jdk=$(find prebuilts/jdk -maxdepth 3 -path '*/linux-x86/bin' -type d 2>/dev/null | sort -V | tail -1) || true
 [[ -n $jdk && -x $jdk/java ]] || fail "no prebuilts/jdk/<jdk>/linux-x86/bin/java in the tree"
-# Signed with ExpressiveOS's own release key, the one eos.conf pins, as the build signs
-# the full package (eos-target-files.sh checks target-files names it), from the tree's key
-# folder: vendor/expressiveos-priv, or vendor/evolution-priv while that isn't there (lib.sh's
-# eos_priv; the same files either way)
+# Signed with ExpressiveOS's own release key in vendor/expressiveos-priv/keys
 key=$(eos_priv)/keys/testkey
-[[ $key = "$EOS_PRIV_NEW"/* ]] || echo "note: the release key is in $EOS_PRIV_OLD, the key folder's name before 1.1 ($EOS_PRIV_NEW isn't in the tree)"
 [[ -f $key.pk8 && -f $key.x509.pem ]] || fail "no $key.pk8 and $key.x509.pem in the tree"
 "$kit/tools/eos-keys-check.sh" tree "$top" > "$T/keys.log" 2>&1 || true
 [[ "$(tail -1 "$T/keys.log")" = KEYS_CHECK=OK ]] \
@@ -209,7 +209,6 @@ for f in META/misc_info.txt META/ab_partitions.txt SYSTEM/build.prop SYSTEM/etc/
 done
 ts=$(tfprop "$TF" ro.build.date.utc) incr=$(tfprop "$TF" ro.build.version.incremental)
 spl=$(tfprop "$TF" ro.build.version.security_patch) ver=$(tfprop "$TF" ro.expressiveos.build.version)
-[[ -n $ver ]] || ver=$(tfprop "$TF" ro.evolution.build.version)   # the name through 1.2
 [[ $ts =~ ^[0-9]+$ && -n $incr ]] || fail "${TF##*/} has no ro.build.date.utc or ro.build.version.incremental"
 # The release name is the build's, with -r<n> for a second release of the same day
 [[ $REL = "$ver" || $REL =~ ^"$ver"-r[0-9]+$ ]] || fail "${TF##*/} is $ver's build, not $REL's"
@@ -450,7 +449,7 @@ if [[ $mode = --candidate ]]; then
     echo "===== OTA_FEED test/$EOS_DEVICE.json"; cat -- "$tf"; echo "===== OTA_FEED_END"
     cat <<EOF
 To try it: a phone on $BASE (root), then the Updater's "check for updates":
-  adb shell "su -c 'setprop evolution.updater.uri $URL/test/$EOS_DEVICE.json'"
+  adb shell "su -c 'setprop expressiveos.updater.uri $URL/test/$EOS_DEVICE.json'"
 It should offer ${inc##*/} ($(stat -c %s -- "$inc") bytes). The setting goes away with the reboot into $REL.
 EOF
     echo "OTA_TEST $URL/test/$EOS_DEVICE.json"
@@ -460,14 +459,14 @@ EOF
 fi
 
 echo "== the feed files: $OTAD/feed"
-mkdir -p -- "$OTAD/feed/builds" "$OTAD/feed/changelogs"
+mkdir -p -- "$OTAD/feed/builds/v2" "$OTAD/feed/changelogs/v2"
 entries=()
 [[ -z $inc ]] || entries+=("$(entry "$inc" "$BTS" "")")
 entries+=("$(entry "$FULL" "" "")")
-feed "$OTAD/feed/builds/$EOS_DEVICE.json" "${entries[@]}"
+feed "$OTAD/feed/builds/v2/$EOS_DEVICE.json" "${entries[@]}"
 # The release notes eos-pack.sh --release wrote for it
 [[ -f $DEST/$REL-changelog.txt ]] || fail "no $DEST/$REL-changelog.txt (eos-pack.sh --release writes it)"
-cp -- "$DEST/$REL-changelog.txt" "$OTAD/feed/changelogs/$EOS_DEVICE.txt"
+cp -- "$DEST/$REL-changelog.txt" "$OTAD/feed/changelogs/v2/$EOS_DEVICE.txt"
 
 if [[ $mode = --upload ]]; then
     echo "== upload to R2: $R2OTA"
@@ -483,7 +482,7 @@ if [[ $mode = --upload ]]; then
     done < "$T/ota.ls"
     echo "UPLOADED_OTA $URL/$REL.zip${inc:+ $URL/${inc##*/}}"
 fi
-for f in "builds/$EOS_DEVICE.json" "changelogs/$EOS_DEVICE.txt"; do
+for f in "builds/v2/$EOS_DEVICE.json" "changelogs/v2/$EOS_DEVICE.txt"; do
     echo "===== OTA_FEED $f"; cat -- "$OTAD/feed/$f"
 done
 echo "===== OTA_FEED_END"

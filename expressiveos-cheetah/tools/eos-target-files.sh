@@ -45,9 +45,9 @@ eos_top "${2:-}"
 cd "$top"
 O=$EOS_PRODUCT_OUT
 H=out/host/linux-x86/bin
-[[ -x $H/unpack_bootimg ]] || fail "no $H/unpack_bootimg (a full build, m bacon, builds it)"
+[[ -x $H/unpack_bootimg ]] || fail "no $H/unpack_bootimg (a full build, m eos, builds it)"
 tf=$(tf_zip)
-[[ -f $tf ]] || fail "no $tf: a full build (m bacon) keeps it only with patches/vendor_lineage/0003 (apply.sh), then build again"
+[[ -f $tf ]] || fail "no $tf: a full build (m eos) keeps it via vendor/expressiveos/build/tasks/eos.mk"
 T=$(mktemp -d "${TMPDIR:-/tmp}/eos-tf.XXXXXX")
 unzip -Z1 -- "$tf" > "$T/list" || fail "can't read $tf"
 has() { grep -qxF -- "$1" "$T/list"; }
@@ -69,7 +69,6 @@ ver=${ota##*/}; ver=${ver%.zip}
 v=$(tfprop ro.build.date.utc)
 [[ -n "$ts" && "$v" = "$ts" ]] || fail "${tf##*/} isn't ${ota##*/}'s: its ro.build.date.utc is '$v', the package's post-timestamp '$ts'"
 v=$(tfprop ro.expressiveos.build.version)
-[[ -n $v ]] || v=$(tfprop ro.evolution.build.version)   # the name through 1.2
 [[ "$v" = "$ver" ]] || fail "${tf##*/} is $v's, not $ver's"
 unzip -p -- "$tf" META/ab_partitions.txt > "$T/ab0" || fail "can't read its META/ab_partitions.txt"
 [[ -f $O/ab_partitions.txt ]] || fail "no $O/ab_partitions.txt (eos-make.sh writes it)"
@@ -83,9 +82,8 @@ grep -qx 'ab_update=true' "$T/misc" || fail "its misc_info.txt isn't an A/B buil
 # key folder's name: the folder moved in 1.1, its files didn't (the pins in eos.conf are what
 # say the key is ExpressiveOS's)
 dc=$(sed -n 's/^default_system_dev_certificate=//p' "$T/misc" | tail -1)
-[[ $dc = "$EOS_PRIV_NEW/keys/testkey" || $dc = "$EOS_PRIV_OLD/keys/testkey" ]] \
-    || fail "its misc_info.txt doesn't name the tree's own release key ($EOS_PRIV_NEW/keys/testkey, or $EOS_PRIV_OLD/keys/testkey before 1.1): it names '${dc:-nothing}'"
-[[ $dc = "$EOS_PRIV_NEW"/* ]] || echo "note: its misc_info.txt names the release key in $EOS_PRIV_OLD, the key folder's name before 1.1"
+[[ $dc = "$EOS_PRIV_NEW/keys/testkey" ]] \
+    || fail "its misc_info.txt doesn't name the tree's own release key ($EOS_PRIV_NEW/keys/testkey): it names '${dc:-nothing}'"
 echo "OK: ${tf##*/} ($(stat -c %s -- "$tf") bytes) is $ver's, built $(date -ud "@$ts" '+%F %T') UTC, with the build's A/B partitions and release key"
 
 echo "== images"

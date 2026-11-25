@@ -4,9 +4,9 @@
 #   1. check every PNG against wallpapers.conf;
 #   2. stage wallpapers.mk, the theming_defaults overlay and Bloom into vendor/extra/wallpapers
 #      (not ExpressiveWallpapers/'s picker APK: 1.0 keeps Pixel's wallpapers in the picker);
-#   3. vendor/extra/product.mk inherits wallpapers.mk (Evolution X's vendor_evolution, checked
-#      out at vendor/lineage, has config/common.mk inherit vendor/extra/product.mk), which sets
-#      ro.config.wallpaper and the overlay for ExpressiveOS's lineage_<device> products.
+#   3. vendor/extra/product.mk inherits wallpapers.mk (vendor/expressiveos/config/common.mk
+#      inherits vendor/extra/product.mk), which sets ro.config.wallpaper and the overlay
+#      for ExpressiveOS's eos_<device> products.
 # Nothing is written through a symlink that leads out of the tree.
 #
 #   apply-wallpapers.sh [top]      # default ~/expressiveos
@@ -18,13 +18,13 @@ here="$(cd "$(dirname -- "$(readlink -f -- "$0")")" && pwd)"
 # shellcheck source=wallpapers.conf
 source "$here/wallpapers.conf" || fail "can't read $here/wallpapers.conf"
 
-arg=${1:-$HOME/expressiveos}
+arg=${1:-${EOS_TOP:-$HOME/expressiveos}}
 [[ $# -le 1 ]] || fail "usage: apply-wallpapers.sh [top]"
 [[ -d "$arg" ]] || fail "no tree at $arg"
 top="$(cd "$arg" && pwd -P)"
 [[ -f "$top/build/envsetup.sh" ]] || fail "$top isn't an Android tree (no build/envsetup.sh)"
-grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/lineage/config/common.mk" 2>/dev/null \
-    || fail "vendor/lineage/config/common.mk no longer inherits vendor/extra/product.mk: the wallpapers would silently not ship"
+grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/expressiveos/config/common.mk" 2>/dev/null \
+    || fail "vendor/expressiveos/config/common.mk no longer inherits vendor/extra/product.mk: the wallpapers would silently not ship"
 # What wallpapers.mk relies on, so an upstream change fails here and not on the phone
 grep -q '"ro.config.wallpaper"' "$top/frameworks/base/core/java/android/app/WallpaperManager.java" 2>/dev/null \
     || fail "frameworks/base's WallpaperManager no longer reads ro.config.wallpaper; check how the default wallpaper is chosen now"
@@ -100,7 +100,7 @@ elif [[ -f "$pm" ]]; then
     echo "added to vendor/extra/product.mk: $line"
 else
     printf '%s\n' \
-        "# ExpressiveOS additions. vendor/lineage/config/common.mk inherits this file when it exists." \
+        "# ExpressiveOS additions. vendor/expressiveos/config/common.mk inherits this file when it exists." \
         "# Not a repo project, so repo sync leaves it alone." \
         "" \
         "# Wallpapers (expressiveos-cheetah/wallpapers)" \

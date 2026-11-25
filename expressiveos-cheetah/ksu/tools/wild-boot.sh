@@ -3,8 +3,8 @@
 # set). Two steps around the make (eos-make.sh):
 #
 #   wild-boot.sh build <stock boot.img> [top]
-#       before the make: the tree's prebuilt boot.img (BOARD_PREBUILT_BOOTIMAGE: Google's GKI on
-#       a Pixel 11, the gs-6.1 build's on cheetah and husky) with its kernel swapped for Wild's
+#       before the make: the tree's prebuilt boot.img (BOARD_PREBUILT_BOOTIMAGE: Google's stock GKI)
+#       with its kernel swapped for Wild's
 #       Image for the phone's KMI (fetch-ksu.sh), packed again with the same header, OS version,
 #       patch level and cmdline, the kernel compressed as the stock one is. Writes
 #       EOS_KSU_OUT/boot-wild.img, which the make takes as BOARD_PREBUILT_BOOTIMAGE (EOS_WILD_BOOT,

@@ -422,7 +422,7 @@ describe("Worker: other requests", () => {
 });
 
 describe("Worker and page together", () => {
-	it("downloads each listed build from where its channel keeps it", async () => {
+	it("downloads each listed v2 build from where its channel keeps it while keeping 1.x isolated", async () => {
 		const sha = (c: string) => c.repeat(64);
 		const entry = (channel: Release["channel"], published: string): Release => ({
 			name: BASE,
@@ -437,20 +437,27 @@ describe("Worker and page together", () => {
 			root: "bakasu",
 			requirements: ["require board=cheetah"],
 		});
+		const v2Dir = "expressiveos/v2/cheetah/flasher";
 		const manifest = { schema: 1, device: "cheetah", releases: [entry("testers", "2026-10-29T09:00:00Z"), entry("release", "2026-10-30T09:00:00Z")] };
-		bucket.put("expressiveos/cheetah/flasher.json", JSON.stringify(manifest));
+		bucket.put("expressiveos/cheetah/flasher.json", JSON.stringify({ schema: 1, device: "cheetah", releases: [] }));
+		bucket.put("expressiveos/v2/cheetah/flasher.json", JSON.stringify(manifest));
 		const content: Record<string, Uint8Array<ArrayBuffer>> = {
-			[`${DIR}/${ZIP}`]: bytes(1000, 1),
-			[`${DIR}/${STOCK}`]: bytes(16, 2),
-			[`${DIR}/testers/${ZIP}`]: bytes(1000, 3),
-			[`${DIR}/testers/${STOCK}`]: bytes(16, 4),
+			[`${v2Dir}/${ZIP}`]: bytes(1000, 1),
+			[`${v2Dir}/${STOCK}`]: bytes(16, 2),
+			[`${v2Dir}/testers/${ZIP}`]: bytes(1000, 3),
+			[`${v2Dir}/testers/${STOCK}`]: bytes(16, 4),
+			[`${DIR}/${ZIP}`]: bytes(1000, 9),
 		};
 		for (const [key, b] of Object.entries(content)) bucket.put(key, b);
 
-		const { releases } = parseManifest(await (await call("/api/releases/cheetah")).json(), "cheetah");
+		// 1.x manifest and direct download stay live and isolated from v2
+		expect(parseManifest(await (await call("/api/releases/cheetah")).json(), "cheetah").releases).toEqual([]);
+		expect(await body(await call(`/dl/cheetah/${ZIP}`))).toEqual(content[`${DIR}/${ZIP}`]);
+
+		const { releases } = parseManifest(await (await call("/api/releases/v2/cheetah")).json(), "cheetah");
 		expect(releases.map((r) => r.channel)).toEqual(["release", "testers"]);
 		for (const r of releases) {
-			const folder = r.channel === "testers" ? `${DIR}/testers` : DIR;
+			const folder = r.channel === "testers" ? `${v2Dir}/testers` : v2Dir;
 			for (const f of [r.zip, r.bootStock!]) {
 				const res = await call(fileUrl("cheetah", r, f.file));
 				expect(res.status).toBe(200);
@@ -459,9 +466,17 @@ describe("Worker and page together", () => {
 		}
 		expect(bucket.calls.filter((c) => c[0] === "head").map((c) => c[1])).toEqual([
 			`${DIR}/${ZIP}`,
-			`${DIR}/${STOCK}`,
-			`${DIR}/testers/${ZIP}`,
-			`${DIR}/testers/${STOCK}`,
+			`${v2Dir}/${ZIP}`,
+			`${v2Dir}/${STOCK}`,
+			`${v2Dir}/testers/${ZIP}`,
+			`${v2Dir}/testers/${STOCK}`,
 		]);
+	});
+
+	it("rejects unknown devices and traversal on v2 routes", async () => {
+		expect((await call("/api/releases/v2/pixel")).status).toBe(404);
+		for (const p of ["/dl/v2/cheetah/../flasher.json", "/dl/v2/cheetah/flasher.json", "/api/releases/v2/", "/dl/v2/pixel/" + ZIP]) {
+			expect((await call(p)).status, p).toBe(404);
+		}
 	});
 });

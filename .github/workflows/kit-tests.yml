@@ -1,0 +1,145 @@
+name: ExpressiveOS 2.0 Kit & Flasher CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - eos-2.0
+
+permissions:
+  contents: read
+
+jobs:
+  linux-kit-and-flasher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux verification packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tmux libxml2-utils apksigner
+
+      - name: Shell & Python syntax check
+        run: |
+          find expressiveos-cheetah -name '*.sh' -print0 | xargs -0 -n1 bash -n
+          find expressiveos-cheetah tools -name '*.py' -print0 | xargs -0 python3 -m py_compile
+          echo "SYNTAX_CHECK=OK"
+
+      - name: Linux kit bash unit tests (including outer-tmux survival regression)
+        run: |
+          OUTER_TMUX_DIR=$(mktemp -d /tmp/outer-runner-tmux.XXXXXX)
+          trap 'env -u TMUX TMUX_TMPDIR="$OUTER_TMUX_DIR" tmux kill-server 2>/dev/null || true; rm -rf -- "$OUTER_TMUX_DIR"' EXIT
+          env -u TMUX TMUX_TMPDIR="$OUTER_TMUX_DIR" tmux new-session -d -s runner 'sleep 600'
+          OUTER_TMUX_SOCK=$(env -u TMUX TMUX_TMPDIR="$OUTER_TMUX_DIR" tmux display-message -p '#{socket_path},#{pid},0')
+
+          for ts in eos-keys-move-test.sh eos-ota-test.sh eos-verified-test.sh eos-release-test.sh eos-progress-publish-test.sh gms-drop-test.sh; do
+            echo "=== $ts ==="
+            perl -e 'alarm 180; exec @ARGV' -- env \
+              TMUX="$OUTER_TMUX_SOCK" \
+              EOS_TOP=/nonexistent/poison-top \
+              EOS_LOCK=/nonexistent/poison.lock \
+              EOS_TREE_LOCK=/nonexistent/poison-tree.lock \
+              EOS_RELEASES_DIR=/nonexistent/poison-releases \
+              EOS_JOBS=/nonexistent/poison-jobs \
+              EOS_TIMES=/nonexistent/poison-times \
+              bash "expressiveos-cheetah/tools/tests/$ts"
+            env -u TMUX TMUX_TMPDIR="$OUTER_TMUX_DIR" tmux has-session -t "=runner" \
+              || { echo "::error::$ts killed the outer runner tmux session!"; exit 1; }
+          done
+          echo "OUTER_TMUX_AND_EOS_ENV_ISOLATION=OK"
+
+      - name: Kit & Flasher Python unit tests
+        run: |
+          perl -e 'alarm 60; exec @ARGV' -- python3 -B expressiveos-cheetah/sources/tests/test_update_aosp.py -v
+          perl -e 'alarm 60; exec @ARGV' -- python3 -B expressiveos-cheetah/sources/tests/test_eos_integrity.py -v
+          perl -e 'alarm 60; exec @ARGV' -- python3 -B expressiveos-cheetah/tools/tests/test_brand_check.py -v
+          perl -e 'alarm 60; exec @ARGV' -- python3 -B expressiveos-cheetah/tools/tests/test_eos_progress.py -v
+          perl -e 'alarm 90; exec @ARGV' -- python3 -B -I expressiveos-cheetah/launcher/tools/tests/dex-refs-test.py
+          perl -e 'alarm 120; exec @ARGV' -- python3 -B tools/expressiveos_flasher/publish/test_flasher_publish.py -v
+
+      - name: Verify Expressive Launcher release pin (fetch-launcher.sh + apksigner)
+        run: |
+          L_OUT=$(mktemp -d /tmp/launcher-verify.XXXXXX)
+          trap 'rm -rf -- "$L_OUT"' EXIT
+          perl -e 'alarm 180; exec @ARGV' -- bash expressiveos-cheetah/launcher/fetch-launcher.sh --out "$L_OUT/files"
+          cert_want=$(sed -n 's/^EL_CERT_SHA256=//p' expressiveos-cheetah/launcher/launcher.conf)
+          apksigner verify --print-certs "$L_OUT/files/ExpressiveLauncher.apk" | grep -F "certificate SHA-256 digest: $cert_want"
+          echo "APKSIGNER_CHECK=OK"
+
+      - name: Verify release notes exist and render within 200-line limit for all 6 phones
+        run: |
+          RN_TMP=$(mktemp -d /tmp/relnotes-verify.XXXXXX)
+          trap 'rm -rf -- "$RN_TMP"' EXIT
+          ver=$(sed -n 's/^EOS_VERSION=//p' expressiveos-cheetah/eos.conf)
+          notes="expressiveos-cheetah/release-notes/$ver.md"
+          [[ -f "$notes" ]] || { echo "::error::missing $notes for EOS_VERSION=$ver"; exit 1; }
+          for d in cheetah husky kodiak grizzly cubs yogi; do
+            model=$(sed -n 's/^EOS_MODEL=//p' "expressiveos-cheetah/devices/$d.conf" | tr -d '"'"'")
+            python3 -I - "$notes" "$RN_TMP/$d.txt" "$RN_TMP/$d.md" "$d" "$ver" "$model" \
+              "ExpressiveOS-17.0-20261201-$d-$ver-Official" "2026-11-05" \
+              "0000000000000000000000000000000000000000000000000000000000000000" "deadbeef" \
+              "https://expressiveos-flash.daryldenson-apps.workers.dev" <<'EOF'
+          import re, sys
+          notes, out, ann, dev, version, model, build, spl, sha, kitrev, downloads = sys.argv[1:]
+          values = {'VERSION': version, 'MODEL': model, 'DEVICE': dev, 'BUILD': build, 'SPL': spl,
+                    'SHA256': sha, 'KIT_REV': kitrev, 'DOWNLOADS': downloads}
+          text = re.sub(r'<!--[\s\S]*?-->\n?', '', open(notes, encoding='utf-8').read()).strip() + '\n'
+          lines = []
+          for line in text.split('\n'):
+              m = re.match(r'@([a-z0-9]+) (.*)$', line)
+              if m:
+                  if m.group(1) == dev:
+                      lines.append(m.group(2))
+                  continue
+              lines.append(line)
+          text = re.sub(r'\{\{([A-Z0-9_]+)\}\}', lambda m: values.get(m.group(1), m.group(0)), '\n'.join(lines))
+          left = sorted(set(re.findall(r'\{\{[^}]*\}\}', text)))
+          if left:
+              sys.exit('unknown placeholders: ' + ' '.join(left))
+          open(ann, 'w', encoding='utf-8').write(text)
+          plain = re.sub(r'<details>\s*<summary>[\s\S]*?</summary>([\s\S]*?)</details>',
+                         lambda m: 'Answer: ' + re.sub(r'</?b>', '', m.group(1)).strip(), text)
+          res = []
+          for line in plain.split('\n'):
+              if re.match(r'#{1,3} ', line):
+                  line = line.split(' ', 1)[1] + '\n' + ('=' * 30)
+              elif line.startswith('#### '):
+                  line = line[5:]
+              elif line.strip() == '---':
+                  line = '─' * 23
+              elif line.startswith('> '):
+                  line = line[2:].strip().strip('*')
+              line = re.sub(r'\[([^\]]+)\]\(([^)\s]+)\)', lambda m: m.group(2) if m.group(1) == m.group(2) else m.group(1) + ' (' + m.group(2) + ')', line)
+              line = line.replace('**', '').replace('`', '')
+              res.append(re.sub(r'\*([^*\n]+)\*', r'\1', line))
+          plain = re.sub(r'\n{3,}', '\n\n', '\n'.join(res)).strip() + '\n'
+          if plain.count('\n') > 200:
+              sys.exit("the phone's copy is %d lines; the Updater shows 200" % plain.count('\n'))
+          open(out, 'w', encoding='utf-8').write(plain)
+          print(f"{dev}: {plain.count(chr(10))} lines OK")
+          EOF
+          done
+          echo "RELEASE_NOTES_CHECK=OK"
+
+      - name: Verify ExpressiveOS/manifest expressiveos-2.0 XML & lint
+        run: |
+          M_TMP=$(mktemp -d /tmp/manifest-lint.XXXXXX)
+          trap 'rm -rf -- "$M_TMP"' EXIT
+          perl -e 'alarm 45; exec @ARGV' -- curl -fsSL https://raw.githubusercontent.com/ExpressiveOS/manifest/expressiveos-2.0/default.xml -o "$M_TMP/default.xml"
+          perl -e 'alarm 45; exec @ARGV' -- curl -fsSL https://raw.githubusercontent.com/ExpressiveOS/vendor_expressiveos/expressiveos-2.0/release/flag_values/cp2a/RELEASE_PLATFORM_SECURITY_PATCH.textproto -o "$M_TMP/spl.textproto"
+          perl -e 'alarm 45; exec @ARGV' -- xmllint --noout "$M_TMP/default.xml"
+          perl -e 'alarm 45; exec @ARGV' -- python3 -B expressiveos-cheetah/sources/update-aosp.py lint "$M_TMP/default.xml" --spl-file "$M_TMP/spl.textproto"
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Flasher & OTA Mirror Vitest, Typecheck, and Worker Build
+        run: |
+          (cd tools/expressiveos_flasher && perl -e 'alarm 180; exec @ARGV' -- npm ci && perl -e 'alarm 180; exec @ARGV' -- npm run typecheck && perl -e 'alarm 180; exec @ARGV' -- npm test && perl -e 'alarm 180; exec @ARGV' -- npm run build)
+          (cd tools/ota_mirror && perl -e 'alarm 180; exec @ARGV' -- npm ci && perl -e 'alarm 180; exec @ARGV' -- npm run typecheck && perl -e 'alarm 180; exec @ARGV' -- npm run build)

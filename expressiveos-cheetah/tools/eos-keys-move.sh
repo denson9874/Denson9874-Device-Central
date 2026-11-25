@@ -77,6 +77,8 @@ command -v python3 >/dev/null || fail "python3 isn't installed"
 command -v tar >/dev/null || fail "tar isn't installed"
 work=$(mktemp -d "${TMPDIR:-/tmp}/eos-keys-move.XXXXXX") || fail "can't make a temporary folder"
 
+: "${EOS_PRIV_OLD:=vendor/evolution-priv}"
+: "${EOS_TREE_LOCK_OLD:=$HOME/.evolution-tree.lock}"
 OLD=$EOS_PRIV_OLD NEW=$EOS_PRIV_NEW MK=keys/keys.mk
 TMPMK=keys/.keys.mk.eos-keys-move   # the new keys.mk, step 4, before its rename over keys.mk
 if [[ $mode = revert ]]; then from=$NEW to=$OLD; else from=$OLD to=$NEW; fi
@@ -303,7 +305,7 @@ busy() {
     fi
     # pgrep alone in its command substitution: a command beside it in a pipeline (a sed whose
     # script says "repo") would match too
-    p=$(pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja' 2>/dev/null || true)
+    p=$(pgrep -a -u "$(id -u)" -f 'soong_ui|bin/ninja|prebuilts/siso/[a-z0-9_-]+/siso' 2>/dev/null || true)
     while IFS= read -r l; do [[ -z $l ]] || echo "a build runs: ${l:0:150}"; done <<<"$p"
     p=$(pgrep -a -u "$(id -u)" -f '(^|[ /])repo( |$)|\.repo/repo/main\.py' 2>/dev/null || true)
     while IFS= read -r l; do [[ -z $l || $l == *eos-keys-move.sh* ]] || echo "a repo command runs: ${l:0:150}"; done <<<"$p"

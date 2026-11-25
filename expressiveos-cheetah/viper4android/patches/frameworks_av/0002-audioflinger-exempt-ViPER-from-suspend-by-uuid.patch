@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
 Date: Mon, 26 Oct 2026 00:42:02 +0000
-Subject: [PATCH 2/2] audioflinger: exempt ViPER from suspend by uuid
+Subject: [PATCH] audioflinger: exempt ViPER from suspend by uuid
 
 The ViPER exemption in isEffectEligibleForSuspend() compares SL_V4A_RE,
 which is ViPER4Android RE's implementation uuid
@@ -14,22 +14,30 @@ effect. Compare desc.uuid instead.
 Co-Authored-By: Claude <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_019koBAc5T4WjFHL6bYvou5m
 ---
- services/audioflinger/Effects.cpp | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ services/audioflinger/Effects.cpp | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/services/audioflinger/Effects.cpp b/services/audioflinger/Effects.cpp
-index 0e0c142e1a..6e67e87671 100644
+index a9b84bc..a7165ca 100644
 --- a/services/audioflinger/Effects.cpp
 +++ b/services/audioflinger/Effects.cpp
-@@ -3018,7 +3018,7 @@ bool EffectChain::isEffectEligibleForSuspend(const effect_descriptor_t& desc)
-           (memcmp(&desc.type, SL_IID_DAP, sizeof(effect_uuid_t)) == 0) ||
-           (memcmp(&desc.type, SL_IID_DAP_SW, sizeof(effect_uuid_t)) == 0) ||
-           (memcmp(&desc.type, SL_IID_DAP_OFFLOAD, sizeof(effect_uuid_t)) == 0) ||
--          (memcmp(&desc.type, SL_V4A_RE, sizeof(effect_uuid_t)) == 0) ||
+@@ -2971,6 +2971,11 @@ static const effect_uuid_t SL_IID_VOLUME_ = { 0x09e8ede0, 0xddde, 0x11db, 0xb4f6
+ const effect_uuid_t * const SL_IID_VOLUME = &SL_IID_VOLUME_;
+ #endif //OPENSL_ES_H_
+ 
++// ViperFx
++static const effect_uuid_t SL_V4A_RE_ = // 90380da3-8536-4744-a6a3-5731970e640f
++{ 0x90380da3, 0x8536, 0x4744, 0xa6a3, {0x57, 0x31, 0x97, 0x0e, 0x64, 0x0f} };
++const effect_uuid_t * const SL_V4A_RE = &SL_V4A_RE_;
++
+ /* static */
+ bool EffectChain::isEffectEligibleForBtNrecSuspend_l(const effect_uuid_t* type) {
+     // Only NS and AEC are suspended when BtNRec is off
+@@ -2990,6 +2995,7 @@ bool EffectChain::isEffectEligibleForSuspend(const effect_descriptor_t& desc)
+           (desc.flags & EFFECT_FLAG_NOT_ELIGIBLE_SUSPEND) ||
+           (memcmp(&desc.type, SL_IID_VISUALIZATION, sizeof(effect_uuid_t)) == 0) ||
+           (memcmp(&desc.type, SL_IID_VOLUME, sizeof(effect_uuid_t)) == 0) ||
 +          (memcmp(&desc.uuid, SL_V4A_RE, sizeof(effect_uuid_t)) == 0) ||
-           (memcmp(&desc.type, SL_AXFX, sizeof(effect_uuid_t)) == 0) ||
            (memcmp(&desc.type, SL_IID_DYNAMICSPROCESSING, sizeof(effect_uuid_t)) == 0)))) {
          return false;
--- 
-2.43.0
-
+     }

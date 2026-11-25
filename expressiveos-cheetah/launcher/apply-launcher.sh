@@ -5,11 +5,11 @@
 #   1. fetch-launcher.sh: the pinned release APK, its LICENSE and notices, verified;
 #   2. stage them with tree/ into vendor/extra/launcher (Android.bp removed first and written
 #      last, so Soong never sees it without its files; anything else there goes);
-#   3. vendor/extra/product.mk inherits launcher.mk (Evolution X's vendor_evolution, checked
-#      out at vendor/lineage, has config/common.mk inherit vendor/extra/product.mk);
+#   3. vendor/extra/product.mk inherits launcher.mk (vendor/expressiveos/config/common.mk
+#      inherits vendor/extra/product.mk);
 #   4. tools/launcher-check.sh tree: the pre-build guards.
 # Run it on every build (../tools/eos-images.sh does), for every phone: launcher.mk adds the
-# launcher to all of ExpressiveOS's lineage_<device> products.
+# launcher to all of ExpressiveOS's eos_<device> products.
 # Nothing is written through a symlink that leads out of the tree.
 #
 #   apply-launcher.sh [top]      # default ~/expressiveos
@@ -29,7 +29,7 @@ source "$here/launcher.conf" || fail "can't read $here/launcher.conf"
 mkline="$here/tools/mk-line.awk"
 [[ -f "$mkline" ]] || fail "no $mkline"
 
-arg=${1:-$HOME/expressiveos}
+arg=${1:-${EOS_TOP:-$HOME/expressiveos}}
 [[ $# -le 1 ]] || fail "usage: apply-launcher.sh [top]"
 [[ -d "$arg" ]] || fail "no tree at $arg"
 top="$(cd "$arg" && pwd -P)"
@@ -106,7 +106,7 @@ elif [[ -f "$pm" ]]; then
     echo "added to vendor/extra/product.mk: $line"
 else
     printf '%s\n' \
-        "# ExpressiveOS additions. vendor/lineage/config/common.mk inherits this file when it exists." \
+        "# ExpressiveOS additions. vendor/expressiveos/config/common.mk inherits this file when it exists." \
         "# Not a repo project, so repo sync leaves it alone." \
         "" \
         "# Expressive Launcher (expressiveos-cheetah/launcher)" \

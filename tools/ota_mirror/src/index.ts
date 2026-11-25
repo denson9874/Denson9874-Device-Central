@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 
-// Serves the OTA packages in the denson9874-ota R2 bucket to the Updaters: GET and HEAD of an exact key, with
+// Serves the OTA packages in the denson9874-ota R2 bucket to the Updaters (both 1.x expressiveos/<dev>/ota/ and
+// 2.0 expressiveos/v2/<dev>/ota/, plus expressiveos/keybox.xml): GET and HEAD of an exact key, with
 // single byte ranges so interrupted downloads resume. Nothing else, so the bucket can't be listed.
 export default {
 	async fetch(request) {

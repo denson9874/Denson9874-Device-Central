@@ -13,9 +13,9 @@ The zip must hold what a clean flash needs, for this phone only (android-info.tx
 board=<device>' and no other board/product line, as eos-pack.sh writes it).
 
 R2 (tools/ota_mirror/README.md for the rclone remote), nothing else ever written:
-  <remote>/expressiveos/<device>/flasher/<file> and <file>.sha256          (a release's files)
-  <remote>/expressiveos/<device>/flasher/testers/<file> and <file>.sha256  (a --testers build's)
-  <remote>/expressiveos/<device>/flasher.json                              (the manifest, both channels)
+  <remote>/expressiveos/v2/<device>/flasher/<file> and <file>.sha256          (a release's files)
+  <remote>/expressiveos/v2/<device>/flasher/testers/<file> and <file>.sha256  (a --testers build's)
+  <remote>/expressiveos/v2/<device>/flasher.json                              (the manifest, both channels)
 Each channel has its own folder, so a testers build and a release may have the same name. A
 published name is never overwritten with another file: a name the run's channel folder already
 holds with the same sha256 is left as it is (a re-run), with another one the run fails. What goes
@@ -47,6 +47,8 @@ from typing import BinaryIO, NoReturn
 
 DEVICES = ("cheetah", "husky", "kodiak", "grizzly", "cubs", "yogi")
 DEFAULT_REMOTE = "r2:denson9874-ota"
+DEFAULT_PREFIX = "expressiveos/v2"
+PREFIXES = ("expressiveos", "expressiveos/v2")
 DEFAULT_RCLONE = "~/bin/rclone"
 DEFAULT_KEEP = 2
 CHANNELS = ("release", "testers")
@@ -381,8 +383,13 @@ def plan_releases(existing: list[dict], entry: dict, keep: int) -> tuple[list[di
     when no kept release of its own channel lists it."""
     others = [e for e in existing if key(e) != key(entry)]
     replaced = [e for e in existing if key(e) == key(entry)]
-    # Stable: the new release goes first among equals
-    ordered = sorted([entry] + others, key=sort_key, reverse=True)
+    # Stable: a genuinely new/updated release goes first among equals; an idempotent re-run whose
+    # sort_key matches the existing entry keeps its relative order across channels on a 1s tie.
+    if replaced and sort_key(entry) == sort_key(replaced[0]):
+        candidates = [entry if key(e) == key(entry) else e for e in existing]
+    else:
+        candidates = [entry] + others
+    ordered = sorted(candidates, key=sort_key, reverse=True)
     kept, dropped = [], []
     count: collections.Counter[str] = collections.Counter()
     for e in ordered:
@@ -435,13 +442,17 @@ class R2:
     """The device's part of the bucket, through rclone, for one channel's run: nothing but the
     manifest and the files directly in that channel's folder is ever written."""
 
-    def __init__(self, rclone: str, remote: str, device: str, channel: str, dry_run: bool):
+    def __init__(self, rclone: str, remote: str, device: str, channel: str, dry_run: bool,
+                 prefix: str = DEFAULT_PREFIX):
+        if prefix not in PREFIXES:
+            fail(f"--prefix {prefix!r:.40} isn't one of {', '.join(PREFIXES)}")
         self.rclone = rclone
         self.remote = remote
+        self.prefix = prefix
         self.dry_run = dry_run
         self.device = device
         self.channel = channel
-        self.device_dir = f"{remote}/expressiveos/{device}"
+        self.device_dir = f"{remote}/{prefix}/{device}"
         self.channel_dir = self.dir_of(channel)
         self.manifest = f"{self.device_dir}/flasher.json"
 
@@ -594,13 +605,14 @@ class Parser(argparse.ArgumentParser):
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
     p = Parser(prog="flasher_publish.py", description=(
-        "Publish an ExpressiveOS release for the web flasher. Its files go to R2's expressiveos/<device>/flasher/ "
-        "(a testers build's to flasher/testers/), and expressiveos/<device>/flasher.json lists it."))
+        "Publish an ExpressiveOS release for the web flasher. Its files go to R2's expressiveos/v2/<device>/flasher/ "
+        "(a testers build's to flasher/testers/), and expressiveos/v2/<device>/flasher.json lists it."))
     p.add_argument("device", help=" | ".join(DEVICES))
     p.add_argument("zip", help="the release's ...-fastboot.zip (eos-pack.sh), its .sha256 beside it")
     p.add_argument("--testers", action="store_true",
                    help="the testers channel, its files in flasher/testers/ (default: the release channel, in flasher/)")
     p.add_argument("--remote", default=DEFAULT_REMOTE, help=f"rclone remote:bucket (default {DEFAULT_REMOTE})")
+    p.add_argument("--prefix", default=DEFAULT_PREFIX, help=f"bucket prefix: {' | '.join(PREFIXES)} (default {DEFAULT_PREFIX})")
     p.add_argument("--rclone", default=DEFAULT_RCLONE, help=f"rclone (default {DEFAULT_RCLONE})")
     p.add_argument("--keep", type=int, default=DEFAULT_KEEP, help=f"releases listed per channel (default {DEFAULT_KEEP})")
     p.add_argument("--dry-run", action="store_true", help="check and read R2, write nothing")
@@ -629,6 +641,8 @@ def run(argv: list[str] | None) -> None:
     # Its own folder of the bucket, as eos-pack.sh's EOS_R2_REMOTE (and no rclone flag)
     if not REMOTE_RE.fullmatch(a.remote) or a.remote.startswith("-"):
         fail(f"--remote {a.remote!r:.80} isn't <rclone remote>:<bucket>")
+    if a.prefix not in PREFIXES:
+        fail(f"--prefix {a.prefix!r:.40} isn't one of {', '.join(PREFIXES)}")
     if a.keep < 1:
         fail(f"--keep {a.keep}: the manifest lists at least 1 release per channel")
     rclone = os.path.abspath(os.path.expanduser(a.rclone))
@@ -690,7 +704,7 @@ def publish(a: argparse.Namespace, device: str, zip_path: str, name: str, base: 
     print(f"OK: {name} holds {', '.join(REQUIRED_ENTRIES)}, stored; android-info.txt requires board={device} only")
     channel = "testers" if a.testers else "release"
 
-    r2 = R2(rclone, a.remote, device, channel, a.dry_run)
+    r2 = R2(rclone, a.remote, device, channel, a.dry_run, prefix=a.prefix)
     files = [z] + ([stock] if stock else [])
     no_stock = (f"{base} was published as a BakaSU build, with {stock_name}, which isn't beside {zip_path}: "
                 "it would be listed without root. Publish it from the folder that holds its stock boot")

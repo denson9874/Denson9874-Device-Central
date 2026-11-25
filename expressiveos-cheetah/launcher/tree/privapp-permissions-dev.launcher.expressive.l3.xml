@@ -3,7 +3,7 @@
      it asks for (launcher.conf EL_PRIVAPP_PERMS). Pixel Launcher, which it replaces as the Recents app, holds
      them too (vendor/gms privapp-permissions-google-se.xml). Without a line here a
      privileged system app stops the boot under ro.control_privapp_permissions=enforce; the
-     build sets "log" today (vendor/lineage config/common.mk), which only logs it. -->
+     build sets "log" today (vendor/expressiveos/config/common.mk), which only logs it. -->
 <permissions>
     <privapp-permissions package="dev.launcher.expressive.l3">
         <!-- Suggested apps (Lawnchair's usage-stats ranker) -->

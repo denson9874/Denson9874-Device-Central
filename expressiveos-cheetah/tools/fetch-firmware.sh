@@ -88,17 +88,17 @@ fi
 [[ -n "${url:-}" && -n "${sha:-}" && -n "${build:-}" ]] || { echo "couldn't find the newest $dev factory image on Google's page" >&2; exit 1; }
 echo "newest $dev factory image: $build ($url)"
 (( check )) && { echo "cached: $(cat "$dir/CURRENT" 2>/dev/null || echo none)"; exit 0; }
-if [[ "$(cat "$dir/CURRENT" 2>/dev/null)" == "$build" ]] && ls "$dir"/bootloader-$dev-*.img "$dir"/radio-$dev-*.img >/dev/null 2>&1; then
+if [[ "$(cat "$dir/CURRENT" 2>/dev/null)" == "$build" ]] && ls "$dir"/bootloader-$dev-*.img "$dir"/radio-$dev-*.img "$dir"/image-$dev-*.zip >/dev/null 2>&1; then
     echo "already cached: $build"; exit 0
 fi
 zip="$dir/$(basename "$url")"
 curl -sSfL --retry 5 -C - -o "$zip" "$url"
 echo "$sha  $zip" | sha256sum -c --quiet || { rm -f "$zip"; echo "SHA-256 mismatch for $zip" >&2; exit 1; }
 work=$(mktemp -d -p "$dir"); trap 'rm -rf "$work"' EXIT
-unzip -q -j -o "$zip" "*/bootloader-$dev-*.img" "*/radio-$dev-*.img" -d "$work"
-ls "$work"/bootloader-$dev-*.img "$work"/radio-$dev-*.img >/dev/null
-rm -f "$dir"/bootloader-$dev-*.img "$dir"/radio-$dev-*.img
-mv "$work"/*.img "$dir/"
+unzip -q -j -o "$zip" "*/bootloader-$dev-*.img" "*/radio-$dev-*.img" "*/image-$dev-*.zip" -d "$work"
+ls "$work"/bootloader-$dev-*.img "$work"/radio-$dev-*.img "$work"/image-$dev-*.zip >/dev/null
+rm -f "$dir"/bootloader-$dev-*.img "$dir"/radio-$dev-*.img "$dir"/image-$dev-*.zip
+mv "$work"/*.img "$work"/image-$dev-*.zip "$dir/"
 echo "$build" > "$dir/CURRENT"
-rm -f "$zip"   # the two images are all a build needs
-echo "FIRMWARE_OK $build: $(cd "$dir" && ls bootloader-$dev-*.img radio-$dev-*.img | paste -sd' ')"
+rm -f "$zip"
+echo "FIRMWARE_OK $build: $(cd "$dir" && ls bootloader-$dev-*.img radio-$dev-*.img image-$dev-*.zip | paste -sd' ')"

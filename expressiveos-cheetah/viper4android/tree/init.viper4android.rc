@@ -6,9 +6,12 @@
 # stays as it is and visible, and ViPER's driver and config appear beside them. Nothing is written
 # to the vendor image. expressiveos-cheetah/viper4android/README.md has the details.
 #
-# early-boot comes before "on boot" starts class hal, the audio HAL's class. A mount that fails is
-# logged and skipped: the phone boots with stock audio and no ViPER.
-on early-boot
+# Android 17 QPR2 starts the Pixel audio HAL APEX on apex.com.google.pixel.audio.hal.ready=true
+# (immediately after post-fs-data / APEX activation), which can race with "on early-boot".
+# Mounting the overlayfs at "on post-fs" guarantees /vendor/lib64/soundfx and /vendor/etc are
+# overlaid BEFORE the audio HAL APEX activates and opens audio_effects_config.xml.
+# A mount that fails is logged and skipped: the phone boots with stock audio and no ViPER.
+on post-fs
     mount overlay overlay /vendor/lib64/soundfx ro nosuid nodev noatime lowerdir=/product/vendor_overlay/0/lib64/soundfx:/vendor/lib64/soundfx,userxattr
     mount overlay overlay /vendor/etc ro nosuid nodev noatime lowerdir=/product/vendor_overlay/0/etc:/vendor/etc,userxattr
     setprop eos.v4a.restarts 0

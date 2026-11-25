@@ -9,8 +9,15 @@ set -euo pipefail
 KITSRC=$(cd "$(dirname -- "$(readlink -f -- "$0")")/../.." && pwd)
 S=$KITSRC/tools/eos-keys-move.sh
 W=$(mktemp -d "${TMPDIR:-/tmp}/eos-keys-move-test.XXXXXX")
-export HOME=$W/home TMPDIR=$W/tmp TMUX_TMPDIR=$W/tmux
-mkdir -p "$HOME" "$TMPDIR" "$TMUX_TMPDIR"
+# Unset TMUX and any caller EOS_* overrides so the test never touches an outer tmux server
+# or a real build tree / lock file outside its fake $HOME.
+unset TMUX
+mapfile -t _eos_vars < <(compgen -v EOS_ || true)
+(( ${#_eos_vars[@]} == 0 )) || unset "${_eos_vars[@]}"
+unset _eos_vars
+TMUX_TMPDIR=$(mktemp -d /tmp/eos-keys-move-tmux.XXXXXX)
+export HOME=$W/home TMPDIR=$W/tmp TMUX_TMPDIR
+mkdir -p "$HOME" "$TMPDIR"
 top=$HOME/expressiveos
 OLD=$top/vendor/evolution-priv NEW=$top/vendor/expressiveos-priv
 mkdir -p "$top/build" "$top/vendor/lineage/config"
@@ -72,7 +79,7 @@ release() {   # stop what hold started, and its children (flock's sleep)
     done
     bg_pids=()
 }
-trap release EXIT
+trap 'tmux kill-server 2>/dev/null || true; release; rm -rf -- "$TMUX_TMPDIR"' EXIT
 
 mkfolder
 snap "$OLD" > "$W/orig.snap"
@@ -97,6 +104,9 @@ done
 hold bash -c 'exec -a soong_ui sleep 30'
 rc=$(run move); ok "move refuses while a build (soong_ui) runs" '[[ $rc = 1 ]] && last | grep -q "^KEYS_MOVE=FAIL: a build runs" && unchanged'
 rc=$(run check); ok "  check reports it, MOVE_READY=no" '[[ $rc = 0 ]] && grep -q "^a build runs: " "$W/out.log" && grep -q "^MOVE_READY=no: something builds or syncs" "$W/out.log"'
+release
+hold bash -c 'exec -a prebuilts/siso/linux-x86/siso sleep 30'
+rc=$(run move); ok "move refuses while a build (siso) runs" '[[ $rc = 1 ]] && last | grep -q "^KEYS_MOVE=FAIL: a build runs" && unchanged'
 release
 hold bash -c 'exec -a /home/build/bin/repo sleep 30'
 rc=$(run move); ok "move refuses while repo runs" '[[ $rc = 1 ]] && last | grep -q "^KEYS_MOVE=FAIL: a repo command runs" && unchanged'

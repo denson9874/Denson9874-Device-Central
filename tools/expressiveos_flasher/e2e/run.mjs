@@ -65,7 +65,7 @@ function release(device, name, { channel = "release", boot = images["boot.img"],
 		{ zip64: true },
 	);
 	// The testers channel has its own folder (flasher/testers/), so its names can repeat a release's
-	const dir = join(fixtures, device, "flasher", channel === "testers" ? "testers" : "");
+	const dir = join(fixtures, "v2", device, "flasher", channel === "testers" ? "testers" : "");
 	mkdirSync(dir, { recursive: true });
 	writeFileSync(join(dir, `${name}-fastboot.zip`), z);
 	if (stockImage) writeFileSync(join(dir, `${name}-boot-stock.img`), stockImage);
@@ -84,7 +84,7 @@ function release(device, name, { channel = "release", boot = images["boot.img"],
 	};
 }
 function manifest(device, releases) {
-	writeFileSync(join(fixtures, device, "flasher.json"), JSON.stringify({ schema: 1, device, updated: "2026-10-31T12:00:00Z", releases }));
+	writeFileSync(join(fixtures, "v2", device, "flasher.json"), JSON.stringify({ schema: 1, device, updated: "2026-10-31T12:00:00Z", releases }));
 }
 
 rmSync(fixtures, { recursive: true, force: true });
@@ -386,7 +386,7 @@ try {
 		await page.getByRole("button", { name: "Continue", exact: true }).click();
 		await page.getByRole("button", { name: "Download", exact: true }).click();
 		await page.getByText("Downloaded and checked").first().waitFor({ timeout: 60_000 });
-		check(state.requests.includes(`GET /dl/cheetah/testers/${NAME}-fastboot.zip`), "the testers build downloads from its own folder");
+		check(state.requests.includes(`GET /dl/v2/cheetah/testers/${NAME}-fastboot.zip`), "the testers build downloads from its own folder");
 		await page.getByRole("button", { name: "Continue", exact: true }).click();
 		await page.getByRole("button", { name: "Connect", exact: true }).click();
 		await page.getByText("Ready to install").waitFor();

@@ -137,16 +137,17 @@ tree)
         done < <(find "$dest" ! -type d -print0 | LC_ALL=C sort -z)
     fi
     [[ $ok = 0 ]] || pass "vendor/extra/launcher matches the kit and launcher.conf ($EL_PACKAGE $EL_VERSION, $EL_VERSION_CODE)"
-    # Pixel Launcher ships too, and its Home activity has priority 0. The Home role has no
-    # default holder: it falls back to the highest-priority Home activity and, on a tie, to
-    # nobody (a clean flash's Home then shows a chooser). So the pinned release's must be above 0.
+    # Expressive Launcher ships at priority 0 (ExpressiveLauncher e36e60c0e9) so it does not
+    # outrank a third-party launcher the user chooses, while pixel-launcher-home-off.xml keeps
+    # Pixel Launcher's Home activity disabled by default so a clean flash lands on Expressive
+    # Launcher with no chooser.
     if [[ -f "$dest/ExpressiveLauncher.apk" ]]; then
         hp=$(python3 -I "$kit/tools/apk-info.py" --home "$dest/ExpressiveLauncher.apk" 2>&1 \
             | awk -F'\t' -v p="home $EL_PACKAGE/$EL_HOME_ACTIVITY " 'index($2, p) == 1 { sub(/.* priority=/, "", $2); sub(/ .*/, "", $2); print $2; exit }' || true)
-        if [[ "$hp" =~ ^[0-9]+$ ]] && (( hp > 0 )); then
-            pass "the pinned APK's Home activity has priority $hp, above Pixel Launcher's 0: it's the default Home on a clean flash"
+        if [[ "$hp" =~ ^[0-9]+$ ]] && (( hp >= 0 )); then
+            pass "the pinned APK's Home activity has priority $hp (Pixel Launcher's Home is off by default via $PIXEL_SYSCONFIG)"
         else
-            bad "the pinned APK's Home activity ($EL_HOME_ACTIVITY) has priority ${hp:-unreadable}: with Pixel Launcher also shipping at 0, a clean flash would show a Home chooser. Pin a release with ExpressiveLauncher#49 (priority 1)"
+            bad "the pinned APK's Home activity ($EL_HOME_ACTIVITY) has priority ${hp:-unreadable}: expected a non-negative priority"
         fi
     fi
     line='$(call inherit-product, vendor/extra/launcher/launcher.mk)'
@@ -156,23 +157,22 @@ tree)
         nested) bad "vendor/extra/product.mk inherits launcher.mk only inside an ifeq/ifdef/define block: move the line to the top level" ;;
         *) bad "vendor/extra/product.mk doesn't inherit launcher.mk: run apply-launcher.sh" ;;
     esac
-    # Evolution X's vendor_evolution is checked out at vendor/lineage; its config/common.mk
-    # line 2 reads vendor/extra/product.mk
-    if grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/lineage/config/common.mk" 2>/dev/null; then
-        pass "vendor/lineage/config/common.mk inherits vendor/extra/product.mk"
+    # vendor/expressiveos/config/common.mk reads vendor/extra/product.mk
+    if grep -qE '^\s*\$\(call inherit-product-if-exists, *vendor/extra/product\.mk\)' "$top/vendor/expressiveos/config/common.mk" 2>/dev/null; then
+        pass "vendor/expressiveos/config/common.mk inherits vendor/extra/product.mk"
     else
-        bad "vendor/lineage/config/common.mk is missing or no longer inherits vendor/extra/product.mk: Expressive Launcher would silently be left out"
+        bad "vendor/expressiveos/config/common.mk is missing or no longer inherits vendor/extra/product.mk: Expressive Launcher would silently be left out"
     fi
     # Every ExpressiveOS phone's product is in launcher.mk's list
     mk_filter=$(grep -m1 -E '^ifneq \(\$\(filter ' "$kit/tree/launcher.mk" || true)
     miss=()
     for d in "${phones[@]}"; do
-        [[ " ${mk_filter//[(),]/ } " = *" lineage_$d "* ]] || miss+=("$d")
+        [[ " ${mk_filter//[(),]/ } " = *" eos_$d "* ]] || miss+=("$d")
     done
     if [[ ${#miss[@]} = 0 && ${#phones[@]} -gt 0 ]]; then
         pass "launcher.mk covers every ExpressiveOS phone (${phones[*]})"
     else
-        bad "launcher.mk's product list lacks: ${miss[*]:-no devices/*.conf found} (add lineage_<device> to its filter)"
+        bad "launcher.mk's product list lacks: ${miss[*]:-no devices/*.conf found} (add eos_<device> to its filter)"
     fi
 
     # The privapp allowlist. A privileged permission the APK asks for that the XML doesn't
@@ -210,7 +210,7 @@ tree)
         want=$(xq string "$fw_res" "$n")
         xq sources "$n" "$top" > "$T/src"
         if [[ ! -s "$T/src" ]]; then
-            bad "nothing in the tree sets $n (frameworks/base, vendor/lineage/overlay/common, vendor/pixel-style): check tree/overlay/framework's by hand (README.md)"
+            bad "nothing in the tree sets $n (frameworks/base, vendor/expressiveos/overlay/common, vendor/pixel-style): check tree/overlay/framework's by hand (README.md)"
             continue
         fi
         IFS=$'\t' read -r pr from val < "$T/src"
@@ -307,7 +307,11 @@ out)
         "$O"/product/priv-app "$O"/vendor/app "$O"/vendor/priv-app "$O"/odm/app "$O"/odm/priv-app \
         -mindepth 2 -maxdepth 2 -name '*.apk' -print0 2>/dev/null \
         | xargs -0 -r python3 -I "$kit/tools/apk-info.py" --home > "$T/home" 2>&1 || true
-    el_pr= others=() off=() unread=() suw=()
+    el_pr= pixel_home_off=0 others=() off=() unread=() suw=()
+    pixel_sysconfig_disables=0
+    if grep -qF "class=\"${PIXEL_HOME#*/}\" enabled=\"false\"" "$O/system_ext/etc/sysconfig/$PIXEL_SYSCONFIG" 2>/dev/null; then
+        pixel_sysconfig_disables=1
+    fi
     while IFS=$'\t' read -r f what; do
         f=${f#"$O/"}
         case $what in
@@ -322,11 +326,16 @@ out)
             [[ "$comp" = "$EL_PACKAGE/$EL_HOME_ACTIVITY" && "$f" = system_ext/priv-app/ExpressiveLauncher/* ]] && el_pr=$pr
             continue
         fi
+        if [[ "$comp" = "$PIXEL_HOME" && "$pixel_sysconfig_disables" = 1 ]]; then
+            pixel_home_off=1
+            off+=("$comp (via $PIXEL_SYSCONFIG)")
+            continue
+        fi
         (( pr < 0 )) && continue
         # "priority|component|note" for each
         case "$en:${comp%%/*}" in
             false:*) off+=("$comp") ;;
-            true:com.google.android.setupwizard|true:com.google.android.pixel.setupwizard|true:org.lineageos.setupwizard|true:com.android.provision)
+            true:com.google.android.setupwizard|true:com.google.android.pixel.setupwizard|true:com.android.provision)
                 (( pr > 0 )) && suw+=("$pr|$comp|$f") || others+=("$pr|$comp|$f") ;;
             true:*) others+=("$pr|$comp|$f") ;;
             *) others+=("$pr|$comp|enabled set by a resource: check by hand, $f") ;;
@@ -344,10 +353,10 @@ out)
             IFS='|' read -r pr comp note <<<"$o"
             (( pr > el_pr )) || low+=("$comp (priority $pr, $note)")
         done
-        [[ ${#tie[@]} = 0 ]] && pass "Expressive Launcher's Home activity (priority $el_pr) outranks every other enabled one but the setup wizard's: it's the default Home on a clean flash" \
-            || bad "enabled Home activities at Expressive Launcher's priority ($el_pr) or above: ${tie[*]} (a tie leaves the Home role empty and a clean flash shows a chooser; pin a release whose Home priority is above theirs)"
-        [[ ${#others[@]} = 0 ]] && bad "no other Home app ships: Pixel Launcher's Home activity is missing, so the launcher switch has nothing to switch to"
-        [[ ${#below[@]} = 0 ]] || info "other Home activities, below it (Pixel Launcher's is off until the launcher switch turns it on): ${below[*]}"
+        [[ ${#tie[@]} = 0 ]] && pass "Expressive Launcher's Home activity (priority $el_pr) is the only enabled non-setup Home activity (Pixel Launcher disabled via $PIXEL_SYSCONFIG): default Home on a clean flash with no chooser" \
+            || bad "enabled Home activities at Expressive Launcher's priority ($el_pr) or above: ${tie[*]} (a tie leaves the Home role empty and a clean flash shows a chooser)"
+        [[ "$pixel_home_off" = 1 || ${#others[@]} -gt 0 ]] || bad "Pixel Launcher's Home activity ($PIXEL_HOME) is missing, so the launcher switch has nothing to switch to"
+        [[ ${#below[@]} = 0 ]] || info "other enabled Home activities below Expressive Launcher: ${below[*]}"
         if [[ ${#low[@]} != 0 ]]; then
             bad "setup wizard Home activities at or below Expressive Launcher's priority ($el_pr): ${low[*]} (setup would no longer come first on a clean flash)"
         elif [[ ${#suw[@]} != 0 ]]; then
