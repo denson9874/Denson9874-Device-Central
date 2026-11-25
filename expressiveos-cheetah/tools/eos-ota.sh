@@ -67,11 +67,15 @@ cleanup() {
 trap cleanup EXIT
 # shellcheck source=../lib.sh
 source "$(dirname -- "$(readlink -f -- "$0")")/../lib.sh"
-mode=${1:-}
-usage="usage: eos-ota.sh [--upload | --candidate]"
+mode=''
+usage="usage: eos-ota.sh [--upload | --candidate] [top]"
+if [[ "${1:-}" = -* ]]; then
+    mode=$1
+    shift
+fi
 case "$mode" in ''|--upload|--candidate) ;; *) fail "$usage" ;; esac
 [[ $# -le 1 ]] || fail "$usage"
-eos_top ""
+eos_top "${1:-}"
 cd "$top"
 exec 8>"$EOS_LOCK"
 flock -n 8 || fail "an ExpressiveOS build, setup or pack is running (${EOS_LOCK/#"$HOME"/\~})"

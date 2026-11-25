@@ -73,10 +73,14 @@ cleanup() {
 trap cleanup EXIT
 # shellcheck source=../lib.sh
 source "$(dirname -- "$(readlink -f -- "$0")")/../lib.sh"
-mode=${1:-}
-case "$mode" in ''|--release|--upload|--testers) ;; *) fail "usage: eos-pack.sh [--release | --upload | --testers]" ;; esac
-[[ $# -le 1 ]] || fail "usage: eos-pack.sh [--release | --upload | --testers]"
-eos_top ""
+mode=''
+if [[ "${1:-}" = -* ]]; then
+    mode=$1
+    shift
+fi
+case "$mode" in ''|--release|--upload|--testers) ;; *) fail "usage: eos-pack.sh [--release | --upload | --testers] [top]" ;; esac
+[[ $# -le 1 ]] || fail "usage: eos-pack.sh [--release | --upload | --testers] [top]"
+eos_top "${1:-}"
 cd "$top"
 O=$EOS_PRODUCT_OUT
 # Not while an ExpressiveOS build or setup runs: out/ would change under the zip (--testers
