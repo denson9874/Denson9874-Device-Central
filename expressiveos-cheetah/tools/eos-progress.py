@@ -262,6 +262,8 @@ def plan(d, kind):
         return ['make']
     if kind == 'publish':
         return ['pack', 'ota', 'web']
+    if kind == 'stage':
+        return ['pack', 'ota']
     if kind in ('testers', 'release', 'upload'):
         return ['pack']
     steps = ['prepare'] + (['kernel'] if builds_kernel(d) else [])
@@ -315,6 +317,8 @@ class Run:
             envs += ' ' + m.group(1)
         if 'eos-release.sh' in sh:
             self.kind = 'publish'
+        elif 'eos-stage.sh' in sh:
+            self.kind = 'stage'
         elif 'build-modules.sh' in sh:
             self.kind = 'modules'
         elif '--testers' in sh:
@@ -386,8 +390,8 @@ class Run:
                 p = self.cur = self.phone(g.group(2))
                 p.stamped = True
                 self.set_step(p, g.group(1), at)
-                # A release session's phone stays publish (its pack's STEP lines say upload)
-                if g.group(3) != '-' and self.kind != 'publish':
+                # A release or stage session's phone stays publish/stage
+                if g.group(3) != '-' and self.kind not in ('publish', 'stage'):
                     p.kind = g.group(3)
                 if g.group(4) in ('0', '1'):
                     p.fresh = g.group(4)
@@ -401,13 +405,13 @@ class Run:
             if t.startswith('== '):
                 self.header(p, t)
                 continue
-            g = re.fullmatch(r'DEVICE ([a-z0-9]+): RELEASE=(OK|FAIL)(.*)', t)
+            g = re.fullmatch(r'DEVICE ([a-z0-9]+): (?:RELEASE|STAGE)=(OK|FAIL)(.*)', t)
             if g:
                 q = self.phone(g.group(1))
                 q.state = 'done' if g.group(2) == 'OK' else 'failed'
                 if g.group(2) == 'OK':
                     q.step = 'done'
-                for rest in re.findall(r'; not released: ([a-z0-9 ]+)', g.group(3)):
+                for rest in re.findall(r'; not (?:released|staged): ([a-z0-9 ]+)', g.group(3)):
                     for d in rest.split():
                         self.phone(d).state = 'skipped'
                 continue
@@ -683,12 +687,13 @@ WORDS = {'ninja': "Soong's own estimate", 'rate': "the make's pace so far", 'his
 
 def words(p):
     kind = {'quick': 'quick build', 'kernel': 'kernel-only build', 'modules': 'compile check',
-            'testers': 'upload for testers', 'publish': 'release'}.get(p.kind, 'full build')
+            'testers': 'upload for testers', 'publish': 'release', 'stage': 'pre-upload stage'}.get(p.kind, 'full build')
     if p.state == 'running':
         what = {'wait': 'waiting for another build to finish', 'prepare': 'preparing the tree',
                 'kernel': 'building the kernel', 'make': 'compiling', 'target_files': 'zipping the target-files',
                 'ota_zip': 'making the OTA package', 'verify': 'checking the build', 'pack': 'packing the zip',
-                'ota': 'making and uploading the OTA packages', 'web': 'publishing to the web installer'}.get(p.step, p.step)
+                'ota': 'making the OTA packages' if p.kind == 'stage' else 'making and uploading the OTA packages',
+                'web': 'publishing to the web installer'}.get(p.step, p.step)
         if p.step in MAKE_STEPS and (p.counts or p.prog):
             done, total = (p.counts['done'], p.counts['total']) if p.counts else p.prog[:2]
             if total:
@@ -704,6 +709,7 @@ def words(p):
         return s + (f'; done around {eastern(p.eta)} ({WORDS[p.basis]}).' if p.eta else '.')
     if p.state == 'done':
         s = f'{p.d}: {kind}, ' + ('released: packed, OTA packages uploaded, on the web installer' if p.kind == 'publish'
+                                  else 'staged locally: packed and OTA preview ready (nothing uploaded)' if p.kind == 'stage'
                                   else 'built and packed' if p.kind not in ('kernel', 'modules', 'testers') else 'done')
         if p.started and p.ended:
             s += f' in {span(p.ended - p.started)} ({eastern(p.started)} to {eastern(p.ended)})'
@@ -722,8 +728,8 @@ def feed():
     """The feed files of the last release session's phones, for the feed's pull request."""
     sh = read(os.path.join(JOBS, 'pack.sh')).decode('utf-8', 'replace')
     m = re.search(r'^# phones: ([a-z0-9 ]+)$', sh, re.M)
-    if 'eos-release.sh' not in sh or not m:
-        print('FEED none: the last eos-pack session (~/expressiveos-jobs/pack.sh) was no release session')
+    if ('eos-release.sh' not in sh and 'eos-stage.sh' not in sh) or not m:
+        print('FEED none: the last eos-pack session (~/expressiveos-jobs/pack.sh) was no release or stage session')
         print('FEED_INCOMPLETE')
         return
     since = mtime(os.path.join(JOBS, 'pack.sh')) or 0
@@ -746,7 +752,7 @@ def feed():
         for line in lines:
             if line.startswith('===== OTA_FEED '):
                 inside = True
-            if inside or line.startswith(('UPLOADED_OTA ', 'OTA_FEED_READY ')):
+            if inside or line.startswith(('UPLOADED_OTA ', 'OTA_FEED_READY ', 'OTA_PREVIEW ')):
                 print(line)
             if line == '===== OTA_FEED_END':
                 inside = False

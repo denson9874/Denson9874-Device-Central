@@ -381,8 +381,9 @@ def plan_releases(existing: list[dict], entry: dict, keep: int) -> tuple[list[di
     when no kept release of its own channel lists it."""
     others = [e for e in existing if key(e) != key(entry)]
     replaced = [e for e in existing if key(e) == key(entry)]
-    # Stable: the new release goes first among equals
-    ordered = sorted([entry] + others, key=sort_key, reverse=True)
+    # Stable: a new or changed release goes first among equals; an identical re-run keeps its place
+    candidates = [entry if key(e) == key(entry) else e for e in existing] if replaced == [entry] else [entry] + others
+    ordered = sorted(candidates, key=sort_key, reverse=True)
     kept, dropped = [], []
     count: collections.Counter[str] = collections.Counter()
     for e in ordered:

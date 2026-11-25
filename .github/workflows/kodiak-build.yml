@@ -241,7 +241,7 @@ on:
       tree_ref:
         description: Branch, tag or commit of this repo to take expressiveos-cheetah from, for expressiveos-setup, -build, -pack, -ota, -kit and -firmware only. Every other action runs the scripts of the ref the workflow is dispatched on
         type: string
-        default: main
+        default: eos-1.3
       query:
         description: >-
           server-cleanup-list (optional) and
@@ -991,7 +991,7 @@ jobs:
       # for expressiveos-flasher-release, copied beside the session's job script (the session
       # outlives this job, and the next job's checkout empties this folder)
       - name: Check out the flasher publish script for a release session
-        if: inputs.action == 'expressiveos-pack' && contains(inputs.query, 'devices=')
+        if: inputs.action == 'expressiveos-pack' && contains(inputs.query, 'devices=') && contains(inputs.query, 'release')
         uses: actions/checkout@v4
         with:
           path: .eos-flasher
@@ -1012,7 +1012,7 @@ jobs:
           phone() {   # phone <name>: fail unless the kit has devices/<name>.conf
             [[ $1 =~ ^[a-z0-9]+$ && $known == *" $1 "* ]] || fail "'$1' isn't one of tree_ref's phones (expressiveos-cheetah/devices/*.conf):${known% }"
           }
-          envs=() dev= devs=() free_out=0 testers=0 tries=() mods= tryok=0 release=0 otamode=
+          envs=() dev= devs=() free_out=0 testers=0 tries=() mods= tryok=0 release=0 stage=0 otamode=
           for o in ${opts[@]+"${opts[@]}"}; do
             case "$ACTION:$o" in
               expressiveos-build:kernel-only) envs+=(KERNEL_ONLY=1) ;;
@@ -1023,6 +1023,7 @@ jobs:
               expressiveos-pack:testers) testers=1 ;;
               expressiveos-pack:try-ok) tryok=1 ;;
               expressiveos-pack:release) release=1 ;;
+              expressiveos-pack:stage) stage=1 ;;
               expressiveos-ota:upload|expressiveos-ota:candidate)
                 [[ -z $otamode ]] || fail "expressiveos-ota takes one of upload and candidate"
                 otamode=--${o} ;;
@@ -1062,9 +1063,9 @@ jobs:
               *) fail "query '$o' isn't for $ACTION (expressiveos-build takes device=<phone> or devices=<phone>,<phone>,..., kernel-only, kernel-sync, installclean, quick, clean, try=<path>@<commit>, modules=<module>,...; expressiveos-pack takes device=<phone>, testers, try-ok, release, devices=<phone>,<phone>,... with release; expressiveos-ota takes device=<phone>, upload, candidate)" ;;
             esac
           done
-          (( testers + release < 2 )) || fail "testers and release are two different packs: one at a time"
+          (( testers + release + stage < 2 )) || fail "testers, stage and release are different packs: one at a time"
           if [[ $ACTION = expressiveos-pack ]] && (( ${#devs[@]} )); then
-            [[ $release = 1 ]] || fail "devices= with expressiveos-pack is for release: each phone released in turn in one session (pack, OTA upload, web installer)"
+            [[ $release = 1 || $stage = 1 ]] || fail "devices= with expressiveos-pack is for stage or release"
           fi
           if (( ${#tries[@]} )) || [[ -n $mods ]]; then
             (( ${#devs[@]} == 0 && free_out == 0 )) || fail "try= and modules= are for one phone (device=, cheetah unless named), not with devices= or clean"
@@ -1390,7 +1391,7 @@ jobs:
             echo "phone: $dev" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
           case $ACTION in
-            expressiveos-setup) phones=; launch setup "$kit/setup.sh && $kit/ksu/fetch-ksu.sh" ;;
+            expressiveos-setup) phones=; launch setup "$kit/setup.sh && rm -f -- $(printf %q "$jobs/try.txt") && $kit/ksu/fetch-ksu.sh" ;;
             expressiveos-build)
               if [[ -n $mods ]]; then
                 # Written here, run in the eos-build session (nothing of ExpressiveOS's runs now)
@@ -1481,6 +1482,20 @@ jobs:
                   [[ $tryok = 1 ]] || fail "not sending a candidate with unmerged commits to testers: merge them and build again, or add try-ok to the query"
                 fi
                 t=" --testers"
+              elif [[ $stage = 1 ]]; then
+                rel=("$ph")
+                (( ${#devs[@]} == 0 )) || rel=("${devs[@]}")
+                for d in "${rel[@]}"; do
+                  st=$(state_of "$d") ck=$(check_of "$d")
+                  if [[ -f $ck/try.txt || -f $st/try.txt ]]; then
+                    { echo "the $d build was built with try= commits that aren't in ExpressiveOS's manifest:"; cat -- "$ck/try.txt" "$st/try.txt" 2>/dev/null | sed 's/^/  /'; } | tee -a "$GITHUB_STEP_SUMMARY"
+                    fail "not staging a build with unmerged commits ($d): merge them and build again"
+                  fi
+                done
+                [[ -f $kit/tools/eos-stage.sh ]] || fail "$TREE_REF's kit has no tools/eos-stage.sh"
+                phones=${rel[*]}
+                echo "stage locally (no R2 upload), in turn: ${rel[*]} (each: eos-pack.sh --release, then eos-ota.sh preview)" | tee -a "$GITHUB_STEP_SUMMARY"
+                launch pack "bash $(printf %q "$kit/tools/eos-stage.sh") ${rel[*]}"
               elif [[ $release = 1 ]]; then
                 # A release is the tested zip, from ExpressiveOS's manifest only: never try=
                 # commits. With devices=, every phone's records are checked before any is released
