@@ -11,11 +11,26 @@
 # contents of a proprietary file. It may run beside a build; du runs at low priority.
 set -uo pipefail
 export PATH=~/bin:$PATH GIT_OPTIONAL_LOCKS=0 GIT_TERMINAL_PROMPT=0 LC_ALL=C
-eos=~/expressiveos kit=~/expressiveos-cheetah
+eos=${EOS_TOP:-~/expressiveos}
+kit="$(cd "$(dirname -- "$(readlink -f -- "$0")")/.." && pwd)"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 DEVICES=(cheetah husky kodiak grizzly cubs yogi)
 P11=(kodiak grizzly cubs yogi)
+newest_factory_image_zip() {
+    local dev=$1 dir=${2:-${EOS_FIRMWARE_ROOT:-$HOME/android-dt/firmware}}
+    [[ -d $dir ]] || return 0
+    find "$dir" -maxdepth 1 -type f -name "image-$dev-*.zip" 2>/dev/null | LC_ALL=C awk -v pfx="image-$dev-" '
+    {
+        path = $0; base = path; sub(/^.*\//, "", base)
+        id = substr(base, length(pfx) + 1); sub(/\.zip$/, "", id); id_lc = tolower(id)
+        n = split(id_lc, f, ".")
+        date_key = (n >= 2 && f[2] ~ /^[0-9]{6}$/) ? f[2] : "000000"
+        seq_key  = (n >= 3 && f[3] ~ /^[0-9]+$/) ? sprintf("%06d", f[3] + 0) : "000000"
+        rest_key = (n >= 4) ? f[4] : ""
+        print date_key "\t" seq_key "\t" rest_key "\t" id_lc "\t" path
+    }' | LC_ALL=C sort | tail -n 1 | cut -f5-
+}
 h() { echo; echo "== $*"; }
 lowdu() { nice -n 19 ionice -c2 -n7 du -x -s -BG "$@" 2>/dev/null || true; }
 mkbootimg_unpack() {  # <boot image> <out dir>
@@ -162,7 +177,7 @@ h "firmware: factory and image zips, cached firmware"
 ls -l ~/android-dt/firmware/*.zip 2> /dev/null | awk '{print $5, $9}' | numfmt --to=iec --field=1 | sed "s#$HOME/##"
 for f in ~/android-dt/firmware/*/CURRENT; do [[ -f $f ]] && echo "${f#"$HOME"/}: $(head -c 200 "$f" | tr '\n' ' ')"; done
 for d in "${P11[@]}"; do
-    z=$(ls ~/android-dt/firmware/image-"$d"-*.zip 2> /dev/null | tail -1)
+    z=$(newest_factory_image_zip "$d")
     [[ -n $z ]] && echo "$d stock android-info: $(unzip -p "$z" android-info.txt 2> /dev/null | tr '\n' ' ')"
 done
 echo "-- husky radio images named by vendor/google/husky"

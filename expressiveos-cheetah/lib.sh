@@ -604,3 +604,22 @@ pins_install() {   # pins_install <tree> <pins file>: <tree>'s repo uses <pins f
     grep -qF '<include name="expressiveos-pins.xml" />' "$tree/.repo/manifest.xml" \
         || fail "$tree/.repo/manifest.xml doesn't use expressiveos-pins.xml after repo init -m"
 }
+
+newest_factory_image_zip() {   # newest_factory_image_zip <device> [dir]: newest image-<device>-*.zip ordered by build-id YYMMDD date field (not 4-char branch code)
+    local dev=$1 dir=${2:-${EOS_FIRMWARE_ROOT:-$HOME/android-dt/firmware}}
+    [[ -d $dir ]] || return 0
+    find "$dir" -maxdepth 1 -type f -name "image-$dev-*.zip" 2>/dev/null | LC_ALL=C awk -v pfx="image-$dev-" '
+    {
+        path = $0
+        base = path
+        sub(/^.*\//, "", base)
+        id = substr(base, length(pfx) + 1)
+        sub(/\.zip$/, "", id)
+        id_lc = tolower(id)
+        n = split(id_lc, f, ".")
+        date_key = (n >= 2 && f[2] ~ /^[0-9]{6}$/) ? f[2] : "000000"
+        seq_key  = (n >= 3 && f[3] ~ /^[0-9]+$/) ? sprintf("%06d", f[3] + 0) : "000000"
+        rest_key = (n >= 4) ? f[4] : ""
+        print date_key "\t" seq_key "\t" rest_key "\t" id_lc "\t" path
+    }' | LC_ALL=C sort | tail -n 1 | cut -f5-
+}

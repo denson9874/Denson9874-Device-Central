@@ -125,29 +125,52 @@ async function requestManifest(url: string, signal?: AbortSignal): Promise<Respo
 	}
 }
 
-export async function fetchReleases(device: string, signal?: AbortSignal): Promise<Release[]> {
-	const enc = encodeURIComponent(device);
-	let res = await requestManifest(`/api/releases/v2/${enc}`, signal);
-	let legacyV1 = false;
-	if (res.status === 404) {
-		// Until a phone's first EOS 2.0 release is published to expressiveos/v2/<device>/flasher.json,
-		// fall back to its live 1.x manifest so pre-launch Worker deploys and staggered rollouts stay live.
-		res = await requestManifest(`/api/releases/${enc}`, signal);
-		legacyV1 = true;
-	}
-	if (res.status === 404) throw new ReleasesError("There are no ExpressiveOS builds for this phone yet.", "none");
-	if (!res.ok) throw new ReleasesError(`The build list didn't load (HTTP ${res.status}). Try again in a minute.`, "network");
+async function parseResponseManifest(res: Response, device: string): Promise<{ releases: Release[]; skipped: string[] }> {
 	let value: unknown;
 	try {
 		value = await res.json();
 	} catch {
 		throw new ReleasesError("The build list isn't valid", "invalid");
 	}
-	const { releases, skipped } = parseManifest(value, device);
-	if (legacyV1) {
+	return parseManifest(value, device);
+}
+
+export async function fetchReleases(device: string, signal?: AbortSignal): Promise<Release[]> {
+	const enc = encodeURIComponent(device);
+	const res = await requestManifest(`/api/releases/v2/${enc}`, signal);
+	if (res.status === 404) {
+		// Until a phone's first EOS 2.0 release is published to expressiveos/v2/<device>/flasher.json,
+		// fall back to its live 1.x manifest so pre-launch Worker deploys and staggered rollouts stay live.
+		const v1Res = await requestManifest(`/api/releases/${enc}`, signal);
+		if (v1Res.status === 404) throw new ReleasesError("There are no ExpressiveOS builds for this phone yet.", "none");
+		if (!v1Res.ok) throw new ReleasesError(`The build list didn't load (HTTP ${v1Res.status}). Try again in a minute.`, "network");
+		const { releases, skipped } = await parseResponseManifest(v1Res, device);
 		for (const r of releases) r.legacyV1 = true;
+		if (skipped.length) console.warn("Builds left out of the list:", skipped);
+		return releases;
 	}
+	if (!res.ok) throw new ReleasesError(`The build list didn't load (HTTP ${res.status}). Try again in a minute.`, "network");
+	const { releases, skipped } = await parseResponseManifest(res, device);
 	if (skipped.length) console.warn("Builds left out of the list:", skipped);
+	if (!releases.some((r) => r.channel === "release")) {
+		// If v2 only has testers builds (or an empty list) so far, keep the live 1.x Official release
+		// available for regular visitors while still letting ?testers see the v2 testers build.
+		try {
+			const v1Res = await requestManifest(`/api/releases/${enc}`, signal);
+			if (v1Res.ok) {
+				const { releases: v1Releases } = await parseResponseManifest(v1Res, device);
+				for (const r of v1Releases) {
+					if (r.channel === "release") {
+						r.legacyV1 = true;
+						releases.push(r);
+					}
+				}
+				releases.sort((a, b) => b.date.localeCompare(a.date) || b.published.localeCompare(a.published) || rnum(b.name) - rnum(a.name));
+			}
+		} catch (e) {
+			if (signal?.aborted) throw e;
+		}
+	}
 	return releases;
 }
 

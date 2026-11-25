@@ -516,7 +516,7 @@ if [[ $EOS_SUPER_EMPTY = out ]]; then
 else
     # The Pixel 11 trees build no super_empty.img: eos-pack.sh takes the stock one (the same
     # super layout as BoardConfig.mk) from the newest factory image zip, as prepare.sh picks it
-    fz=$(find ~/android-dt/firmware -maxdepth 1 -name "image-$EOS_DEVICE-*.zip" 2>/dev/null | sort | tail -1) || true
+    fz=$(newest_factory_image_zip "$EOS_DEVICE") || true
     [[ -n $fz ]] || fail "no ~/android-dt/firmware/image-$EOS_DEVICE-*.zip, whose super_empty.img the fastboot zip takes (EOS_SUPER_EMPTY=factory)"
     unzip -l -- "$fz" super_empty.img > /dev/null 2>&1 || fail "${fz##*/} has no super_empty.img (EOS_SUPER_EMPTY=factory)"
     echo "OK: firmware $fw ($n images); fastboot-info.txt and android-info.txt present, super_empty.img in ${fz##*/}"

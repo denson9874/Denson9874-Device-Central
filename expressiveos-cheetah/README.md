@@ -32,21 +32,26 @@ run of an older kit still waits for them and they for it. The one exception is
 `tools/server-cleanup.sh` (Disk, below). Cheetah's and husky's firmware caches are filled by
 `tools/fetch-firmware.sh` (runner action `expressiveos-firmware`, query `device=husky` for husky).
 
-**Cheetah's and husky's firmware pins.** Google shows the factory image tables only after a visitor accepts its
-terms, so the fetcher can't read them unattended. When Google ships a monthly release, a person opens
-https://developers.google.com/android/images#cheetah, accepts the terms, and copies the newest generic
-Android 17 release (no carrier suffix) into `firmware/cheetah.conf` (husky: `#husky`,
-`firmware/husky.conf`):
+**Factory firmware pins (`firmware/<device>.conf`).** Google shows the factory image tables only after a visitor accepts its
+terms, so the fetcher doesn't rely on scraping unattended. When Google ships a monthly release, a person opens
+`https://developers.google.com/android/images#<device>`, accepts the terms, and copies the newest generic
+Android 17 release (no carrier suffix) into `firmware/<device>.conf` (`cheetah`, `husky`, `kodiak`, `grizzly`,
+`cubs`, `yogi`):
 
 ```
-url=https://dl.google.com/dl/android/aosp/cheetah-<build>-factory-<8 hex>.zip
+url=https://dl.google.com/dl/android/aosp/<device>-<build>-factory-<8 hex>.zip
 sha256=<the 64-hex SHA-256 from the same row>
 ```
 
-Merge it, then run the runner action `expressiveos-firmware` (query empty for cheetah, `device=husky`
-for husky; `check` or `check device=husky` only says what the pin and the cache hold). The phone's next
-build's `prepare.sh` puts that bootloader and radio into `vendor/google/<device>` through
-`update-firmware.sh`.
+Merge it, then run the runner action `expressiveos-firmware` (query empty for cheetah, `device=<phone>`
+for any other phone; `check [device=<phone>]` only says what the pin and the cache hold). For `cheetah`
+and `husky` (`EOS_FIRMWARE_MODE=cache`, `EOS_KERNEL=prebuilt`), `prepare.sh` updates the bootloader and
+radio in `vendor/google/<device>` via `update-firmware.sh` and regenerates
+`vendor/google/<device>-kernel-images` via `extract-kernel-images.sh`. For the four Pixel 11s (`kodiak`,
+`grizzly`, `cubs`, `yogi`, `EOS_FIRMWARE_MODE=images`), also update `STOCK_BUILD` in `extract-images.sh`,
+`BOOT_SECURITY_PATCH` in `BoardConfig.mk`, and `BuildFingerprint` in `eos_<device>.mk` together in
+`ExpressiveOS/device_google_<device>` (`extract-images.sh` refuses a zip whose build id doesn't match
+`STOCK_BUILD`).
 
 ## What's here
 
@@ -54,10 +59,10 @@ build's `prepare.sh` puts that bootloader and radio into `vendor/google/<device>
 |---|---|
 | `eos.conf` | Names, feed, release folders and key pins every script reads |
 | `devices/` | One `<device>.conf` per phone, what differs between them, and a phone's own tree patches ([`devices/`](devices/README.md); Other phones, below) |
-| `setup.sh` | Sets up `~/expressiveos` (ExpressiveOS's own manifest, full history, Git LFS) or syncs it again (Sources, below) |
-| `pins/kernel.xml` | The exact kernel source ExpressiveOS builds |
-| `sources/` | Where ExpressiveOS's own sources came from: `eos-1.0-base/` (the 1.0 builds' sources) and `own-manifest.py` (ExpressiveOS's manifest); `update-check.sh`, `update.sh` and `update.py`, the monthly update (see below), and `tests/`, its tests; `updates/<id>/`, each update's own files |
-| `prepare.sh`, `apply.sh`, `patches/` | Git LFS files, the kit's tree patches (below), the phone's firmware (cheetah's and husky's: the newest cached, `update-firmware.sh`) |
+| `setup.sh` | Sets up the ExpressiveOS tree (ExpressiveOS's own manifest, full history, Git LFS) or syncs it again (Sources, below) |
+| `pins/wild-kernel.conf` | The pinned Wild Kernels BakaSU release (`ksu/ksu.conf` + prebuilt stock GKI modules) |
+| `sources/` | Monthly pure-AOSP ASB updater (`update-aosp.py`, `update-check.sh`, `update.sh`), offline unit suite `tests/test_update_aosp.py`, and `updates/<id>/` (each monthly update's `update.conf` and conflict resolutions) |
+| `prepare.sh`, `apply.sh`, `patches/` | Git LFS files, the kit's tree patches (below), the phone's firmware and prebuilt kernel/vendor image extraction (`update-firmware.sh`, `extract-kernel-images.sh`, `extract-images.sh`) |
 | `tools/eos-keys-check.sh` | The key guard: ExpressiveOS's own keys, never Evolution X's, DerpFest's or the AOSP test keys |
 | `tools/eos-keybox.py` | Checks an attestation `keybox.xml` against Google's live roots and CRL, checks `EOS_KEYBOX_URL`, and uploads to R2 |
 | `tools/eos-images.sh` | The build, start to finish |
@@ -329,223 +334,100 @@ ViPER4Android). A quick build has no package, payload or target-files: `eos-veri
 patch levels instead, that out/ holds no package or target-files zip, and everything else as above,
 and prints `VERIFIED_QUICK <name>`.
 
-## The monthly update
+## The monthly update (EOS 2.0 pure AOSP)
 
-ExpressiveOS takes LineageOS's new commits (and with them Google's monthly security fixes, which
-LineageOS merges) once a month, after LineageOS's "release: Bump Security String" commit, and only when
-Daryl says so. One update serves every phone: they share the tree, and all six build the same release
-config (`cp2a`). Everything runs on the build server from the runner, in `~/expressiveos-update` (outside
-the tree; its scratch repos borrow the tree's git objects, so only new commits download), and nothing
-reaches GitHub before step 5. That folder holds an update's plan, merges, `kernel.xml` and reports until
-its pull request is merged and its `kernel.xml` committed (step 5); otherwise it's safe to delete.
+ExpressiveOS 2.0 is built directly on pure AOSP (`android-17.0.0_r1` base, branch `expressiveos-2.0` in
+`ExpressiveOS/manifest`, zero LineageOS remotes or repos). Because Google's monthly
+`android-security-17.0.0_r*` branch diverged from `android-17.0.0_r1`, `sources/update-aosp.py` never
+switches `<default revision>` to the security tag. Instead, once a month when Google publishes the
+Android Security Bulletin tags (and only when Daryl says go), `update-aosp.py` cherry-picks `--no-merges`
+ASB commits between `AOSP_SEC_TAG` and `TARGET_SEC_TAG` onto each affected repo, bumps
+`release/flag_values/cp2a/RELEASE_PLATFORM_SECURITY_PATCH.textproto` in `vendor/expressiveos`, and
+rewrites `default.xml` + `last-update.conf` with 40-hex commit SHAs.
 
-How the update treats a project of ExpressiveOS's manifest depends only on its line's remote name and on
-whether LineageOS's manifest has a project at the same path (`update.py`'s `kind_of`):
+> **QPR release tags (`android-17.0.0_r2+`) vs monthly ASB tags (`android-security-17.0.0_r*`).**
+> `update-aosp.py check` queries both `android-17.0.0_r*` and `android-security-17.0.0_r*` on
+> `android.googlesource.com/platform/manifest`. If a new quarterly platform release tag (`android-17.0.0_r2+`)
+> appears beyond `last-update.conf`'s `AOSP_BASE_TAG`, `check` prints an explicit `NOTE:` warning:
+> `update-aosp.py` cherry-picks `android-security-17.0.0_r*` ASB fixes onto the current `AOSP_BASE_TAG`,
+> whereas rebasing the 107+ `ExpressiveOS` forks onto a full QPR source drop requires manual review.
 
-| the line | LineageOS's manifest has the path | every update |
+How `update-aosp.py` treats each project in `ExpressiveOS/manifest`:
+
+| Manifest entry | Changed between `AOSP_SEC_TAG..TARGET_SEC_TAG`? | Action |
 |---|---|---|
-| `remote="expressiveos"` | yes | a fork: LineageOS's commits merged into its branch, pushed |
-| `remote="expressiveos"` | no (every device's trees and blobs) | ExpressiveOS's own: keeps its commit |
-| another remote | yes | LineageOS's or AOSP's: moves to what LineageOS's manifest names |
-| another remote, with `upstream=` | no | moves to its upstream's tip, unreviewed (the `-kernels` prebuilts) |
-| another remote, no `upstream=` | no | pinned: stays at its commit, never contacted |
+| `remote="expressiveos"` | Yes | Existing EOS fork: cherry-pick `--no-merges` ASB commits onto `expressiveos-2.0` (or apply `resolutions/<eos_repo>.patch`) |
+| `remote="aosp"` | Yes | `NEW_FORK_NEEDED`: create `ExpressiveOS/<path_with_underscores>` via `create-repos <id>`, strip any `clone-depth`, cherry-pick ASB commits, and switch the project to `remote="expressiveos"` |
+| `vendor/expressiveos` | Always | Bump `RELEASE_PLATFORM_SECURITY_PATCH.textproto` to `TARGET_SPL` |
+| Any project | No | Stays at its existing 40-hex commit SHA |
 
-GitHub's fork relation and `dest-branch` play no part: a repo of the ExpressiveOS
-organization under any other remote name is not ExpressiveOS's to the update (lint calls it a problem).
-So a device's trees and blobs in the organization, on `expressiveos`, are ExpressiveOS's own; LineageOS's
-or TheMuppets' (husky's) with no `upstream=` are pinned, and listed with the projects outside LineageOS's
-manifest. Either way the update never brings LineageOS's (or TheMuppets') device commits into them: those
-move together by hand, as a manifest commit. A manifest change is one line per project before `</manifest>`, in
-`own-manifest.py`'s layout (plan writes the update into that text, and refuses anything else), never a
-second manifest file, an `<include>` or a `notdefault` group, and `own-manifest.py` is never run again
-(it would put the projects back on the 1.0 sources). Before such a change is merged, lint it:
-`expressiveos-update` with query `lint pull/<n>` (or `sources/update.sh lint <branch>`, which needs no
-tree, on the build server or any Linux machine with git 2.38 or newer and python3) shows what plan would refuse, each new or changed project's kind, and
-whether its commit is where its line says; it ends `MANIFEST_LINT=OK` or `MANIFEST_LINT=PROBLEMS`.
-From an update's first plan until its pull request is merged, nothing else changes the manifest or the
-forks' `expressiveos` branches: plan and push stop on anything that moved, and a fork's new commits would
-go into its merge.
+Every run ends with one status line:
 
-Every run ends with one status line, the last of its output:
-
-| run | its last line |
+| Command | Final status line |
 |---|---|
 | `update-check.sh` | `UPDATE_CHECK=OK`, `INCOMPLETE`, `FAILED` or `NOT_RUN` |
 | `update.sh plan <id>` | `UPDATE_PLAN=READY`, `CONFLICTS`, `NOT_READY` or `NOT_RUN` |
+| `update.sh create-repos <id>` | `CREATE_REPOS=OK` or `FAIL` |
 | `update.sh push <id>` | `UPDATE_PUSH=OK`, `FAILED` or `NOT_RUN` |
 | `update.sh verify <id>` | `UPDATE_VERIFY=OK`, `DIFFERS`, `FAILED` or `NOT_RUN` |
-| `update.sh lint [ref]` | `MANIFEST_LINT=OK`, `PROBLEMS` or `FAILED` |
+| `update.sh lint [ref]` | `MANIFEST_LINT=OK` or `FAIL` |
 | `update.sh token` | `TOKEN_CHECK=OK` or `FAIL` |
 
-A run that stops, in `update.py` or in the script before it (no tree, the tree on another manifest, a key
-missing from `eos.conf`), prints a `FAIL:` line and ends with its `FAILED` (plan: `NOT_READY`; token:
-`FAIL`) and `(stopped: <why>)`. `NOT_RUN` names the build or setup holding `~/.expressiveos.lock`: run it
-again in a gap between builds.
+### 1. Dry run (`check`)
 
-### 1. The dry run
+`sources/update-check.sh` (runner action `expressiveos-update-check`) is read-only: it queries
+`android.googlesource.com/platform/manifest` for `android-17.0.0_r*` and `android-security-17.0.0_r*`,
+diffs `last-update.conf`'s `AOSP_SEC_TAG` against the latest security tag, tests every ASB cherry-pick in
+scratch repos under `$EOS_UPDATE_WORK` (borrowing full-history git objects from `$EOS_TOP`, while skipping
+shallow `clone-depth` checkouts), and classifies each affected repo as `CLEAN`, `CONFLICTS`, or
+`NEW_FORK_NEEDED`.
 
-`sources/update-check.sh` (the runner's read-only `expressiveos-update-check`) changes nothing in the
-tree and pushes nothing. Against LineageOS's manifest today it shows:
+### 2. Update folder (`sources/updates/<id>/`)
 
-- for LineageOS's and AOSP's projects, which move and by how many commits (a LineageOS project's
-  must descend from ours or, where LineageOS's manifest moved it to another repo, have a commit with
-  exactly our commit's files, counted from there; shallow and AOSP projects aren't counted);
-- for ExpressiveOS's forks of LineageOS's and AOSP's repos (44 at 1.0), LineageOS's new commits
-  merged into each in memory (`git merge-tree`): clean, or the files that conflict, and which of those
-  the kit's own changes touch (any device's), and the commits a fork's branch has past its pin, which
-  the update takes too;
-- the projects outside LineageOS's manifest on other remotes: those that will move to their own
-  upstream's tip, and those pinned;
-- what LineageOS's manifest changed since the last update (`last-update.conf`; before the first, the
-  1.0 sources' base): projects added, removed, moved to a fork;
-- the security patch level before and after (our release config's flag in `vendor/lineage`, which
-  LineageOS bumps monthly);
-- the kernel's 18 projects against `pins/kernel.xml` (Google's GKI tag), and Wild Kernels' newest
-  release against `ksu/ksu.conf`.
+Commit `sources/updates/<id>/update.conf` (e.g. `sources/updates/2026-12/update.conf`) in this repo:
 
-It also checks the manifest's text as plan will (the tree's, and GitHub's where that's newer). The report
-is `~/expressiveos-update/reports/update-check-<time>.txt`. ExpressiveOS's own repos (its apps
-and vendor repos, the devices' trees and blobs) have nothing upstream, and Google's factory images (each
-device's firmware and vendor blobs) aren't part of it. It ends `UPDATE_CHECK=OK` or
-`UPDATE_CHECK=INCOMPLETE`, or `UPDATE_CHECK=NOT_RUN` (naming the holder) while a build or setup holds
-`~/.expressiveos.lock`: check again in a gap between builds.
-
-### 2. The update's folder
-
-An update is a folder of this kit, committed here before it runs: `sources/updates/<id>/`, its id the
-month (`2026-11`; `2026-11-2` for a second one that month):
-
-- `update.conf`: `LINEAGE_MANIFEST=<commit>`, the commit of LineageOS's manifest (on its `lineage-24.0`
-  branch) the update takes, and nothing else. It fixes which repos, branches and tags the update takes.
-  LineageOS's manifest names branches, not commits, so each project takes its branch's newest commit
-  when the plan runs, except a fork on a branch whose resolution, or whose merge this update pushed
-  already, is for an older commit of it: it takes that commit. LineageOS can go on committing while a
-  conflict is resolved, and the resolution stays good (the newer commits wait for the next update);
-- `resolutions/<project path>.patch`: how a fork's merge that conflicts is resolved (step 4), one per
-  such fork.
-
-Nothing else may be in it. An id is used once: the manifest records the last update in
-`last-update.conf` (`UPDATE=<id>`, `LINEAGE_MANIFEST=<commit>`), which the next dry run and plan count
-from.
-
-### 3. The plan
-
-`expressiveos-update` with query `plan <id>` (`sources/update.sh plan <id>`) makes the whole update and
-pushes nothing. It needs the tree on GitHub's manifest (otherwise: run `expressiveos-setup` first, no
-build needed) and doesn't run while a build or setup does (`~/.expressiveos.lock`). It makes, in
-`~/expressiveos-update/updates/<id>/`:
-
-- each fork's merge of LineageOS's commits, a merge commit by `EOS_UPDATE_IDENT` (`eos.conf`) in its
-  scratch repo, with the resolution put in where the merge conflicts. Every merge runs with git's
-  default merge settings pinned and none of the machine's git config or attributes (no `.gitattributes`
-  merge drivers, no renormalizing), so the build server and the machine a resolution is made on merge
-  alike;
-- every other LineageOS and AOSP project's new commit, and each project outside LineageOS's manifest
-  with an `upstream=` its upstream's tip (listed on their own). A LineageOS project's must descend from
-  ours (LineageOS never rewrites its branches), or, where LineageOS's manifest moved the project to
-  another repo (LineageOS's own copy of an AOSP repo, made from an older AOSP commit), have a commit
-  with exactly our commit's files; a shallow one's (`clone-depth`) and AOSP's (a new tag) aren't checked;
-- the new `default.xml`: those commits, and what LineageOS's manifest changed since the last update,
-  taken three ways. A project's repo, branch or clone depth moves where ours was still LineageOS's, and
-  the plan stops where both changed it; groups and linkfiles/copyfiles are taken element by element
-  (LineageOS's additions and removals, ExpressiveOS's own entries kept), forks' too. Projects LineageOS
-  added are added, except ones outside repo's default sync (`notdefault`), which LineageOS's own sync
-  leaves out too, until LineageOS puts them into it. A project LineageOS takes out of the default sync
-  is taken out, except a fork, which stays in it (a note). A repo LineageOS moved to another path moves
-  (a fork's: by hand). Projects it dropped stay: LineageOS's following their own branch, one on an AOSP
-  tag with a note, and a fork at its pin, ExpressiveOS's own from then on (a note). A new AOSP tag moves
-  the `aosp` remote and each project's upstream. It's checked as `setup.sh` checks a manifest, then
-  committed with `last-update.conf` on top of GitHub's (`plan.json` records it, every fork's merge, and
-  the forks it moves to their branch's tip without one);
-- the security patch level before and after;
-- `kernel.xml`: `pins/kernel.xml` with each kernel project on LineageOS's kernel manifest's commit
-  today (and its branch or tag, where that moved), also printed in the report. `pins/kernel.xml` is the
-  kernel of every device built from LineageOS's gs-6.1 kernel manifest (cheetah, husky): one file, with
-  that manifest's projects exactly. Where it can't be proposed, the plan says why under "Needs a look"
-  and its last line adds `kernel: no new pins proposed`;
-- the push token's reach, asked of GitHub as a push would ask (step 5).
-
-The report is `reports/update-plan-<id>-<time>.txt`. The run ends with `UPDATE_PLAN=READY`,
-`UPDATE_PLAN=CONFLICTS` (each conflict shown with the fork's side, the merge base's and LineageOS's, the
-commits on each side that touch the file, and the commands to resolve it) or `UPDATE_PLAN=NOT_READY` (the
-problems listed); a plan that stops ends `UPDATE_PLAN=NOT_READY (stopped: <why>)`. A plan can run again,
-and starts over, until a push of it has made `update/<id>`.
-After that it refuses and leaves the update's files as they are: `plan.json` for push run again, and
-`kernel.xml` for step 5.
-
-### 4. Resolving a conflict
-
-By hand, in a clone of the fork, on any machine with git 2.38 or newer. The plan prints these commands
-with the fork's and LineageOS's addresses and commits filled in:
-
-```bash
-git clone https://github.com/ExpressiveOS/<fork> <fork> && cd <fork>
-git checkout --detach <fork commit>
-git fetch https://github.com/LineageOS/<repo> refs/heads/lineage-24.0
-git merge --no-commit <LineageOS commit>
-# fix each conflicting file, then git add it
-python3 -I <kit>/sources/update.py resolution . --out <kit>/sources/updates/<id>/resolutions/<project path>.patch
+```ini
+AOSP_SEC_TAG=android-security-17.0.0_r3
+TARGET_SEC_TAG=android-security-17.0.0_r4
+TARGET_SPL=2026-12-01
 ```
 
-`resolution` refuses a shallow clone, a merge with files still conflicting or conflict markers left in,
-and file names it can't write down (control characters, quotes, backslashes). It redoes the merge as the
-plan does, in a scratch repo of its own with none of the clone's config or `.gitattributes`, so whatever
-those changed in the clone's merge (a merge driver's work) is written down as part of the fix. Its file
-starts `merge <fork commit>
-<LineageOS commit>`, then `resolved <file>` for each conflicting file and `changed <file>` for each other
-file the fix changed, and holds the diff from the fork's commit to the fixed merge for those files
-(renames written as a delete and an add). Keeping one side as the merge left it (a binary file, a file
-one side deleted) is a resolution too. Before writing it, `resolution` puts it into the merge the way the
-plan will and refuses unless that makes exactly the clone's merge. The plan puts it in only where the
-merge is that same one and conflicts in exactly those files, and stops on conflict markers left in: a
-resolution for an older fork commit is stale, and the merge is resolved again. Commit it here, then plan
-again.
+(`AOSP_SEC_TAG` is optional if `last-update.conf` in the manifest already records the previous tag.)
 
-### 5. The push
+### 3. Plan & conflict resolutions (`plan <id>`)
 
-When the plan is `READY` and Daryl says go: `expressiveos-update` with query `push <id>`. The runner hands
-it the push token (step 6) for that step only. It checks the plan first and pushes nothing unless all of
-it still fits: the kit's `updates/<id>/` as the plan read it, GitHub's manifest, every fork's branch the
-plan merged into and every fork it pins at its branch's tip, all where the plan left them. Then it
-pushes each fork's merge to its `expressiveos` branch (a fast-forward, never forced), then the manifest's
-commit as branch `update/<id>` of ExpressiveOS's manifest, and prints the pull request link
-(`expressiveos...update/<id>`).
+Run `expressiveos-update` with query `plan <id>` (`sources/update.sh plan <id>`). It stages deterministic
+commits (preserving upstream ASB committer timestamps so re-running `plan <id>` produces identical 40-hex
+SHAs), writes `default.xml`, `last-update.conf` (preserving `AOSP_BASE_TAG`) and `plan.json` under
+`$EOS_UPDATE_WORK/<id>/`, and lints the manifest + SPL textproto.
 
-If a push stops partway, run push again: it skips the forks already at their merge and pushes the rest.
-If it says to plan again (something moved since the plan), plan again: a fork whose merge was pushed
-already keeps it ("merged by this update and pushed before"; LineageOS's newer commits wait for the next
-update, as in step 2), and the next push goes on from there.
+If a repo reports `CONFLICTS`, resolve it on top of the manifest's pinned commit `<base_rev>` and save
+`git format-patch --stdout <base_rev>..HEAD` to
+`sources/updates/<id>/resolutions/<eos_repo>.patch` (for example `packages_apps_Settings.patch`), commit
+that patch to the kit, and run `plan <id>` again until `UPDATE_PLAN=READY`.
 
-Merging that pull request is the update. Then `expressiveos-update` with query `verify <id>` checks
-GitHub's manifest against the plan: each project at the plan's commit (or a later one of a fork's branch
-that has the merge), each fork's branch holding its merge, `last-update.conf` naming the update, and
-what's there that the plan didn't make; it ends `UPDATE_VERIFY=OK` or `UPDATE_VERIFY=DIFFERS`. Then
-`expressiveos-setup` syncs the tree to it; the plan's `kernel.xml` goes into this kit as
-`pins/kernel.xml` in a commit of its own, and the next build of each gs-6.1 device runs with
-`kernel-sync`; then build, test and release as usual. A fork's new commits on its own branch are
-already in the merge: the forks' `expressiveos` branches never rewind, so a pull request that isn't
-merged leaves only the forks a commit ahead of the manifest's pins, which the next update takes.
+### 4. New forks (`create-repos <id>`), push (`push <id>`), and verify (`verify <id>`)
 
-### 6. The push token
+1. If `plan.json` lists `new_repos` (`new_repos > 0`), create them from the Mac with admin `gh` auth:
+   `python3 -I expressiveos-cheetah/sources/update-aosp.py create-repos <id> --work <work>` (or create the
+   listed public empty repos under `github.com/ExpressiveOS` and ensure `EXPRESSIVEOS_PUSH_TOKEN` covers them;
+   verify with `expressiveos-update` query `token`).
+2. On Daryl's go, run `expressiveos-update` with query `push <id>`. It fast-forward pushes each updated
+   fork's `expressiveos-2.0` branch (never force-pushing) and pushes branch `update/<id>` to
+   `ExpressiveOS/manifest` for PR review (`lint pull/<n>` validates the PR).
+3. After Daryl merges the `ExpressiveOS/manifest` PR into `expressiveos-2.0`, run `expressiveos-update`
+   with query `verify <id>` (`UPDATE_VERIFY=OK`), sync the build tree (`setup.sh`), refresh factory
+   firmware (`firmware/<device>.conf` + `expressiveos-firmware`, plus Pixel 11 `STOCK_BUILD` /
+   `BOOT_SECURITY_PATCH` / `BuildFingerprint`), and build.
 
-`expressiveos-update` with query `token` checks it, read-only: may it push to every repo of
-ExpressiveOS's manifest and the manifest itself? It asks GitHub as a push's first request does (no login
-must get 401, the token 200) and pushes nothing; it ends `TOKEN_CHECK=OK`. The token is a fine-grained
-one of the ExpressiveOS organization's (Repository access: All repositories; Permissions: Contents, read
-and write; nothing else), saved as the Actions secret `EXPRESSIVEOS_PUSH_TOKEN` of this repo. It lives
-in that step's environment only, never on the server's disk, in a command line or in a log (git gets it
-from a credential helper that reads the environment), and goes only to https://github.com/, never to
-another host or over plain http, whatever the manifest names. It expires after a year: make a new one the same
-way, save it over the secret, and check it.
+### 5. Push token & offline tests
 
-### 7. The tests
-
-`sources/tests/run.sh` tests the dry run, plan, push and resolution on throwaway worlds of `file://`
-repos standing in for LineageOS, AOSP and GitHub, with a tree and a copy of this kit (git 2.38 or newer,
-about 10 minutes; nothing leaves the machine, and nothing outside `$EOS_TEST_WORK`, default
-`$TMPDIR/eos-update-tests`, is touched). Run it after any change to `update.py`; each script's header
-says what it checks (`devices.sh`: device projects, the lint, verify, and a kit missing what the update
-reads).
+- `expressiveos-update` query `token` verifies `EXPRESSIVEOS_PUSH_TOKEN` has `git-receive-pack` access to
+  `ExpressiveOS/manifest` and every `remote="expressiveos"` repo (`TOKEN_CHECK=OK`; note that GitHub's
+  `git-receive-pack` advertisement checks `Contents: write`, while pushing `.github/workflows` changes in a
+  fork also requires `Workflows: write`).
+- Run `python3 -B expressiveos-cheetah/sources/tests/test_update_aosp.py -v` after any change to
+  `update-aosp.py` or `update.sh`.
 
 ## Pixel Drops
 

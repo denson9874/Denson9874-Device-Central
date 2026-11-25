@@ -681,6 +681,125 @@ sys.exit(1)
             srv.shutdown()
             srv.server_close()
 
+    def test_shallow_local_dir_and_deterministic_replan_after_partial_push(self):
+        # Add a clone-depth="1" AOSP repo whose base_rev on android-17.0.0_r1 is 2 commits
+        # ahead of the merge-base with the diverged android-security-17.0.0_r* branch.
+        wv_aosp_bare = init_bare(self.world.aosp_dir / "platform" / "external" / "chromium-webview")
+        wv_w = self.world.scratch / "wv"
+        wv_w.mkdir()
+        run(["git", "init", "-b", "main"], cwd=wv_w)
+        commit_files(wv_w, {"wv.txt": "v0\n"}, "wv base")
+        run(["git", "checkout", "-b", "r1-branch"], cwd=wv_w)
+        commit_files(wv_w, {"r1_a.txt": "a\n"}, "r1 commit 1")
+        wv_base = commit_files(wv_w, {"r1_b.txt": "b\n"}, "r1 commit 2")
+        run(["git", "push", str(wv_aosp_bare), "HEAD:refs/tags/android-17.0.0_r1"], cwd=wv_w)
+
+        run(["git", "checkout", "-b", "sec-branch", "main"], cwd=wv_w)
+        wv_sec1 = commit_files(wv_w, {"sec1.txt": "s1\n"}, "sec r1")
+        run(["git", "push", str(wv_aosp_bare), "HEAD:refs/tags/android-security-17.0.0_r1"], cwd=wv_w)
+        wv_sec2 = commit_files(wv_w, {"wv.txt": "v0-patched\n"}, "CVE-2026-9999 webview fix")
+        run(["git", "push", str(wv_aosp_bare), "HEAD:refs/tags/android-security-17.0.0_r2"], cwd=wv_w)
+
+        # Update AOSP manifests at r1 and r2 to include external/chromium-webview
+        aosp_mf_w = self.world.scratch / "aosp-mf-wv"
+        run(["git", "clone", str(self.world.aosp_manifest_bare), str(aosp_mf_w)])
+        for tag, wv_rev in (("android-security-17.0.0_r1", wv_sec1), ("android-security-17.0.0_r2", wv_sec2)):
+            run(["git", "checkout", "-B", f"edit-{tag}", f"refs/tags/{tag}"], cwd=aosp_mf_w)
+            xml_txt = (aosp_mf_w / "default.xml").read_text(encoding="utf-8").replace(
+                "</manifest>",
+                f'  <project path="external/chromium-webview" name="platform/external/chromium-webview" revision="{wv_rev}" />\n</manifest>',
+            )
+            commit_files(aosp_mf_w, {"default.xml": xml_txt}, f"add wv to {tag}")
+            run(["git", "tag", "-f", tag], cwd=aosp_mf_w)
+            run(["git", "push", "-f", "origin", f"refs/tags/{tag}:refs/tags/{tag}"], cwd=aosp_mf_w)
+
+        # Add external/chromium-webview with clone-depth="1" to EOS manifest
+        mf_path = self.world.manifest_file()
+        mf_xml = mf_path.read_text(encoding="utf-8").replace(
+            "</manifest>",
+            f'  <project path="external/chromium-webview" name="platform/external/chromium-webview" remote="aosp" revision="{wv_base}" clone-depth="1" />\n</manifest>',
+        )
+        commit_files(self.world.eos_mf_checkout, {"default.xml": mf_xml}, "add shallow chromium-webview")
+        run(["git", "push", str(self.world.eos_manifest_bare), "HEAD:refs/heads/expressiveos-2.0"], cwd=self.world.eos_mf_checkout)
+
+        # Populate a --top tree containing a shallow (depth=1) checkout at external/chromium-webview
+        fake_top = self.tmp / "fake-top"
+        shallow_wv = fake_top / "external" / "chromium-webview"
+        shallow_wv.mkdir(parents=True)
+        run(["git", "init"], cwd=shallow_wv)
+        run(["git", "fetch", "--depth=1", f"file://{wv_aosp_bare}", wv_base], cwd=shallow_wv)
+        run(["git", "checkout", "--detach", "FETCH_HEAD"], cwd=shallow_wv)
+        self.assertEqual(
+            run(["git", "rev-parse", "--is-shallow-repository"], cwd=shallow_wv).stdout.strip(),
+            "true",
+        )
+
+        # Configure update.conf WITHOUT AOSP_SEC_TAG so plan exercises last-update.conf fallback
+        upd_root = self.tmp / "updates2"
+        u07 = upd_root / "2026-07"
+        (u07 / "resolutions").mkdir(parents=True)
+        (u07 / "update.conf").write_text(
+            "TARGET_SEC_TAG=android-security-17.0.0_r2\nTARGET_SPL=2026-07-05\n",
+            encoding="utf-8",
+        )
+        (u07 / "resolutions" / "packages_apps_Settings.patch").write_text(
+            self.world.settings_resolution_patch, encoding="utf-8"
+        )
+
+        plan1 = self.run_cli(
+            "plan", "2026-07",
+            *self.world.common_args(),
+            "--top", str(fake_top),
+            "--updates-dir", str(upd_root),
+        )
+        self.assertEqual(plan1.returncode, 0, plan1.stdout + plan1.stderr)
+        self.assertIn("UPDATE_PLAN=READY", plan1.stdout)
+        p1_doc = json.loads((self.world.work_dir / "2026-07" / "plan.json").read_text(encoding="utf-8"))
+        out_xml_txt = Path(p1_doc["manifest_out"]).read_text(encoding="utf-8")
+        self.assertNotIn('clone-depth="1"', out_xml_txt)
+
+        # Simulate partial push: create external_chromium-webview (with strict receive.fsckObjects=true)
+        # but NOT packages_modules_Bluetooth yet, so push advances external_chromium-webview +
+        # frameworks_base + packages_apps_Settings and fails when hitting missing Bluetooth.
+        wv_eos = init_bare(self.world.eos_dir / "external_chromium-webview")
+        run(["git", "--git-dir", str(wv_eos), "config", "receive.fsckObjects", "true"])
+        partial_push = self.run_cli(
+            "push", "2026-07",
+            "--work", str(self.world.work_dir),
+            "--eos-org-base", self.world.eos_org_url,
+            "--manifest-url", f"file://{self.world.eos_manifest_bare}",
+        )
+        self.assertNotEqual(partial_push.returncode, 0)
+        self.assertIn("pushed: external_chromium-webview -> expressiveos-2.0", partial_push.stdout)
+        self.assertIn("pushed: frameworks_base -> expressiveos-2.0", partial_push.stdout)
+
+        # Re-run plan (at a later wall-clock moment) and verify all planned commit SHAs are 100% deterministic!
+        plan2 = self.run_cli(
+            "plan", "2026-07",
+            *self.world.common_args(),
+            "--top", str(fake_top),
+            "--updates-dir", str(upd_root),
+        )
+        self.assertEqual(plan2.returncode, 0, plan2.stdout + plan2.stderr)
+        p2_doc = json.loads((self.world.work_dir / "2026-07" / "plan.json").read_text(encoding="utf-8"))
+        for repo_path, upd1 in p1_doc["updates"].items():
+            self.assertEqual(upd1["new_head"], p2_doc["updates"][repo_path]["new_head"], repo_path)
+
+        # Create remaining repo with strict receive.fsckObjects=true and complete push!
+        bt_eos = init_bare(self.world.eos_dir / "packages_modules_Bluetooth")
+        run(["git", "--git-dir", str(bt_eos), "config", "receive.fsckObjects", "true"])
+        full_push = self.run_cli(
+            "push", "2026-07",
+            "--work", str(self.world.work_dir),
+            "--eos-org-base", self.world.eos_org_url,
+            "--manifest-url", f"file://{self.world.eos_manifest_bare}",
+        )
+        self.assertEqual(full_push.returncode, 0, full_push.stdout + full_push.stderr)
+        self.assertIn("already pushed: external_chromium-webview", full_push.stdout)
+        self.assertIn("already pushed: frameworks_base", full_push.stdout)
+        self.assertIn("pushed: packages_modules_Bluetooth -> expressiveos-2.0", full_push.stdout)
+        self.assertIn("UPDATE_PUSH=OK", full_push.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

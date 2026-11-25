@@ -82,7 +82,7 @@ modules() {  # <label> <ramdisk dir>: its module lists, counts and recovery-only
 
 for d in "${P11[@]}"; do
     h "$d"
-    fz=${RC_STOCK_ZIP:-$(find ~/android-dt/firmware -maxdepth 1 -name "image-$d-*.zip" 2> /dev/null | sort | tail -1)}
+    fz=${RC_STOCK_ZIP:-$(newest_factory_image_zip "$d")}
     sl=${RC_STOCK_LABEL:-stock}
     oz=$(ours_zip "$d")
     echo "$sl: ${fz:-none}"

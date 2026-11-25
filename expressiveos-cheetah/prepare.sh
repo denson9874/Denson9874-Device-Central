@@ -97,8 +97,8 @@ blobs)
     fwsrc="the vendor repo's own ($EOS_VENDOR_DIR at $(git -C "$vendor" rev-parse --short HEAD))"
     ;;
 images)
-    # The newest factory image zip for this phone, by its build id (image-<device>-<id>.zip)
-    zip=$(find ~/android-dt/firmware -maxdepth 1 -name "image-$EOS_DEVICE-*.zip" | sort | tail -1)
+    # The newest factory image zip for this phone, by its build-id YYMMDD date (image-<device>-<id>.zip)
+    zip=$(newest_factory_image_zip "$EOS_DEVICE")
     [[ -n $zip ]] || fail "no ~/android-dt/firmware/image-$EOS_DEVICE-*.zip to make vendor/google/$EOS_DEVICE-images from"
     imgs=$top/vendor/google/$EOS_DEVICE-images
     ex=$top/$EOS_DEVICE_TREE/extract-images.sh
