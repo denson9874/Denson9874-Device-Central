@@ -53,7 +53,8 @@ done
     || fail "launcher.conf: EL_URL must be the $EL_TAG release asset $EL_FILE of denson9874/ExpressiveLauncher"
 [[ "$EL_LICENSE_URL" == "https://raw.githubusercontent.com/denson9874/ExpressiveLauncher/$EL_COMMIT/LICENSE.txt" ]] \
     || fail "launcher.conf: EL_LICENSE_URL must be LICENSE.txt at EL_COMMIT"
-[[ "$EL_NOTICE_MIT_URL" == "https://raw.githubusercontent.com/denson9874/ExpressiveLauncher/$EL_COMMIT/lawnchair/src/app/lawnchair/search/algorithms/data/calculator/LICENSE" ]] \
+[[ "$EL_NOTICE_MIT_URL" == "https://raw.githubusercontent.com/denson9874/ExpressiveLauncher/$EL_COMMIT/android/lawnchair/src/app/lawnchair/search/algorithms/data/calculator/LICENSE" \
+    || "$EL_NOTICE_MIT_URL" == "https://raw.githubusercontent.com/denson9874/ExpressiveLauncher/$EL_COMMIT/lawnchair/src/app/lawnchair/search/algorithms/data/calculator/LICENSE" ]] \
     || fail "launcher.conf: EL_NOTICE_MIT_URL must be the calculator's LICENSE at EL_COMMIT"
 [[ "$EL_NOTICE_OFL_URL" =~ ^https://raw\.githubusercontent\.com/googlefonts/googlesans-flex/[0-9a-f]{40}/OFL\.txt$ ]] \
     || fail "launcher.conf: EL_NOTICE_OFL_URL must be OFL.txt at a googlefonts/googlesans-flex commit"
