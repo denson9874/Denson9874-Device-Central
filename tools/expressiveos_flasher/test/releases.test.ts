@@ -179,4 +179,41 @@ describe("fetchReleases v2-first with 1.x fallback", () => {
 		await expect(fetchReleases("cubs")).rejects.toMatchObject({ name: "ReleasesError", kind: "network" });
 		expect(calls500).toEqual(["/api/releases/v2/cubs"]);
 	});
+
+	it("keeps 1.x Official release live for regular visitors when v2 only has testers builds", async () => {
+		const calls: string[] = [];
+		const v2Testers = "ExpressiveOS-17.0-20261202-cheetah-2.0-Official";
+		const v1Release = "ExpressiveOS-17.0-20261115-cheetah-1.3-Official";
+		const v1Testers = "ExpressiveOS-17.0-20261110-cheetah-1.3-Unofficial";
+		vi.stubGlobal("fetch", async (url: string) => {
+			calls.push(url);
+			if (url === "/api/releases/v2/cheetah") {
+				return Response.json({
+					schema: 1,
+					device: "cheetah",
+					releases: [release(v2Testers, { channel: "testers", android: "17.0", version: "2.0", type: "Official", published: "2026-12-02T12:00:00Z" })],
+				});
+			}
+			if (url === "/api/releases/cheetah") {
+				return Response.json({
+					schema: 1,
+					device: "cheetah",
+					releases: [
+						release(v1Release, { channel: "release", android: "17.0", version: "1.3", type: "Official", published: "2026-11-15T12:00:00Z" }),
+						release(v1Testers, { channel: "testers", android: "17.0", version: "1.3", type: "Unofficial", published: "2026-11-10T12:00:00Z" }),
+					],
+				});
+			}
+			return new Response(null, { status: 404 });
+		});
+		const got = await fetchReleases("cheetah");
+		expect(calls).toEqual(["/api/releases/v2/cheetah", "/api/releases/cheetah"]);
+		expect(got.map((r) => [r.name, r.channel, !!r.legacyV1])).toEqual([
+			[v2Testers, "testers", false],
+			[v1Release, "release", true],
+		]);
+		expect(got.filter((r) => r.channel === "release")).toHaveLength(1);
+		expect(fileUrl("cheetah", got[0], got[0].zip.file)).toBe(`/dl/v2/cheetah/testers/${v2Testers}-fastboot.zip`);
+		expect(fileUrl("cheetah", got[1], got[1].zip.file)).toBe(`/dl/cheetah/${v1Release}-fastboot.zip`);
+	});
 });

@@ -603,16 +603,17 @@ jobs:
           mv -- "$kit/INSTALLED_FROM.new" "$kit/INSTALLED_FROM"
           echo "ADOPTED: ~/expressiveos-cheetah is $TREE_REF@${sha:0:7}; expressiveos-setup, -build and -pack install over it from now on" | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: ExpressiveOS firmware (cheetah, husky)
+      - name: ExpressiveOS firmware (all 6 Pixels)
         if: inputs.action == 'expressiveos-firmware'
         run: |
-          [[ "${QUERY:-}" =~ ^(check)?\ ?(device=(cheetah|husky))?$ ]] || { echo "::error::query is empty (fetch cheetah's), device=husky (fetch husky's) or check [device=husky] (read-only)"; exit 1; }
+          [[ "${QUERY:-}" =~ ^(check)?\ ?(device=(cheetah|husky|kodiak|grizzly|cubs|yogi))?$ ]] || { echo "::error::query is empty (fetch cheetah's), device=<phone> (cheetah|husky|kodiak|grizzly|cubs|yogi) or check [device=<phone>] (read-only)"; exit 1; }
           dev=cheetah; [[ "${QUERY:-}" =~ device=([a-z]+) ]] && dev=${BASH_REMATCH[1]}
           if [[ "${QUERY:-}" = check* ]]; then bash expressiveos-cheetah/tools/fetch-firmware.sh --check "$dev"; exit 0; fi
-          # prepare.sh reads the cache at the start of every cheetah or husky build: not while one runs
-          exec 8>~/.expressiveos.lock
-          flock -n 8 || { echo "::error::~/.expressiveos.lock is held (an ExpressiveOS setup, build or pack is running)"; exit 1; }
-          bash expressiveos-cheetah/tools/fetch-firmware.sh "$dev" 8>&-
+          # prepare.sh reads ~/android-dt/firmware at the start of both 1.x and 2.0 builds: hold both locks
+          exec 8>~/.expressiveos.lock 9>~/.expressiveos2.lock
+          flock -n 8 || { echo "::error::~/.expressiveos.lock is held (an ExpressiveOS 1.x setup, build or pack is running)"; exit 1; }
+          flock -n 9 || { echo "::error::~/.expressiveos2.lock is held (an ExpressiveOS 2.0 setup, build or pack is running)"; exit 1; }
+          bash expressiveos-cheetah/tools/fetch-firmware.sh "$dev" 8>&- 9>&-
 
       # ---- ExpressiveOS for cheetah: expressiveos-cheetah/README.md ---------------
 
@@ -1594,6 +1595,8 @@ jobs:
               perl -e 'alarm 60; exec @ARGV' -- python3 -B "$KIT/tools/tests/test_brand_check.py" -v
               echo "--- test_eos_progress.py"
               perl -e 'alarm 60; exec @ARGV' -- python3 -B "$KIT/tools/tests/test_eos_progress.py" -v
+              echo "--- test_firmware_tools.py"
+              perl -e 'alarm 60; exec @ARGV' -- python3 -B "$KIT/tools/tests/test_firmware_tools.py" -v
               echo "--- dex-refs-test.py"
               perl -e 'alarm 120; exec @ARGV' -- python3 -B -I "$KIT/launcher/tools/tests/dex-refs-test.py"
               echo "--- test_flasher_publish.py"

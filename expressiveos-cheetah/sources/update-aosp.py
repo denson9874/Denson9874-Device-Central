@@ -395,7 +395,12 @@ def resolve_local_or_remote_url(aosp_base, eos_base, proj_info, top_dir=None):
     if top_dir:
         cand = Path(top_dir) / proj_info["path"]
         if (cand / ".git").exists():
-            local_dir = cand
+            # Never borrow from a shallow local checkout (clone-depth in default.xml): git fetch
+            # copies the shallow tip as a dangling commit without .git/shallow or its parents,
+            # which passes cat-file -e and cherry-pick but fails git push with an unpacker error.
+            sh = git("rev-parse", "--is-shallow-repository", cwd=cand, ok=(0, 128), timeout=15)
+            if sh.returncode == 0 and sh.stdout.strip() != "true":
+                local_dir = cand
     return url, local_dir
 
 
@@ -497,7 +502,9 @@ def try_cherry_picks(scratch_dir, commits, ident_name, ident_email, resolution_p
         anc = git("merge-base", "--is-ancestor", sha, "HEAD", cwd=scratch_dir, ok=(0, 1), timeout=15)
         if anc.returncode == 0:
             continue
-        res = git("cherry-pick", "--allow-empty", sha, cwd=scratch_dir, env=env, ok=(0, 1), pure=True, timeout=timeout)
+        cdate = git("show", "-s", "--format=%cI", sha, cwd=scratch_dir, timeout=15).stdout.strip()
+        cp_env = dict(env, GIT_COMMITTER_DATE=cdate) if cdate else env
+        res = git("cherry-pick", "--allow-empty", sha, cwd=scratch_dir, env=cp_env, ok=(0, 1), pure=True, timeout=timeout)
         if res.returncode == 0:
             applied.append(sha)
             continue
@@ -505,7 +512,7 @@ def try_cherry_picks(scratch_dir, commits, ident_name, ident_email, resolution_p
         git("cherry-pick", "--abort", cwd=scratch_dir, ok=(0, 1, 128), timeout=30)
         if resolution_patch and Path(resolution_patch).is_file():
             git("reset", "--hard", orig_head, cwd=scratch_dir, timeout=30)
-            am_res = git("am", "--3way", str(resolution_patch), cwd=scratch_dir, env=env, ok=(0, 1, 128), pure=True, timeout=timeout)
+            am_res = git("am", "--3way", "--committer-date-is-author-date", str(resolution_patch), cwd=scratch_dir, env=env, ok=(0, 1, 128), pure=True, timeout=timeout)
             if am_res.returncode == 0:
                 head = git("rev-parse", "HEAD", cwd=scratch_dir, timeout=15).stdout.strip()
                 return {
@@ -656,6 +663,7 @@ def update_manifest_xml(manifest_path, out_xml_path, repo_updates, branch=DEFAUL
         path = proj.get("path") or name
         if path in repo_updates:
             upd = repo_updates[path]
+            proj.attrib.pop("clone-depth", None)
             proj.set("remote", "expressiveos")
             proj.set("name", upd["eos_repo"])
             proj.set("revision", upd["new_head"])
@@ -679,17 +687,18 @@ def cmd_plan(args):
     ident_name, ident_email = parse_ident(eos_conf.get("EOS_UPDATE_IDENT", "Daryl Denson <9751141+denson9874@users.noreply.github.com>"))
     branch = args.branch or eos_conf.get("EOS_MANIFEST_BRANCH", DEFAULT_EOS_BRANCH)
 
+    manifest_path = find_manifest_path(args)
+    existing_last = parse_kv_file(manifest_path.parent / "last-update.conf")
     upd_dir = Path(args.updates_dir) / upd_id if args.updates_dir else (HERE / "updates" / upd_id)
     uconf = parse_kv_file(upd_dir / "update.conf")
-    from_tag = args.from_sec_tag or uconf.get("AOSP_SEC_TAG")
+    from_tag = args.from_sec_tag or uconf.get("AOSP_SEC_TAG") or existing_last.get("AOSP_SEC_TAG")
     to_tag = args.to_sec_tag or uconf.get("TARGET_SEC_TAG")
     target_spl = args.target_spl or uconf.get("TARGET_SPL")
     if not from_tag or not to_tag or not target_spl:
-        raise UpdateError(f"need AOSP_SEC_TAG, TARGET_SEC_TAG, and TARGET_SPL (in {upd_dir / 'update.conf'} or CLI flags)")
+        raise UpdateError(f"need AOSP_SEC_TAG (or last-update.conf), TARGET_SEC_TAG, and TARGET_SPL (in {upd_dir / 'update.conf'} or CLI flags)")
     if not SPL_DATE_RE.fullmatch(target_spl):
         raise UpdateError(f"invalid TARGET_SPL '{target_spl}' (expected YYYY-MM-DD)")
 
-    manifest_path = find_manifest_path(args)
     eos_manifest = parse_manifest(manifest_path)
 
     aosp_manifest_url = args.aosp_manifest_url or os.environ.get("EOS_AOSP_MANIFEST_URL", DEFAULT_AOSP_MANIFEST_URL)
@@ -773,14 +782,17 @@ def cmd_plan(args):
     git("add", SPL_REL_PATH, cwd=ve_scratch, timeout=30)
     diff_rc = git("diff", "--cached", "--quiet", cwd=ve_scratch, ok=(0, 1), timeout=15).returncode
     if diff_rc == 1:
+        spl_iso = f"{target_spl}T00:00:00Z"
         git(
             "commit", "-m", f"release: Bump Security String to {target_spl} ({upd_id})",
             cwd=ve_scratch,
             env={
                 "GIT_AUTHOR_NAME": ident_name,
                 "GIT_AUTHOR_EMAIL": ident_email,
+                "GIT_AUTHOR_DATE": spl_iso,
                 "GIT_COMMITTER_NAME": ident_name,
                 "GIT_COMMITTER_EMAIL": ident_email,
+                "GIT_COMMITTER_DATE": spl_iso,
             },
             timeout=30,
         )
@@ -802,7 +814,6 @@ def cmd_plan(args):
     if lint_errs:
         raise UpdateError("generated manifest failed lint: " + "; ".join(lint_errs[:5]))
 
-    existing_last = parse_kv_file(manifest_path.parent / "last-update.conf")
     base_tag = uconf.get("AOSP_BASE_TAG") or existing_last.get("AOSP_BASE_TAG")
     base_tag_line = f"AOSP_BASE_TAG={base_tag}\n" if base_tag else ""
     last_update_path = work / "last-update.conf"

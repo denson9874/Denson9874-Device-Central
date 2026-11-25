@@ -1,44 +1,64 @@
 #!/usr/bin/env bash
-# Download the newest factory image Google lists for a phone whose firmware comes from the
-# cache (devices/<device>.conf EOS_FIRMWARE_MODE=cache: cheetah, husky), verify its SHA-256
-# against Google's page, and keep only its bootloader and radio images in the firmware
-# cache that prepare.sh reads (the newest cached release goes into vendor/google/<device>
-# through update-firmware.sh at the start of each build).
+# Download the newest factory image Google lists for a supported Pixel (cheetah, husky, kodiak,
+# grizzly, cubs, yogi), verify its SHA-256 against firmware/<device>.conf (or Google's page),
+# and stage what prepare.sh reads:
+#   cheetah, husky (EOS_FIRMWARE_MODE=cache):
+#     ~/android-dt/firmware/<device>/{bootloader-*,radio-*,image-*,CURRENT}
+#   kodiak, grizzly, cubs, yogi (EOS_FIRMWARE_MODE=images):
+#     ~/android-dt/firmware/image-<device>-<build>.zip,
+#     ~/android-dt/firmware/<device>-<build>-bootloader-radio/{bootloader-*,radio-*}, and
+#     ~/android-dt/firmware/<device>/CURRENT
 # Run it when Google ships a new monthly release: runner action expressiveos-firmware.
-# Moved here from the old cheetah kit (2026-11-02), unchanged but for the paths; husky
-# joined on 2026-11-11 (its vendor repo's own firmware was October's).
 #
-#   fetch-firmware.sh [--check] [device]   # device: cheetah (the default) or husky;
-#                                          # --check: print the newest release, download nothing
-#
-# Result in ~/android-dt/firmware/<device>/: bootloader-<device>-*.img,
-# radio-<device>-*.img and CURRENT (the build id, e.g. cp3a.261005.005).
+#   fetch-firmware.sh [--check] [device]   # device: cheetah (default), husky, kodiak, grizzly, cubs, yogi;
+#                                          # --check: print the newest release and cached state, download nothing
 set -euo pipefail
 check=0; dev=cheetah
 for a in "$@"; do
     case $a in
     --check) check=1 ;;
-    cheetah|husky) dev=$a ;;
-    *) echo "usage: fetch-firmware.sh [--check] [cheetah|husky]" >&2; exit 1 ;;
+    cheetah|husky|kodiak|grizzly|cubs|yogi) dev=$a ;;
+    *) echo "usage: fetch-firmware.sh [--check] [cheetah|husky|kodiak|grizzly|cubs|yogi]" >&2; exit 1 ;;
     esac
 done
-dir=~/android-dt/firmware/$dev; mkdir -p "$dir"
+fwroot=${EOS_FIRMWARE_ROOT:-$HOME/android-dt/firmware}
+dir=$fwroot/$dev; mkdir -p "$dir"
 here="$(cd "$(dirname "$0")" && pwd)"
 conf="$here/../firmware/$dev.conf"
+mode=cache
+case $dev in kodiak|grizzly|cubs|yogi) mode=images ;; esac
+
+newest_image_zip() {
+    find "$fwroot" -maxdepth 1 -type f -name "image-$dev-*.zip" 2>/dev/null | LC_ALL=C awk -v pfx="image-$dev-" '
+    {
+        path = $0; base = path; sub(/^.*\//, "", base)
+        id = substr(base, length(pfx) + 1); sub(/\.zip$/, "", id); id_lc = tolower(id)
+        n = split(id_lc, f, ".")
+        date_key = (n >= 2 && f[2] ~ /^[0-9]{6}$/) ? f[2] : "000000"
+        seq_key  = (n >= 3 && f[3] ~ /^[0-9]+$/) ? sprintf("%06d", f[3] + 0) : "000000"
+        rest_key = (n >= 4) ? f[4] : ""
+        print date_key "\t" seq_key "\t" rest_key "\t" id_lc "\t" path
+    }' | LC_ALL=C sort | tail -n 1 | cut -f5-
+}
+
 # Newest generic (not carrier-specific) Android 17 release. Rows look like
 #   <tr id="cheetahcp3a.261005.005"><td>17.0.0 (CP3A.261005.005, Oct 2026)</td>
 #   <td><a href="https://dl.google.com/.../cheetah-cp3a.261005.005-factory-1a2b3c4d.zip">Link</a></td><td>sha256</td>
-# The build id comes from the URL (it may carry a suffix such as .a1, as cheetah's
-# generic CP3A.261005.002.A1 does); carrier builds have a third field in the
-# description ("..., Oct 2026, Verizon"). The device tables may sit on
-# the main page or on a per-device page it links to; both are tried.
 if [[ -f "$conf" ]]; then
     # Copied by a person from https://developers.google.com/android/images#<device> after
     # accepting Google's terms there: the newest generic Android 17 release's link and SHA-256.
     url=$(sed -n 's/^url=//p' "$conf" | head -1); sha=$(sed -n 's/^sha256=//p' "$conf" | head -1)
-    build=$(sed -E -n "s#^https://dl\.google\.com/dl/android/aosp/$dev-([a-z0-9]{4}\.[0-9]{6}\.[0-9]{3}(\.[a-z0-9]+)?)-factory-[0-9a-f]{8}\.zip\$#\1#p" <<<"$url")
-    [[ -n "$build" && "$sha" =~ ^[0-9a-f]{64}$ ]] || { echo "firmware/$dev.conf needs url=<generic $dev factory zip link> and sha256=<64 hex>" >&2; exit 1; }
+    build=$(sed -E -n "s#^.*/$dev-([a-z0-9]{4}\.[0-9]{6}\.[0-9]{3}(\.[a-z0-9]+)?)-factory-[0-9a-f]{8}\.zip\$#\1#p" <<<"$url")
+    [[ -n "$build" && ( "$url" == https://dl.google.com/dl/android/aosp/* || "${EOS_ALLOW_LOCAL_FIRMWARE_URL:-0}" == 1 && "$url" == file://* ) && "$sha" =~ ^[0-9a-f]{64}$ ]] \
+        || { echo "firmware/$dev.conf needs url=<generic $dev factory zip link> and sha256=<64 hex>" >&2; exit 1; }
 else
+    if (( check )) && [[ $mode = images ]]; then
+        iz=$(newest_image_zip)
+        cached_id=$( [[ -n "$iz" ]] && basename "$iz" .zip | sed "s/^image-$dev-//" || echo none )
+        echo "newest $dev factory image: (unpinned — create firmware/$dev.conf after Google publishes the release)"
+        echo "cached: $cached_id"
+        exit 0
+    fi
 read -r url sha build < <(python3 -I - "$dev" <<'PY'
 import html as H, re, sys, urllib.parse, urllib.request
 dev = sys.argv[1]
@@ -65,7 +85,7 @@ final, page = get(MAIN); tried.append((final, page))
 best, rows = parse(page)
 links = sorted({urllib.parse.urljoin(final, h) for h in re.findall(r'href="([^"#]+)"', page) if "/android/images" in h})
 if not best:
-    for link in [l for l in links if re.search(r"%s|pixel-?7-?pro|pantah" % dev, l, re.I)][:4]:
+    for link in [l for l in links if re.search(r"%s|pixel" % dev, l, re.I)][:6]:
         u, p = get(link); tried.append((u, p))
         best, rows = parse(p)
         if best:
@@ -87,18 +107,53 @@ PY
 fi
 [[ -n "${url:-}" && -n "${sha:-}" && -n "${build:-}" ]] || { echo "couldn't find the newest $dev factory image on Google's page" >&2; exit 1; }
 echo "newest $dev factory image: $build ($url)"
-(( check )) && { echo "cached: $(cat "$dir/CURRENT" 2>/dev/null || echo none)"; exit 0; }
+if (( check )); then
+    if [[ $mode = images ]]; then
+        iz=$(newest_image_zip)
+        cached_id=$( [[ -n "$iz" ]] && basename "$iz" .zip | sed "s/^image-$dev-//" || echo none )
+        echo "cached: $cached_id"
+    else
+        echo "cached: $(cat "$dir/CURRENT" 2>/dev/null || echo none)"
+    fi
+    exit 0
+fi
+
+if [[ $mode = images ]]; then
+    target_iz="$fwroot/image-$dev-$build.zip"
+    if [[ -s "$target_iz" ]]; then
+        echo "$build" > "$dir/CURRENT"
+        echo "already cached: $build (image-$dev-$build.zip)"
+        exit 0
+    fi
+    work=$(mktemp -d "$fwroot/.fetch-$dev.XXXXXX"); trap 'rm -rf "$work"' EXIT
+    zip="$work/$(basename "$url")"
+    curl -sSfL --retry 5 -C - -o "$zip" "$url"
+    got_sha=$( (sha256sum "$zip" 2>/dev/null || shasum -a 256 "$zip") | awk '{print $1}' )
+    [[ "$got_sha" == "$sha" ]] || { rm -f "$zip"; echo "SHA-256 mismatch for $zip (got $got_sha, expected $sha)" >&2; exit 1; }
+    unzip -q -j -o "$zip" "*/bootloader-$dev-*.img" "*/radio-$dev-*.img" "*/image-$dev-$build.zip" -d "$work"
+    rm -f "$zip"
+    ls "$work"/bootloader-$dev-*.img "$work"/radio-$dev-*.img "$work/image-$dev-$build.zip" >/dev/null
+    blr="$fwroot/$dev-$build-bootloader-radio"
+    mkdir -p "$blr"
+    mv -f "$work"/bootloader-$dev-*.img "$work"/radio-$dev-*.img "$blr/"
+    mv -f "$work/image-$dev-$build.zip" "$target_iz"
+    echo "$build" > "$dir/CURRENT"
+    echo "FIRMWARE_OK $build: image-$dev-$build.zip ($(cd "$blr" && ls bootloader-$dev-*.img radio-$dev-*.img | paste -sd' ' -))"
+    exit 0
+fi
+
 if [[ "$(cat "$dir/CURRENT" 2>/dev/null)" == "$build" ]] && ls "$dir"/bootloader-$dev-*.img "$dir"/radio-$dev-*.img "$dir"/image-$dev-*.zip >/dev/null 2>&1; then
     echo "already cached: $build"; exit 0
 fi
 zip="$dir/$(basename "$url")"
 curl -sSfL --retry 5 -C - -o "$zip" "$url"
-echo "$sha  $zip" | sha256sum -c --quiet || { rm -f "$zip"; echo "SHA-256 mismatch for $zip" >&2; exit 1; }
-work=$(mktemp -d -p "$dir"); trap 'rm -rf "$work"' EXIT
+got_sha=$( (sha256sum "$zip" 2>/dev/null || shasum -a 256 "$zip") | awk '{print $1}' )
+[[ "$got_sha" == "$sha" ]] || { rm -f "$zip"; echo "SHA-256 mismatch for $zip (got $got_sha, expected $sha)" >&2; exit 1; }
+work=$(mktemp -d "$dir/.unpack.XXXXXX"); trap 'rm -rf "$work"' EXIT
 unzip -q -j -o "$zip" "*/bootloader-$dev-*.img" "*/radio-$dev-*.img" "*/image-$dev-*.zip" -d "$work"
 ls "$work"/bootloader-$dev-*.img "$work"/radio-$dev-*.img "$work"/image-$dev-*.zip >/dev/null
 rm -f "$dir"/bootloader-$dev-*.img "$dir"/radio-$dev-*.img "$dir"/image-$dev-*.zip
 mv "$work"/*.img "$work"/image-$dev-*.zip "$dir/"
 echo "$build" > "$dir/CURRENT"
 rm -f "$zip"
-echo "FIRMWARE_OK $build: $(cd "$dir" && ls bootloader-$dev-*.img radio-$dev-*.img image-$dev-*.zip | paste -sd' ')"
+echo "FIRMWARE_OK $build: $(cd "$dir" && ls bootloader-$dev-*.img radio-$dev-*.img image-$dev-*.zip | paste -sd' ' -)"

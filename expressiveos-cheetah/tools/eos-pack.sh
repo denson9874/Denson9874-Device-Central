@@ -421,7 +421,7 @@ else
     # The Pixel 11 trees build no super_empty.img: the stock one (the same super layout as
     # BoardConfig.mk) from the newest factory image zip, as prepare.sh picks it, with that
     # zip's time, so the same out/ and zip pack into the same bytes
-    fz=$(find ~/android-dt/firmware -maxdepth 1 -name "image-$EOS_DEVICE-*.zip" 2>/dev/null | sort | tail -1) || true
+    fz=$(newest_factory_image_zip "$EOS_DEVICE") || true
     [[ -n $fz ]] || fail "no ~/android-dt/firmware/image-$EOS_DEVICE-*.zip to take super_empty.img from (EOS_SUPER_EMPTY=factory)"
     unzip -p -- "$fz" super_empty.img > "$T/z/super_empty.img" 2> /dev/null && [[ -s $T/z/super_empty.img ]] \
         || fail "can't extract super_empty.img from $fz"
