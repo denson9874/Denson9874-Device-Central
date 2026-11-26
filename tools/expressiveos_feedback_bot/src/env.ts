@@ -15,6 +15,8 @@ export interface BotEnv {
 	GITHUB_REPO: string;
 	REPLY_LOGINS: string;
 	MAX_ATTACHMENT_MB: string;
+	MAX_LOG_STRIKES?: string;
+	MUTE_HOURS?: string;
 	TELEGRAM_BOT_TOKEN: string;
 	TELEGRAM_WEBHOOK_SECRET: string;
 	GITHUB_TOKEN: string;
@@ -32,6 +34,36 @@ export interface Link {
 	t: number;
 	/** Message id of the issue's first post */
 	r: number;
+}
+
+/** A bug post in Bugs (753) held until the author replies with or edits in a log. */
+export interface PendingBug {
+	/** Original message id */
+	m: number;
+	/** Bot's warning reply message id (if sent) */
+	w?: number;
+	/** Topic id */
+	t: number;
+	/** Author Telegram user id */
+	u: number;
+	name: string;
+	username?: string;
+	date: number;
+	text: string;
+	/** Non-log media attached to the initial post (e.g. screenshot/video) to include once logged */
+	media?: { id: string; name: string; size?: number };
+	/** Follow-up replies from the user before a log was supplied */
+	extra?: string[];
+	/** Set once promoted to a GitHub issue */
+	i?: number;
+}
+
+/** Per-user missing-log strike counter in Bugs (753). Resets to 0 when a mute triggers or via /unwarn. */
+export interface StrikeState {
+	count: number;
+	lastMessageId?: number;
+	mutedUntil?: number;
+	updatedAt: number;
 }
 
 export async function getJSON<T>(bucket: Bucket, key: string): Promise<T | null> {

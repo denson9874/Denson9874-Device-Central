@@ -11,6 +11,7 @@ export interface BotEnv {
 	STATE: Bucket;
 	CHAT_ID: string;
 	SUPPORT_TOPICS: string;
+	BUGS_TOPIC?: string;
 	MODEL: string;
 	MAX_REPLIES_PER_USER_HOUR: string;
 	MAX_REPLIES_PER_DAY: string;

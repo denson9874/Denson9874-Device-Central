@@ -16,8 +16,10 @@ export default defineConfig({
 			// Small JSON records only: recent turns per chat, counters, the on/off switch.
 			STATE: bindings.r2({ name: "expressiveos-helpdesk-bot" }),
 			CHAT_ID: bindings.text("-1004427242312"), // Expressive Group Chat
-			// ROM Support, Launcher Support, Install & Updates. Bugs (753) and Ideas (751) belong to the feedback bot.
-			SUPPORT_TOPICS: bindings.text("755,754,752"),
+			// ROM Support (755), Launcher Support (754), Install & Updates (752), and Bugs (753).
+			// In Bugs (753), logless bug reports are skipped so the feedback bot handles warnings/mutes without double replies.
+			SUPPORT_TOPICS: bindings.text("755,754,752,753"),
+			BUGS_TOPIC: bindings.text("753"),
 			MODEL: bindings.text("claude-sonnet-5-5"),
 			// Spending guards: answers per person per hour, and answers per day in total
 			MAX_REPLIES_PER_USER_HOUR: bindings.text("10"),

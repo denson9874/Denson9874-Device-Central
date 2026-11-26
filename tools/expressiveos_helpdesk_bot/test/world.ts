@@ -5,6 +5,7 @@ import type { BotEnv, Bucket } from "../src/env.ts";
 export const CHAT = -1004427242312;
 export const ROM = 755;
 export const BUGS = 753;
+export const IDEAS = 751;
 export const BOT_ID = 123;
 export const OWNER = 500;
 export const CONN = "conn1";
@@ -36,7 +37,8 @@ export class World {
 	env: BotEnv = {
 		STATE: this.bucket,
 		CHAT_ID: String(CHAT),
-		SUPPORT_TOPICS: "755,754,752",
+		SUPPORT_TOPICS: "755,754,752,753",
+		BUGS_TOPIC: String(BUGS),
 		MODEL: "claude-sonnet-5-5",
 		MAX_REPLIES_PER_USER_HOUR: "3",
 		MAX_REPLIES_PER_DAY: "300",

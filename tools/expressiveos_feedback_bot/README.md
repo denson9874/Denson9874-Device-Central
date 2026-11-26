@@ -12,11 +12,17 @@ It's one Cloudflare Worker, `expressiveos-feedback-bot`, on the same account as 
 
 **In Telegram**
 
-- A new post in Bugs or Ideas becomes an issue labelled `bug` or `idea`, plus `phone:<codename>` for each phone it
-  names and `launcher` when it's about the launcher. The issue quotes the post and has who posted it, a link back,
-  the time (ET), and its file (a log, screenshot or video up to 10 MB, committed under `attachments/`).
-- The bot reacts 👀 to the post. A bug that lacks the pinned template's phone, build date or log gets one reply
-  asking for what's missing.
+- A new post in Ideas (or a bug post in Bugs that includes a log file or paste/log snippet) becomes an issue labelled
+  `bug` or `idea`, plus `phone:<codename>` for each phone it names and `launcher` when it's about the launcher. The
+  issue quotes the post and has who posted it, a link back, the time (ET), and its file (a log, screenshot or video up
+  to 10 MB, committed under `attachments/`).
+- The bot reacts 👀 to logged posts. A logged bug that still lacks the pinned template's phone or build date gets one
+  reply asking for what's missing.
+- **Missing-log enforcement in Bugs (`753`):** a non-admin bug report in Bugs without a log file or paste link is held
+  (not opened on GitHub yet) and receives a warning (`1/3`, `2/3`). If the author replies to or edits their post with a
+  log, the bot opens the GitHub issue then. On the third bug report without logs (`3/3`), the bot mutes the user's
+  posts for **48 hours** (`restrictChatMember`) and resets their warning count to `0`. Admins can reply `/unwarn` to a
+  member's message to clear their warnings, and pure how-to questions in Bugs are left to `@expressive_helpdesk_bot`.
 - Replies to a logged post, replies to the bot's messages, the rest of an album and edits are added to the same issue
   as comments, files included.
 - 👍 reactions on a logged post count as votes (the Ideas topic asks for them): the issue's `👍 votes` line keeps the
@@ -55,8 +61,9 @@ can say is in [`src/messages.ts`](src/messages.ts).
 
 1. **Bot:** in Telegram, message [@BotFather](https://t.me/BotFather), send `/newbot`, give it a name (for example
    "Expressive Feedback") and a username ending in `bot`, and copy the token it sends.
-2. **Group:** add the bot to Expressive Group Chat and make it an admin. It needs none of the admin rights: being an
-   admin is what lets a bot see every message and every reaction.
+2. **Group:** add the bot to Expressive Group Chat and make it an admin with **Ban users** (`can_restrict_members`)
+   ticked: being an admin lets the bot see every message and reaction, and **Ban users** lets it mute members for 48
+   hours after three bug reports without logs.
 3. **Repo:** create the **private** repo `denson9874/expressiveos-feedback` on GitHub (a README is fine).
 4. **Token:** GitHub → Settings → Developer settings →
    [Fine-grained tokens](https://github.com/settings/personal-access-tokens/new): repository access *Only select

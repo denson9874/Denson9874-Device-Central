@@ -1,6 +1,6 @@
 // Telegram -> Claude -> Telegram. Three places the bot answers:
 //   private   someone messages the bot itself
-//   group     a post in a support topic of Expressive Group Chat
+//   group     a post in a support topic (incl. Bugs 753) of Expressive Group Chat
 //   business  a message to Daryl's own account, through Telegram Business (Settings > Telegram Business > Chatbots)
 // Telegram delivers one update at a time (setup.sh sets max_connections=1) and retries until it gets a 2xx.
 
@@ -16,6 +16,11 @@ interface Chat {
 	id: number;
 	type: string;
 }
+interface FileRef {
+	file_id: string;
+	file_name?: string;
+	mime_type?: string;
+}
 export interface Message {
 	message_id: number;
 	date: number;
@@ -29,6 +34,15 @@ export interface Message {
 	business_connection_id?: string;
 	text?: string;
 	caption?: string;
+	entities?: { type: string; url?: string }[];
+	caption_entities?: { type: string; url?: string }[];
+	photo?: FileRef[];
+	document?: FileRef;
+	video?: FileRef;
+	animation?: FileRef;
+	audio?: FileRef;
+	voice?: FileRef;
+	video_note?: FileRef;
 }
 interface BusinessConnection {
 	id: string;
@@ -52,6 +66,48 @@ const HISTORY_TURNS = 8;
 const HISTORY_SECONDS = 6 * 3600;
 /** Telegram's limit for one message is 4096 characters */
 const MAX_REPLY = 3900;
+
+const TEMPLATE_HINTS = ["(for example Pixel 7 Pro)", "(Settings > About phone)", "adb logcat -b all -d > log.txt", "yes or no"];
+const LOG_LINK =
+	/https?:\/\/\S*(pastebin|del\.dog|gist\.github|dpaste|katb\.in|nekobin|hastebin|paste\.|0x0\.st|termbin|privatebin|rentry\.|drive\.google\.com|mega\.nz)/i;
+const LOG_SNIPPET =
+	/(FATAL EXCEPTION|AndroidRuntime:|--------- beginning of (crash|main|system)|\b\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3}\b|\bavc:\s*denied\b)/i;
+const NON_LOG_MEDIA_EXT = /\.(jpe?g|png|gif|webp|heic|bmp|mp4|mov|mkv|webm|avi|mp3|ogg|wav|m4a|flac|apk)$/i;
+const NON_LOG_MIME = /^(image|video|audio)\/|^application\/vnd\.android\.package-archive$/i;
+const TEMPLATE_LINE = /^(phone|build date|root, modules or another kernel|what happened|steps to make it happen again|log, taken right after)\s*:/im;
+const HOW_TO_QUESTION =
+	/\b(how (do|can|should|to)\b|where (do|can|is|are)\b|what (is|are) (the|expressive)|can i\b|do i (need|have) to\b|will .* require\b|which logs?\b)/i;
+const BUG_SYMPTOMS =
+	/\b(bug|crash(es|ed|ing)?|broken|breaks?|freez(e|es|ing)|froze|lag(s|ging)?|stutter(s|ing)?|bootloop(s|ing)?|reboot(s|ing)?|drain(s|ing)?|overheat(s|ing)?|flicker(s|ing)?|glitch(es|ing)?|stuck|fail(s|ed|ing)?|error|issue|problem|doesn'?t work|not working|won'?t (turn|open|start|boot|connect|charge|install|send)|stopped working|force clos(e|es|ing)|\bfc\b|dead|vanish(es|ed)?|disappear(s|ed)?|drop(s|ped|ping)?)\b/i;
+
+function hasAnyAttachment(msg: Message): boolean {
+	return Boolean(msg.document || msg.photo?.length || msg.video || msg.animation || msg.audio || msg.voice || msg.video_note);
+}
+
+function hasLogs(msg: Message, text: string): boolean {
+	if (msg.document && !(msg.document.mime_type && NON_LOG_MIME.test(msg.document.mime_type)) && !(msg.document.file_name && NON_LOG_MEDIA_EXT.test(msg.document.file_name))) {
+		return true;
+	}
+	let t = text;
+	for (const hint of TEMPLATE_HINTS) t = t.split(hint).join(" ");
+	const urls = (msg.entities ?? msg.caption_entities ?? []).filter((e) => e.type === "text_link" && e.url).map((e) => e.url);
+	if (urls.length) t = `${t}\n${urls.join(" ")}`;
+	return LOG_LINK.test(t) || LOG_SNIPPET.test(t);
+}
+
+function isSupportQuestion(text: string, hasAttachment: boolean): boolean {
+	const t = text.trim();
+	if (!t || hasAttachment || !t.includes("?")) return false;
+	if (TEMPLATE_LINE.test(t) || BUG_SYMPTOMS.test(t)) return false;
+	return HOW_TO_QUESTION.test(t);
+}
+
+function isChatter(text: string): boolean {
+	const t = text.trim();
+	if (!t) return true;
+	if (/^[\p{Extended_Pictographic}\u200d\ufe0f\s]+$/u.test(t)) return true;
+	return /^(ok(ay)?|thanks?( you)?|thx|ty|nice|great|cool|same( here)?|me too|\+1|lol|yes|no|yep|nope)[\s.!🙏👍]*$/i.test(t);
+}
 
 interface Ctx {
 	env: BotEnv;
@@ -136,16 +192,32 @@ async function onMessage(msg: Message, ctx: Ctx): Promise<void> {
 
 	if (String(msg.chat.id) !== env.CHAT_ID) return;
 	const topic = topicOf(msg);
-	if (!env.SUPPORT_TOPICS.split(",").includes(String(topic))) return;
+	if (!env.SUPPORT_TOPICS.split(",").map((s) => s.trim()).includes(String(topic))) return;
 	// Other bots, and admins posting as the group or a channel
 	if (!user || user.is_bot || msg.sender_chat) return;
 	if (!text || text.startsWith("/")) return;
 	// A reply to another person is their conversation; a reply to the bot continues ours
 	const parent = parentOf(msg);
 	if (parent && parent.from?.id !== tg.id) return;
+	if (isChatter(text)) return;
+
+	const isBugsTopic = topic === Number(env.BUGS_TOPIC || "753");
+	if (isBugsTopic && !parent) {
+		// In Bugs (753), logless bug reports are handled by expressiveos-feedback-bot (3-strike warning + 48h mute).
+		// Helpdesk answers how-to questions ("How do I take a logcat?") and logged reports matching known setup facts.
+		if (!hasLogs(msg, text) && !isSupportQuestion(text, hasAnyAttachment(msg))) return;
+	}
+
 	if (await isOff(ctx)) return;
 	if (await isAdmin(user.id, ctx)) return;
-	await answer(ctx, { mode: "group", scope: `g/${msg.chat.id}/${user.id}`, userId: user.id, msg, text, send: { topic, replyTo: msg.message_id } });
+	await answer(ctx, {
+		mode: isBugsTopic ? "bugs" : "group",
+		scope: `g/${msg.chat.id}/${user.id}`,
+		userId: user.id,
+		msg,
+		text,
+		send: { topic, replyTo: msg.message_id },
+	});
 }
 
 const connectionKey = (id: string) => `c/${id}`;

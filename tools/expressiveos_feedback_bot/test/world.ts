@@ -87,7 +87,15 @@ export class World {
 				return this.#json({ ok: true, result: { file_path: `files/${body.file_id}` } });
 			}
 			if (name === "sendMessage") return this.#json({ ok: true, result: { message_id: this.nextMessage++ } });
-			if (name === "getChatMember") return this.#json({ ok: true, result: { status: this.admins.has(body.user_id) ? "administrator" : "member" } });
+			if (name === "getMe") return this.#json({ ok: true, result: { id: 123, username: "ExpressiveFeedbackBot" } });
+			if (name === "getChatMember")
+				return this.#json({
+					ok: true,
+					result: {
+						status: this.admins.has(body.user_id) ? "administrator" : "member",
+						can_restrict_members: this.admins.has(body.user_id),
+					},
+				});
 			return this.#json({ ok: true, result: true });
 		}
 		if (url.startsWith("https://api.telegram.org/file/")) return new Response(new Uint8Array([104, 105]));

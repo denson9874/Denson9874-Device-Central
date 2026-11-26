@@ -42,8 +42,14 @@ BOT_NAME=$(jget 'd.result.username' <<<"$me")
 member=$(tg getChatMember -d chat_id="$CHAT_ID" -d user_id="$BOT_ID")
 status=$(jget 'd.result && d.result.status' <<<"$member")
 [[ $status == administrator ]] || fail "@$BOT_NAME isn't an admin of Expressive Group Chat yet (Telegram says: ${status:-$(jget 'd.description' <<<"$member")}).
-Add it to the group, make it an admin (it needs no admin rights ticked), then run this again."
-echo "@$BOT_NAME is an admin of Expressive Group Chat."
+Add it to the group, make it an admin with 'Ban users' enabled (needed for 48h mutes on 3 logless bug reports), then run this again."
+can_restrict=$(jget 'd.result && d.result.can_restrict_members' <<<"$member")
+if [[ $can_restrict == true ]]; then
+	echo "@$BOT_NAME is an admin of Expressive Group Chat with 'Ban users' (can_restrict_members) enabled."
+else
+	echo "Warning: @$BOT_NAME is an admin of Expressive Group Chat, but 'Ban users' (can_restrict_members) is off."
+	echo "Turn on 'Ban users' for @$BOT_NAME in Group Info > Administrators so strike 3 can mute posts for 48 hours."
+fi
 
 bold "Checking the GitHub repo"
 repo=$(gh_api "https://api.github.com/repos/$REPO")

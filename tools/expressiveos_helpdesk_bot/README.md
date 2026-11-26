@@ -5,14 +5,16 @@ Expressive Launcher with Claude. It is an automated helper and says so; it never
 
 It's one Cloudflare Worker, `expressiveos-helpdesk-bot`, on the same account as the web installer and the feedback
 bot, at `https://expressiveos-helpdesk-bot.daryldenson-apps.workers.dev`. Nothing runs on the build server or the Mac.
-It is a different bot from the feedback bot and stays out of its topics (Bugs and Ideas).
+It works alongside the feedback bot: in **Bugs (`753`)**, it answers how-to/support questions (such as how to capture a
+logcat) while skipping logless bug reports so the feedback bot handles the 3-strike warning and 48-hour mute without
+double replies; it stays out of **Ideas (`751`)**.
 
 ## Where it answers
 
 | Place | What it does |
 |---|---|
 | A private chat with the bot | Answers every text message. `/start` gets a short introduction. |
-| Expressive Group Chat: ROM Support, Launcher Support, Install & Updates | Reads every post and answers the ones that are questions it can answer, as a reply in the same topic. It stays silent on chatter, thanks and anything it isn't sure about. |
+| Expressive Group Chat: ROM Support, Launcher Support, Install & Updates, Bugs (`753`) | Reads posts and answers questions it can answer, as a reply in the same topic. In Bugs (`753`), skips unlogged bug reports (left to the feedback bot's warning/mute rule). Stays silent on chatter, thanks and anything it isn't sure about. |
 | Daryl's own chats (Telegram Business) | Answers only clear ExpressiveOS or launcher questions, under the line "🤖 Automated reply from Expressive Helpdesk (Daryl will see this chat too):". Silent on everything else. |
 
 It never answers:
