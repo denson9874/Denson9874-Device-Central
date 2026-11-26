@@ -1492,10 +1492,6 @@ jobs:
                     fail "not staging a build with unmerged commits ($d): merge them and build again"
                   fi
                 done
-                [[ -f $kit/tools/eos-stage.sh ]] || fail "$TREE_REF's kit has no tools/eos-stage.sh"
-                phones=${rel[*]}
-                echo "stage locally (no R2 upload), in turn: ${rel[*]} (each: eos-pack.sh --release, then eos-ota.sh preview)" | tee -a "$GITHUB_STEP_SUMMARY"
-                launch pack "bash $(printf %q "$kit/tools/eos-stage.sh") ${rel[*]}"
               elif [[ $release = 1 ]]; then
                 # A release is the tested zip, from ExpressiveOS's manifest only: never try=
                 # commits. With devices=, every phone's records are checked before any is released
@@ -1516,7 +1512,14 @@ jobs:
                 # The candidate's record, as for a build (above)
                 mirror=" && { if [[ -f $(printf %q "$st/try.txt") ]]; then cp -- $(printf %q "$st/try.txt") $(printf %q "$ck/try.txt"); else rm -f -- $(printf %q "$ck/try.txt"); fi; }"
               fi
-              if (( ${#devs[@]} )); then
+              if [[ $stage = 1 ]]; then
+                [[ -f $kit/tools/eos-stage.sh ]] || fail "$TREE_REF's kit has no tools/eos-stage.sh"
+                rel=("$ph")
+                (( ${#devs[@]} == 0 )) || rel=("${devs[@]}")
+                phones=${rel[*]}
+                echo "stage locally (no R2 upload), in turn: ${rel[*]} (each: eos-pack.sh --release, then eos-ota.sh preview)" | tee -a "$GITHUB_STEP_SUMMARY"
+                launch pack "bash $(printf %q "$kit/tools/eos-stage.sh") ${rel[*]}"
+              elif (( ${#devs[@]} )); then
                 # release devices=: each phone in turn in this one session (tools/eos-release.sh):
                 # eos-pack.sh --upload, eos-ota.sh --upload, then the web installer, with this
                 # ref's flasher_publish.py, as expressiveos-flasher-release runs it
