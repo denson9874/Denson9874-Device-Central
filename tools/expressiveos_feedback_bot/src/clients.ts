@@ -57,6 +57,40 @@ export class Telegram {
 			console.warn(String(e));
 		}
 	}
+
+	/**
+	 * Restricts a supergroup member from sending any messages until untilDate (Unix seconds).
+	 * Returns false instead of throwing on 400/403 (e.g. if the bot lacks "Ban users" admin permission)
+	 * so Telegram does not retry the webhook and send duplicate warning replies.
+	 */
+	async muteMember(chatId: number, userId: number, untilDate: number): Promise<boolean> {
+		try {
+			await this.call("restrictChatMember", {
+				chat_id: chatId,
+				user_id: userId,
+				until_date: untilDate,
+				permissions: {
+					can_send_messages: false,
+					can_send_audios: false,
+					can_send_documents: false,
+					can_send_photos: false,
+					can_send_videos: false,
+					can_send_video_notes: false,
+					can_send_voice_notes: false,
+					can_send_polls: false,
+					can_send_other_messages: false,
+					can_add_web_page_previews: false,
+				},
+			});
+			return true;
+		} catch (e) {
+			if (e instanceof ApiError && (e.status === 400 || e.status === 403)) {
+				console.error(`restrictChatMember failed (ensure bot has 'Ban users' permission): ${e.message}`);
+				return false;
+			}
+			throw e;
+		}
+	}
 }
 
 export interface Issue {

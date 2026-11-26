@@ -4,8 +4,11 @@ import {
 	dueDay,
 	easternDate,
 	easternTime,
+	hasLogText,
 	isChatter,
 	isLauncher,
+	isLogDocument,
+	isSupportQuestion,
 	markerLine,
 	messageLink,
 	missingInfo,
@@ -36,13 +39,29 @@ test("phones by model name or codename", () => {
 	assert.deepEqual(phonesIn(TEMPLATE), [], "the template's example phone doesn't count");
 });
 
-test("missing info follows the pinned template", () => {
+test("missing info follows the pinned template and rejects 'no logcat' excuses", () => {
 	assert.deepEqual(missingInfo(TEMPLATE, false), ["phone", "build", "log"]);
 	const filled = TEMPLATE.replace("(for example Pixel 7 Pro)", "Pixel 8 Pro").replace("(Settings > About phone)", "Nov 3");
 	assert.deepEqual(missingInfo(filled, false), ["log"]);
 	assert.deepEqual(missingInfo(filled, true), []);
 	assert.deepEqual(missingInfo("cheetah 20261103 crash, log: https://pastebin.com/abc", false), []);
 	assert.deepEqual(missingInfo("Wi-Fi drops on my 7 Pro, ExpressiveOS 1.0", false), ["log"]);
+	assert.deepEqual(missingInfo("husky 1.3.1 crash, sorry no logcat yet", false), ["log"]);
+	assert.ok(hasLogText("11-26 14:02:11.331  1920  1920 E AndroidRuntime: FATAL EXCEPTION: main"));
+	assert.ok(isLogDocument({ file_name: "log.txt" }));
+	assert.ok(isLogDocument({ file_name: "bugreport.zip" }));
+	assert.ok(!isLogDocument({ file_name: "screenshot.png", mime_type: "image/png" }));
+	assert.ok(!isLogDocument({ file_name: "screen.mp4", mime_type: "video/mp4" }));
+});
+
+test("support how-to questions vs bug reports in Bugs", () => {
+	assert.ok(isSupportQuestion("How do I take a logcat?"));
+	assert.ok(isSupportQuestion("Can I dirty flash 1.3.1 from 1.3?"));
+	assert.ok(isSupportQuestion("Where do I find the build date?"));
+	assert.ok(!isSupportQuestion("How do I take a logcat?", true), "attachments mean a report");
+	assert.ok(!isSupportQuestion("How do I fix camera crashing?"));
+	assert.ok(!isSupportQuestion("Why is Wi-Fi calling not working on 1.3.1?"));
+	assert.ok(!isSupportQuestion("Bluetooth audio stutters on cheetah"));
 });
 
 test("titles", () => {

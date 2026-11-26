@@ -44,16 +44,54 @@ const BUILD = new RegExp(
 	].join("|"),
 	"i",
 );
-const LOG = /(logcat|log\.txt|\.log\b|bugreport|pastebin|del\.dog|gist\.github|dpaste|katb\.in|nekobin|hastebin|paste\.)/i;
 
-/** What the pinned template asks for that a new bug report doesn't have. */
-export function missingInfo(text: string, hasFile: boolean): Missing[] {
+const LOG_LINK =
+	/https?:\/\/\S*(pastebin|del\.dog|gist\.github|dpaste|katb\.in|nekobin|hastebin|paste\.|0x0\.st|termbin|privatebin|rentry\.|drive\.google\.com|mega\.nz)/i;
+const LOG_SNIPPET =
+	/(FATAL EXCEPTION|AndroidRuntime:|--------- beginning of (crash|main|system)|\b\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3}\b|\bavc:\s*denied\b)/i;
+const NON_LOG_MEDIA_EXT = /\.(jpe?g|png|gif|webp|heic|bmp|mp4|mov|mkv|webm|avi|mp3|ogg|wav|m4a|flac|apk)$/i;
+const NON_LOG_MIME = /^(image|video|audio)\/|^application\/vnd\.android\.package-archive$/i;
+
+/** True when a Telegram document attachment is an actual log/archive rather than an image, video, audio or APK. */
+export function isLogDocument(doc?: { file_name?: string; mime_type?: string } | null): boolean {
+	if (!doc) return false;
+	if (doc.mime_type && NON_LOG_MIME.test(doc.mime_type)) return false;
+	if (doc.file_name && NON_LOG_MEDIA_EXT.test(doc.file_name)) return false;
+	return true;
+}
+
+/** True when message text includes a paste/log link or pasted logcat/crash output (not merely the word "logcat"). */
+export function hasLogText(text: string): boolean {
+	const t = withoutHints(text);
+	return LOG_LINK.test(t) || LOG_SNIPPET.test(t);
+}
+
+/** What the pinned template asks for that a bug report doesn't have. */
+export function missingInfo(text: string, hasLogFile: boolean): Missing[] {
 	const t = withoutHints(text);
 	const missing: Missing[] = [];
 	if (!phonesIn(t).length) missing.push("phone");
 	if (!BUILD.test(t)) missing.push("build");
-	if (!hasFile && !LOG.test(t)) missing.push("log");
+	if (!hasLogFile && !hasLogText(t)) missing.push("log");
 	return missing;
+}
+
+const TEMPLATE_LINE = /^(phone|build date|root, modules or another kernel|what happened|steps to make it happen again|log, taken right after)\s*:/im;
+const HOW_TO_QUESTION =
+	/\b(how (do|can|should|to)\b|where (do|can|is|are)\b|what (is|are) (the|expressive)|can i\b|do i (need|have) to\b|will .* require\b|which logs?\b)/i;
+const BUG_SYMPTOMS =
+	/\b(bug|crash(es|ed|ing)?|broken|breaks?|freez(e|es|ing)|froze|lag(s|ging)?|stutter(s|ing)?|bootloop(s|ing)?|reboot(s|ing)?|drain(s|ing)?|overheat(s|ing)?|flicker(s|ing)?|glitch(es|ing)?|stuck|fail(s|ed|ing)?|error|issue|problem|doesn'?t work|not working|won'?t (turn|open|start|boot|connect|charge|install|send)|stopped working|force clos(e|es|ing)|\bfc\b|dead|vanish(es|ed)?|disappear(s|ed)?|drop(s|ped|ping)?)\b/i;
+
+/**
+ * Pure how-to/support questions in Bugs (753) — e.g. "How do I take a logcat?" or "Can I dirty flash 1.3.1?" —
+ * are answered by the Helpdesk bot rather than treated as unlogged bug reports. Any post naming a failure/symptom,
+ * carrying an attachment, or using the bug template is treated as a bug report.
+ */
+export function isSupportQuestion(text: string, hasAttachment = false): boolean {
+	const t = text.trim();
+	if (!t || hasAttachment || !t.includes("?")) return false;
+	if (TEMPLATE_LINE.test(t) || BUG_SYMPTOMS.test(t)) return false;
+	return HOW_TO_QUESTION.test(t);
 }
 
 /** "ok", "thanks", "+1" and emoji-only posts aren't reports on their own (as replies they still join an issue). */

@@ -23,6 +23,37 @@ export function askForDetails(issue: number, missing: Missing[]): string {
 	].join("\n");
 }
 
+/** Confirmation when a held bug report is logged after the author replies with or edits in a log. */
+export function loggedWithLog(issue: number, missing: Missing[]): string {
+	return missing.length ? askForDetails(issue, missing) : `Thanks, logged as #${issue}.`;
+}
+
+/** Warning 1..(maxStrikes - 1) when someone posts a bug report in Bugs (753) without logs. */
+export function missingLogWarning(strike: number, maxStrikes: number, muteHours: number): string {
+	return [
+		`⚠️ Warning ${strike}/${maxStrikes}: Bug reports in this topic must include logs.`,
+		"",
+		"Right after the problem happens, capture a log with:",
+		"• PC: adb logcat -b all -d > log.txt",
+		"• Root on phone: su -c \"logcat -b all -d > /sdcard/log.txt\"",
+		`Which logs each problem needs: ${LOGS_LINK}`,
+		"",
+		`Reply to your post with the log file (or a paste link) to open your report. Posting ${maxStrikes} bug reports without logs mutes your posts for ${muteHours} hours.`,
+	].join("\n");
+}
+
+/** Strike maxStrikes: user hit the missing-log limit and is muted for muteHours. */
+export function mutedForMissingLogs(maxStrikes: number, muteHours: number, restricted: boolean): string {
+	const action = restricted
+		? `so your posts have been muted for ${muteHours} hours.`
+		: `(mute threshold of ${muteHours} hours reached).`;
+	return [
+		`🔇 Warning ${maxStrikes}/${maxStrikes}: You reported ${maxStrikes} bugs without logs, ${action}`,
+		"",
+		`Once unmuted, attach a log file (adb logcat -b all -d > log.txt) or paste link with every bug report: ${LOGS_LINK}`,
+	].join("\n");
+}
+
 /** "ExpressiveOS 1.1, out Dec 3" from an issue's milestone. */
 function release(milestone?: { title: string; due?: string }): string | null {
 	if (!milestone) return null;
@@ -57,7 +88,9 @@ export const DM_POINTER =
 	"Hi! I log bugs and ideas for ExpressiveOS and Expressive Launcher. " +
 	`Post them in the Bugs or Ideas topic of Expressive Group Chat: ${CHAT_LINK}`;
 
-/** For admins: answers to /track. */
+/** For admins: answers to /track and /unwarn. */
 export const TRACK_HOW = "Reply /track to the message you want to log (/track idea logs it as an idea).";
+export const UNWARN_HOW = "Reply /unwarn to a member's message to clear their missing-log warnings.";
 export const tracked = (issue: number, kind: Kind) => `Logged as #${issue} (${kind}).`;
 export const alreadyLogged = (issue: number) => `Already logged as #${issue}.`;
+export const unwarned = (name: string) => `Cleared missing-log warnings for ${name}.`;

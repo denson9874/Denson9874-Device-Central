@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import worker from "../src/index.ts";
-import { BOT_ID, BUGS, CHAT, CONN, OWNER, ROM, World, dm, post, telegramRequest } from "./world.ts";
+import { BOT_ID, BUGS, CHAT, CONN, IDEAS, OWNER, ROM, World, dm, post, telegramRequest } from "./world.ts";
 
 let world: World;
 beforeEach(() => {
@@ -76,9 +76,32 @@ test("in a topic the bot says nothing when Claude answers SKIP", async () => {
 	assert.equal(sent().length, 0);
 });
 
+test("in Bugs (753): answers support questions and logged reports, but skips logless bug reports so Feedback bot warns alone", async () => {
+	// Logless bug report in 753 -> skipped before Claude (Feedback bot sends Warning X/3)
+	await send({ message: post(BUGS, "Wi-Fi calling is broken on cheetah") });
+	assert.equal(world.asked().length, 0);
+	assert.equal(sent().length, 0);
+
+	// How-to question in 753 -> answered by Helpdesk in bugs mode
+	const howTo = post(BUGS, "How do I take a logcat?");
+	await send({ message: howTo });
+	assert.equal(world.asked().length, 1);
+	assert.match(world.asked()[0].body.system, /The Bugs topic in Expressive Group Chat/);
+	assert.equal(sent()[0].message_thread_id, BUGS);
+	assert.equal(sent()[0].reply_parameters.message_id, howTo.message_id);
+
+	// Bug report WITH log file in 753 -> reaches Claude in bugs mode (which answers known setup issues or SKIPs)
+	const withLog = post(BUGS, "BakaSU says Manager update required", { document: { file_id: "l1", file_name: "log.txt" } });
+	await send({ message: withLog });
+	assert.equal(world.asked().length, 2);
+	assert.equal(sent().length, 2);
+});
+
 test("posts the bot must not answer never reach Claude", async () => {
 	const other = { message_id: 7, date: 1, chat: { id: CHAT, type: "supergroup" }, from: { id: 77 } };
-	await send({ message: post(BUGS, "Wi-Fi calling is broken") }); // the feedback bot's topic
+	await send({ message: post(IDEAS, "Add a compact quick settings grid") }); // Ideas belongs to feedback bot
+	await send({ message: post(BUGS, "Wi-Fi calling is broken") }); // logless bug in Bugs -> feedback bot warns
+	await send({ message: post(ROM, "thanks!") }); // chatter skipped before Claude
 	await send({ message: post(ROM, "Try a reboot", { reply_to_message: other }) }); // people talking to each other
 	await send({ message: post(ROM, "I'll look at it", { from: { id: OWNER } }) }); // an admin
 	await send({ message: post(ROM, "Welcome!", { from: { id: 9, is_bot: true } }) }); // Rose

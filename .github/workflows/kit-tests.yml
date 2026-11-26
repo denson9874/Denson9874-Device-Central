@@ -140,7 +140,9 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Flasher & OTA Mirror Vitest, Typecheck, and Worker Build
+      - name: Flasher, OTA Mirror & Telegram Bots Tests, Typecheck, and Worker Build
         run: |
           (cd tools/expressiveos_flasher && perl -e 'alarm 180; exec @ARGV' -- npm ci && perl -e 'alarm 180; exec @ARGV' -- npm run typecheck && perl -e 'alarm 180; exec @ARGV' -- npm test && perl -e 'alarm 180; exec @ARGV' -- npm run build)
           (cd tools/ota_mirror && perl -e 'alarm 180; exec @ARGV' -- npm ci && perl -e 'alarm 180; exec @ARGV' -- npm run typecheck && perl -e 'alarm 180; exec @ARGV' -- npm run build)
+          (cd tools/expressiveos_feedback_bot && perl -e 'alarm 180; exec @ARGV' -- npm ci && perl -e 'alarm 180; exec @ARGV' -- npm run typecheck && perl -e 'alarm 180; exec @ARGV' -- npm test && perl -e 'alarm 180; exec @ARGV' -- npm run build)
+          (cd tools/expressiveos_helpdesk_bot && perl -e 'alarm 180; exec @ARGV' -- npm ci && perl -e 'alarm 180; exec @ARGV' -- npm run typecheck && perl -e 'alarm 180; exec @ARGV' -- npm test && perl -e 'alarm 180; exec @ARGV' -- npm run build)
