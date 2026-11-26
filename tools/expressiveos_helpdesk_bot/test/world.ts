@@ -85,6 +85,7 @@ export class World {
 			const name = tg[1];
 			if (this.failing.has(name)) return this.#json({ ok: false, error_code: 500, description: "Internal" }, 500);
 			if (name === "sendMessage") return this.#json({ ok: true, result: { message_id: 9000 + this.tg("sendMessage").length } });
+			if (name === "getMe") return this.#json({ ok: true, result: { id: BOT_ID, username: "expressive_helpdesk_bot" } });
 			if (name === "getChatMember") return this.#json({ ok: true, result: { status: this.admins.has(body.user_id) ? "administrator" : "member" } });
 			if (name === "getBusinessConnection") return this.#json({ ok: true, result: { id: CONN, user: { id: OWNER }, is_enabled: true, rights: { can_reply: true } } });
 			return this.#json({ ok: true, result: true });

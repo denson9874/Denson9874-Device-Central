@@ -183,6 +183,13 @@ test("a failing Claude call is retried once, then dropped without a reply", asyn
 	assert.equal(sent().length, 0);
 });
 
+test("GET /health reports the helpdesk bot's group membership status", async () => {
+	world.admins.add(BOT_ID);
+	const res = await worker.fetch(new Request("https://bot.example/health"), world.env);
+	assert.equal(res.status, 200);
+	assert.deepEqual(await res.json(), { ok: true, bot: "@expressive_helpdesk_bot", status: "administrator" });
+});
+
 test("a very long answer is cut to fit one Telegram message", async () => {
 	world.claude = "a".repeat(6000);
 	await send({ message: dm("Tell me everything") });
