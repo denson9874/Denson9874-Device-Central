@@ -15,4 +15,7 @@ PRODUCT_SOONG_NAMESPACES += \
 PRODUCT_PACKAGES += \
     ExpressiveLauncher
 
+PRODUCT_DEXPREOPT_SPEED_APPS += \
+    ExpressiveLauncher
+
 endif
