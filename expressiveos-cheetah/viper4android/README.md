@@ -107,7 +107,7 @@ appear at those two paths without touching Google's image:
 |---|---|
 | `/product/vendor_overlay/0/lib64/soundfx/libv4a_aidl.so`, seen as `/vendor/lib64/soundfx/libv4a_aidl.so` | husky's library (same pin), installed by `tree/Android.mk` (Soong may not install under `/product/vendor_overlay`, and `PRODUCT_COPY_FILES` refuses ELF files) |
 | `/product/vendor_overlay/0/etc/audio_effects_config.xml`, seen as `/vendor/etc/audio_effects_config.xml` | husky's config, unchanged |
-| `/product/etc/init/init.viper4android.rc` | At `early-boot` (before `on boot` starts class `hal`), two read-only overlayfs mounts: `/product/vendor_overlay/0/lib64/soundfx` over `/vendor/lib64/soundfx` and `/product/vendor_overlay/0/etc` over `/vendor/etc`. Every stock file stays visible. A failed mount is logged and skipped. Also the off switch |
+| `/product/etc/init/init.viper4android.rc` | At `post-fs` (before APEX activation starts the Pixel audio HAL), two read-only overlayfs mounts: `/product/vendor_overlay/0/lib64/soundfx` over `/vendor/lib64/soundfx` and `/product/vendor_overlay/0/etc` over `/vendor/etc`. Every stock file stays visible. A failed mount is logged and skipped. Also the off switch |
 | `/product/etc/selinux/product_*` | `tree/viper4android.te` and its `file_contexts`, `service_contexts` and `property_contexts`, as product policy (`PRODUCT_PRIVATE_SEPOLICY_DIRS`) |
 | The app, its two XMLs, the product and system_ext NOTICE files | As on husky |
 
