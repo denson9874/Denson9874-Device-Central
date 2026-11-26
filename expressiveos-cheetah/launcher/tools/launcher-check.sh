@@ -174,6 +174,11 @@ tree)
     else
         bad "launcher.mk's product list lacks: ${miss[*]:-no devices/*.conf found} (add eos_<device> to its filter)"
     fi
+    if awk '/^PRODUCT_DEXPREOPT_SPEED_APPS[[:space:]]*\+=/,/^$/' "$kit/tree/launcher.mk" | grep -qw 'ExpressiveLauncher'; then
+        pass "launcher.mk compiles ExpressiveLauncher with speed (PRODUCT_DEXPREOPT_SPEED_APPS)"
+    else
+        bad "launcher.mk doesn't add ExpressiveLauncher to PRODUCT_DEXPREOPT_SPEED_APPS (Soong falls back to verify/quicken without it)"
+    fi
 
     # The privapp allowlist. A privileged permission the APK asks for that the XML doesn't
     # grant stops a clean flash at boot under ro.control_privapp_permissions=enforce (the
@@ -285,8 +290,26 @@ out)
     else
         bad "apksigner: the APK doesn't verify or isn't signed by $EL_CERT_SHA256"
     fi
-    [[ -d "$O/system_ext/priv-app/ExpressiveLauncher/oat" ]] && info "dexpreopted (system_ext/priv-app/ExpressiveLauncher/oat)" \
-        || info "not dexpreopted (no oat/ next to the APK): the phone compiles it after boot"
+    odex="$O/system_ext/priv-app/ExpressiveLauncher/oat/arm64/ExpressiveLauncher.odex"
+    oatdump=
+    for s in "$H/bin/oatdump" "$H/oatdump"; do [[ -n "$H" && -x "$s" ]] && { oatdump=$s; break; }; done
+    if [[ ! -s "$odex" ]]; then
+        bad "no system_ext/priv-app/ExpressiveLauncher/oat/arm64/ExpressiveLauncher.odex (dex_preopt didn't run)"
+    elif [[ -n "$oatdump" ]]; then
+        cf=$("$oatdump" --header-only "--oat-file=$odex" 2>/dev/null | awk -F' = ' '$1 == "compiler-filter" { print $2; exit }' || true)
+        if [[ "$cf" = speed ]]; then
+            pass "dexpreopted with compiler-filter=speed (oatdump)"
+        else
+            bad "ExpressiveLauncher.odex compiler-filter is '${cf:-unreadable}', want speed (PRODUCT_DEXPREOPT_SPEED_APPS)"
+        fi
+    else
+        osz=$(wc -c < "$odex" | tr -d ' ')
+        if (( osz > 1048576 )); then
+            pass "dexpreopted ($osz B ExpressiveLauncher.odex; no oatdump in host_out to check compiler-filter)"
+        else
+            bad "ExpressiveLauncher.odex is only $osz B (expected >1 MiB for speed AOT; verify/quicken fallback?)"
+        fi
+    fi
     # Two Home apps: Expressive Launcher and Pixel Launcher; AOSP's Launcher3 and Trebuchet stay out
     want_apps="system_ext/priv-app/ExpressiveLauncher system_ext/priv-app/NexusLauncherRelease"
     hits=$(cd "$O" && find system system_ext product vendor -maxdepth 3 \( -path '*app/ExpressiveLauncher*' -o -path '*app/NexusLauncher*' \
@@ -468,6 +491,14 @@ device)
     esac
     v=$(grep -m1 -oE 'versionCode=[0-9]+' "$T/pkg" | cut -d= -f2 || true)
     info "running versionCode ${v:-unknown} (built-in $EL_VERSION_CODE)"
+    if [[ $upd = 0 ]]; then
+        if grep -qE 'arm64:.*\[status=speed\]' "$T/pkg"; then
+            pass "Expressive Launcher arm64 dexopt status is speed"
+        else
+            st=$(grep -m1 -E 'arm64:.*\[status=' "$T/pkg" | sed -E 's/^[[:space:]]+//' || true)
+            bad "Expressive Launcher arm64 dexopt status isn't speed: ${st:-missing from dumpsys package}"
+        fi
+    fi
     p=$(a pm list packages -f "$PIXEL" | grep -E "=$PIXEL\$" || true)
     case "$p" in
         *"/system_ext/priv-app/NexusLauncherRelease/"*) pass "Pixel Launcher is built in (for the launcher switch): $p" ;;
