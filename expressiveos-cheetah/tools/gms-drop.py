@@ -18,7 +18,11 @@ and permission XMLs carry fixes (nowplaying.xml), so their differences are print
 
 Stock's own platform apps (com.android.*, android.*) and the system partition's config files are
 counted, not listed: they come from the Android source, not from this package. CHANGES counts
-what needs a decision: newer apps, and carried config files that differ or that stock dropped.
+what needs a decision: newer apps, same-versionCode apps whose non-META-INF payload changed
+(QPR rebuilds), and carried config files that differ or that stock dropped.
+
+Same-versionCode payload rebuilds are reported by compare for manual Java ABI, private
+framework-res ID, and signing-certificate review; apply still copies only higher versionCode APKs.
 
 Last line: GMS_DROP=NONE, GMS_DROP=CHANGES <n> (compare) or GMS_DROP=APPLIED <n> (apply).
 Exit status 0 unless the arguments or a folder are wrong.
@@ -117,6 +121,40 @@ def sha256(path):
         for block in iter(lambda: f.read(1 << 20), b''):
             h.update(block)
     return h.hexdigest()
+
+
+def payload_diff(path_a, path_b):
+    """Sorted change categories between non-META-INF zip entries of two APKs, or []."""
+    def entries(path):
+        with zipfile.ZipFile(path) as z:
+            return {
+                zi.filename: (zi.CRC, zi.file_size)
+                for zi in z.infolist()
+                if not zi.is_dir() and zi.filename != 'META-INF' and not zi.filename.startswith('META-INF/')
+            }
+
+    ea, eb = entries(path_a), entries(path_b)
+    if ea == eb:
+        return []
+    cats = set()
+    for name in set(ea) | set(eb):
+        if ea.get(name) == eb.get(name):
+            continue
+        if name == 'AndroidManifest.xml':
+            cats.add('MANIFEST')
+        elif name == 'resources.arsc':
+            cats.add('ARSC')
+        elif name.endswith('.dex') and '/' not in name:
+            cats.add('DEX')
+        elif name.startswith('res/'):
+            cats.add('RES')
+        elif name.startswith('lib/'):
+            cats.add('LIB')
+        elif name.startswith('assets/'):
+            cats.add('ASSETS')
+        else:
+            cats.add('OTHER')
+    return sorted(cats)
 
 
 def walk(top, suffix=''):
@@ -220,7 +258,7 @@ def main():
     if not theirs:
         sys.exit('%s: no readable APK under product/, system_ext/ or system/: not a stock root' % stock)
 
-    newer, same, older, only_ours = [], [], [], []
+    newer, rebuilt, same, older, only_ours = [], [], [], [], []
     for pkg in sorted(ours):
         path, info = ours[pkg]
         if pkg not in theirs:
@@ -230,7 +268,12 @@ def main():
         elif theirs[pkg][1]['code'] < info['code']:
             older.append((pkg, path, info) + theirs[pkg])
         else:
-            same.append(pkg)
+            spath, sinfo = theirs[pkg]
+            cats = payload_diff(path, spath)
+            if cats:
+                rebuilt.append((pkg, path, info, spath, sinfo, cats))
+            else:
+                same.append(pkg)
     only_stock = sorted((pkg,) + theirs[pkg] for pkg in theirs if pkg not in ours)
     n_platform = sum(1 for o in only_stock if o[0].startswith(('com.android.', 'android.')))
     only_stock = [o for o in only_stock if not o[0].startswith(('com.android.', 'android.'))]
@@ -239,7 +282,10 @@ def main():
     print('== apps we carry that stock has newer (%d)%s' % (len(newer), ': apply copies these' if mode == 'compare' else ''))
     for pkg, path, info, spath, sinfo in newer:
         print('  %s  %s -> %s\n      ours  %s\n      stock %s' % (pkg, ver(info), ver(sinfo), os.path.relpath(path, gms), os.path.relpath(spath, stock)))
-    print('== apps we carry at the same version: %d' % len(same))
+    print('== apps we carry at the same version with changed payload (%d): review ABI/signing before copying' % len(rebuilt))
+    for pkg, path, info, spath, sinfo, cats in rebuilt:
+        print('  %s  %s -> %s  [%s]\n      ours  %s\n      stock %s' % (pkg, ver(info), ver(sinfo), ','.join(cats), os.path.relpath(path, gms), os.path.relpath(spath, stock)))
+    print('== apps we carry at the same version (identical payload): %d' % len(same))
     print('== apps we carry that are NEWER than stock (%d): left alone' % len(older))
     for pkg, path, info, spath, sinfo in older:
         print('  %s  ours %s, stock %s' % (pkg, ver(info), ver(sinfo)))
@@ -272,9 +318,11 @@ def main():
             shutil.copyfile(spath, tmp)
             os.replace(tmp, path)
             print('applied: %s %s -> %s' % (os.path.relpath(path, gms), ver(info), ver(sinfo)))
+        if rebuilt:
+            print('note: %d same-versionCode rebuild(s) left untouched; verify Java ABI, private resource IDs, and signing certs before manual copy' % len(rebuilt))
         print('GMS_DROP=APPLIED %d' % len(newer))
     else:
-        n = len(newer) + len(differ) + len(gone)
+        n = len(newer) + len(rebuilt) + len(differ) + len(gone)
         print('GMS_DROP=CHANGES %d' % n if n else 'GMS_DROP=NONE')
 
 
