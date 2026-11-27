@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ExpressiveOS (expressiveos-cheetah/wallpapers): the system colours come from the wallpaper,
-     on first boot and after every change (AOSP's own home_wallpaper default). -->
+     on first boot and after every change, defaulting to M3 Expressive (EXPRESSIVE|home_wallpaper). -->
 <resources>
     <string-array name="theming_defaults" translatable="false">
-        <item>*|TONAL_SPOT|home_wallpaper</item>
+        <item>*|EXPRESSIVE|home_wallpaper</item>
     </string-array>
 </resources>

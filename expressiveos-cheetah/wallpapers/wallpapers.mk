@@ -14,8 +14,8 @@ PRODUCT_COPY_FILES += \
 PRODUCT_PRODUCT_PROPERTIES += \
     ro.config.wallpaper=/product/media/wallpaper/expressiveos_bloom.png
 
-# theming_defaults back to AOSP's "*|TONAL_SPOT|home_wallpaper": the first-boot theme comes
-# from the wallpaper (blue petal), and later wallpaper changes still recolour the system.
+# theming_defaults set to "*|EXPRESSIVE|home_wallpaper": the first-boot theme comes
+# from the wallpaper (blue petal) in M3 Expressive style, and later wallpaper changes still recolour the system.
 # Evolution X's "#0049c7" is a preset colour source, which stops that.
 PRODUCT_PACKAGE_OVERLAYS += vendor/extra/wallpapers/overlay
 
