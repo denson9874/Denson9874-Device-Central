@@ -15,6 +15,13 @@ PRODUCT_PACKAGES += \
     ViPER4Android \
     libv4a_re
 
+PRODUCT_PRIVATE_SEPOLICY_DIRS += \
+    vendor/extra/viper4android
+
+# The off switch's default: on (EffectsFactory.c loadViperEffect())
+PRODUCT_PRODUCT_PROPERTIES += \
+    persist.eos.v4a.off=0
+
 endif
 
 # EOS_V4A=aidl, the AIDL driver and the effects config that loads it (an AIDL effect HAL in a

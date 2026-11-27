@@ -33,3 +33,4 @@ allow init vendor_file:file execute;
 # build, and the restart counter eos.v4a.*, which only init sets
 product_restricted_prop(eos_v4a_prop)
 set_prop(shell, eos_v4a_prop)
+get_prop(hal_audio_server, eos_v4a_prop)

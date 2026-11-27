@@ -19,8 +19,9 @@ PRODUCT_PRODUCT_PROPERTIES += \
 # Evolution X's "#0049c7" is a preset colour source, which stops that.
 PRODUCT_PACKAGE_OVERLAYS += vendor/extra/wallpapers/overlay
 
-# The picker keeps Google's PixelWallpapers2026 in 1.0 (Daryl, 2026-10-27): it reads only one
-# partner APK, so ExpressiveWallpapers/ (all four, but none of Pixel's) isn't built yet. In 1.1
-# one pack holds both.
+# ExpressiveWallpapers registers via ACTION_SET_WALLPAPER so all four bespoke ExpressiveOS
+# wallpapers appear in Wallpaper & Style alongside Google's PixelWallpapers2026 without overriding it.
+PRODUCT_PACKAGES += \
+    ExpressiveWallpapers
 
 endif

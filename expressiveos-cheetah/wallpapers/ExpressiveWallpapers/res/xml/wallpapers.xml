@@ -1,17 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Read by the wallpaper picker (WallpaperPicker2's WallpaperParserImpl): attributes have no
-     namespace. "memories" is PixelWallpapers2026's first category, kept so Google Photos'
-     Memories live wallpaper stays in the picker once this APK replaces that one. -->
+<!-- ExpressiveOS bespoke wallpaper metadata (listed alongside PixelWallpapers2026 via
+     ExpressiveWallpaperPickerActivity; PixelWallpapers2026 keeps Google Photos Memories). -->
 <wallpapers>
-    <category
-        id="memories"
-        title="@string/category_memories">
-        <live-wallpaper
-            id="memories"
-            package="com.google.android.apps.photos"
-            service="com.google.android.apps.photos.livewallpaper.LiveWallpaperService" />
-    </category>
-
     <category
         id="expressiveos"
         title="@string/category_expressiveos"

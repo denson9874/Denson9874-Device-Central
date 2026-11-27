@@ -566,6 +566,9 @@ tree)
     grep -qF 'ViPER effect already registered by library' "$fx" 2>/dev/null \
         && pass "EffectsFactory.c skips a second ViPER registration" \
         || bad "EffectsFactory.c lacks the kit's double-registration guard"
+    grep -qF 'disabled via persist.eos.v4a.off' "$fx" 2>/dev/null \
+        && pass "EffectsFactory.c gates loadViperEffect on persist.eos.v4a.off" \
+        || bad "EffectsFactory.c lacks the kit's persist.eos.v4a.off kill-switch"
     grep -qF 'memcmp(&desc.uuid, SL_V4A_RE, sizeof(effect_uuid_t))' "$ecpp" 2>/dev/null \
         && pass "Effects.cpp exempts ViPER from suspend by uuid" \
         || bad "Effects.cpp doesn't compare desc.uuid with SL_V4A_RE"
@@ -633,6 +636,11 @@ out)
             pass "vendor/lib64/libeffects.so has kit patch 0001 (no double registration)"
         else
             bad "vendor/lib64/libeffects.so lacks kit patch 0001's log string"
+        fi
+        if [[ -f "$le" ]] && grep -aqF 'disabled via persist.eos.v4a.off' "$le"; then
+            pass "vendor/lib64/libeffects.so has kit patch 0003 (persist.eos.v4a.off kill-switch)"
+        else
+            bad "vendor/lib64/libeffects.so lacks kit patch 0003's persist.eos.v4a.off kill-switch"
         fi
         hal="$O/vendor/bin/hw/android.hardware.audio.service"
         if [[ -f "$hal" ]] && elf_arm64 "$hal"; then

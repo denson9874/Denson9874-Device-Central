@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daryl Denson <9751141+denson9874@users.noreply.github.com>
+Date: Fri, 27 Nov 2026 12:00:00 +0000
+Subject: [PATCH] libeffects: gate loadViperEffect on persist.eos.v4a.off
+
+Allow disabling ViPER4Android HIDL driver loading on cheetah via the same
+persist.eos.v4a.off recovery kill-switch used by the Pixel 11 aidl-overlay
+devices. When persist.eos.v4a.off is non-zero (1 = manual off, 2 = auto off),
+return early from loadViperEffect() before dlopen().
+---
+ media/libeffects/factory/EffectsFactory.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/media/libeffects/factory/EffectsFactory.c b/media/libeffects/factory/EffectsFactory.c
+index 2ae304e000..f8a4b21000 100644
+--- a/media/libeffects/factory/EffectsFactory.c
++++ b/media/libeffects/factory/EffectsFactory.c
+@@ -645,6 +645,12 @@ void loadViperEffect() {
+     const char *libPath = NULL;
+     lib_entry_t *registeredLib = NULL;
+ 
++    // Recovery/user kill-switch (parity with Pixel 11 aidl-overlay persist.eos.v4a.off)
++    if (property_get_int32("persist.eos.v4a.off", 0) != 0) {
++        ALOGI("loadViperEffect: disabled via persist.eos.v4a.off, skipping");
++        return;
++    }
++
+     // An audio_effects.xml entry (e.g. from a ViPER module) may have registered it already
+     if (findEffect(NULL, &kViperImplUuid, &registeredLib, NULL) == 0) {
+         ALOGI("loadViperEffect: ViPER effect already registered by library %s, skipping",
+-- 
+2.43.0

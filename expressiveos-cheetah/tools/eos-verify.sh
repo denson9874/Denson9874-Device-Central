@@ -412,8 +412,9 @@ wpd=$O$WALLPAPER_DEFAULT_PATH dvar="WALLPAPER_${WALLPAPER_DEFAULT#expressiveos_}
 [[ -n "${!dvar:-}" && -f $wpd && "$(sha256sum -- "$wpd" | cut -d' ' -f1)" = "${!dvar}" ]] || fail "$wpd isn't wallpapers.conf's $WALLPAPER_DEFAULT"
 [[ "$(prop ro.config.wallpaper)" = "$WALLPAPER_DEFAULT_PATH" ]] \
     || fail "ro.config.wallpaper is '$(prop ro.config.wallpaper)', not $WALLPAPER_DEFAULT_PATH (wallpapers/wallpapers.mk)"
-# 1.0 keeps Pixel's wallpapers in the picker, which reads one partner APK only (wallpapers/README.md)
-[[ ! -e $O/product/app/ExpressiveWallpapers ]] || fail "ExpressiveWallpapers shipped: 1.0's picker keeps PixelWallpapers2026 (wallpapers/wallpapers.mk)"
+# 2.0 ships ExpressiveWallpapers (ACTION_SET_WALLPAPER) alongside PixelWallpapers2026 without overriding it (wallpapers/wallpapers.mk)
+[[ -f $O/product/app/ExpressiveWallpapers/ExpressiveWallpapers.apk ]] || fail "no $O/product/app/ExpressiveWallpapers/ExpressiveWallpapers.apk (wallpapers/wallpapers.mk)"
+[[ -f $O/product/app/PixelWallpapers2026/PixelWallpapers2026.apk ]] || fail "no $O/product/app/PixelWallpapers2026/PixelWallpapers2026.apk: ExpressiveWallpapers must ship alongside PixelWallpapers2026, not override it"
 [[ -x $H/aapt2 ]] || fail "no $H/aapt2 (the build makes it)"
 # The feed overlay must target the Updater this build ships: an overlay aimed at another package
 # name is installed and ignored, and nothing else would notice

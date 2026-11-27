@@ -2,8 +2,6 @@
 <resources>
     <string name="app_name" translatable="false">ExpressiveOS wallpapers</string>
     <string name="category_expressiveos" translatable="false">ExpressiveOS</string>
-    <!-- PixelWallpapers2026's English title for the Memories category -->
-    <string name="category_memories">Your memories</string>
     <string name="subtitle_expressiveos" translatable="false">ExpressiveOS</string>
 
     <string name="bloom_title" translatable="false">Bloom</string>
@@ -14,4 +12,11 @@
     <string name="dawn_subtitle">Coral petal, light</string>
     <string name="mint_title" translatable="false">Mint</string>
     <string name="mint_subtitle">Green petal, light</string>
+
+    <string name="set_wallpaper_dialog_title">Set wallpaper</string>
+    <string name="set_wallpaper_home">Home screen</string>
+    <string name="set_wallpaper_lock">Lock screen</string>
+    <string name="set_wallpaper_both">Home and lock screens</string>
+    <string name="set_wallpaper_done">Wallpaper updated</string>
+    <string name="set_wallpaper_failed">Could not set wallpaper</string>
 </resources>

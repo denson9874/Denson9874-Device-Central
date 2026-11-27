@@ -36,13 +36,27 @@ in_top() {   # in_top <path>: <path>, symlinks resolved, is inside $top
     [[ "$r" == "$top"/* ]] || fail "${1#"$top"/} leads to $r, outside $top (a symlink?); this kit writes only inside the ExpressiveOS tree"
 }
 
-# What goes into vendor/extra/wallpapers, relative to this folder: no Android.bp, so the
-# picker APK isn't even a module in 1.0
+# What goes into vendor/extra/wallpapers, relative to this folder: includes ExpressiveWallpapers
+# so all four ExpressiveOS wallpapers are selectable alongside PixelWallpapers2026.
 d=ExpressiveWallpapers/res/drawable-nodpi
 files=(
     wallpapers.mk
     overlay/frameworks/base/core/res/res/values/config.xml
-    "$d/$WALLPAPER_DEFAULT.png"
+    ExpressiveWallpapers/Android.bp
+    ExpressiveWallpapers/AndroidManifest.xml
+    ExpressiveWallpapers/src/org/expressiveos/wallpapers/ExpressiveWallpaperPickerActivity.java
+    ExpressiveWallpapers/res/drawable/ic_expressive_wallpapers.xml
+    ExpressiveWallpapers/res/values/bools.xml
+    ExpressiveWallpapers/res/values/strings.xml
+    ExpressiveWallpapers/res/xml/wallpapers.xml
+    "$d/expressiveos_bloom.png"
+    "$d/expressiveos_bloom_thumbnail.png"
+    "$d/expressiveos_dusk.png"
+    "$d/expressiveos_dusk_thumbnail.png"
+    "$d/expressiveos_dawn.png"
+    "$d/expressiveos_dawn_thumbnail.png"
+    "$d/expressiveos_mint.png"
+    "$d/expressiveos_mint_thumbnail.png"
 )
 
 dest="$top/vendor/extra/wallpapers"
