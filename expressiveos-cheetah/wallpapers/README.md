@@ -56,8 +56,8 @@ Running it again changes nothing; its last line is `WALLPAPERS_APPLY=OK` or `WAL
 2. **The theme follows the wallpaper.** Evolution X sets `theming_defaults` to `*|TONAL_SPOT|#0049c7`, a
    preset colour: on first boot, when SystemUI's `hardware_color_styles` flag is on,
    `ThemeOverlayController` stores colour source "preset", and after that a new wallpaper no longer
-   recolours the system until the user picks wallpaper colours by hand. `overlay/` puts back AOSP's
-   own `*|TONAL_SPOT|home_wallpaper`. It wins over Evolution X's because
+   recolours the system until the user picks wallpaper colours by hand. `overlay/` sets
+   `*|EXPRESSIVE|home_wallpaper` so clean boots start in Material 3 Expressive style while tracking the wallpaper. It wins over Evolution X's because
    `vendor/lineage/config/common.mk` inherits `vendor/extra/product.mk` on its line 2, so our overlay
    folder comes first in `PRODUCT_PACKAGE_OVERLAYS`, and Soong gives earlier folders the higher
    priority. Both end up in the same auto-generated RRO,
@@ -109,7 +109,7 @@ fill each screen and crops what's left over (`WallpaperCropper`). On the other s
 
 `../tools/eos-verify.sh` checks after every build: `/product/media/wallpaper/expressiveos_bloom.png` is
 `wallpapers.conf`'s, `ro.config.wallpaper` points at it, no `ExpressiveWallpapers` shipped, and the
-auto-RRO carries `*|TONAL_SPOT|home_wallpaper`. By hand:
+auto-RRO carries `*|EXPRESSIVE|home_wallpaper`. By hand:
 
 ```
 sha256sum out/target/product/cheetah/product/media/wallpaper/expressiveos_bloom.png

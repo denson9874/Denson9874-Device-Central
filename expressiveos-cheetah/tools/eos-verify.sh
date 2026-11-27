@@ -429,9 +429,9 @@ rros=("$O"/product/overlay/framework-res__*auto_generated_rro_product.apk)
 # The array's own lines: from its resource line to the next resource
 awk '/^ *resource 0x/ { on = /array\/theming_defaults/ } on' "$T/rro.txt" > "$T/td.txt"
 [[ -s $T/td.txt ]] || fail "${rros[0]##*/} has no theming_defaults (wallpapers/overlay)"
-{ grep -qF '*|TONAL_SPOT|home_wallpaper' "$T/td.txt" && ! grep -qiF '#0049c7' "$T/td.txt"; } \
-    || fail "framework-res's theming_defaults isn't *|TONAL_SPOT|home_wallpaper (wallpapers/overlay), so the theme won't follow the wallpaper: $(tr -s ' \n' ' ' < "$T/td.txt" | head -c 300)"
-echo "OK: $WALLPAPER_DEFAULT is the first-boot wallpaper and the theme follows the wallpaper"
+{ grep -qF '*|EXPRESSIVE|home_wallpaper' "$T/td.txt" && ! grep -qiF '#0049c7' "$T/td.txt"; } \
+    || fail "framework-res's theming_defaults isn't *|EXPRESSIVE|home_wallpaper (wallpapers/overlay), so the theme won't follow the wallpaper in M3 Expressive style: $(tr -s ' \n' ' ' < "$T/td.txt" | head -c 300)"
+echo "OK: $WALLPAPER_DEFAULT is the first-boot wallpaper and the theme follows the wallpaper (EXPRESSIVE)"
 
 echo "== Expressive Launcher"
 checked "Expressive Launcher" 'LAUNCHER_CHECK=OK' "$kit/launcher/tools/launcher-check.sh" out "$top/$O" "$top/out/host/linux-x86"
