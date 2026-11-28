@@ -16,6 +16,18 @@ GEMINI.md's honesty rules apply to Claude too.
   spoofing for DEVICE/STRONG, or claim Wallet, Play Integrity or attestation in notes.
 - Never suggest turning off his work VPN. Never type the phone's PIN: ask him to unlock.
 
+## Repository & GitHub organization map (ExpressiveOS 2.0)
+
+Manifest: `ExpressiveOS/manifest` (`expressiveos-2.0`, pure AOSP `android-17.0.0_r1` + monthly ASB).
+Non-AOSP repos are split across four functional GitHub organizations (canonical catalog: `expressiveos-cheetah/sources/eos-org-organize.py`):
+
+- **`ExpressiveOS`** (`remote="expressiveos"`, 60 repos): `manifest`, `blobs` (Git LFS object store hardcoded in `.lfsconfig` for `vendor_gms`, `vendor_google_cheetah`, and `vendor_google_husky` — never move `blobs`), core/build, frameworks, system, custom apps, mainline modules, services/providers, external libs, and vendor/GMS/UI.
+- **`ExpressiveOS-Devices`** (`remote="expressiveos-devices"`, 15 repos): Pixel device trees (`device_google_*`), Pixel HALs/sepolicy (`hardware_google_*`), and Pixel vendor blob repos (`vendor_google_{cheetah,husky}`).
+- **`ExpressiveOS-ASB`** (`remote="expressiveos-asb"`, 34+ repos): Pure upstream AOSP monthly Android Security Bulletin cherry-pick forks; `update-aosp.py create-repos` creates all future ASB forks here automatically.
+- **`ExpressiveOS-Legacy`** (18 archived read-only repos): Frozen EOS 1.x-only forks + unused `OTA`.
+- **Personal `denson9874` repos:** `Denson9874-Device-Central` (this build kit/CI/flasher), `expressiveos_ota` (live Updater feed — never rename), `ExpressiveLauncher`, `expressiveos-feedback` (private).
+- **Actions push secrets** (per-org fine-grained PATs): `EXPRESSIVEOS_PUSH_TOKEN`, `EXPRESSIVEOS_ASB_PUSH_TOKEN`, `EXPRESSIVEOS_DEVICES_PUSH_TOKEN` (verified via `expressiveos-update` query `token`).
+
 ## Before you change anything
 
 1. Check that no other thread owns the work (thread list, memory). Two threads on one

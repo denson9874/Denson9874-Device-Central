@@ -50,7 +50,7 @@ radio in `vendor/google/<device>` via `update-firmware.sh` and regenerates
 `vendor/google/<device>-kernel-images` via `extract-kernel-images.sh`. For the four Pixel 11s (`kodiak`,
 `grizzly`, `cubs`, `yogi`, `EOS_FIRMWARE_MODE=images`), also update `STOCK_BUILD` in `extract-images.sh`,
 `BOOT_SECURITY_PATCH` in `BoardConfig.mk`, and `BuildFingerprint` in `eos_<device>.mk` together in
-`ExpressiveOS/device_google_<device>` (`extract-images.sh` refuses a zip whose build id doesn't match
+`ExpressiveOS-Devices/device_google_<device>` (`extract-images.sh` refuses a zip whose build id doesn't match
 `STOCK_BUILD`).
 
 ## What's here
@@ -61,7 +61,7 @@ radio in `vendor/google/<device>` via `update-firmware.sh` and regenerates
 | `devices/` | One `<device>.conf` per phone, what differs between them, and a phone's own tree patches ([`devices/`](devices/README.md); Other phones, below) |
 | `setup.sh` | Sets up the ExpressiveOS tree (ExpressiveOS's own manifest, full history, Git LFS) or syncs it again (Sources, below) |
 | `pins/wild-kernel.conf` | The pinned Wild Kernels BakaSU release (`ksu/ksu.conf` + prebuilt stock GKI modules) |
-| `sources/` | Monthly pure-AOSP ASB updater (`update-aosp.py`, `update-check.sh`, `update.sh`), offline unit suite `tests/test_update_aosp.py`, and `updates/<id>/` (each monthly update's `update.conf` and conflict resolutions) |
+| `sources/` | Monthly pure-AOSP ASB updater (`update-aosp.py`, `update-check.sh`, `update.sh`), multi-org repo catalog/organizer (`eos-org-organize.py`), offline test suites (`tests/test_update_aosp.py`, `tests/test_eos_org_organize.py`), and `updates/<id>/` (each monthly update's `update.conf` and conflict resolutions) |
 | `prepare.sh`, `apply.sh`, `patches/` | Git LFS files, the kit's tree patches (below), the phone's firmware and prebuilt kernel/vendor image extraction (`update-firmware.sh`, `extract-kernel-images.sh`, `extract-images.sh`) |
 | `tools/eos-keys-check.sh` | The key guard: ExpressiveOS's own keys, never Evolution X's, DerpFest's or the AOSP test keys |
 | `tools/eos-keybox.py` | Checks an attestation `keybox.xml` against Google's live roots and CRL, checks `EOS_KEYBOX_URL`, and uploads to R2 |
@@ -337,12 +337,19 @@ and prints `VERIFIED_QUICK <name>`.
 ## The monthly update (EOS 2.0 pure AOSP)
 
 ExpressiveOS 2.0 is built directly on pure AOSP (`android-17.0.0_r1` base, branch `expressiveos-2.0` in
-`ExpressiveOS/manifest`, zero LineageOS remotes or repos). Because Google's monthly
-`android-security-17.0.0_r*` branch diverged from `android-17.0.0_r1`, `sources/update-aosp.py` never
-switches `<default revision>` to the security tag. Instead, once a month when Google publishes the
-Android Security Bulletin tags (and only when Daryl says go), `update-aosp.py` cherry-picks `--no-merges`
-ASB commits between `AOSP_SEC_TAG` and `TARGET_SEC_TAG` onto each affected repo, bumps
-`release/flag_values/cp2a/RELEASE_PLATFORM_SECURITY_PATCH.textproto` in `vendor/expressiveos`, and
+`ExpressiveOS/manifest`, zero LineageOS remotes or repos). Its 107 non-AOSP repositories are split across
+three active GitHub organizations plus one archived 1.x org (managed by `sources/eos-org-organize.py`):
+
+- **`ExpressiveOS`** (`remote="expressiveos"`, 58 manifest projects + `manifest` + `blobs`): Core platform, frameworks, system daemons, custom apps, vendor/GMS/UI, and the Git LFS backing store (`ExpressiveOS/blobs`, referenced by `.lfsconfig` in `vendor_gms`, `vendor_google_cheetah`, and `vendor_google_husky`).
+- **`ExpressiveOS-Devices`** (`remote="expressiveos-devices"`, 15 projects): Pixel device trees (`device_google_*`), Pixel HALs/sepolicy (`hardware_google_*`), and vendor blob repos (`vendor_google_{cheetah,husky}`).
+- **`ExpressiveOS-ASB`** (`remote="expressiveos-asb"`, 34+ projects): Pure upstream AOSP repositories carrying monthly Android Security Bulletin (ASB) cherry-picks (all new monthly `NEW_FORK_NEEDED` repos are created here automatically with standardized `fn-*` / `eos-asb-patch` topics).
+- **`ExpressiveOS-Legacy`** (18 archived read-only repos, not in 2.0 manifest): Frozen EOS 1.x-only repositories.
+
+Because Google's monthly `android-security-17.0.0_r*` branch diverged from `android-17.0.0_r1`,
+`sources/update-aosp.py` never switches `<default revision>` to the security tag. Instead, once a month when
+Google publishes the Android Security Bulletin tags (and only when Daryl says go), `update-aosp.py`
+cherry-picks `--no-merges` ASB commits between `AOSP_SEC_TAG` and `TARGET_SEC_TAG` onto each affected repo,
+bumps `release/flag_values/cp2a/RELEASE_PLATFORM_SECURITY_PATCH.textproto` in `vendor/expressiveos`, and
 rewrites `default.xml` + `last-update.conf` with 40-hex commit SHAs.
 
 > **QPR release tags (`android-17.0.0_r2+`) vs monthly ASB tags (`android-security-17.0.0_r*`).**
@@ -350,14 +357,14 @@ rewrites `default.xml` + `last-update.conf` with 40-hex commit SHAs.
 > `android.googlesource.com/platform/manifest`. If a new quarterly platform release tag (`android-17.0.0_r2+`)
 > appears beyond `last-update.conf`'s `AOSP_BASE_TAG`, `check` prints an explicit `NOTE:` warning:
 > `update-aosp.py` cherry-picks `android-security-17.0.0_r*` ASB fixes onto the current `AOSP_BASE_TAG`,
-> whereas rebasing the 107+ `ExpressiveOS` forks onto a full QPR source drop requires manual review.
+> whereas rebasing the 107+ ExpressiveOS forks onto a full QPR source drop requires manual review.
 
 How `update-aosp.py` treats each project in `ExpressiveOS/manifest`:
 
 | Manifest entry | Changed between `AOSP_SEC_TAG..TARGET_SEC_TAG`? | Action |
 |---|---|---|
-| `remote="expressiveos"` | Yes | Existing EOS fork: cherry-pick `--no-merges` ASB commits onto `expressiveos-2.0` (or apply `resolutions/<eos_repo>.patch`) |
-| `remote="aosp"` | Yes | `NEW_FORK_NEEDED`: create `ExpressiveOS/<path_with_underscores>` via `create-repos <id>`, strip any `clone-depth`, cherry-pick ASB commits, and switch the project to `remote="expressiveos"` |
+| `remote="expressiveos"` / `expressiveos-asb` / `expressiveos-devices` | Yes | Existing EOS fork: cherry-pick `--no-merges` ASB commits onto `expressiveos-2.0` (or apply `resolutions/<eos_repo>.patch`) |
+| `remote="aosp"` | Yes | `NEW_FORK_NEEDED`: create `ExpressiveOS-ASB/<path_with_underscores>` via `create-repos <id>` (with standardized topics), strip any `clone-depth`, cherry-pick ASB commits, and switch the project to `remote="expressiveos-asb"` |
 | `vendor/expressiveos` | Always | Bump `RELEASE_PLATFORM_SECURITY_PATCH.textproto` to `TARGET_SPL` |
 | Any project | No | Stays at its existing 40-hex commit SHA |
 
@@ -409,9 +416,9 @@ that patch to the kit, and run `plan <id>` again until `UPDATE_PLAN=READY`.
 ### 4. New forks (`create-repos <id>`), push (`push <id>`), and verify (`verify <id>`)
 
 1. If `plan.json` lists `new_repos` (`new_repos > 0`), create them from the Mac with admin `gh` auth:
-   `python3 -I expressiveos-cheetah/sources/update-aosp.py create-repos <id> --work <work>` (or create the
-   listed public empty repos under `github.com/ExpressiveOS` and ensure `EXPRESSIVEOS_PUSH_TOKEN` covers them;
-   verify with `expressiveos-update` query `token`).
+   `python3 -I expressiveos-cheetah/sources/update-aosp.py create-repos <id> --work <work>` (creates the
+   listed public empty repos under `github.com/ExpressiveOS-ASB` with standardized `fn-*` / `eos-asb-patch`
+   topics; verify push access across all three orgs with `expressiveos-update` query `token`).
 2. On Daryl's go, run `expressiveos-update` with query `push <id>`. It fast-forward pushes each updated
    fork's `expressiveos-2.0` branch (never force-pushing) and pushes branch `update/<id>` to
    `ExpressiveOS/manifest` for PR review (`lint pull/<n>` validates the PR).
@@ -420,14 +427,17 @@ that patch to the kit, and run `plan <id>` again until `UPDATE_PLAN=READY`.
    firmware (`firmware/<device>.conf` + `expressiveos-firmware`, plus Pixel 11 `STOCK_BUILD` /
    `BOOT_SECURITY_PATCH` / `BuildFingerprint`), and build.
 
-### 5. Push token & offline tests
+### 5. Push tokens & offline tests
 
-- `expressiveos-update` query `token` verifies `EXPRESSIVEOS_PUSH_TOKEN` has `git-receive-pack` access to
-  `ExpressiveOS/manifest` and every `remote="expressiveos"` repo (`TOKEN_CHECK=OK`; note that GitHub's
-  `git-receive-pack` advertisement checks `Contents: write`, while pushing `.github/workflows` changes in a
-  fork also requires `Workflows: write`).
-- Run `python3 -B expressiveos-cheetah/sources/tests/test_update_aosp.py -v` after any change to
-  `update-aosp.py` or `update.sh`.
+- `expressiveos-update` query `token` verifies `git-receive-pack` access across `ExpressiveOS/manifest`
+  and every `expressiveos`, `expressiveos-asb`, and `expressiveos-devices` repo (`TOKEN_CHECK=OK`) using
+  three per-org Actions secrets (`EXPRESSIVEOS_PUSH_TOKEN`, `EXPRESSIVEOS_ASB_PUSH_TOKEN`, and
+  `EXPRESSIVEOS_DEVICES_PUSH_TOKEN`, mapped to `EOS_PUSH_TOKEN`, `EOS_ASB_PUSH_TOKEN`, and
+  `EOS_DEVICES_PUSH_TOKEN`; note that `git-receive-pack` checks `Contents: write`, while pushing
+  `.github/workflows` changes also requires `Workflows: write`).
+- Run `python3 -B expressiveos-cheetah/sources/tests/test_update_aosp.py -v` and
+  `python3 -B expressiveos-cheetah/sources/tests/test_eos_org_organize.py -v` after any change to
+  `update-aosp.py`, `update.sh`, or `eos-org-organize.py`.
 
 ## Pixel Drops
 

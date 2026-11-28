@@ -1,7 +1,7 @@
 # denson9874 Device Central: the ExpressiveOS build kit
 
 <div align="center">
-  <p><strong>The build kit, release tools and web installer for ExpressiveOS, denson9874's own Android 17 ROM for the Pixel 7 Pro, Pixel 8 Pro and the Pixel 11 series, built on LineageOS and AOSP.</strong></p>
+  <p><strong>The build kit, release tools and web installer for ExpressiveOS 2.0, denson9874's pure-AOSP Android 17 ROM for the Pixel 7 Pro, Pixel 8 Pro and the Pixel 11 series.</strong></p>
 
   <p>
     <a href="#repository-structure">Repository Structure</a> •
@@ -29,8 +29,14 @@ Denson9874-Device-Central/
 └── docs/assets/screenshots/   # Logo
 ```
 
-ExpressiveOS's own sources (its forks and its manifest) live in the
-[ExpressiveOS](https://github.com/ExpressiveOS) organization.
+ExpressiveOS's ROM sources are organized across four functional GitHub organizations (all synced via [`ExpressiveOS/manifest`](https://github.com/ExpressiveOS/manifest), branch `expressiveos-2.0`):
+
+| Organization | Manifest Remote | Purpose |
+| :--- | :--- | :--- |
+| [`ExpressiveOS`](https://github.com/ExpressiveOS) | `expressiveos` | Core ROM platform, frameworks, custom apps, vendor/GMS/UI, `manifest`, and Git LFS object store (`blobs`) |
+| [`ExpressiveOS-Devices`](https://github.com/ExpressiveOS-Devices) | `expressiveos-devices` | Google Pixel device trees (`cheetah`, `husky`, `kodiak`, `grizzly`, `cubs`, `yogi`), Pixel HALs/sepolicy, and vendor blob repos |
+| [`ExpressiveOS-ASB`](https://github.com/ExpressiveOS-ASB) | `expressiveos-asb` | Upstream AOSP repositories carrying monthly Android Security Bulletin (ASB) cherry-picks |
+| [`ExpressiveOS-Legacy`](https://github.com/ExpressiveOS-Legacy) | *(archived)* | Read-only archive of ExpressiveOS 1.x repositories |
 
 ---
 
