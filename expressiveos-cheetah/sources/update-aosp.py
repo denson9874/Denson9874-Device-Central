@@ -58,9 +58,23 @@ KIT = HERE.parent
 DEFAULT_AOSP_BASE_URL = "https://android.googlesource.com"
 DEFAULT_AOSP_MANIFEST_URL = "https://android.googlesource.com/platform/manifest"
 DEFAULT_EOS_ORG = "ExpressiveOS"
+DEFAULT_EOS_ASB_ORG = "ExpressiveOS-ASB"
+DEFAULT_EOS_DEVICES_ORG = "ExpressiveOS-Devices"
 DEFAULT_EOS_BRANCH = "expressiveos-2.0"
 DEFAULT_EOS_MANIFEST_URL = "https://github.com/ExpressiveOS/manifest"
 SPL_REL_PATH = "release/flag_values/cp2a/RELEASE_PLATFORM_SECURITY_PATCH.textproto"
+
+EOS_REMOTES = {"expressiveos", "expressiveos-asb", "expressiveos-devices"}
+DEFAULT_EOS_REMOTE_ORGS = {
+    "expressiveos": DEFAULT_EOS_ORG,
+    "expressiveos-asb": DEFAULT_EOS_ASB_ORG,
+    "expressiveos-devices": DEFAULT_EOS_DEVICES_ORG,
+}
+REMOTE_TOKEN_ENV_VARS = {
+    "expressiveos": "EOS_PUSH_TOKEN",
+    "expressiveos-asb": "EOS_ASB_PUSH_TOKEN",
+    "expressiveos-devices": "EOS_DEVICES_PUSH_TOKEN",
+}
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 UPDATE_ID_RE = re.compile(r"^[0-9]{4}-(?:0[1-9]|1[0-2])(?:-[2-9])?$")
@@ -71,7 +85,7 @@ IDENT_RE = re.compile(r"^([^<>]+?)\s+<([^<>\s]+@[^<>\s]+)>$")
 
 ALLOWED_MANIFEST_TAGS = {"remote", "default", "project", "notice", "contactinfo"}
 ALLOWED_PROJECT_CHILDREN = {"linkfile", "copyfile", "annotation"}
-ALLOWED_REMOTES = {"aosp", "expressiveos"}
+ALLOWED_REMOTES = {"aosp"} | EOS_REMOTES
 FORBIDDEN_REMOTE_NAMES = {"lineage", "lineageos", "github"}
 
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
@@ -92,8 +106,15 @@ PURE_ENV = {
     "GIT_ATTR_NOSYSTEM": "1",
 }
 
-# git credential helper reading EOS_PUSH_TOKEN from the environment only, never written to disk or argv.
-PUSH_CRED_HELPER = '!f() { test "$1" = get || exit 0; echo username=x-access-token; printf "password=%s\\n" "$EOS_PUSH_TOKEN"; }; f'
+# git credential helpers reading push tokens from environment only, never written to disk or argv.
+def _push_cred_helper_for_env(env_var):
+    return (
+        f'!f() {{ test "$1" = get || exit 0; echo username=x-access-token; '
+        f'printf "password=%s\\n" "${{{env_var}:-$EOS_PUSH_TOKEN}}"; }}; f'
+    )
+
+
+PUSH_CRED_HELPER = _push_cred_helper_for_env("EOS_PUSH_TOKEN")
 
 STOPPED = None
 
@@ -178,6 +199,87 @@ def parse_ident(ident_str):
 def eos_repo_name_for_path(path):
     """Map an AOSP path (e.g. packages/apps/ManagedProvisioning) to ExpressiveOS repo name."""
     return path.strip("/").replace("/", "_")
+
+
+def infer_fn_topic_for_path(path):
+    """Map an AOSP project path to its standardized fn-* GitHub topic."""
+    p = path.strip("/")
+    if p in ("art", "bionic", "bootable/recovery", "build/make", "build/soong", "trusty/user/base"):
+        return "fn-core-build"
+    if p.startswith("frameworks/"):
+        return "fn-frameworks"
+    if p.startswith("system/"):
+        return "fn-system"
+    if p.startswith("hardware/"):
+        return "fn-hardware"
+    if p.startswith("packages/apps/"):
+        return "fn-apps"
+    if p.startswith("packages/modules/"):
+        return "fn-modules"
+    if p.startswith("packages/services/"):
+        return "fn-services"
+    if p.startswith("packages/providers/"):
+        return "fn-providers"
+    if p.startswith("external/"):
+        return "fn-external"
+    if p.startswith("device/"):
+        return "fn-devices"
+    if p.startswith("vendor/"):
+        return "fn-vendor"
+    return "fn-core-build"
+
+
+def is_eos_remote(remote_name):
+    return remote_name in EOS_REMOTES
+
+
+def remote_org_name(manifest_remotes, remote_name, override_org=None):
+    if override_org and remote_name == "expressiveos":
+        return override_org
+    fetch = (manifest_remotes.get(remote_name) or {}).get("fetch", "").rstrip("/")
+    if fetch.startswith("https://github.com/"):
+        tail = fetch[len("https://github.com/"):].strip("/")
+        if tail and "/" not in tail:
+            return tail
+    return DEFAULT_EOS_REMOTE_ORGS.get(remote_name, DEFAULT_EOS_ORG)
+
+
+def remote_base_url(manifest_remotes, remote_name, eos_org_base=None, eos_asb_base=None, eos_devices_base=None):
+    """Resolve fetch/push base URL for an ExpressiveOS remote."""
+    if remote_name == "expressiveos" and eos_org_base:
+        return eos_org_base.rstrip("/")
+    if remote_name == "expressiveos-asb" and eos_asb_base:
+        return eos_asb_base.rstrip("/")
+    if remote_name == "expressiveos-devices" and eos_devices_base:
+        return eos_devices_base.rstrip("/")
+    fetch = (manifest_remotes.get(remote_name) or {}).get("fetch", "").rstrip("/")
+    if fetch:
+        return fetch
+    org = DEFAULT_EOS_REMOTE_ORGS.get(remote_name, DEFAULT_EOS_ORG)
+    return f"https://github.com/{org}"
+
+
+def token_env_var_for_url(url, remote_name=None):
+    """Pick the environment variable holding the push token for a GitHub URL or remote."""
+    if remote_name in REMOTE_TOKEN_ENV_VARS:
+        return REMOTE_TOKEN_ENV_VARS[remote_name]
+    u = (url or "").rstrip("/")
+    if u.startswith("https://github.com/"):
+        owner = u[len("https://github.com/"):].split("/", 1)[0]
+        for rname, org in DEFAULT_EOS_REMOTE_ORGS.items():
+            if owner.lower() == org.lower():
+                return REMOTE_TOKEN_ENV_VARS[rname]
+    return "EOS_PUSH_TOKEN"
+
+
+def resolve_token_for_url(url, remote_name=None):
+    """Return (env_var_used, token_value) for url, falling back to EOS_PUSH_TOKEN."""
+    pref = token_env_var_for_url(url, remote_name=remote_name)
+    val = os.environ.get(pref, "")
+    if val:
+        return pref, val
+    fallback = os.environ.get("EOS_PUSH_TOKEN", "")
+    return (pref if not fallback else "EOS_PUSH_TOKEN"), fallback
 
 
 def parse_manifest(manifest_path):
@@ -291,6 +393,8 @@ def lint_manifest_data(manifest_path, spl_file=None):
             errors.append(f"project '{path}' revision '{rev}' is not a 40-hex commit SHA")
         if rem not in ALLOWED_REMOTES:
             errors.append(f"project '{path}' remote '{rem}' not in {sorted(ALLOWED_REMOTES)}")
+        elif rem not in remotes:
+            errors.append(f"project '{path}' references undeclared remote '{rem}'")
         if "lineageos/" in name.lower() or "lineage-" in upstream.lower() or "lineage-" in dest_branch.lower():
             errors.append(f"project '{path}' references LineageOS ({name} / {upstream} / {dest_branch})")
         if path in ("lineage-sdk", "vendor/lineage", "device/lineage/sepolicy"):
@@ -385,10 +489,19 @@ def eos_repo_url(org_base, repo_name):
     return f"{base}/{repo_name}"
 
 
-def resolve_local_or_remote_url(aosp_base, eos_base, proj_info, top_dir=None):
+def resolve_local_or_remote_url(aosp_base, eos_base, proj_info, top_dir=None, manifest_remotes=None,
+                                eos_asb_base=None, eos_devices_base=None):
     """Return fetch URL (and optional local reference dir) for a project."""
-    if proj_info["remote"] == "expressiveos":
-        url = eos_repo_url(eos_base, proj_info["name"])
+    rem = proj_info["remote"]
+    if is_eos_remote(rem):
+        base = remote_base_url(
+            manifest_remotes or {},
+            rem,
+            eos_org_base=eos_base if rem == "expressiveos" else None,
+            eos_asb_base=eos_asb_base,
+            eos_devices_base=eos_devices_base,
+        )
+        url = eos_repo_url(base, proj_info["name"])
     else:
         url = aosp_repo_url(aosp_base, proj_info["name"])
     local_dir = None
@@ -568,7 +681,9 @@ def cmd_check(args):
 
     aosp_manifest_url = args.aosp_manifest_url or os.environ.get("EOS_AOSP_MANIFEST_URL", DEFAULT_AOSP_MANIFEST_URL)
     aosp_base_url = args.aosp_base_url or os.environ.get("EOS_AOSP_BASE_URL", DEFAULT_AOSP_BASE_URL)
-    eos_org_base = args.eos_org_base or os.environ.get("EOS_ORG_BASE_URL", f"https://github.com/{DEFAULT_EOS_ORG}")
+    eos_org_base = args.eos_org_base or os.environ.get("EOS_ORG_BASE_URL") or None
+    eos_asb_base = getattr(args, "eos_asb_org_base", None) or os.environ.get("EOS_ASB_ORG_BASE_URL") or None
+    eos_devices_base = getattr(args, "eos_devices_org_base", None) or os.environ.get("EOS_DEVICES_ORG_BASE_URL") or None
 
     last_conf = parse_kv_file(manifest_path.parent / "last-update.conf")
     sec_tags, rel_tags = list_remote_tags(aosp_manifest_url)
@@ -615,7 +730,12 @@ def cmd_check(args):
         to_ref = ch["new_rev"] or to_tag
         if refs_resolve_identical(aosp_url, from_ref, to_ref):
             continue
-        base_url, local_dir = resolve_local_or_remote_url(aosp_base_url, eos_org_base, proj, args.top)
+        base_url, local_dir = resolve_local_or_remote_url(
+            aosp_base_url, eos_org_base, proj, args.top,
+            manifest_remotes=eos_manifest["remotes"],
+            eos_asb_base=eos_asb_base,
+            eos_devices_base=eos_devices_base,
+        )
         scratch = work / "check-repos" / eos_repo_name_for_path(path)
         try:
             commits = prepare_scratch_repo(
@@ -626,7 +746,7 @@ def cmd_check(args):
             if not commits:
                 continue
             res = try_cherry_picks(scratch, commits, ident_name, ident_email)
-            is_existing_fork = (proj["remote"] == "expressiveos")
+            is_existing_fork = is_eos_remote(proj["remote"])
             if not is_existing_fork:
                 new_forks.append({
                     "path": path,
@@ -655,7 +775,7 @@ def cmd_check(args):
 
 
 def update_manifest_xml(manifest_path, out_xml_path, repo_updates, branch=DEFAULT_EOS_BRANCH):
-    """Rewrite default.xml pinning updated revisions and converting new forks to remote='expressiveos'."""
+    """Rewrite default.xml pinning updated revisions and converting new forks to their target EOS remote."""
     tree = ET.parse(str(manifest_path))
     root = tree.getroot()
     for proj in root.findall("project"):
@@ -664,7 +784,7 @@ def update_manifest_xml(manifest_path, out_xml_path, repo_updates, branch=DEFAUL
         if path in repo_updates:
             upd = repo_updates[path]
             proj.attrib.pop("clone-depth", None)
-            proj.set("remote", "expressiveos")
+            proj.set("remote", upd.get("remote", "expressiveos"))
             proj.set("name", upd["eos_repo"])
             proj.set("revision", upd["new_head"])
             proj.set("upstream", f"refs/heads/{branch}")
@@ -703,7 +823,9 @@ def cmd_plan(args):
 
     aosp_manifest_url = args.aosp_manifest_url or os.environ.get("EOS_AOSP_MANIFEST_URL", DEFAULT_AOSP_MANIFEST_URL)
     aosp_base_url = args.aosp_base_url or os.environ.get("EOS_AOSP_BASE_URL", DEFAULT_AOSP_BASE_URL)
-    eos_org_base = args.eos_org_base or os.environ.get("EOS_ORG_BASE_URL", f"https://github.com/{DEFAULT_EOS_ORG}")
+    eos_org_base = args.eos_org_base or os.environ.get("EOS_ORG_BASE_URL") or None
+    eos_asb_base = getattr(args, "eos_asb_org_base", None) or os.environ.get("EOS_ASB_ORG_BASE_URL") or None
+    eos_devices_base = getattr(args, "eos_devices_org_base", None) or os.environ.get("EOS_DEVICES_ORG_BASE_URL") or None
 
     from_xml = fetch_manifest_at_tag(aosp_manifest_url, from_tag, work)
     to_xml = fetch_manifest_at_tag(aosp_manifest_url, to_tag, work)
@@ -712,7 +834,10 @@ def cmd_plan(args):
     resolutions_dir = upd_dir / "resolutions"
     repo_updates = {}
     new_repos = []
+    new_repo_targets = {}
     conflicts = []
+
+    new_fork_remote = "expressiveos-asb" if "expressiveos-asb" in eos_manifest["remotes"] else "expressiveos"
 
     for path, ch in sorted(changed.items()):
         proj = eos_manifest["projects"].get(path)
@@ -724,7 +849,12 @@ def cmd_plan(args):
         to_ref = ch["new_rev"] or to_tag
         if refs_resolve_identical(aosp_url, from_ref, to_ref):
             continue
-        base_url, local_dir = resolve_local_or_remote_url(aosp_base_url, eos_org_base, proj, args.top)
+        base_url, local_dir = resolve_local_or_remote_url(
+            aosp_base_url, eos_org_base, proj, args.top,
+            manifest_remotes=eos_manifest["remotes"],
+            eos_asb_base=eos_asb_base,
+            eos_devices_base=eos_devices_base,
+        )
         scratch = work / "repos" / safe
         commits = prepare_scratch_repo(
             scratch, base_url, proj["revision"], aosp_url,
@@ -738,18 +868,32 @@ def cmd_plan(args):
             scratch, commits, ident_name, ident_email,
             resolution_patch=res_patch if res_patch.is_file() else None,
         )
-        eos_repo = proj["name"] if proj["remote"] == "expressiveos" else safe
+        is_existing = is_eos_remote(proj["remote"])
+        target_remote = proj["remote"] if is_existing else new_fork_remote
+        eos_repo = proj["name"] if is_existing else safe
         if res["status"] == "CONFLICTS":
             conflicts.append({"path": path, "eos_repo": eos_repo, "commit": res["conflict_commit"], "error": res["error"]})
             print(f"  [CONFLICTS] {path} at {res['conflict_commit']}: {res['error']}")
             continue
 
-        is_new = proj["remote"] != "expressiveos"
+        is_new = not is_existing
+        target_org = remote_org_name(eos_manifest["remotes"], target_remote, override_org=args.org)
+        target_base = remote_base_url(
+            eos_manifest["remotes"],
+            target_remote,
+            eos_org_base=eos_org_base,
+            eos_asb_base=eos_asb_base,
+            eos_devices_base=eos_devices_base,
+        )
         if is_new:
             new_repos.append(eos_repo)
+            new_repo_targets[eos_repo] = {"org": target_org, "remote": target_remote, "path": path}
         repo_updates[path] = {
             "path": path,
             "eos_repo": eos_repo,
+            "remote": target_remote,
+            "org": target_org,
+            "remote_base": target_base,
             "old_rev": proj["revision"],
             "new_head": res["head"],
             "is_new_fork": is_new,
@@ -757,13 +901,18 @@ def cmd_plan(args):
             "scratch_dir": str(scratch),
             "asb_commits": commits,
         }
-        print(f"  [{res['status']}{' NEW_FORK' if is_new else ''}] {path} -> {res['head'][:12]}")
+        print(f"  [{res['status']}{' NEW_FORK' if is_new else ''}] {path} ({target_remote}) -> {res['head'][:12]}")
 
     # Stage SPL bump in vendor/expressiveos
     ve_proj = eos_manifest["projects"].get("vendor/expressiveos")
     if ve_proj is None:
         raise UpdateError("manifest lacks vendor/expressiveos project")
-    ve_url, ve_local = resolve_local_or_remote_url(aosp_base_url, eos_org_base, ve_proj, args.top)
+    ve_url, ve_local = resolve_local_or_remote_url(
+        aosp_base_url, eos_org_base, ve_proj, args.top,
+        manifest_remotes=eos_manifest["remotes"],
+        eos_asb_base=eos_asb_base,
+        eos_devices_base=eos_devices_base,
+    )
     ve_scratch = work / "repos" / ve_proj["name"]
     if ve_scratch.exists():
         shutil.rmtree(ve_scratch)
@@ -797,9 +946,21 @@ def cmd_plan(args):
             timeout=30,
         )
     ve_head = git("rev-parse", "HEAD", cwd=ve_scratch, timeout=15).stdout.strip()
+    ve_remote = ve_proj["remote"]
+    ve_org = remote_org_name(eos_manifest["remotes"], ve_remote, override_org=args.org)
+    ve_base = remote_base_url(
+        eos_manifest["remotes"],
+        ve_remote,
+        eos_org_base=eos_org_base,
+        eos_asb_base=eos_asb_base,
+        eos_devices_base=eos_devices_base,
+    )
     repo_updates["vendor/expressiveos"] = {
         "path": "vendor/expressiveos",
         "eos_repo": ve_proj["name"],
+        "remote": ve_remote,
+        "org": ve_org,
+        "remote_base": ve_base,
         "old_rev": ve_proj["revision"],
         "new_head": ve_head,
         "is_new_fork": False,
@@ -833,9 +994,12 @@ def cmd_plan(args):
         "to_sec_tag": to_tag,
         "target_spl": target_spl,
         "eos_org": args.org or DEFAULT_EOS_ORG,
+        "asb_org": remote_org_name(eos_manifest["remotes"], new_fork_remote, override_org=args.org),
+        "new_fork_remote": new_fork_remote,
         "manifest_out": str(out_xml),
         "last_update_out": str(last_update_path),
         "new_repos": sorted(set(new_repos)),
+        "new_repo_targets": new_repo_targets,
         "updates": repo_updates,
         "conflicts": conflicts,
     }
@@ -857,13 +1021,17 @@ def cmd_create_repos(args):
     if not plan_path.is_file():
         raise UpdateError(f"no plan.json at {plan_path} (run plan {upd_id} first)")
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
-    org = args.org or plan.get("eos_org") or DEFAULT_EOS_ORG
+    default_org = args.org or plan.get("asb_org") or plan.get("eos_org") or DEFAULT_EOS_ORG
+    repo_targets = plan.get("new_repo_targets") or {}
     branch = plan.get("branch", DEFAULT_EOS_BRANCH)
     gh_bin = os.environ.get("EOS_GH_BIN", "gh")
 
     created = 0
     existing = 0
     for repo in plan.get("new_repos", []):
+        target_info = repo_targets.get(repo) or {}
+        org = args.org or target_info.get("org") or default_org
+        repo_path = target_info.get("path") or repo.replace("_", "/")
         check = run_cmd([gh_bin, "api", "-X", "GET", f"repos/{org}/{repo}"], ok=(0, 1), timeout=30)
         if check.returncode == 0:
             print(f"  exists: {org}/{repo}")
@@ -873,16 +1041,29 @@ def cmd_create_repos(args):
             print(f"  would create: {org}/{repo} (public, target branch {branch})")
             created += 1
             continue
+        desc = f"AOSP {repo_path} carrying monthly Android Security Bulletin (ASB) patches for ExpressiveOS 2.0"
         run_cmd(
             [
                 gh_bin, "api", "-X", "POST", f"orgs/{org}/repos",
                 "-f", f"name={repo}",
-                "-f", f"description=ExpressiveOS 2.0 ASB fork ({branch})",
+                "-f", f"description={desc}",
                 "-F", "private=false",
                 "-F", "auto_init=false",
             ],
             timeout=60,
         )
+        # Auto-apply Option A standardized topics (best-effort; never blocks creation)
+        topics_payload = json.dumps({
+            "names": ["expressiveos", "eos-2-0", infer_fn_topic_for_path(repo_path), "eos-asb-patch"]
+        })
+        topic_res = run_cmd(
+            [gh_bin, "api", "-X", "PUT", f"repos/{org}/{repo}/topics", "--input", "-"],
+            input_data=topics_payload,
+            ok=(0, 1),
+            timeout=30,
+        )
+        if topic_res.returncode != 0:
+            print(f"  note: created {org}/{repo} but skipped topic tagging", file=sys.stderr)
         print(f"  created: {org}/{repo}")
         created += 1
 
@@ -894,26 +1075,35 @@ def is_github_https(url):
     return (url or "").startswith("https://github.com/")
 
 
-def validate_push_urls_and_token(urls):
-    off = [u for u in urls if not is_github_https(u) and not u.startswith("file://")]
+def validate_push_urls_and_token(url_entries):
+    entries = [(u, None) if isinstance(u, str) else u for u in url_entries]
+    off = [u for u, _ in entries if not is_github_https(u) and not u.startswith("file://")]
     if off:
         raise UpdateError(
             f"not on GitHub (https://github.com/), the only place EOS_PUSH_TOKEN goes: {', '.join(off)}"
         )
-    if any(is_github_https(u) for u in urls):
-        token = os.environ.get("EOS_PUSH_TOKEN", "")
+    checked = {}
+    for u, rem in entries:
+        if not is_github_https(u):
+            continue
+        env_var, token = resolve_token_for_url(u, remote_name=rem)
         if not token:
-            raise UpdateError("EOS_PUSH_TOKEN is empty: the Actions secret EXPRESSIVEOS_PUSH_TOKEN isn't set")
+            raise UpdateError(
+                f"{env_var} is empty: set the Actions secret for {u} (or EXPRESSIVEOS_PUSH_TOKEN)"
+            )
         if token != token.strip() or any(c.isspace() for c in token):
-            raise UpdateError("EOS_PUSH_TOKEN has spaces or line breaks in it: save the secret again with the token alone")
-        return token
-    return ""
+            raise UpdateError(
+                f"{env_var} has spaces or line breaks in it: save the secret again with the token alone"
+            )
+        checked[env_var] = token
+    return checked.get("EOS_PUSH_TOKEN", "")
 
 
-def git_push_cfg(url):
+def git_push_cfg(url, remote_name=None):
     cfg = ["-c", "credential.helper=", "-c", f"core.hooksPath={os.devnull}"]
     if is_github_https(url):
-        cfg += ["-c", f"credential.https://github.com.helper={PUSH_CRED_HELPER}"]
+        env_var = token_env_var_for_url(url, remote_name=remote_name)
+        cfg += ["-c", f"credential.https://github.com.helper={_push_cred_helper_for_env(env_var)}"]
     return cfg
 
 
@@ -939,15 +1129,39 @@ def receive_pack_check(repo_url, token, timeout=30):
         return None, str(err)
 
 
+def _resolve_plan_update_url(upd, args, plan):
+    rem = upd.get("remote", "expressiveos")
+    if rem == "expressiveos" and getattr(args, "eos_org_base", None):
+        base = args.eos_org_base
+    elif rem == "expressiveos-asb" and getattr(args, "eos_asb_org_base", None):
+        base = args.eos_asb_org_base
+    elif rem == "expressiveos-devices" and getattr(args, "eos_devices_org_base", None):
+        base = args.eos_devices_org_base
+    elif rem == "expressiveos" and os.environ.get("EOS_ORG_BASE_URL"):
+        base = os.environ["EOS_ORG_BASE_URL"]
+    elif rem == "expressiveos-asb" and os.environ.get("EOS_ASB_ORG_BASE_URL"):
+        base = os.environ["EOS_ASB_ORG_BASE_URL"]
+    elif rem == "expressiveos-devices" and os.environ.get("EOS_DEVICES_ORG_BASE_URL"):
+        base = os.environ["EOS_DEVICES_ORG_BASE_URL"]
+    elif upd.get("remote_base"):
+        base = upd["remote_base"]
+    else:
+        org = upd.get("org") or plan.get("eos_org") or DEFAULT_EOS_REMOTE_ORGS.get(rem, DEFAULT_EOS_ORG)
+        base = f"https://github.com/{org}"
+    return eos_repo_url(base, upd["eos_repo"]), rem
+
+
 def cmd_token(args):
     eos_conf = load_eos_config(KIT)
     branch = args.branch or eos_conf.get("EOS_MANIFEST_BRANCH", DEFAULT_EOS_BRANCH)
-    eos_org_base = args.eos_org_base or os.environ.get("EOS_ORG_BASE_URL", f"https://github.com/{DEFAULT_EOS_ORG}")
+    eos_org_base = args.eos_org_base or os.environ.get("EOS_ORG_BASE_URL") or None
+    eos_asb_base = getattr(args, "eos_asb_org_base", None) or os.environ.get("EOS_ASB_ORG_BASE_URL") or None
+    eos_devices_base = getattr(args, "eos_devices_org_base", None) or os.environ.get("EOS_DEVICES_ORG_BASE_URL") or None
     manifest_url = (args.manifest_url or eos_conf.get("EOS_MANIFEST_URL", DEFAULT_EOS_MANIFEST_URL)).rstrip("/")
     allow_local = os.environ.get("EOS_ALLOW_LOCAL_TOKEN_TEST") == "1"
 
     token = os.environ.get("EOS_PUSH_TOKEN", "")
-    print("== Checking EOS_PUSH_TOKEN git-receive-pack access across ExpressiveOS 2.0 repos (nothing pushed)")
+    print("== Checking EOS push token git-receive-pack access across ExpressiveOS 2.0 repos (nothing pushed)")
     if not token:
         raise UpdateError("EOS_PUSH_TOKEN is empty: the Actions secret EXPRESSIVEOS_PUSH_TOKEN isn't set in this repo")
     if token != token.strip() or any(c.isspace() for c in token):
@@ -967,16 +1181,35 @@ def cmd_token(args):
         mf_path = work / "default.xml"
 
     mf = parse_manifest(mf_path)
-    urls = sorted(
-        {manifest_url}
-        | {eos_repo_url(eos_org_base, p["name"]).rstrip("/") for p in mf["projects"].values() if p["remote"] == "expressiveos"}
-    )
+    url_to_remote = {manifest_url: "expressiveos"}
+    for p in mf["projects"].values():
+        if not is_eos_remote(p["remote"]):
+            continue
+        base = remote_base_url(
+            mf["remotes"],
+            p["remote"],
+            eos_org_base=eos_org_base,
+            eos_asb_base=eos_asb_base,
+            eos_devices_base=eos_devices_base,
+        )
+        url_to_remote[eos_repo_url(base, p["name"]).rstrip("/")] = p["remote"]
+
+    urls = sorted(url_to_remote.keys())
     off = [
         u for u in urls
         if not is_github_https(u) and not (allow_local and u.startswith("http://127.0.0.1:"))
     ]
     if off:
         raise UpdateError(f"not on GitHub (https://github.com/), the only place EOS_PUSH_TOKEN goes: {', '.join(off)}")
+
+    url_tokens = {}
+    for u in urls:
+        env_var, tok = resolve_token_for_url(u, remote_name=url_to_remote[u])
+        if not tok:
+            raise UpdateError(f"{env_var} is empty for {u}")
+        if tok != tok.strip() or any(c.isspace() for c in tok):
+            raise UpdateError(f"{env_var} has spaces or line breaks in it: save the secret again with the token alone")
+        url_tokens[u] = tok
 
     code, _ = receive_pack_check(manifest_url, None)
     if code != 401:
@@ -985,7 +1218,7 @@ def cmd_token(args):
         )
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
-        answers = dict(zip(urls, ex.map(lambda u: receive_pack_check(u, token), urls)))
+        answers = dict(zip(urls, ex.map(lambda u: receive_pack_check(u, url_tokens[u]), urls)))
 
     meaning = {
         401: "token refused (wrong, expired or revoked)",
@@ -1020,16 +1253,21 @@ def cmd_push(args):
     eos_conf = load_eos_config(KIT)
     ident_name, ident_email = parse_ident(eos_conf.get("EOS_UPDATE_IDENT", "Daryl Denson <9751141+denson9874@users.noreply.github.com>"))
     branch = plan.get("branch", DEFAULT_EOS_BRANCH)
-    eos_org_base = args.eos_org_base or os.environ.get("EOS_ORG_BASE_URL", f"https://github.com/{plan.get('eos_org', DEFAULT_EOS_ORG)}")
     manifest_url = args.manifest_url or eos_conf.get("EOS_MANIFEST_URL", DEFAULT_EOS_MANIFEST_URL)
 
-    all_urls = [eos_repo_url(eos_org_base, upd["eos_repo"]) for _, upd in sorted(plan["updates"].items())] + [manifest_url]
-    validate_push_urls_and_token(all_urls)
+    resolved = {}
+    all_url_entries = []
+    for path, upd in sorted(plan["updates"].items()):
+        rurl, rname = _resolve_plan_update_url(upd, args, plan)
+        resolved[path] = (rurl, rname)
+        all_url_entries.append((rurl, rname))
+    all_url_entries.append((manifest_url, "expressiveos"))
+    validate_push_urls_and_token(all_url_entries)
 
     pushed = 0
     for path, upd in sorted(plan["updates"].items()):
         scratch = Path(upd["scratch_dir"])
-        remote_url = eos_repo_url(eos_org_base, upd["eos_repo"])
+        remote_url, rname = resolved[path]
         head = upd["new_head"]
         # Check current remote branch ref to guarantee fast-forward (or unborn branch for new fork)
         ls = git("ls-remote", "--heads", remote_url, branch, cwd=scratch, timeout=60).stdout.strip()
@@ -1042,7 +1280,7 @@ def cmd_push(args):
             anc = git("merge-base", "--is-ancestor", "refs/eos/remote_tip", head, cwd=scratch, ok=(0, 1), timeout=15)
             if anc.returncode != 0:
                 raise UpdateError(f"refusing non-fast-forward push on {upd['eos_repo']} ({remote_sha[:12]} not ancestor of {head[:12]})")
-        git(*git_push_cfg(remote_url), "push", "--no-verify", remote_url, f"{head}:refs/heads/{branch}", cwd=scratch, timeout=180)
+        git(*git_push_cfg(remote_url, remote_name=rname), "push", "--no-verify", remote_url, f"{head}:refs/heads/{branch}", cwd=scratch, timeout=180)
         print(f"  pushed: {upd['eos_repo']} -> {branch} @ {head[:12]}")
         pushed += 1
 
@@ -1077,7 +1315,7 @@ def cmd_push(args):
         print(f"  already pushed: manifest @ {pr_branch}")
         print(f"UPDATE_PUSH=OK (forks_pushed={pushed}, manifest_branch={pr_branch})")
         return 0
-    git(*git_push_cfg(manifest_url), "push", "--no-verify", manifest_url, f"HEAD:refs/heads/{pr_branch}", cwd=mf_scratch, timeout=120)
+    git(*git_push_cfg(manifest_url, remote_name="expressiveos"), "push", "--no-verify", manifest_url, f"HEAD:refs/heads/{pr_branch}", cwd=mf_scratch, timeout=120)
     print(f"UPDATE_PUSH=OK (forks_pushed={pushed}, manifest_branch={pr_branch})")
     return 0
 
@@ -1093,7 +1331,6 @@ def cmd_verify(args):
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     eos_conf = load_eos_config(KIT)
     branch = plan.get("branch", DEFAULT_EOS_BRANCH)
-    eos_org_base = args.eos_org_base or os.environ.get("EOS_ORG_BASE_URL", f"https://github.com/{plan.get('eos_org', DEFAULT_EOS_ORG)}")
     manifest_url = args.manifest_url or eos_conf.get("EOS_MANIFEST_URL", DEFAULT_EOS_MANIFEST_URL)
 
     ver_dir = work / "manifest-verify"
@@ -1116,11 +1353,12 @@ def cmd_verify(args):
         if proj is None:
             problems.append(f"{path} missing from live manifest")
             continue
+        expected_rem = upd.get("remote", "expressiveos")
         if proj["revision"] != upd["new_head"]:
             problems.append(f"{path} manifest rev {proj['revision'][:12]} != planned {upd['new_head'][:12]}")
-        if proj["remote"] != "expressiveos":
-            problems.append(f"{path} remote is {proj['remote']!r}, expected 'expressiveos'")
-        remote_url = eos_repo_url(eos_org_base, upd["eos_repo"])
+        if proj["remote"] != expected_rem:
+            problems.append(f"{path} remote is {proj['remote']!r}, expected {expected_rem!r}")
+        remote_url, _ = _resolve_plan_update_url(upd, args, plan)
         ls = git("ls-remote", "--heads", remote_url, branch, timeout=60).stdout.strip()
         if not ls:
             problems.append(f"{upd['eos_repo']} has no branch {branch}")
@@ -1199,6 +1437,8 @@ def build_parser():
         p.add_argument("--aosp-manifest-url", help="override AOSP platform/manifest URL")
         p.add_argument("--aosp-base-url", help="override AOSP git base URL")
         p.add_argument("--eos-org-base", help="override ExpressiveOS org base URL")
+        p.add_argument("--eos-asb-org-base", help="override ExpressiveOS-ASB org base URL")
+        p.add_argument("--eos-devices-org-base", help="override ExpressiveOS-Devices org base URL")
 
     p_chk = sub.add_parser("check", help="dry-run AOSP ASB check")
     add_common(p_chk)
@@ -1225,19 +1465,25 @@ def build_parser():
     p_push.add_argument("id", help="update id (YYYY-MM)")
     p_push.add_argument("--work", required=True, help="scratch working directory")
     p_push.add_argument("--eos-org-base", help="override ExpressiveOS org base URL")
+    p_push.add_argument("--eos-asb-org-base", help="override ExpressiveOS-ASB org base URL")
+    p_push.add_argument("--eos-devices-org-base", help="override ExpressiveOS-Devices org base URL")
     p_push.add_argument("--manifest-url", help="override ExpressiveOS/manifest URL")
 
-    p_tok = sub.add_parser("token", help="verify EOS_PUSH_TOKEN git-receive-pack access")
+    p_tok = sub.add_parser("token", help="verify EOS push token git-receive-pack access")
     p_tok.add_argument("--work", required=True, help="scratch working directory")
     p_tok.add_argument("--manifest", help="optional local default.xml path")
     p_tok.add_argument("--branch", help="override EOS branch (default expressiveos-2.0)")
     p_tok.add_argument("--eos-org-base", help="override ExpressiveOS org base URL")
+    p_tok.add_argument("--eos-asb-org-base", help="override ExpressiveOS-ASB org base URL")
+    p_tok.add_argument("--eos-devices-org-base", help="override ExpressiveOS-Devices org base URL")
     p_tok.add_argument("--manifest-url", help="override ExpressiveOS/manifest URL")
 
     p_ver = sub.add_parser("verify", help="verify merged manifest and pushed forks")
     p_ver.add_argument("id", help="update id (YYYY-MM)")
     p_ver.add_argument("--work", required=True, help="scratch working directory")
     p_ver.add_argument("--eos-org-base", help="override ExpressiveOS org base URL")
+    p_ver.add_argument("--eos-asb-org-base", help="override ExpressiveOS-ASB org base URL")
+    p_ver.add_argument("--eos-devices-org-base", help="override ExpressiveOS-Devices org base URL")
     p_ver.add_argument("--manifest-url", help="override ExpressiveOS/manifest URL")
 
     p_lint = sub.add_parser("lint", help="strict EOS 2.0 manifest validator")

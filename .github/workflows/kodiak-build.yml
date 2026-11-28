@@ -901,6 +901,8 @@ jobs:
         if: inputs.action == 'expressiveos-update'
         env:
           EOS_PUSH_TOKEN: ${{ secrets.EXPRESSIVEOS_PUSH_TOKEN }}
+          EOS_ASB_PUSH_TOKEN: ${{ secrets.EXPRESSIVEOS_ASB_PUSH_TOKEN }}
+          EOS_DEVICES_PUSH_TOKEN: ${{ secrets.EXPRESSIVEOS_DEVICES_PUSH_TOKEN }}
         run: |
           [[ "$QUERY" =~ ^(token|lint(\ [A-Za-z0-9][A-Za-z0-9._/-]*)?|(plan|push|verify)\ [0-9]{4}-(0[1-9]|1[0-2])(-[2-9])?)$ ]] \
             || { echo "::error::query must be: token, lint [ref], plan <id>, push <id> or verify <id> (id: the update's month, as 2026-12)"; exit 1; }
@@ -1200,19 +1202,24 @@ jobs:
                 info=$(entry "$p") || fail "can't read $mf"
                 [[ -n $info ]] || fail "try=: ExpressiveOS's manifest has no project at $p"
                 read -r rem name rev <<< "$info"
-                [[ $rem = expressiveos ]] || fail "try=: $p isn't one of ExpressiveOS's own repos (its remote is $rem): only those take try="
+                case "$rem" in
+                  expressiveos) expect_org=ExpressiveOS ;;
+                  expressiveos-asb) expect_org=ExpressiveOS-ASB ;;
+                  expressiveos-devices) expect_org=ExpressiveOS-Devices ;;
+                  *) fail "try=: $p isn't one of ExpressiveOS's own repos (its remote is $rem): only those take try=" ;;
+                esac
                 [[ -d $d && "$(cd "$d" && git rev-parse --show-toplevel 2>/dev/null)" = "$(cd "$d" && pwd -P)" ]] || fail "$p isn't a git project in the tree: run expressiveos-setup"
                 gd=$(git -C "$d" rev-parse --absolute-git-dir) || fail "can't find $p's git folder"
                 [[ ! -e $gd/rebase-apply && ! -e $gd/rebase-merge ]] || fail "$p has a git am or rebase in progress"
-                url=$(git -C "$d" config --get remote.expressiveos.url) || fail "$p has no remote expressiveos: run expressiveos-setup"
-                [[ ${url%.git} = "https://github.com/ExpressiveOS/$name" ]] || fail "$p fetches from $url, not https://github.com/ExpressiveOS/$name"
+                url=$(git -C "$d" config --get "remote.$rem.url") || fail "$p has no remote $rem: run expressiveos-setup"
+                [[ ${url%.git} = "https://github.com/$expect_org/$name" ]] || fail "$p fetches from $url, not https://github.com/$expect_org/$name"
                 pin=$(git -C "$d" rev-parse -q --verify "refs/remotes/m/$br^{commit}") || fail "$p has no m/$br: run expressiveos-setup"
                 [[ $pin = "$rev" ]] || fail "$p was synced to ${pin:0:12}, not the manifest's ${rev:0:12}: run expressiveos-setup"
                 h=$(git -C "$d" rev-parse HEAD) || fail "can't read $p's HEAD"
                 [[ $h = "$pin" ]] || at_tried "$p" "$h" \
                   || fail "$p is at ${h:0:12}, neither the manifest's ${pin:0:12} nor a commit try.txt names: run expressiveos-setup"
                 [[ -z "$(git -C "$d" status --porcelain --untracked-files=no)" ]] || fail "$p has changes (git -C $d status): run expressiveos-setup"
-                timeout 900 git -C "$d" fetch -q --no-tags expressiveos "$c" || fail "can't fetch $c from $url: is it pushed?"
+                timeout 900 git -C "$d" fetch -q --no-tags "$rem" "$c" || fail "can't fetch $c from $url: is it pushed?"
                 git -C "$d" cat-file -e "$c^{commit}" || fail "$c isn't a commit in $p"
                 git -C "$d" merge-base --is-ancestor "$pin" "$c" \
                   || fail "$c doesn't have the manifest's ${pin:0:12} under it: base the branch on $p's expressiveos branch at that commit or later"
@@ -1589,6 +1596,8 @@ jobs:
               done
               echo "--- test_update_aosp.py"
               perl -e 'alarm 120; exec @ARGV' -- python3 -B "$KIT/sources/tests/test_update_aosp.py" -v
+              echo "--- test_eos_org_organize.py"
+              perl -e 'alarm 120; exec @ARGV' -- python3 -B "$KIT/sources/tests/test_eos_org_organize.py" -v
               echo "--- test_eos_integrity.py"
               perl -e 'alarm 120; exec @ARGV' -- python3 -B "$KIT/sources/tests/test_eos_integrity.py" -v
               echo "--- test_brand_check.py"
@@ -1614,9 +1623,9 @@ jobs:
               fi
               vh="$EOS_TOP/vendor/google/husky"
               if [[ -d "$vh" ]]; then
-                rem=$(git -C "$vh" config --get remote.expressiveos.url 2>/dev/null || true)
-                if [[ "${rem%.git}" != "https://github.com/ExpressiveOS/vendor_google_husky" || ! -d "$EOS_TOP/.repo/projects/vendor/google/husky.git" ]]; then
-                  echo "removing pre-manifest vendor/google/husky (remote=${rem:-none}) inside $EOS_TOP so repo sync clones ExpressiveOS/vendor_google_husky"
+                rem=$(git -C "$vh" config --get remote.expressiveos-devices.url 2>/dev/null || git -C "$vh" config --get remote.expressiveos.url 2>/dev/null || true)
+                if [[ ( "${rem%.git}" != "https://github.com/ExpressiveOS-Devices/vendor_google_husky" && "${rem%.git}" != "https://github.com/ExpressiveOS/vendor_google_husky" ) || ! -d "$EOS_TOP/.repo/projects/vendor/google/husky.git" ]]; then
+                  echo "removing pre-manifest vendor/google/husky (remote=${rem:-none}) inside $EOS_TOP so repo sync clones vendor_google_husky"
                   rm -rf -- "$vh" "$EOS_TOP/.repo/projects/vendor/google/husky.git" "$EOS_TOP/.repo/project-objects/vendor_google_husky.git"
                 fi
               fi
@@ -1636,7 +1645,7 @@ jobs:
               echo "== post-sync manifest & pin verification"
               echo "manifest HEAD: $(git -C "$EOS_TOP/.repo/manifests" rev-parse HEAD)"
               echo "lmkd HEAD:     $(git -C "$EOS_TOP/system/memory/lmkd" rev-parse HEAD)"
-              echo "husky vendor:  $(git -C "$EOS_TOP/vendor/google/husky" config --get remote.expressiveos.url) @ $(git -C "$EOS_TOP/vendor/google/husky" rev-parse HEAD)"
+              echo "husky vendor:  $(git -C "$EOS_TOP/vendor/google/husky" config --get remote.expressiveos-devices.url 2>/dev/null || git -C "$EOS_TOP/vendor/google/husky" config --get remote.expressiveos.url) @ $(git -C "$EOS_TOP/vendor/google/husky" rev-parse HEAD)"
               [[ "$(git -C "$EOS_TOP/system/memory/lmkd" rev-parse HEAD)" = "c3601e823bd07c9c190f67e2f9bc7486e4978328" ]] \
                 || { echo "::error::lmkd HEAD is not c3601e823bd07c9c190f67e2f9bc7486e4978328"; exit 1; }
               off_head=0
@@ -1823,9 +1832,19 @@ jobs:
                 [[ -z "$(git -C "$EOS_TOP/$p" status --porcelain --untracked-files=no)" ]] \
                   || { echo "::error::$p has dirty tracked files"; exit 1; }
                 orig=$(git -C "$EOS_TOP/$p" rev-parse HEAD)
-                url=$(git -C "$EOS_TOP/$p" config --get remote.expressiveos.url)
+                rem_name=""
+                url=""
+                for cand in expressiveos expressiveos-devices expressiveos-asb; do
+                  u=$(git -C "$EOS_TOP/$p" config --get "remote.$cand.url" 2>/dev/null || true)
+                  if [[ -n "$u" ]]; then
+                    rem_name="$cand"
+                    url="$u"
+                    break
+                  fi
+                done
+                [[ -n "$rem_name" ]] || { echo "::error::$p has no ExpressiveOS remote"; exit 1; }
                 echo "== try $p: fetching $c from $url (was ${orig:0:12})"
-                perl -e 'alarm 180; exec @ARGV' -- git -C "$EOS_TOP/$p" fetch --no-tags expressiveos "$c"
+                perl -e 'alarm 180; exec @ARGV' -- git -C "$EOS_TOP/$p" fetch --no-tags "$rem_name" "$c"
                 saved_projects+=("$p@$orig")
                 git -C "$EOS_TOP/$p" checkout -q --detach FETCH_HEAD
                 echo "checked out $p @ $(git -C "$EOS_TOP/$p" log -1 --oneline)"

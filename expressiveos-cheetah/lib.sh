@@ -208,10 +208,13 @@ am_patches() {   # am_patches <dir> <label> <patch>...: each patch as a local co
     local d=$1 label=$2 patch subject before log h rc own
     shift 2
     project_ok "$d"
-    # A project from ExpressiveOS's manifest that's one of its own repos (github.com/ExpressiveOS)
+    # A project from ExpressiveOS's manifest that's one of its own repos (github.com/ExpressiveOS*)
     # has the kit's patches as commits already: a patch it lacks, or has another version of, is a
     # kit change made the old way. Those go into the repo itself (README.md, "Sources")
-    own=$(git -C "$d" config --get remote.expressiveos.url || true)
+    own=$(git -C "$d" config --get remote.expressiveos.url \
+        || git -C "$d" config --get remote.expressiveos-devices.url \
+        || git -C "$d" config --get remote.expressiveos-asb.url \
+        || true)
     git -C "$d" var GIT_COMMITTER_IDENT >/dev/null || fail "git has no user.name/user.email here; git am needs one"
     # One git log per project: frameworks/base has over a million commits. Each line is the
     # commit's hash, a tab and its subject
