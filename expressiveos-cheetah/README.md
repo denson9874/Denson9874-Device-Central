@@ -471,12 +471,16 @@ On each Drop:
    ```
 
    It matches apps by package name (stock's folder names carry versions and change), and lists the
-   apps stock has newer, the stock apps we don't carry (a Drop's new app shows here), and every
-   config file that differs. It ends `GMS_DROP=NONE` or `GMS_DROP=CHANGES <n>`, the number of
-   newer apps and changed config files to decide on.
+   apps stock has newer, same-`versionCode` apps whose non-`META-INF` payload changed (QPR
+   rebuilds that keep `versionCode` fixed), the stock apps we don't carry (a Drop's new app shows
+   here), and every config file that differs. It ends `GMS_DROP=NONE` or `GMS_DROP=CHANGES <n>`,
+   the number of newer apps, same-`versionCode` payload rebuilds, and changed config files to
+   decide on.
 4. In a clone of ExpressiveOS/vendor_gms (with its Git LFS files), `gms-drop.py apply <stock> <clone>`
-   copies stock's newer APKs over ours at our paths. It never downgrades, never adds an app and
-   never touches `blobs/`: `nowplaying.xml` and others carry our fixes, so a config change or a new
+   copies stock's newer APKs over ours at our paths. It never downgrades, never adds an app, never
+   blindly overwrites same-`versionCode` rebuilds (check Java ABI against our framework jars,
+   private `@*android:*` resource IDs, and signing certs for `PRESIGNED` APKs first), and never
+   touches `blobs/`: `nowplaying.xml` and others carry our fixes, so a config change or a new
    app is a hand edit with its `Android.bp` and `gms_*.mk` entry, reviewed like any inherited code.
    The result is a commit on the fork and a manifest pin, never a kit patch.
 5. The next test build carries it. On the 7 Pro and one Pixel 11, check each group 1 and 2 feature

@@ -14,13 +14,14 @@ bad() { fail=$((fail + 1)); echo "FAILED: $1"; }
 has() { if grep -qF -- "$2" "$1"; then ok "$3"; else bad "$3 (no '$2' in $1)"; fi; }
 hasnt() { if grep -qF -- "$2" "$1"; then bad "$3 ('$2' in $1)"; else ok "$3"; fi; }
 
-# mkapk <file> <package> <versionCode> <versionName> [utf8]
+# mkapk <file> <package> <versionCode> <versionName> [utf8|utf16] [extra_name=extra_body ...]
 mkapk() {
     mkdir -p "$(dirname "$1")"
     python3 -I - "$@" <<'PY'
 import struct, sys, zipfile
 path, package, code, vname = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
-utf8 = len(sys.argv) > 5
+utf8 = len(sys.argv) > 5 and sys.argv[5] == 'utf8'
+extras = sys.argv[6:]
 strings = ['versionCode', 'versionName', 'package', 'manifest', package, vname]
 blobs = []
 for s in strings:
@@ -47,12 +48,16 @@ doc = pool + resmap + elem
 with zipfile.ZipFile(path, 'w') as z:
     z.writestr('AndroidManifest.xml', struct.pack('<HHI', 3, 8, 8 + len(doc)) + doc)
     z.writestr('marker.txt', '%s %d' % (package, code))
+    for item in extras:
+        k, v = item.split('=', 1)
+        z.writestr(k, v)
 PY
 }
 
 G=$T/gms; S=$T/stock
 mkapk "$G/product/packages/privileged_apps/Launcher_100/Launcher_100.apk" com.example.launcher 100 1.0
-mkapk "$G/product/packages/apps/Same/Same.apk" com.example.same 7 7.0 utf8
+mkapk "$G/product/packages/apps/Same/Same.apk" com.example.same 7 7.0 utf8 META-INF/CERT.SF=sig-ours
+mkapk "$G/system_ext/packages/privileged_apps/Rebuilt/Rebuilt.apk" com.example.rebuilt 907 17 utf16 resources.arsc=arsc-old classes.dex=dex-old
 mkapk "$G/system_ext/packages/privileged_apps/Ahead/Ahead.apk" com.example.ahead 50 5.0
 mkapk "$G/product/packages/apps/OursOnly/OursOnly.apk" com.example.oursonly 1 1
 mkapk "$G/system/packages/apps/Sys/Sys.apk" com.example.sys 3 3.0
@@ -63,9 +68,11 @@ echo '<config/>' > "$G/product/blobs/etc/sysconfig/same.xml"
 echo '<config/>' > "$G/product/blobs/etc/permissions/dropped.xml"
 echo 'x' > "$G/product/blobs/etc/sysconfig/Android.bp"
 
-# stock: the launcher's folder was renamed and is newer; system sits under system/system
+# stock: the launcher's folder was renamed and is newer; system sits under system/system;
+# Same differs only in META-INF (identical payload); Rebuilt keeps versionCode=907 with changed ARSC+DEX
 mkapk "$S/product/priv-app/Launcher_200/Launcher_200.apk" com.example.launcher 200 2.0 utf8
-mkapk "$S/product/app/Same/Same.apk" com.example.same 7 7.0
+mkapk "$S/product/app/Same/Same.apk" com.example.same 7 7.0 utf8 META-INF/CERT.SF=sig-stock
+mkapk "$S/system_ext/priv-app/Rebuilt/Rebuilt.apk" com.example.rebuilt 907 17 utf16 resources.arsc=arsc-new classes.dex=dex-new
 mkapk "$S/system_ext/priv-app/Ahead/Ahead.apk" com.example.ahead 40 4.0
 mkapk "$S/product/app/NewDropApp/NewDropApp.apk" com.example.dropapp 1 1.0
 mkapk "$S/system/system/app/Sys/Sys.apk" com.example.sys 4 4.0
@@ -85,7 +92,10 @@ python3 -I "$tool" compare "$S" "$G" > "$T/c.log" 2>&1 || bad "compare exits 0"
 has "$T/c.log" 'com.example.launcher  1.0 (100) -> 2.0 (200)' "a renamed stock folder is matched by package and seen as newer"
 has "$T/c.log" 'com.example.sys  3.0 (3) -> 4.0 (4)' "system/system is read"
 has "$T/c.log" 'apps we carry that stock has newer (2)' "two newer apps"
-has "$T/c.log" 'apps we carry at the same version: 1' "one app at the same version"
+has "$T/c.log" 'apps we carry at the same version with changed payload (1)' "one same-versionCode payload rebuild is flagged"
+has "$T/c.log" 'com.example.rebuilt  17 (907) -> 17 (907)  [ARSC,DEX]' "rebuilt app reports changed payload categories"
+has "$T/c.log" 'apps we carry at the same version (identical payload): 1' "META-INF-only difference stays identical payload"
+hasnt "$T/c.log" 'com.example.same' "META-INF-only same-version app is not listed as rebuilt"
 has "$T/c.log" 'com.example.ahead  ours 5.0 (50), stock 4.0 (40)' "an app ahead of stock is listed as newer than stock"
 has "$T/c.log" 'com.example.oursonly  1 (1)' "an app stock lacks is listed"
 has "$T/c.log" 'Big.apk: Git LFS pointer' "an LFS pointer is reported, not parsed"
@@ -96,7 +106,7 @@ has "$T/c.log" 'product/etc/permissions/dropped.xml' "a config file stock droppe
 has "$T/c.log" 'product/etc/sysconfig/new_feature.xml' "a stock config file we lack is named"
 hasnt "$T/c.log" 'sysconfig/Android.bp' "build files are not compared"
 has "$T/c.log" 'stock APK not read: product/app/Broken/Broken.apk' "an unreadable stock APK is a note, not a crash"
-has "$T/c.log" 'GMS_DROP=CHANGES 5' "compare ends with the count of decisions (2 apps, 2 differing and 1 dropped config file)"
+has "$T/c.log" 'GMS_DROP=CHANGES 6' "compare ends with the count of decisions (2 newer apps, 1 rebuilt app, 2 differing and 1 dropped config file)"
 has "$T/c.log" 'platform apps (com.android.*, android.*) we do not carry: 1, not listed' "stock platform apps are counted, not listed"
 hasnt "$T/c.log" 'com.android.platformthing' "a stock platform app is not listed"
 has "$T/c.log" 'system-partition config files we do not carry: 1, not listed' "system config files are counted, not listed"
@@ -105,17 +115,21 @@ after=$(cd "$G" && find . -type f -exec sha256sum {} + | sort | sha256sum)
 [[ $before == "$after" ]] && ok "compare changes nothing" || bad "compare changes nothing"
 
 ahead=$(sha256sum < "$G/system_ext/packages/privileged_apps/Ahead/Ahead.apk")
+rebuilt_before=$(sha256sum < "$G/system_ext/packages/privileged_apps/Rebuilt/Rebuilt.apk")
 python3 -I "$tool" apply "$S" "$G" > "$T/a.log" 2>&1 || bad "apply exits 0"
 has "$T/a.log" 'GMS_DROP=APPLIED 2' "apply copies the two newer apps"
+has "$T/a.log" '1 same-versionCode rebuild(s) left untouched' "apply reminds operator to review same-versionCode rebuilds"
 cmp -s "$S/product/priv-app/Launcher_200/Launcher_200.apk" "$G/product/packages/privileged_apps/Launcher_100/Launcher_100.apk" \
     && ok "the newer APK lands at our path" || bad "the newer APK lands at our path"
 cmp -s "$S/system/system/app/Sys/Sys.apk" "$G/system/packages/apps/Sys/Sys.apk" && ok "the system app is updated" || bad "the system app is updated"
 [[ $ahead == "$(sha256sum < "$G/system_ext/packages/privileged_apps/Ahead/Ahead.apk")" ]] && ok "apply never downgrades" || bad "apply never downgrades"
+[[ $rebuilt_before == "$(sha256sum < "$G/system_ext/packages/privileged_apps/Rebuilt/Rebuilt.apk")" ]] && ok "apply leaves same-versionCode rebuilds for manual ABI/signing review" || bad "apply leaves same-versionCode rebuilds for manual ABI/signing review"
 grep -q 'fixed="ours"' "$G/product/blobs/etc/sysconfig/nowplaying.xml" && ok "apply leaves our config files alone" || bad "apply leaves our config files alone"
 [[ ! -e "$G/product/packages/apps/NewDropApp" ]] && ok "apply adds no app" || bad "apply adds no app"
 [[ -z "$(find "$G" -name '*.gms-drop')" ]] && ok "apply leaves no temporary file" || bad "apply leaves no temporary file"
 python3 -I "$tool" compare "$S" "$G" > "$T/c2.log" 2>&1 || true
 has "$T/c2.log" 'apps we carry that stock has newer (0)' "after apply nothing is newer"
+has "$T/c2.log" 'apps we carry at the same version with changed payload (1)' "rebuilt app remains flagged after apply"
 
 mkdir -p "$T/empty"
 if python3 -I "$tool" compare "$T/empty" "$G" > "$T/e.log" 2>&1; then bad "an empty stock root is refused"; else ok "an empty stock root is refused"; fi
