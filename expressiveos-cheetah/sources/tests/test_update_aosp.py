@@ -800,6 +800,195 @@ sys.exit(1)
         self.assertIn("pushed: packages_modules_Bluetooth -> expressiveos-2.0", full_push.stdout)
         self.assertIn("UPDATE_PUSH=OK", full_push.stdout)
 
+    def test_multi_org_remotes_plan_create_token_push_verify(self):
+        """Multi-org Option B flow: NEW_FORK_NEEDED routes to expressiveos-asb with topics and per-org tokens."""
+        asb_dir = self.tmp / "eos-asb"
+        dev_dir = self.tmp / "eos-devices"
+        asb_dir.mkdir(parents=True)
+        dev_dir.mkdir(parents=True)
+        asb_url = f"file://{asb_dir}"
+        dev_url = f"file://{dev_dir}"
+
+        # Rewrite world manifest to declare expressiveos-asb and expressiveos-devices remotes
+        mf_path = self.world.manifest_file()
+        mf_xml = mf_path.read_text(encoding="utf-8").replace(
+            f'  <remote name="expressiveos" fetch="{self.world.eos_org_url}" />\n',
+            f'  <remote name="expressiveos" fetch="{self.world.eos_org_url}" />\n'
+            f'  <remote name="expressiveos-asb" fetch="{asb_url}" />\n'
+            f'  <remote name="expressiveos-devices" fetch="{dev_url}" />\n',
+        )
+        commit_files(self.world.eos_mf_checkout, {"default.xml": mf_xml}, "enable multi-org remotes")
+        run(["git", "push", str(self.world.eos_manifest_bare), "HEAD:refs/heads/expressiveos-2.0"], cwd=self.world.eos_mf_checkout)
+
+        # Lint must accept multi-org remotes and reject undeclared remote references
+        lint_ok = self.run_cli("lint", str(mf_path))
+        self.assertEqual(lint_ok.returncode, 0, lint_ok.stdout + lint_ok.stderr)
+        self.assertIn("MANIFEST_LINT=OK", lint_ok.stdout)
+
+        bad_undecl = self.tmp / "undecl.xml"
+        bad_undecl.write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            "<manifest>\n"
+            '  <remote name="aosp" fetch="https://android.googlesource.com" />\n'
+            '  <default remote="aosp" revision="expressiveos-2.0" />\n'
+            f'  <project path="external/aac" name="external_aac" remote="expressiveos-asb" revision="{"a" * 40}" />\n'
+            "</manifest>\n",
+            encoding="utf-8",
+        )
+        lint_bad = self.run_cli("lint", str(bad_undecl))
+        self.assertEqual(lint_bad.returncode, 1)
+        self.assertIn("undeclared remote 'expressiveos-asb'", lint_bad.stderr)
+
+        # Stage update with Settings resolution patch -> Bluetooth NEW_FORK routes to expressiveos-asb
+        updates_dir = self.tmp / "updates-multi"
+        res_dir = updates_dir / "2026-08" / "resolutions"
+        res_dir.mkdir(parents=True)
+        (updates_dir / "2026-08" / "update.conf").write_text(
+            "AOSP_SEC_TAG=android-security-17.0.0_r1\n"
+            "TARGET_SEC_TAG=android-security-17.0.0_r2\n"
+            "TARGET_SPL=2026-08-05\n",
+            encoding="utf-8",
+        )
+        (res_dir / "packages_apps_Settings.patch").write_text(
+            self.world.settings_resolution_patch, encoding="utf-8"
+        )
+        res_plan = self.run_cli(
+            "plan", "2026-08",
+            *self.world.common_args(),
+            "--eos-asb-org-base", asb_url,
+            "--eos-devices-org-base", dev_url,
+            "--updates-dir", str(updates_dir),
+        )
+        self.assertEqual(res_plan.returncode, 0, res_plan.stdout + res_plan.stderr)
+        plan_doc = json.loads((self.world.work_dir / "2026-08" / "plan.json").read_text(encoding="utf-8"))
+        self.assertEqual(plan_doc["new_fork_remote"], "expressiveos-asb")
+        self.assertEqual(plan_doc["updates"]["packages/modules/Bluetooth"]["remote"], "expressiveos-asb")
+        self.assertEqual(plan_doc["updates"]["packages/modules/Bluetooth"]["org"], "ExpressiveOS-ASB")
+        self.assertEqual(plan_doc["updates"]["frameworks/base"]["remote"], "expressiveos")
+        out_xml = Path(plan_doc["manifest_out"]).read_text(encoding="utf-8")
+        self.assertIn('name="packages_modules_Bluetooth"', out_xml)
+        self.assertIn('remote="expressiveos-asb"', out_xml)
+
+        # Mock gh verifying POST targets orgs/ExpressiveOS-ASB/repos AND PUT topics runs
+        topic_log = self.tmp / "topics.json"
+        mock_gh = self.tmp / "mock-gh-multi"
+        mock_gh.write_text(
+            f"""#!/usr/bin/env python3
+import json, subprocess, sys
+from pathlib import Path
+
+args = sys.argv[1:]
+asb_dir = Path({str(asb_dir)!r})
+topic_log = Path({str(topic_log)!r})
+if len(args) >= 4 and args[0] == "api" and args[1] == "-X":
+    method, endpoint = args[2], args[3]
+    if method == "GET" and endpoint.startswith("repos/ExpressiveOS-ASB/"):
+        repo = endpoint.split("/")[-1]
+        sys.exit(0 if (asb_dir / repo).exists() else 1)
+    if method == "POST" and endpoint == "orgs/ExpressiveOS-ASB/repos":
+        name = None
+        for i, a in enumerate(args):
+            if a == "-f" and i + 1 < len(args) and args[i + 1].startswith("name="):
+                name = args[i + 1].split("=", 1)[1]
+        bare = asb_dir / name
+        bare.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "init", "--bare", str(bare)], check=True, timeout=15)
+        subprocess.run(["git", "--git-dir", str(bare), "config", "uploadpack.allowAnySHA1InWant", "true"], check=True, timeout=15)
+        sys.exit(0)
+    if method == "PUT" and endpoint == "repos/ExpressiveOS-ASB/packages_modules_Bluetooth/topics":
+        topic_log.write_text(sys.stdin.read(), encoding="utf-8")
+        sys.exit(0)
+sys.exit(1)
+""",
+            encoding="utf-8",
+        )
+        mock_gh.chmod(mock_gh.stat().st_mode | stat.S_IXUSR)
+        res_cr = self.run_cli(
+            "create-repos", "2026-08",
+            "--work", str(self.world.work_dir),
+            env={"EOS_GH_BIN": str(mock_gh)},
+        )
+        self.assertEqual(res_cr.returncode, 0, res_cr.stdout + res_cr.stderr)
+        self.assertTrue((asb_dir / "packages_modules_Bluetooth").exists())
+        topics_sent = json.loads(topic_log.read_text(encoding="utf-8"))["names"]
+        self.assertEqual(topics_sent, ["expressiveos", "eos-2-0", "fn-modules", "eos-asb-patch"])
+
+        # Push & verify across both orgs
+        res_push = self.run_cli(
+            "push", "2026-08",
+            "--work", str(self.world.work_dir),
+            "--eos-org-base", self.world.eos_org_url,
+            "--eos-asb-org-base", asb_url,
+            "--manifest-url", f"file://{self.world.eos_manifest_bare}",
+        )
+        self.assertEqual(res_push.returncode, 0, res_push.stdout + res_push.stderr)
+        self.assertIn("UPDATE_PUSH=OK (forks_pushed=4, manifest_branch=update/2026-08)", res_push.stdout)
+
+        # Merge manifest PR & verify
+        pr_sha = run(
+            ["git", "--git-dir", str(self.world.eos_manifest_bare), "rev-parse", "refs/heads/update/2026-08"]
+        ).stdout.strip()
+        run(
+            ["git", "--git-dir", str(self.world.eos_manifest_bare), "update-ref", "refs/heads/expressiveos-2.0", pr_sha]
+        )
+        res_ver = self.run_cli(
+            "verify", "2026-08",
+            "--work", str(self.world.work_dir),
+            "--eos-org-base", self.world.eos_org_url,
+            "--eos-asb-org-base", asb_url,
+            "--manifest-url", f"file://{self.world.eos_manifest_bare}",
+        )
+        self.assertEqual(res_ver.returncode, 0, res_ver.stdout + res_ver.stderr)
+        self.assertIn("UPDATE_VERIFY=OK (verified=4, spl=2026-08-05)", res_ver.stdout)
+
+        # Per-org token check: ExpressiveOS gets EOS_PUSH_TOKEN, ExpressiveOS-ASB gets EOS_ASB_PUSH_TOKEN
+        auth_main = "Basic " + base64.b64encode(b"x-access-token:pat_main").decode("ascii")
+        auth_asb = "Basic " + base64.b64encode(b"x-access-token:pat_asb").decode("ascii")
+
+        class MultiOrgHandler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, fmt, *args):
+                return
+
+            def do_GET(self):
+                auth = self.headers.get("Authorization")
+                if not auth:
+                    self.send_response(401)
+                    self.end_headers()
+                    return
+                expected = auth_asb if self.path.startswith("/ExpressiveOS-ASB/") else auth_main
+                if auth != expected:
+                    self.send_response(403)
+                    self.end_headers()
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-git-receive-pack-advertisement")
+                self.end_headers()
+                self.wfile.write(b"001f# service=git-receive-pack\n0000")
+
+        srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), MultiOrgHandler)
+        srv.daemon_threads = True
+        t = threading.Thread(target=srv.serve_forever, daemon=True)
+        t.start()
+        try:
+            res_tok = self.run_cli(
+                "token",
+                "--work", str(self.tmp / "tok-multi"),
+                "--manifest", str(plan_doc["manifest_out"]),
+                "--eos-org-base", f"http://127.0.0.1:{srv.server_port}/ExpressiveOS",
+                "--eos-asb-org-base", f"http://127.0.0.1:{srv.server_port}/ExpressiveOS-ASB",
+                "--manifest-url", f"http://127.0.0.1:{srv.server_port}/ExpressiveOS/manifest",
+                env={
+                    "EOS_PUSH_TOKEN": "pat_main",
+                    "EOS_ASB_PUSH_TOKEN": "pat_asb",
+                    "EOS_ALLOW_LOCAL_TOKEN_TEST": "1",
+                },
+            )
+            self.assertEqual(res_tok.returncode, 0, res_tok.stdout + res_tok.stderr)
+            self.assertIn("TOKEN_CHECK=OK", res_tok.stdout)
+        finally:
+            srv.shutdown()
+            srv.server_close()
+
 
 if __name__ == "__main__":
     unittest.main()
