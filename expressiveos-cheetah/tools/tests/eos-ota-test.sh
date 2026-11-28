@@ -151,10 +151,10 @@ echo '  extra_long_opts=["changelog="]' > "$top/build/make/tools/releasetools/ot
 rc=$(ota --upload); ok "B: incremental from A" '[[ $rc = 0 ]] && [[ -f $D/ota/$B-incremental-from-20261103.zip ]] && grep -qx "src=$A-target_files.zip full=boot,init_boot,vbmeta" "$HOME/otf.log"'
 ok "  signed with the key in vendor/expressiveos-priv (-k)" 'tail -1 "$HOME/otf-k.log" | grep -qx vendor/expressiveos-priv/keys/testkey'
 ok "  --changelog: the release's notes, since the tree's tool takes them" 'grep -qx "$B-changelog.txt" "$HOME/otf-chlog.log"'
-ok "  feed: incremental first (base A, ts+1), then full" 'python3 -c "
+ok "  feed: incremental first (base A, real build ts), then full" 'python3 -c "
 import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]
 assert len(r)==2, r
-assert r[0][\"filename\"]==\"$B-incremental-from-20261103.zip\" and r[0][\"base_timestamp\"]==1762100000 and r[0][\"timestamp\"]==1764700001
+assert r[0][\"filename\"]==\"$B-incremental-from-20261103.zip\" and r[0][\"base_timestamp\"]==1762100000 and r[0][\"timestamp\"]==1764700000
 assert r[1][\"filename\"]==\"$B.zip\" and \"base_timestamp\" not in r[1] and r[1][\"timestamp\"]==1764700000
 " "$D/ota/feed/builds/v2/cheetah.json"'
 ok "  R2 keeps A (the live feed's) and B" '[[ -f $W/r2/expressiveos/v2/cheetah/ota/$A.zip && -f $W/r2/expressiveos/v2/cheetah/ota/$B.zip && -f $W/r2/expressiveos/v2/cheetah/ota/$B-incremental-from-20261103.zip ]]'
@@ -184,7 +184,7 @@ ok "  no --changelog for a tree whose tool doesn't know it" '[[ -s $HOME/otf.log
 ok "  older candidate incremental removed from check/" '[[ ! -e $D/check/ExpressiveOS-17.0-20261201-cheetah-1.0-Unofficial-incremental-from-20261103.zip ]]'
 ok "  test feed: the incremental only, its download in test/" 'python3 -c "
 import json,sys; r=json.load(open(sys.argv[1]))[\"response\"]
-assert len(r)==1 and r[0][\"base_timestamp\"]==1764700000 and r[0][\"download\"].endswith(\"/ota/test/$C-incremental-from-20261203.zip\")
+assert len(r)==1 and r[0][\"base_timestamp\"]==1764700000 and r[0][\"timestamp\"]==1765300000 and r[0][\"download\"].endswith(\"/ota/test/$C-incremental-from-20261203.zip\")
 " "$W/r2/expressiveos/v2/cheetah/ota/test/cheetah.json"'
 ok "  the live feed's R2 files untouched" '[[ -f $W/r2/expressiveos/v2/cheetah/ota/$B.zip ]]'
 # C tested and released (eos-pack.sh --release: its target-files a hard link to check/'s): the

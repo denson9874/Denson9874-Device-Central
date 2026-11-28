@@ -43,11 +43,11 @@
 # ab_partitions.txt; the incremental from the base build (pre-build-incremental), the full one
 # the very file the release kept (its .sha256).
 #
-# The feed lists the incremental first, with base_timestamp (packages_apps_Updater 0005
-# offers it only to the base build) and a timestamp one second after the build's: of the
-# updates a phone may take, the Updater shows the one with the newest timestamp, so a phone on
-# the base build gets the incremental, not the full package of the same build. Once either
-# is installed the phone's build date is the build's own, and neither is offered again. Then
+# The feed lists the incremental first, with base_timestamp (packages_apps_Updater offers it
+# only to the base build, prefers it over the full package at the same timestamp, and stores
+# base_timestamp so stale incrementals are pruned on reboot) and the build's real timestamp.
+# Once either is installed the phone's build date matches the timestamp, so neither is offered
+# again. Then
 # the full package, for every other phone. No ota_property_files (no streaming) yet
 # (README.md, "Not done yet"). The Updater never goes back: a release older than the feed's
 # build stops with OTA_SUPERSEDED (exit 3); the same release again is fine.
@@ -403,8 +403,8 @@ path, sha256, md5, size, ts, base, url, model, version, spl, dev = sys.argv[1:]
 name = path.rsplit('/', 1)[-1]
 e = {}
 if base:
-    # Offered only to the build it's from (packages_apps_Updater 0005), and listed one second
-    # after the full package of the same build, so that's the one the Updater shows there
+    # Offered only to the build it's from; the Updater prefers an applicable incremental over
+    # the full package at the same timestamp and prunes it once the phone leaves that base.
     e['base_timestamp'] = int(base)
 e.update({
     'maintainer': 'denson9874',
@@ -413,7 +413,7 @@ e.update({
     'device': model,
     'filename': name,
     'download': url + '/' + name,
-    'timestamp': int(ts) + (1 if base else 0),
+    'timestamp': int(ts),
     'md5': md5,
     'sha256': sha256,
     'size': int(size),

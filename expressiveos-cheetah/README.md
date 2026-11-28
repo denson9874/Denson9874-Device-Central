@@ -590,10 +590,10 @@ feed files; the feed itself (`denson9874/expressiveos_ota`, `builds/<device>.jso
 - Both are checked: A/B, this phone, this build, signed with the pinned OTA key, every A/B partition;
   the incremental from the base build. The Updater never goes back: a release older than the feed's
   stops with `OTA_SUPERSEDED`.
-- The feed lists the incremental first, with `base_timestamp` (`packages_apps_Updater` 0005 offers it
-  only to the base build) and a timestamp one second after the build's: of the updates a phone may take
-  the Updater shows the newest by timestamp, so a phone on the base build gets the incremental, not the
-  full package of the same build. Then the full package, for every other phone.
+- The feed lists the incremental first, with `base_timestamp` and the build's real timestamp
+  (`packages_apps_Updater` offers it only to the base build, prefers it over the full package at the
+  same timestamp, and stores `base_timestamp` so stale incrementals are pruned on reboot). Then the
+  full package, for every other phone.
 - R2's `expressiveos/<device>/ota/` keeps what the new feed and the one phones read now point at; the
   OTA mirror (`EOS_OTA_MIRROR`) serves them.
 
